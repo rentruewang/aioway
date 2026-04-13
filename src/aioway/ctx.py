@@ -36,6 +36,9 @@ class FakeModeRc:
     count: int = 0
     "The enter count."
 
+    def __bool__(self) -> bool:
+        return bool(self.active())
+
     @ctxl.contextmanager
     def __call__(self):
         with self.mode, self._count_mode():
