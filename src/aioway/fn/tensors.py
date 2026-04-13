@@ -8,11 +8,11 @@ from collections import abc as cabc
 import torch
 from torch import _subclasses as tsc
 
-from aioway._common import dcls_no_eq_no_repr, format_function
+from aioway._common import dcls_no_eq_no_repr
 from aioway.ctx import to_fake_tensor
 from aioway.schemas import attr
 
-from .fn import Fn
+from .fn import Fn, FnThunk
 
 __all__ = ["TensorFn", "tensor"]
 
@@ -188,7 +188,7 @@ class AnyThunk(TensorFn):
                 raise TypeError(f"{key}={value} is not a `Thunk`")
 
     def __repr__(self) -> str:
-        return format_function(self.func, *self.args, **self.kwargs)
+        return repr(FnThunk(self.func, *self.args, **self.kwargs))
 
     @typing.override
     def forward(self) -> torch.Tensor:

@@ -32,9 +32,9 @@ class FakableModule[**P, M: nn.Module]:
     """
 
     def __init__(
-        self, nn: cabc.Callable[P, M], /, *args: P.args, **kwargs: P.kwargs
+        self, module: cabc.Callable[P, M], /, *args: P.args, **kwargs: P.kwargs
     ) -> None:
-        self._module = nn
+        self._module = module
         self._args = args
         self._kwargs = kwargs
 
