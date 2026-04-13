@@ -44,7 +44,7 @@ class _PrintDispatchMode(pyd.TorchDispatchMode):
         kwargs = kwargs or {}
         result = func(*args, **kwargs)
         func_call = format_function(func, *args, **kwargs)
-        print(f"{func_call} -> {result!r}")
+        print(f"{func_call!s} -> {result!r}")
         return result
 
 
@@ -59,9 +59,8 @@ class _LogDispatchMode(pyd.TorchDispatchMode):
     ):
         kwargs = kwargs or {}
         result = func(*args, **kwargs)
-        if LOGGER.isEnabledFor(logging.DEBUG):
-            func_call = format_function(func, *args, **kwargs)
-            LOGGER.debug(f"%s -> %s", func_call, result)
+        func_call = format_function(func, *args, **kwargs)
+        LOGGER.debug(f"%s -> %s", func_call, result)
         return result
 
 

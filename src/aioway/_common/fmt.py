@@ -33,6 +33,10 @@ class _FuncFormat:
             raise ValueError(f"Kwargs: {self.kwargs!r} is not valid.")
 
     @typing.override
+    def __repr__(self) -> str:
+        return self.__string
+
+    @typing.override
     def __str__(self) -> str:
         return self.__string
 
