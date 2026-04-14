@@ -11,9 +11,9 @@ import torch
 from torch import _ops
 from torch.utils import _python_dispatch as pyd
 
-from .fn import Thunk
+from .fn import Thunk, TorchDispatchThunk
 
-__all__ = ["print_torch_dispatch", "log_torch_dispatch"]
+__all__ = ["print_torch_dispatch", "log_torch_dispatch", "track_fn_calls"]
 
 LOGGER = logging.getLogger(__name__)
 
@@ -94,7 +94,7 @@ def log_torch_dispatch(*, logger: logging.Logger = LOGGER, level: int = logging.
 
 @dcls.dataclass
 class _StoreDispatchMode(pyd.TorchDispatchMode):
-    calls: list[_ops.OpOverload]
+    calls: list[TorchDispatchThunk]
 
     def __torch_dispatch__(
         self,
@@ -104,5 +104,16 @@ class _StoreDispatchMode(pyd.TorchDispatchMode):
         kwargs: dict[str, typing.Any] | None = None,
     ):
         kwargs = kwargs or {}
-        thunk = Thunk(func, args, kwargs)
-        return func(*args, **kwargs)
+        thunk = TorchDispatchThunk(func, types, args, kwargs)
+        self.calls.append(thunk)
+        return thunk()
+
+
+@ctxl.contextmanager
+def track_fn_calls():
+    """
+    Track all calls into the torch dispatch mode.
+    """
+
+    with _StoreDispatchMode([]) as sdm:
+        yield sdm.calls
