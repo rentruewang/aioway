@@ -12,18 +12,17 @@ _PENDING = object()
 
 class Thunk[**P, T]:
     """
-    The thunk for any function.
+    The thunk for any function, handles both pretty printing and storing the result.
 
-    The reason we use this boilerplate over directly using `functools.cache`,
-    `functools.cached_property`, or having a saved `.__result` member for instance,
-    is because this is the least assuming.
+    `Thunk` has advantage over `functools.cache`, `functools.cached_property`,
+    and having a saved `.__result` member for instance, by being the least assuming.
 
     `functools.cache` assumes that `self` is hashable.
     `functools.cached_property` cannot inspect whether we have evaluated it or not.
     `.__result` member assumes subclass calls `__init__` properly.
 
-    Since this is saved in a `functools.cached_property`, it can be used on unhashable types,
-    yet support inspecting whether we called it or not, and does not need to call `__init__`.
+    Storing a `Thunk` in a `functools.cached_property` means `self` can be unhashable,
+    the item can be inspected, and subclasses do not need to call `__init__`.
     """
 
     def __init__(
