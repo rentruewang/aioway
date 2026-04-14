@@ -83,7 +83,12 @@ class Thunk[**P, T]:
 
     @functools.cached_property
     def __string(self) -> str:
-        return _format_function_as_str(self.func, *self.args, **self.kwargs)
+        pretty = _format_function_as_str(self.func, *self.args, **self.kwargs)
+
+        if self.done:
+            pretty = f"{pretty} -> {self.__result!r}"
+
+        return pretty
 
     @property
     def done(self) -> bool:
