@@ -11,6 +11,7 @@ from collections import abc as cabc
 import torch
 from torch import _ops
 from torch import _subclasses as tsc
+from torch import overrides
 from torch.utils import _python_dispatch as pyd
 
 from aioway.ctx import enabled_fake_mode, fake_mode
@@ -22,8 +23,9 @@ from .torch import is_aten_op, is_prim_op
 __all__ = [
     "print_torch_dispatch",
     "log_torch_dispatch",
-    "track_fn_mode",
-    "fake_fn_mode",
+    "track_dispatch_fn_mode",
+    "fake_dispatch_fn_mode",
+    "track_function_fn_mode",
 ]
 
 LOGGER = logging.getLogger(__name__)
@@ -134,6 +136,23 @@ def no_route(
 
 
 @dcls.dataclass
+class _StoreFunctionMode(overrides.TorchFunctionMode):
+    calls: list[Fn] = dcls.field(default_factory=list)
+
+    def __torch_function__(
+        self,
+        func: _ops.OpOverload,
+        types: tuple[type[torch.Tensor], ...],
+        args: tuple[typing.Any, ...] = (),
+        kwargs: dict[str, typing.Any] | None = None,
+    ):
+        kwargs = kwargs or {}
+        fn = Fn(func, *args, **kwargs)
+        self.calls.append(fn)
+        return fn()
+
+
+@dcls.dataclass
 class _StoreDispatchMode(pyd.TorchDispatchMode):
     router: TorchFnRouter
     calls: list[TorchIrFn] = dcls.field(default_factory=list)
@@ -179,7 +198,7 @@ def patch_aten_ops_in_fake(
 
 
 @ctxl.contextmanager
-def track_fn_mode():
+def track_dispatch_fn_mode():
     """
     Track all calls into the torch dispatch mode as `TorchIrFn`.
     """
@@ -189,7 +208,7 @@ def track_fn_mode():
 
 
 @ctxl.contextmanager
-def fake_fn_mode():
+def fake_dispatch_fn_mode():
     """
     Track all calls into the torch dispatch mode as `TorchIrFn`,
     when fake mode is active.
@@ -197,3 +216,9 @@ def fake_fn_mode():
 
     with fake_mode(), _StoreDispatchMode(router=only_route_aten_in_fake) as sdm:
         yield sdm.calls
+
+
+@ctxl.contextmanager
+def track_function_fn_mode():
+    with _StoreFunctionMode() as sfm:
+        yield sfm.calls
