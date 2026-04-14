@@ -58,13 +58,20 @@ class Fn[**P, T]:
 
         return NotImplemented
 
+    def do(self) -> T:
+        """
+        Do the computation for `Fn`. Can be overwritten in subclass.
+        """
+
+        return self.func(*self.args, **self.kwargs)
+
     def __call__(self) -> T:
         """
         Call and cache the function.
         """
 
         if self.__result is _PENDING:
-            self.__result = self.func(*self.args, **self.kwargs)
+            self.__result = self.do()
 
         return typing.cast(T, self.__result)
 
@@ -132,6 +139,43 @@ class TorchIrFn[**P, T](Fn[P, T]):
     @property
     def types(self):
         return self._types
+
+
+class PatchTorchIrFn[**P, T](TorchIrFn[P, T]):
+    def __init__(
+        self,
+        func: cabc.Callable[P, T],
+        patch: cabc.Callable[P, T],
+        types: tuple[type, ...],
+        /,
+        *args: P.args,
+        **kwargs: P.kwargs,
+    ) -> None:
+        super().__init__(func, types, *args, **kwargs)
+        self._patch = patch
+
+    @typing.override
+    def do(self) -> T:
+        if (patched := self.patch(*self.args, **self.kwargs)) is not NotImplemented:
+            return patched
+
+        return self.func(*self.args, **self.kwargs)
+
+    @property
+    def patch(self):
+        return self._patch
+
+
+class TorchIrFakePatchFn[**P, T](TorchIrFn):
+    def __init__(
+        self,
+        func: _ops.OpOverload,
+        types: tuple[type, ...],
+        /,
+        *args: P.args,
+        **kwargs: P.kwargs,
+    ) -> None:
+        super().__init__(func, types, *args, **kwargs)
 
 
 def _format_function_as_str(

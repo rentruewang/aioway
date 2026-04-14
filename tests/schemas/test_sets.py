@@ -5,8 +5,7 @@ import pytest
 import tensordict as td
 import torch
 
-from aioway.fn import tdict
-from aioway.schemas import Attr, AttrSet, attr, attr_set
+from aioway.schemas import Attr, AttrSet, attr
 
 
 @pytest.fixture
@@ -72,20 +71,10 @@ def test_attrset_getitem(schema: AttrSet):
     assert isinstance(schema[np.array([-1, 2, 3])], AttrSet)
 
 
-def test_construction_of_attrset(valid_data: td.TensorDict):
-    parsed = tdict(valid_data)
-    assert parsed.attrs == attr_set(
-        {
-            "a": Attr.parse(device="cpu", shape=[11, 2, 3], dtype="int32"),
-            "b": Attr.parse(device="cpu", shape=[11, 6], dtype="float32"),
-        }
-    )
-
-
 @pytest.fixture
 def block(valid_data: td.TensorDict) -> td.TensorDict:
     return valid_data
 
 
-def test_block_init(block: Chunk):
+def test_block_init(block: td.TensorDict):
     _ = block

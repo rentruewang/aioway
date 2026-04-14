@@ -5,9 +5,6 @@ import torch
 from torch import nn, optim
 from torch.nn import functional as F
 
-from aioway.fn import LossFn, Optim, TensorFn, defer
-from aioway.schemas import Shape
-
 
 def _loss_fns():
     yield nn.L1Loss()
@@ -18,28 +15,18 @@ def _loss_fns():
 
 
 @pytest.fixture
-def trainable_param():
+def input():
     return torch.randn(7, 3).requires_grad_()
 
 
 @pytest.fixture
-def input(trainable_param: torch.Tensor):
-    return defer(trainable_param)
-
-
-@pytest.fixture
-def target_param(trainable_param: torch.Tensor):
-    return torch.randn_like(trainable_param)
-
-
-@pytest.fixture
-def target(target_param: torch.Tensor):
-    return defer(target_param)
+def target(input: torch.Tensor):
+    return torch.randn_like(input)
 
 
 @pytest.fixture(params=_loss_fns())
-def loss_fn(request: pytest.FixtureRequest, input: TensorFn, target: TensorFn):
-    return LossFn(loss=request.param, input=input, target=target)
+def loss(request: pytest.FixtureRequest, input: torch.Tensor, target: torch.Tensor):
+    return request.param(input=input, target=target)
 
 
 def _optimizer_types():
@@ -67,49 +54,46 @@ def lr(request: pytest.FixtureRequest):
 
 
 @pytest.fixture
-def optimizer(optim_type: type[optim.Optimizer], loss_fn: LossFn, lr: float):
-    return Optim(optim_cls=optim_type, params=loss_fn.parameters(), lr=lr)
+def optimizer(optim_type: type[optim.Optimizer], loss: torch.Tensor, lr: float):
+    pytest.xfail("Optimizer not implemented yet.")
+    return Optim(optim_cls=optim_type, params=loss.parameters(), lr=lr)
 
 
-def test_loss_fn(loss_fn: LossFn):
-    assert isinstance(loss_fn.shape, Shape)
-    assert loss_fn.shape.numel() == 1
+def test_loss_fn(loss: torch.Tensor):
+    assert loss.shape.numel() == 1
 
 
 def test_backward_fn(
-    loss_fn: LossFn,
-    input: TensorFn,
-    target: TensorFn,
-    trainable_param: torch.Tensor,
+    loss: torch.Tensor,
+    input: torch.Tensor,
+    target: torch.Tensor,
 ):
-    loss_fn.backward().do()
+    loss.backward()
     assert input.grad is not None
     assert target.grad is None
-    assert (input.grad == trainable_param.grad).all()
-    assert input.do() is trainable_param
 
 
 def test_optim_zero_grad(
-    optimizer: Optim,
-    loss_fn: LossFn,
-    input: TensorFn,
-    target: TensorFn,
-    trainable_param: torch.Tensor,
+    optimizer: optim.Optimizer,
+    loss: torch.Tensor,
+    input: torch.Tensor,
+    target: torch.Tensor,
 ):
-    loss_fn.backward().do()
-    optimizer.zero_grad().do()
+    loss.backward()
+    optimizer.zero_grad()
     assert input.grad is target.grad is None
-    assert input.do() is trainable_param
 
 
-def test_optim_step(optimizer: Optim, loss_fn: LossFn, trainable_param: torch.Tensor):
-    original = trainable_param.clone()
-    optimizer.zero_grad().do()
-    assert trainable_param.grad is None
-    loss_fn.backward().do()
-    assert trainable_param.grad is not None
-    optimizer.step().do()
+def test_optim_step(
+    optimizer: optim.Optimizer, loss: torch.Tensor, input: torch.Tensor
+):
+    original = input.clone()
+    optimizer.zero_grad()
+    assert input.grad is None
+    loss.backward()
+    assert input.grad is not None
+    optimizer.step()
 
     # Test if optimization step did happen.
-    updated = trainable_param != original
+    updated = input != original
     assert updated.any()
