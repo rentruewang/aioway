@@ -1,7 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import abc
-import enum
 import functools
 import typing
 from collections import abc as cabc
@@ -10,23 +9,13 @@ import torch
 
 from aioway.ctx import enabled_fake_mode, fake_mode_func, is_fake_tensor
 
-__all__ = ["Fn", "FnState"]
+__all__ = ["DoFn"]
 
 
-class FnState(enum.Enum):
-    "The status of a `Later` object."
-
-    PENDING = enum.auto()
-    "The object is pending evaluation."
-
-    DONE = enum.auto()
-    "The object is evaluated."
-
-
-class Fn[T](abc.ABC):
+class DoFn[T](abc.ABC):
     """
-    `Fn`s represent computation that shall be done later.
-    Right now, `Fn` acts as an lazy version / augmentation of fake mode,
+    `DoFn`s represent computation that shall be done later.
+    Right now, `DoFn` acts as an lazy version / augmentation of fake mode,
     patching some unsupported operations with worst case scenario (e.g. bool masking).
 
     Like Haskell's thunks, once evaluated,
@@ -39,8 +28,7 @@ class Fn[T](abc.ABC):
     __match_args__: typing.ClassVar[tuple[str, ...]]
 
     def __repr__(self):
-        name = self._name()
-        return f"{name}<{self.state}>"
+        return self._name()
 
     @typing.final
     def do(self) -> T:
@@ -92,7 +80,7 @@ class Fn[T](abc.ABC):
     def forward(self) -> T:
         raise NotImplementedError
 
-    def deps(self) -> cabc.Generator[Fn[typing.Any]]:
+    def deps(self) -> cabc.Generator[DoFn[typing.Any]]:
         """
         The `Fn`s that must be evaluated before we can evaluate the current `Fn`.
 
@@ -102,7 +90,7 @@ class Fn[T](abc.ABC):
         # Inspect the fields of the `Fn`.
         # If sub-`Fn`s are found, also yield from those.
         for obj in self.__dict__.values():
-            if isinstance(obj, Fn):
+            if isinstance(obj, DoFn):
                 yield obj
                 yield from obj.deps()
 
@@ -141,19 +129,13 @@ class Fn[T](abc.ABC):
 
     @functools.cached_property
     def __forward_cache(self):
-        return FnThunk(self.forward)
+        return Thunk(self.forward)
 
     @property
     def done(self) -> bool:
         "Whether or not this is done."
 
         return self.__forward_cache.done
-
-    @property
-    def state(self) -> FnState:
-        "The state of the `Fn`. Would be an instance of `FnState` enum."
-
-        return FnState.DONE if self.done else FnState.PENDING
 
     def _name(self) -> str:
         """
@@ -167,9 +149,9 @@ _PENDING = object()
 "The object signifying a status of pending. This is a `object()` s.t. `FnCache` can store `None`."
 
 
-class FnThunk[**P, T]:
+class Thunk[**P, T]:
     """
-    The cacher for any function.
+    The thunk for any function.
 
     The reason we use this boilerplate over directly using `functools.cache`,
     `functools.cached_property`, or having a saved `.__result` member for instance,
@@ -198,7 +180,7 @@ class FnThunk[**P, T]:
 
     @typing.override
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, FnThunk):
+        if isinstance(other, Thunk):
             return (
                 True
                 and self.func == other.func

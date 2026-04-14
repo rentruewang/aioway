@@ -11,7 +11,7 @@ import torch
 from torch import _ops
 from torch.utils import _python_dispatch as pyd
 
-from .fn import FnThunk
+from .fn import Thunk
 
 __all__ = ["print_torch_dispatch", "log_torch_dispatch"]
 
@@ -31,7 +31,7 @@ class _PrintDispatchMode(pyd.TorchDispatchMode):
         kwargs: dict[str, typing.Any] | None = None,
     ):
         kwargs = kwargs or {}
-        invoke = FnThunk(func, args, kwargs)
+        invoke = Thunk(func, args, kwargs)
 
         result = invoke()
         print(f"{invoke!s} -> {result!r}")
@@ -71,7 +71,7 @@ class _LogDispatchMode(pyd.TorchDispatchMode):
     ):
         kwargs = kwargs or {}
 
-        invoke = FnThunk(func, *args, **kwargs)
+        invoke = Thunk(func, *args, **kwargs)
         result = invoke()
 
         self.logger.log(self.level, f"%s -> %s", invoke, result)

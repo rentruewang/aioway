@@ -12,12 +12,12 @@ from aioway._common import dcls_no_eq_no_repr
 from aioway.ctx import to_fake_tensor
 from aioway.schemas import attr
 
-from .fn import Fn, FnThunk
+from .fn import DoFn, Thunk
 
 __all__ = ["TensorFn", "tensor"]
 
 
-class TensorFn(Fn[torch.Tensor], abc.ABC):
+class TensorFn(DoFn[torch.Tensor], abc.ABC):
     """
     `TensorFn` is the `Fn` that would produce a `Tensor`.
 
@@ -173,22 +173,22 @@ class AnyThunk(TensorFn):
     __match_args__ = "func", "args", "kwargs"
 
     func: cabc.Callable[..., torch.Tensor]
-    args: tuple[Fn[typing.Any], ...]
-    kwargs: dict[str, Fn[typing.Any]]
+    args: tuple[DoFn[typing.Any], ...]
+    kwargs: dict[str, DoFn[typing.Any]]
 
     def __post_init__(self) -> None:
         super().__init__()
 
         for arg in self.args:
-            if not isinstance(arg, Fn):
+            if not isinstance(arg, DoFn):
                 raise TypeError(f"{arg} is not a `Thunk`.")
 
         for key, value in self.kwargs.items():
-            if not isinstance(value, Fn):
+            if not isinstance(value, DoFn):
                 raise TypeError(f"{key}={value} is not a `Thunk`")
 
     def __repr__(self) -> str:
-        return repr(FnThunk(self.func, *self.args, **self.kwargs))
+        return repr(Thunk(self.func, *self.args, **self.kwargs))
 
     @typing.override
     def forward(self) -> torch.Tensor:
@@ -369,7 +369,7 @@ class TensorDataFn(TensorFn):
 
 
 @dcls_no_eq_no_repr
-class BackwardFn(Fn[None]):
+class BackwardFn(DoFn[None]):
     loss: TensorFn
 
     def __post_init__(self):
