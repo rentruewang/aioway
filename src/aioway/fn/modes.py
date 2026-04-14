@@ -11,7 +11,7 @@ import torch
 from torch import _ops
 from torch.utils import _python_dispatch as pyd
 
-from .thunks import Thunk
+from .fn import Thunk
 
 __all__ = ["print_torch_dispatch", "log_torch_dispatch"]
 
