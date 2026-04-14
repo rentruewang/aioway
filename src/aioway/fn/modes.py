@@ -5,7 +5,6 @@
 import contextlib as ctxl
 import dataclasses as dcls
 import logging
-import re
 import typing
 from collections import abc as cabc
 
@@ -13,11 +12,17 @@ import torch
 from torch import _ops
 from torch.utils import _python_dispatch as pyd
 
-from aioway import ctx
+from aioway.ctx import enabled_fake_mode, fake_mode
 
 from .fn import Fn, TorchIrFn
+from .torch import is_aten_op, is_prim_op
 
-__all__ = ["print_torch_dispatch", "log_torch_dispatch", "track_fn_mode"]
+__all__ = [
+    "print_torch_dispatch",
+    "log_torch_dispatch",
+    "track_fn_mode",
+    "fake_fn_mode",
+]
 
 LOGGER = logging.getLogger(__name__)
 
@@ -96,9 +101,6 @@ def log_torch_dispatch(*, logger: logging.Logger = LOGGER, level: int = logging.
         yield logger
 
 
-_ATEN_OPS = re.compile("aten::.+")
-_PRIM_OPS = re.compile("prims::.+")
-
 _ThunkType = cabc.Callable[..., TorchIrFn]
 
 
@@ -113,10 +115,10 @@ class TorchFnRouter(typing.Protocol):
 def only_route_aten(
     func: _ops.OpOverload, types: tuple[type[torch.Tensor], ...]
 ) -> _ThunkType:
-    if _ATEN_OPS.fullmatch(func.name()):
+    if is_aten_op(func):
         return aten_router(func=func, types=types)
 
-    assert _PRIM_OPS.fullmatch(func.name()), func.name()
+    assert is_prim_op(func), func
     return NotImplemented
 
 
@@ -140,6 +142,7 @@ class _StoreDispatchMode(pyd.TorchDispatchMode):
     ):
         kwargs = kwargs or {}
 
+        thunk: TorchIrFn
         # Create a `TorchDispatchThunk` and route implemented methods.
         if (thunk_init := self.router(func=func, types=types)) is NotImplemented:
             thunk = TorchIrFn(func, types, *args, **kwargs)
@@ -153,7 +156,7 @@ class _StoreDispatchMode(pyd.TorchDispatchMode):
 def aten_router(
     func: _ops.OpOverload, types: tuple[type[torch.Tensor], ...]
 ) -> cabc.Callable[..., TorchIrFn]:
-    assert _ATEN_OPS.fullmatch(func.name()), func.name()
+    assert is_aten_op(func), func
     return NotImplemented
 
 
@@ -174,8 +177,8 @@ def fake_fn_mode():
     when fake mode is active.
     """
 
-    if not ctx.enabled_fake_mode():
+    if not enabled_fake_mode():
         raise RuntimeError("Fake mode is not enabled.")
 
-    with _StoreDispatchMode(router=only_route_aten) as sdm:
+    with fake_mode(), _StoreDispatchMode(router=only_route_aten) as sdm:
         yield sdm.calls
