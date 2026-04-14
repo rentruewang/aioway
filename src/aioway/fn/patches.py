@@ -3,7 +3,7 @@
 from collections import abc as cabc
 
 import torch
-from torch import _ops
+from torch import _ops, ops
 
 from aioway.ctx import enabled_fake_mode
 
@@ -26,6 +26,9 @@ def find_patch(op: _ops.OpOverload) -> cabc.Callable[..., torch.Tensor]:
 def register_fake_mode_patch(op: _ops.OpOverload):
     """
     Register a patching function that only runs under fake mode.
+
+    The patch would be called. If the patching function returns `NotImplemented`,
+    it will fall back to the default implementation (plain `func(*args, **kwargs)`).
     """
 
     def decorator[**P, T: torch.Tensor](f: cabc.Callable[P, T]) -> cabc.Callable[P, T]:
@@ -42,3 +45,12 @@ def register_fake_mode_patch(op: _ops.OpOverload):
         return function
 
     return decorator
+
+
+@register_fake_mode_patch(ops.aten.index.Tensor)
+def boolean_masking(arr: torch.Tensor, idx: list[torch.Tensor]):
+    # The boolean case.
+    if len(idx) != 1 or idx[0].dtype != torch.bool:
+        return NotImplemented
+
+    return arr

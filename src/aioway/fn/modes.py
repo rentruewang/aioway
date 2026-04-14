@@ -16,7 +16,7 @@ from torch.utils import _python_dispatch as pyd
 from aioway.ctx import enabled_fake_mode, fake_mode
 from aioway.fn.patches import find_patch
 
-from .fn import Fn, TorchIrFn
+from .fn import Fn, PatchTorchIrFn, TorchIrFn
 from .torch import is_aten_op, is_prim_op
 
 __all__ = [
@@ -155,7 +155,12 @@ class _StoreDispatchMode(pyd.TorchDispatchMode):
             thunk = thunk_init(*args, **kwargs)
 
         self.calls.append(thunk)
-        return thunk()
+
+        try:
+            return thunk()
+        except RuntimeError as re:
+            fn = Fn(func, *args, **kwargs)
+            raise ValueError(f"Function call '{fn}' failed.") from re
 
 
 def patch_aten_ops_in_fake(
@@ -170,7 +175,7 @@ def patch_aten_ops_in_fake(
     if (patch := find_patch(func)) is NotImplemented:
         return NotImplemented
 
-    return lambda *args, **kwargs: TorchIrFn(patch, types, *args, **kwargs)
+    return lambda *args, **kwargs: PatchTorchIrFn(func, patch, types, *args, **kwargs)
 
 
 @ctxl.contextmanager
@@ -189,9 +194,6 @@ def fake_fn_mode():
     Track all calls into the torch dispatch mode as `TorchIrFn`,
     when fake mode is active.
     """
-
-    if not enabled_fake_mode():
-        raise RuntimeError("Fake mode is not enabled.")
 
     with fake_mode(), _StoreDispatchMode(router=only_route_aten_in_fake) as sdm:
         yield sdm.calls

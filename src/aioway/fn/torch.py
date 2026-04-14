@@ -5,7 +5,7 @@ import re
 from torch import _ops
 
 _ATEN_OPS = re.compile("aten::.+")
-_PRIM_OPS = re.compile("prims::.+")
+_PRIM_OPS = re.compile("prim::.+")
 
 __all__ = ["is_aten_op", "is_prim_op"]
 
@@ -19,4 +19,4 @@ def is_prim_op(op: _ops.OpOverload) -> bool:
 
 
 def _dispatch_name(op: _ops.OpOverload, regex: re.Pattern) -> bool:
-    return bool(_PRIM_OPS.fullmatch(op.name()))
+    return bool(regex.fullmatch(op.name()))
