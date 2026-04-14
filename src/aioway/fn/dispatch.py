@@ -11,7 +11,7 @@ import torch
 from torch import _ops
 from torch.utils import _python_dispatch as pyd
 
-from .fn import Thunk
+from .thunks import Thunk
 
 __all__ = ["print_torch_dispatch", "log_torch_dispatch"]
 
@@ -104,4 +104,5 @@ class _StoreDispatchMode(pyd.TorchDispatchMode):
         kwargs: dict[str, typing.Any] | None = None,
     ):
         kwargs = kwargs or {}
+        thunk = Thunk(func, args, kwargs)
         return func(*args, **kwargs)
