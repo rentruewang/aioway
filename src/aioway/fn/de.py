@@ -11,7 +11,7 @@ import tensordict as td
 import torch
 from numpy import typing as npt
 
-from .fn import Fn
+from .fn import DoFn
 from .tdicts import TensorDictFn, tdict
 from .tensors import TensorFn, tensor
 
@@ -66,7 +66,7 @@ def defer(value: cabc.Mapping[str, Any], /) -> TensorDictFn: ...
 def defer(value, /):
 
     match value:
-        case None | int() | float() | bool() | slice() | str() | Fn():
+        case None | int() | float() | bool() | slice() | str() | DoFn():
             return value
         case torch.Tensor():
             return tensor(value)
@@ -112,7 +112,7 @@ def eager(value: torch.Tensor, /) -> torch.Tensor: ...
 
 
 @typing.overload
-def eager[T](value: Fn[T], /) -> T: ...
+def eager[T](value: DoFn[T], /) -> T: ...
 
 
 @typing.overload
@@ -133,7 +133,7 @@ def eager(value, /):
             | td.TensorDict()
         ):
             return value
-        case Fn():
+        case DoFn():
             return value.do()
 
     raise TypeError(f"We do not know how to handle: {value=}, {type(value)=}")

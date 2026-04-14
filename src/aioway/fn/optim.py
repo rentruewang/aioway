@@ -10,7 +10,7 @@ from torch import optim
 
 from aioway._common import dcls_no_eq
 
-from .fn import Fn
+from .fn import DoFn
 
 __all__ = ["Optim"]
 
@@ -45,7 +45,7 @@ class Optim[O: optim.Optimizer]:
 
 
 @dcls_no_eq
-class OptimFn[O: optim.Optimizer](Fn[None]):
+class OptimFn[O: optim.Optimizer](DoFn[None]):
     """
     The `Fn` that stores `torch.optim.Optimizer` methods.
 

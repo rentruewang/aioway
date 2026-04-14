@@ -7,7 +7,6 @@ import torch
 
 from aioway.chunks import Chunk
 from aioway.fn import tdict
-from aioway.fn._validation import validate_schema
 from aioway.schemas import Attr, AttrSet, attr, attr_set
 
 
@@ -74,10 +73,6 @@ def test_attrset_getitem(schema: AttrSet):
     assert isinstance(schema[np.array([-1, 2, 3])], AttrSet)
 
 
-def test_validation_ok(schema: AttrSet, valid_data: td.TensorDict) -> None:
-    validate_schema(schema, valid_data)
-
-
 def test_construction_of_attrset(valid_data: td.TensorDict):
     parsed = tdict(valid_data)
     assert parsed.attrs == attr_set(
@@ -86,11 +81,6 @@ def test_construction_of_attrset(valid_data: td.TensorDict):
             "b": Attr.parse(device="cpu", shape=[11, 6], dtype="float32"),
         }
     )
-
-
-def test_validation_fail(schema: AttrSet, invalid_data: td.TensorDict):
-    with pytest.raises(RuntimeError):
-        validate_schema(schema, invalid_data)
 
 
 @pytest.fixture

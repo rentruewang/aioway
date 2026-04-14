@@ -12,13 +12,13 @@ from aioway._common import dcls_no_eq_no_repr, is_list_of
 from aioway.ctx import to_fake_tensordict
 from aioway.schemas import attr_set
 
-from .fn import Fn
+from .fn import DoFn
 from .tensors import TensorFn
 
 __all__ = ["TensorDictFn", "tdict"]
 
 
-class TensorDictFn(Fn[td.TensorDict], cabc.Mapping[str, TensorFn], abc.ABC):
+class TensorDictFn(DoFn[td.TensorDict], cabc.Mapping[str, TensorFn], abc.ABC):
     @typing.overload
     def __getitem__(self, key: str) -> TensorFn: ...
 
