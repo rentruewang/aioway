@@ -10,25 +10,27 @@ from torch import _ops
 
 from aioway.ctx import enabled_fake_mode, fake_mode_func, is_fake_tensor
 
-__all__ = ["DoFn", "Thunk", "TorchDispatchThunk"]
+__all__ = ["DoFn", "Fn", "TorchIrFn"]
 
 _PENDING = object()
 "The object signifying a status of pending. This is a `object()` s.t. `FnCache` can store `None`."
 
 
-class Thunk[**P, T]:
+class Fn[**P, T]:
     """
     The thunk for any function, handles both pretty printing and storing the result.
 
-    `Thunk` has advantage over `functools.cache`, `functools.cached_property`,
+    `Fn` has advantage over `functools.cache`, `functools.cached_property`,
     and having a saved `.__result` member for instance, by being the least assuming.
 
     `functools.cache` assumes that `self` is hashable.
     `functools.cached_property` cannot inspect whether we have evaluated it or not.
     `.__result` member assumes subclass calls `__init__` properly.
 
-    Storing a `Thunk` in a `functools.cached_property` means `self` can be unhashable,
+    Storing a `Fn` in a `functools.cached_property` means `self` can be unhashable,
     the item can be inspected, and subclasses do not need to call `__init__`.
+
+    I was going to go for `Op` but it's used a lot in `torch`.
     """
 
     def __init__(
@@ -46,7 +48,7 @@ class Thunk[**P, T]:
 
     @typing.override
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, Thunk):
+        if isinstance(other, Fn):
             return (
                 True
                 and self.func == other.func
@@ -102,7 +104,7 @@ class Thunk[**P, T]:
         return self.__result is not _PENDING
 
 
-class TorchDispatchThunk[**P, T](Thunk[P, T]):
+class TorchIrFn[**P, T](Fn[P, T]):
     def __init__(
         self,
         func: cabc.Callable[P, T],
@@ -116,7 +118,7 @@ class TorchDispatchThunk[**P, T](Thunk[P, T]):
 
     @typing.override
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, TorchDispatchThunk):
+        if isinstance(other, TorchIrFn):
             return super().__eq__(other) and self.types == other.types
 
         return NotImplemented
@@ -159,8 +161,6 @@ class DoFn[T](abc.ABC):
     Like Haskell's thunks, once evaluated,
     the value is stored in the `Fn` itself and never re-evaluated.
     The value shall be gone during GC.
-
-    I was going to go for `Op` but it's used a lot in `torch`.
     """
 
     __match_args__: typing.ClassVar[tuple[str, ...]]
@@ -267,7 +267,7 @@ class DoFn[T](abc.ABC):
 
     @functools.cached_property
     def __forward_cache(self):
-        return Thunk(self.forward)
+        return Fn(self.forward)
 
     @property
     def done(self) -> bool:

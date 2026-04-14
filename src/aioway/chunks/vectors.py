@@ -94,7 +94,6 @@ class Vector:
                 return type(self)(binop(self.data, other.data))
             case TensorFn():
                 raise NotImplementedError
-                # return type(self)(binop(self.data, other.do()))
             case int() | float() | bool():
                 return type(self)(binop(self.data, other))
 

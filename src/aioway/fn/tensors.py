@@ -12,7 +12,7 @@ from aioway._common import dcls_no_eq_no_repr
 from aioway.ctx import to_fake_tensor
 from aioway.schemas import attr
 
-from .fn import DoFn, Thunk
+from .fn import DoFn, Fn
 
 __all__ = ["TensorFn", "tensor"]
 
@@ -188,7 +188,7 @@ class AnyThunk(TensorFn):
                 raise TypeError(f"{key}={value} is not a `Thunk`")
 
     def __repr__(self) -> str:
-        return repr(Thunk(self.func, *self.args, **self.kwargs))
+        return repr(Fn(self.func, *self.args, **self.kwargs))
 
     @typing.override
     def forward(self) -> torch.Tensor:
