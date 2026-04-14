@@ -10,9 +10,11 @@ from collections import abc as cabc
 
 import torch
 from torch import _ops
+from torch import _subclasses as tsc
 from torch.utils import _python_dispatch as pyd
 
 from aioway.ctx import enabled_fake_mode, fake_mode
+from aioway.fn.patches import find_patch
 
 from .fn import Fn, TorchIrFn
 from .torch import is_aten_op, is_prim_op
@@ -112,11 +114,14 @@ class TorchFnRouter(typing.Protocol):
     ) -> _ThunkType: ...
 
 
-def only_route_aten(
+def only_route_aten_in_fake(
     func: _ops.OpOverload, types: tuple[type[torch.Tensor], ...]
 ) -> _ThunkType:
+    if not enabled_fake_mode():
+        raise RuntimeError("Only running in fake mode!")
+
     if is_aten_op(func):
-        return aten_router(func=func, types=types)
+        return patch_aten_ops_in_fake(func=func, types=types)
 
     assert is_prim_op(func), func
     return NotImplemented
@@ -153,11 +158,19 @@ class _StoreDispatchMode(pyd.TorchDispatchMode):
         return thunk()
 
 
-def aten_router(
+def patch_aten_ops_in_fake(
     func: _ops.OpOverload, types: tuple[type[torch.Tensor], ...]
 ) -> cabc.Callable[..., TorchIrFn]:
     assert is_aten_op(func), func
-    return NotImplemented
+
+    # If no `tsc.FakeTensor` exists, don't bother patching.
+    if not any(issubclass(typ, tsc.FakeTensor) for typ in types):
+        return NotImplemented
+
+    if (patch := find_patch(func)) is NotImplemented:
+        return NotImplemented
+
+    return lambda *args, **kwargs: TorchIrFn(patch, types, *args, **kwargs)
 
 
 @ctxl.contextmanager
@@ -180,5 +193,5 @@ def fake_fn_mode():
     if not enabled_fake_mode():
         raise RuntimeError("Fake mode is not enabled.")
 
-    with fake_mode(), _StoreDispatchMode(router=only_route_aten) as sdm:
+    with fake_mode(), _StoreDispatchMode(router=only_route_aten_in_fake) as sdm:
         yield sdm.calls

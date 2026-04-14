@@ -114,7 +114,7 @@ class Fn[**P, T]:
 class TorchIrFn[**P, T](Fn[P, T]):
     def __init__(
         self,
-        func: _ops.OpOverload,
+        func: cabc.Callable[P, T],
         types: tuple[type, ...],
         /,
         *args: P.args,
