@@ -94,7 +94,7 @@ def log_torch_dispatch(*, logger: logging.Logger = LOGGER, level: int = logging.
 
 @dcls.dataclass
 class _StoreDispatchMode(pyd.TorchDispatchMode):
-    calls: list[TorchDispatchThunk]
+    calls: list[TorchDispatchThunk] = dcls.field(default_factory=list)
 
     def __torch_dispatch__(
         self,
@@ -115,5 +115,5 @@ def track_fn_calls():
     Track all calls into the torch dispatch mode.
     """
 
-    with _StoreDispatchMode([]) as sdm:
+    with _StoreDispatchMode() as sdm:
         yield sdm.calls
