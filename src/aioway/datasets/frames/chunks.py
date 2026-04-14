@@ -35,8 +35,8 @@ class TdFrame(Frame):
         return len(self.data)
 
     @typing.override
-    def __getitems__(self, idx: list[int]) -> td.TensorDict:
-        return self.data[idx]
+    def _getitems_batch(self, idx: list[int]) -> td.TensorDict:
+        return self.data[idx].auto_batch_size_()
 
     @property
     @typing.override
@@ -79,7 +79,7 @@ class TdListFrame(Frame):
 
     @typing.override
     @typing.no_type_check
-    def __getitems__(self, i: list[int], /) -> td.TensorDict:
+    def _getitems_batch(self, i: list[int], /) -> td.TensorDict:
         idx = np.asarray(i)
 
         # Which tensordict to use in `self.tensordicts`.
@@ -106,7 +106,7 @@ class TdListFrame(Frame):
             }
             chunks.append(tdict[part_idx : part_idx + 1])
 
-        return td.cat(chunks)
+        return td.cat(chunks).auto_batch_size_()
 
     @property
     def _cumsum_len(self) -> IntArray:

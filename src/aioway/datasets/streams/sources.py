@@ -253,7 +253,7 @@ class FrameStream(Stream):
             )
 
         idx %= self.size
-        return self.frame.__getitems__(list(range(idx, idx + batch_size)))
+        return self.frame._getitems_batch(list(range(idx, idx + batch_size)))
 
     @typing.override
     def _inputs(self):

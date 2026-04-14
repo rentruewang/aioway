@@ -79,8 +79,8 @@ def test_zip(
     assert binary_stream.right is rhs_stream
     for result in binary_stream:
         assert binary_stream.idx == lhs_stream.idx == rhs_stream.idx
-        concat = td.TensorDict(
-            {**lhs_stream[lhs_stream.idx - 1], **rhs_stream[rhs_stream.idx - 1]}
+        concat = td.merge_tensordicts(
+            lhs_stream[lhs_stream.idx - 1], rhs_stream[rhs_stream.idx - 1]
         )
         assert tdict_all_equal(result, concat)
 
@@ -114,13 +114,13 @@ def test_simple_nested_loop_join(
             "a": torch.tensor([1, 3, 2, 2]),
             "b": torch.tensor([4, 10, 5, 6]),
         }
-    )
+    ).auto_batch_size_()
     right = td.TensorDict(
         {
             "a": torch.tensor([1, 3, 2, 2]),
             "c": torch.tensor([7, 11, 8, 9]),
         }
-    )
+    ).auto_batch_size_()
 
     left_stream = ListStream(to_slice(left))
     right_stream = ListStream(to_slice(right))
@@ -141,11 +141,16 @@ def test_simple_nested_loop_join(
             td = td[indices]
         return td
 
-    assert sort_by_abc(out) == {
-        "a": [1, 2, 2, 2, 2, 3],
-        "b": [4, 5, 5, 6, 6, 10],
-        "c": [7, 8, 9, 8, 9, 11],
-    }
+    assert tdict_all_equal(
+        sort_by_abc(out),
+        td.TensorDict(
+            {
+                "a": [1, 2, 2, 2, 2, 3],
+                "b": [4, 5, 5, 6, 6, 10],
+                "c": [7, 8, 9, 8, 9, 11],
+            }
+        ),
+    )
 
 
 @pytest.mark.parametrize("binary_stream", [_join_builder], indirect=True)

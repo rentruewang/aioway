@@ -92,17 +92,21 @@ class Frame(Dataset, data.Dataset[td.TensorDict], abc.ABC):
         arr: IntArray = np.asarray(it)
         arr = self._check_idx(arr)
 
-        item = self.__getitems__(arr)
+        item = self._getitems_batch(arr.tolist())
 
         return item
 
-    __getitems__ = __getitem__
+    __geitems__ = __getitem__
 
     @property
     @abc.abstractmethod
     def attrs(self) -> AttrSet:
         "The schema of the current frame."
 
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def _getitems_batch(self, idx: list[int]) -> td.TensorDict:
         raise NotImplementedError
 
     @classmethod

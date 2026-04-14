@@ -46,8 +46,8 @@ class FrameSelectView(DatasetSelectView[Frame], Frame):
         return len(self.dset)
 
     @typing.override
-    def __getitems__(self, idx: list[int], /) -> td.TensorDict:
-        items = self.dset.__getitems__(idx)
+    def _getitems_batch(self, idx: list[int], /) -> td.TensorDict:
+        items = self.dset[idx]
         return items.select(*self.cols)
 
     @classmethod

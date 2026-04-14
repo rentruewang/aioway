@@ -47,8 +47,7 @@ class ZipStream(Stream):
         # Either one of those may raise `StopIteration`, at which point it is done.
         left_batch = next(self.left)
         right_batch = next(self.right)
-
-        return td.TensorDict({**left_batch, **right_batch})
+        return td.merge_tensordicts(left_batch, right_batch)
 
     @typing.override
     def _inputs(self):
@@ -118,7 +117,7 @@ class NestedLoopJoinStream(Stream):
         matrix = lhs_select.data[:, None] == rhs_select.data[None, :]
         l, r = torch.nonzero(matrix).T
         assert len(l) == len(r) == torch.sum(matrix)
-        out = td.TensorDict({**lhs_batch[l], **rhs_batch[r]})
+        out = td.merge_tensordicts(lhs_batch[l], rhs_batch[r])
         assert len(out) == torch.sum(matrix)
         return out
 
