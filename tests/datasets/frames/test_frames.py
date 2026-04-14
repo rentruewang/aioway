@@ -2,9 +2,9 @@
 
 import numpy as np
 import pytest
+import tensordict as td
 from numpy import random
 
-from aioway.chunks import Chunk
 from aioway.datasets import Frame
 
 
@@ -20,15 +20,16 @@ def test_table_idx_arr(frame: Frame):
     assert np.all(idx < len(frame))
     assert idx.shape == (len(frame),)
 
-    out = frame[idx]
-    assert isinstance(out, Chunk)
+    out = frame[idx.tolist()]
+    assert isinstance(out, td.TensorDict)
     assert len(out) == len(idx)
 
 
 def test_table_idx_slice(frame: Frame):
-    out = frame[-len(frame) : len(frame)]
-    assert isinstance(out, Chunk)
-    assert len(out) == len(frame)
+    lf = len(frame)
+    out = frame[-lf:lf]
+    assert isinstance(out, td.TensorDict)
+    assert len(out) == len([*range(lf)[-lf:lf]])
 
 
 def test_table_out_of_bounds(frame: Frame):

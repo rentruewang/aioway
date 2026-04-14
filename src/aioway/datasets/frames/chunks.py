@@ -7,27 +7,27 @@ import functools
 import typing
 
 import numpy as np
+import tensordict as td
 
 from aioway._common import IntArray, is_list_of
-from aioway.chunks import Chunk
-from aioway.schemas import AttrSet
+from aioway.schemas import AttrSet, attr_set
 
 from .frames import Frame
 
-__all__ = ["ChunkFrame", "ChunkListFrame"]
+__all__ = ["TdFrame", "TdListFrame"]
 
 
 @typing.final
 @dcls.dataclass(frozen=True)
-class ChunkFrame(Frame):
+class TdFrame(Frame):
     """
-    A `Frame` backed by a `TensorDict` (aka a batch in `aioway`).
+    A `Frame` backed by a `td.TensorDict` (aka a batch in `aioway`).
     This means that it is non-distributed, and volatile.
     """
 
-    data: Chunk
+    data: td.TensorDict
     """
-    The `Chunk` source.
+    The `td.TensorDict` source.
     """
 
     @typing.override
@@ -35,48 +35,53 @@ class ChunkFrame(Frame):
         return len(self.data)
 
     @typing.override
-    def _getitem(self, idx: IntArray) -> Chunk:
+    def __getitems__(self, idx: list[int]) -> td.TensorDict:
         return self.data[idx]
 
     @property
     @typing.override
     def attrs(self) -> AttrSet:
-        return self.data.attrs
+        return attr_set(self.data)
 
 
 @typing.final
 @dcls.dataclass(frozen=True)
-class ChunkListFrame(Frame):
+class TdListFrame(Frame):
     """
-    A `Frame` backed by a `list[Chunk]` (aka a batch in `aioway`).
+    A `Frame` backed by a `list[td.TensorDict]` (aka a batch in `aioway`).
     This means that it is non-distributed, and volatile.
     """
 
-    _chunks_list: list[Chunk] = dcls.field(default_factory=list)
+    _list: list[td.TensorDict] = dcls.field(default_factory=list)
     """
-    The `list` of `Chunk`s.
+    The `list` of `td.TensorDict`s.
     The data must all have the same keys and data types (#100),
     but not necessarily the same `batch_size`.
     """
 
     def __post_init__(self) -> None:
-        is_list_of_chunks = is_list_of(Chunk)
-        if not is_list_of_chunks(self._chunks_list):
-            raise ValueError(f"Expected a list of `Chunk`s. Got {self._chunks_list=}")
+        is_list_of_chunks = is_list_of(td.TensorDict)
+        if not is_list_of_chunks(self._list):
+            raise ValueError(f"Expected a list of `td.TensorDict`s. Got {self._list=}")
+
+        # Check if `attrs` can be evaluated. If not, the tensordicts are malformed.
+        _ = self.attrs
 
     @typing.override
     def __len__(self) -> int:
         return self._cumsum_len[-1]
 
-    def append(self, td: Chunk, /) -> None:
-        self._chunks_list.append(td)
+    def append(self, td: td.TensorDict, /) -> None:
+        self._list.append(td)
 
-    def pop(self) -> Chunk:
-        return self._chunks_list.pop()
+    def pop(self) -> td.TensorDict:
+        return self._list.pop()
 
     @typing.override
     @typing.no_type_check
-    def _getitem(self, idx: IntArray, /) -> Chunk:
+    def __getitems__(self, i: list[int], /) -> td.TensorDict:
+        idx = np.asarray(i)
+
         # Which tensordict to use in `self.tensordicts`.
         td_idx: IntArray = np.searchsorted(self._cumsum_len, idx, side="right")
         assert td_idx.shape == idx.shape
@@ -89,22 +94,23 @@ class ChunkListFrame(Frame):
         idx_in_part: IntArray = idx - prior_elements[td_idx]
 
         # `Chunk` that each index would correspond to.
-        td_for_idx: list[Chunk] = [self._chunks_list[t] for t in td_idx]
+        td_for_idx: list[td.TensorDict] = [self._list[t] for t in td_idx]
 
         assert len(idx_in_part) == len(td_for_idx)
 
-        chunks: list[Chunk] = []
-        for td, part_idx in zip(td_for_idx, idx_in_part.tolist()):
-            assert -len(td) <= part_idx < len(td), {
+        chunks: list[td.TensorDict] = []
+        for tdict, part_idx in zip(td_for_idx, idx_in_part.tolist()):
+            assert -len(tdict) <= part_idx < len(tdict), {
                 "index for sub partition": part_idx,
-                "tensordict's length": len(td),
+                "tensordict's length": len(tdict),
             }
-            chunks.append(td[part_idx : part_idx + 1])
-        return Chunk.cat(chunks)
+            chunks.append(tdict[part_idx : part_idx + 1])
+
+        return td.cat(chunks)
 
     @property
     def _cumsum_len(self) -> IntArray:
-        return np.cumsum([len(d) for d in self._chunks_list])
+        return np.cumsum([len(d) for d in self._list])
 
     @property
     @typing.override
@@ -113,10 +119,10 @@ class ChunkListFrame(Frame):
 
     @functools.cached_property
     def _attrs(self):
-        attrs = {chunk.attrs for chunk in self._chunks_list}
+        attrs = {attr_set(chunk) for chunk in self._list}
 
         if len(attrs) == 1:
             [attr] = attrs
             return attr
 
-        raise ValueError("Chunks should have the same attrs.")
+        raise ValueError("`td.TensorDict` should convert to the same attrs.")

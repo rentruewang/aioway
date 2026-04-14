@@ -5,9 +5,9 @@
 import dataclasses as dcls
 import typing
 
+import tensordict as td
 import torch
 
-from aioway.chunks import Chunk, Vector
 from aioway.schemas import AttrSet
 
 from .sources import CacheStream
@@ -43,12 +43,12 @@ class ZipStream(Stream):
         return self.left.attrs | self.right.attrs
 
     @typing.override
-    def _next(self) -> Chunk:
+    def _next(self) -> td.TensorDict:
         # Either one of those may raise `StopIteration`, at which point it is done.
         left_batch = next(self.left)
         right_batch = next(self.right)
 
-        return left_batch.zip(right_batch)
+        return td.TensorDict({**left_batch, **right_batch})
 
     @typing.override
     def _inputs(self):
@@ -57,7 +57,7 @@ class ZipStream(Stream):
 
 @dcls.dataclass
 class NestedState(StreamState):
-    lhs_batch: Chunk | None = None
+    lhs_batch: td.TensorDict | None = None
 
     # It is necessary to save the last batch for the LHS,
     # as it would be paired with multiple RHS batches.
@@ -88,6 +88,7 @@ class NestedLoopJoinStream(Stream):
     """
 
     state: NestedState = dcls.field(default_factory=NestedState)
+    "The state for the nested loop."
 
     @property
     @typing.override
@@ -104,31 +105,31 @@ class NestedLoopJoinStream(Stream):
         return self.left, self.right
 
     @typing.override
-    def _next(self) -> Chunk:
+    def _next(self) -> td.TensorDict:
         lhs_batch = self._get_lhs()
         rhs_batch = self._get_rhs()
 
         lhs_select = lhs_batch[self.key]
         rhs_select = rhs_batch[self.key]
 
-        assert isinstance(lhs_select, Vector), type(lhs_select)
-        assert isinstance(rhs_select, Vector), type(rhs_select)
+        assert isinstance(lhs_select, torch.Tensor), type(lhs_select)
+        assert isinstance(rhs_select, torch.Tensor), type(rhs_select)
 
         matrix = lhs_select.data[:, None] == rhs_select.data[None, :]
         l, r = torch.nonzero(matrix).T
         assert len(l) == len(r) == torch.sum(matrix)
-        out = lhs_batch[l].zip(rhs_batch[r])
+        out = td.TensorDict({**lhs_batch[l], **rhs_batch[r]})
         assert len(out) == torch.sum(matrix)
         return out
 
-    def _get_lhs(self) -> Chunk:
+    def _get_lhs(self) -> td.TensorDict:
         # Clear cache and re-evalaute.
         if self._right_idx == 0:
             self.state.lhs_batch = next(self.left)
-        assert self.state.lhs_batch
+        assert self.state.lhs_batch is not None
         return self.state.lhs_batch
 
-    def _get_rhs(self) -> Chunk:
+    def _get_rhs(self) -> td.TensorDict:
         if self.idx < self.right.size:
             out = next(self.right)
             assert out is self.right[self._right_idx]

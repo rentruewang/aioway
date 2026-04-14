@@ -16,7 +16,7 @@ class Dataset(abc.ABC):
     """
     A tabular type that acts like a table, and is the shared base class for `Frame` and `Stream`.
 
-    A `Table` should support the following functions:
+    A `Dataset` should support the following functions:
 
     1. `column(key: str, /) -> `.
         Getting the individual column.
@@ -57,11 +57,12 @@ class Dataset(abc.ABC):
         """
         A `cabc.KeysView` object.
         """
+
         return self.attrs.keys()
 
     def column(self, key: str) -> DatasetColumnView[typing.Self]:
         """
-        Get the column from the `Tabular` object.
+        Get the column from the `Dataset` object.
         A `KeyError` is raised if the column is not present.
 
         Essentially this is the `cabc.Mapping.__getitem__` method,
@@ -82,12 +83,12 @@ class Dataset(abc.ABC):
 
     def select(self, *keys: str) -> DatasetSelectView[typing.Self]:
         """
-        Select multiple columns from the `Tabular` object.
+        Select multiple columns from the `Dataset` object.
 
         If a key is missing, a `KeyError` is raised.
 
         Returns:
-            A `Tabular` that wraps the result.
+            A `Dataset` that wraps the result.
         """
 
         _, select_type = self.view_types()
@@ -95,7 +96,7 @@ class Dataset(abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def view_types(cls) -> DatasetViewTypes:
+    def view_types(cls) -> DatasetViewTypes[typing.Any]:
         """
         The type used to construct `.column`, `.select` views.
 

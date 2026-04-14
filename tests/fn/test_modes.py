@@ -1,8 +1,9 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from aioway.fn import track_fn_mode
+import pytest
+import torch
 
-import torch, pytest
+from aioway.fn import track_fn_mode
 
 
 @pytest.fixture

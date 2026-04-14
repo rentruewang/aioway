@@ -5,8 +5,8 @@
 import dataclasses as dcls
 import typing
 
-from aioway._common import BatchIndex, IntArray
-from aioway.chunks import Chunk, Vector
+import tensordict as td
+import torch
 
 from ..datasets import DatasetColumnView, DatasetSelectView
 from .frames import Frame
@@ -24,7 +24,7 @@ class FrameColumnView(DatasetColumnView[Frame]):
     def __len__(self) -> int:
         return len(self.dset)
 
-    def __getitem__(self, idx: BatchIndex, /) -> Vector:
+    def __getitem__(self, idx, /) -> torch.Tensor:
         batch = self.dset[idx]
         return batch[self.col]
 
@@ -46,8 +46,8 @@ class FrameSelectView(DatasetSelectView[Frame], Frame):
         return len(self.dset)
 
     @typing.override
-    def _getitem(self, idx: IntArray, /) -> Chunk:
-        items = self.dset[idx]
+    def __getitems__(self, idx: list[int], /) -> td.TensorDict:
+        items = self.dset.__getitems__(idx)
         return items.select(*self.cols)
 
     @classmethod

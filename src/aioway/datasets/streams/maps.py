@@ -7,9 +7,10 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
+import tensordict as td
 import torch
 
-from aioway.chunks import Chunk
+from aioway._common import tdict_rename
 from aioway.schemas import AttrSet
 
 from .streams import Stream
@@ -60,7 +61,7 @@ class MapStream(Stream, abc.ABC):
         return self.source.size
 
     @abc.abstractmethod
-    def _apply(self, batch: Chunk) -> Chunk:
+    def _apply(self, batch: td.TensorDict) -> td.TensorDict:
         """
         The protected method that subclass should overwrite.
         This method will define how each batch is processed.
@@ -77,7 +78,7 @@ class MapStream(Stream, abc.ABC):
 
     @typing.override
     @typing.final
-    def _next(self) -> Chunk:
+    def _next(self) -> td.TensorDict:
         # A `map` kind of `Stream` always calls `next` once on its source.
         # May raise `StopIteration` here.
         next_batch = next(self.source)
@@ -103,7 +104,7 @@ class ApplyStream(MapStream):
     ```
     """
 
-    apply: cabc.Callable[[Chunk], Chunk]
+    apply: cabc.Callable[[td.TensorDict], td.TensorDict]
     """
     Compute the output of `__next__` based on the input.
     """
@@ -111,7 +112,7 @@ class ApplyStream(MapStream):
     schema: cabc.Callable[[AttrSet], AttrSet]
 
     @typing.override
-    def _apply(self, batch: Chunk) -> Chunk:
+    def _apply(self, batch: td.TensorDict) -> td.TensorDict:
         return self.apply(batch)
 
     @property
@@ -134,13 +135,13 @@ class FuncFilterStream(MapStream):
     ```
     """
 
-    predicate: cabc.Callable[[Chunk], torch.Tensor]
+    predicate: cabc.Callable[[td.TensorDict], torch.Tensor]
     """
-    A function of `Chunk -> torch.Tensor`.
+    A function of `td.TensorDict -> torch.Tensor`.
     """
 
     @typing.override
-    def _apply(self, batch: Chunk) -> Chunk:
+    def _apply(self, batch: td.TensorDict) -> td.TensorDict:
         pred = self.predicate(batch)
 
         if pred.dtype is not torch.bool:
@@ -168,8 +169,8 @@ class ProjectStream(MapStream):
     """
 
     @typing.override
-    def _apply(self, batch: Chunk) -> Chunk:
-        return batch[self.subset]
+    def _apply(self, batch: td.TensorDict) -> td.TensorDict:
+        return batch.select(*self.subset)
 
     @property
     @typing.override
@@ -189,8 +190,8 @@ class RenameStream(MapStream):
     """
 
     @typing.override
-    def _apply(self, batch: Chunk) -> Chunk:
-        return batch.rename(**self.renames)
+    def _apply(self, batch: td.TensorDict) -> td.TensorDict:
+        return tdict_rename(batch, **self.renames)
 
     @property
     @typing.override
