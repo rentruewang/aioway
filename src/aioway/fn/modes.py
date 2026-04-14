@@ -11,9 +11,11 @@ import torch
 from torch import _ops
 from torch.utils import _python_dispatch as pyd
 
+from aioway import ctx
+
 from .fn import Thunk, TorchDispatchThunk
 
-__all__ = ["print_torch_dispatch", "log_torch_dispatch", "track_fn_calls"]
+__all__ = ["print_torch_dispatch", "log_torch_dispatch", "track_fn_mode"]
 
 LOGGER = logging.getLogger(__name__)
 
@@ -110,10 +112,23 @@ class _StoreDispatchMode(pyd.TorchDispatchMode):
 
 
 @ctxl.contextmanager
-def track_fn_calls():
+def track_fn_mode():
     """
     Track all calls into the torch dispatch mode.
     """
+
+    with _StoreDispatchMode() as sdm:
+        yield sdm.calls
+
+
+@ctxl.contextmanager
+def fake_fn_mode():
+    """
+    Track all calls into the torch dispatch mode.
+    """
+
+    if not ctx.enabled_fake_mode():
+        raise RuntimeError("Fake mode is not enabled.")
 
     with _StoreDispatchMode() as sdm:
         yield sdm.calls

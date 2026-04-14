@@ -86,14 +86,17 @@ class Vector:
         return self.__op2(other, operator.lt)
 
     def __op1(self, unop: typing.Any) -> typing.Self:
-        return _from_fn(unop(self.fn()))
+        return type(self)(unop(self.data))
 
     def __op2(self, other: typing.Any, binop: AnyUFunc2) -> typing.Self:
         match other:
             case Vector():
-                return _from_fn(binop(self.fn(), other.fn()))
-            case TensorFn() | float() | int() | bool():
-                return _from_fn(binop(self.fn(), other))
+                return type(self)(binop(self.data, other.data))
+            case TensorFn():
+                raise NotImplementedError
+                # return type(self)(binop(self.data, other.do()))
+            case int() | float() | bool():
+                return type(self)(binop(self.data, other))
 
         raise NotImplementedError
 
@@ -125,8 +128,3 @@ class Vector:
     @property
     def attr(self):
         return attr(self.data)
-
-
-def _from_fn(func: TensorFn, /):
-    vec = func.do()
-    return Vector(data=vec.data)

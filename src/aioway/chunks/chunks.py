@@ -11,7 +11,7 @@ import tensordict as td
 import torch
 
 from aioway._common import is_dict_of_str_to
-from aioway.fn import tdict
+from aioway._common.typing.checks import is_list_of
 from aioway.schemas import AttrSetLike, attr_set
 
 from .vectors import Vector
@@ -66,35 +66,40 @@ class Chunk(cabc.Mapping[str, Vector]):
     def __getitem__(self, key):
         if isinstance(key, Vector):
             key = key.data
-        result = self.fn()[key].do()
 
         if isinstance(key, str):
+            result = self.data[key]
             assert isinstance(result, torch.Tensor)
             return Vector(result)
-        else:
+        elif is_list_of(str)(key):
+            result = self.data.select(*key)
             return type(self)(result)
+        else:
+            return type(self)(self.data[key])
 
     @typing.override
     def __iter__(self) -> cabc.Iterator[str]:
         return iter(self.attrs)
 
-    def fn(self):
-        return tdict(self.data)
-
     def select(self, *names: str):
-        return Chunk(self.fn().select(*names).do())
+        return Chunk(self.select(*names))
 
     def column(self, col: str):
-        return Vector(self.fn()[col].forward())
+        return Vector(self[col].forward())
 
     def rename(self, **renames: str):
         if not renames:
             return self
 
-        return Chunk(self.fn().rename(**renames).do())
+        def rename(tdict: td.TensorDict):
+            return td.TensorDict(
+                {renames.get(key, key): value for key, value in tdict.items()}
+            )
+
+        return Chunk(rename(self.data))
 
     def zip(self, rhs: typing.Self):
-        return Chunk(self.fn().zip(rhs.fn()).do())
+        return Chunk(td.merge_tensordicts(self.data, rhs.data))
 
     @property
     def shape(self) -> torch.Size:

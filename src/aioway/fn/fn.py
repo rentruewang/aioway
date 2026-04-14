@@ -6,6 +6,7 @@ import typing
 from collections import abc as cabc
 
 import torch
+from torch import _ops
 
 from aioway.ctx import enabled_fake_mode, fake_mode_func, is_fake_tensor
 
@@ -119,6 +120,12 @@ class TorchDispatchThunk[**P, T](Thunk[P, T]):
             return super().__eq__(other) and self.types == other.types
 
         return NotImplemented
+
+    @property
+    @typing.override
+    @typing.no_type_check
+    def func(self) -> _ops.OpOverload:
+        return self._func
 
     @property
     def types(self):
