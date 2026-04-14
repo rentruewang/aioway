@@ -7,21 +7,19 @@ import dataclasses as dcls
 import typing
 
 import numpy as np
+import tensordict as td
+from torch.utils import data
 
-from aioway._common import BatchIndex, IntArray, is_list_of
-from aioway.chunks import Chunk
+from aioway._common import IntArray, is_list_of
 from aioway.schemas import AttrSet
 
-from ..datasets import Dataset, DatasetViewTypes
-
-if typing.TYPE_CHECKING:
-    from .views import FrameColumnView, FrameSelectView
+from ..datasets import Dataset, DatasetColumnView, DatasetSelectView, DatasetViewTypes
 
 __all__ = ["Frame"]
 
 
 @dcls.dataclass(frozen=True)
-class Frame(Dataset, abc.ABC):
+class Frame(Dataset, data.Dataset[td.TensorDict], abc.ABC):
     """
     `Frame` represents a set of heterogenious data stored in memory,
     it is one of the main physical abstractions in `aioway` to represent eager computation.
@@ -45,16 +43,20 @@ class Frame(Dataset, abc.ABC):
         Get the number of items (rows) in the current dataframe.
         """
 
-    @typing.overload
-    def __getitem__(self, idx: BatchIndex, /) -> Chunk: ...
+    def __bool__(self) -> bool:
+        return bool(len(self))
 
     @typing.overload
-    def __getitem__(self, idx: str, /) -> FrameColumnView: ...
+    def __getitem__(self, idx: str) -> DatasetColumnView[typing.Self]: ...
 
     @typing.overload
-    def __getitem__(self, idx: list[str], /) -> FrameSelectView: ...
+    def __getitem__(self, idx: list[str]) -> DatasetSelectView[typing.Self]: ...
 
-    @typing.no_type_check
+    @typing.overload
+    def __getitem__(self, idx: int | slice | list[int] | IntArray) -> td.TensorDict: ...
+
+    @typing.final
+    @typing.override
     def __getitem__(self, idx, /):
         """
         Get individual items from the current `Frame`.
@@ -78,9 +80,6 @@ class Frame(Dataset, abc.ABC):
         if is_list_of(str)(idx):
             return self.select(*idx)
 
-        if not _is_table_index(idx):
-            raise IndexError(f"Index type {type(idx)=} is not supported.")
-
         # If slice, convert to `range(len(self))[idx]`.
         # This will be the same length as the output list,
         # so it's ok that `NDArray` is less efficient than `slice`.
@@ -93,19 +92,11 @@ class Frame(Dataset, abc.ABC):
         arr: IntArray = np.asarray(it)
         arr = self._check_idx(arr)
 
-        item = self._getitem(arr)
-
-        if (
-            False
-            or item.attrs.device_list != self.attrs.device_list
-            or item.attrs.dtype_list != self.attrs.dtype_list
-        ):
-            raise ValueError(f"Attr mismatch for {item.attrs=} and {self.attrs=}.")
+        item = self._getitems_batch(arr.tolist())
 
         return item
 
-    def __bool__(self) -> bool:
-        return bool(len(self))
+    __geitems__ = __getitem__
 
     @property
     @abc.abstractmethod
@@ -115,17 +106,7 @@ class Frame(Dataset, abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def _getitem(self, idx: IntArray, /) -> Chunk:
-        """
-        The implementation of `__getitem__`.
-
-        Args:
-            idx: The index being passed in. A list of positive integers.
-
-        Returns:
-            A couple of rows i nthe dataset.
-        """
-
+    def _getitems_batch(self, idx: list[int]) -> td.TensorDict:
         raise NotImplementedError
 
     @classmethod
@@ -146,27 +127,3 @@ class Frame(Dataset, abc.ABC):
             )
 
         return idx % length
-
-
-def _is_table_index(idx: typing.Any) -> typing.TypeIs[BatchIndex]:
-    "Check if the `idx` passed in is a valid type."
-
-    # Check if it's a valid slice.
-    if (
-        True
-        and isinstance(idx, slice)
-        and isinstance(idx.stop, int)
-        and isinstance(idx.start, int | None)
-        and isinstance(idx.step, int | None)
-    ):
-        return True
-
-    # Check if it's a `list[int]`.
-    if isinstance(idx, list) and all(isinstance(i, int) for i in idx):
-        return True
-
-    # Check if it's a `NDArray[int]`.
-    if isinstance(idx, np.ndarray) and np.isdtype(idx.dtype, "integral"):
-        return True
-
-    return False

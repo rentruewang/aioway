@@ -3,22 +3,22 @@
 import pytest
 
 from aioway.datasets import (
-    ChunkFrame,
-    ChunkListFrame,
     Frame,
     FrameStream,
     FrameStreamLoader,
+    TdFrame,
+    TdListFrame,
 )
 from tests.fake import chunk_ok
 
 
 def block_table(device: str, batch_size: int, data_size: int):
     block = chunk_ok(size=data_size, device=device)
-    return ChunkFrame(block)
+    return TdFrame(block)
 
 
 def list_table(device: str, batch_size: int, data_size: int):
-    return ChunkListFrame(
+    return TdListFrame(
         [
             chunk_ok(size=batch_size, device=device)
             for _ in range(0, data_size, batch_size)

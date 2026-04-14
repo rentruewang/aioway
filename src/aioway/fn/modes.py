@@ -10,7 +10,7 @@ import typing
 from collections import abc as cabc
 
 import torch
-from torch import _ops, ops
+from torch import _ops
 from torch.utils import _python_dispatch as pyd
 
 from aioway import ctx

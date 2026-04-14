@@ -5,7 +5,6 @@ import pytest
 import tensordict as td
 import torch
 
-from aioway.chunks import Chunk
 from aioway.fn import tdict
 from aioway.schemas import Attr, AttrSet, attr, attr_set
 
@@ -84,8 +83,8 @@ def test_construction_of_attrset(valid_data: td.TensorDict):
 
 
 @pytest.fixture
-def block(schema: AttrSet, valid_data: td.TensorDict) -> Chunk:
-    return Chunk.from_data_schema(data=valid_data, schema=schema)
+def block(valid_data: td.TensorDict) -> td.TensorDict:
+    return valid_data
 
 
 def test_block_init(block: Chunk):

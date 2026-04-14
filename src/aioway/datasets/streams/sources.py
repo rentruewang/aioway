@@ -10,11 +10,11 @@ import math
 import typing
 from collections import abc as cabc
 
+import tensordict as td
 from torch.utils import data
 
 from aioway._common import is_list_of
-from aioway.chunks import Chunk
-from aioway.schemas import AttrSet
+from aioway.schemas import AttrSet, attr_set
 
 from ..frames import Frame
 from .streams import Stream
@@ -52,7 +52,7 @@ class BoundedStream(Stream, abc.ABC):
         raise TypeError(f"Do not know how to handle {type(key)=}.")
 
     @abc.abstractmethod
-    def _getitem_int(self, idx: int) -> Chunk:
+    def _getitem_int(self, idx: int) -> td.TensorDict:
         """
         Get individual items. Does not support slice input.
 
@@ -73,7 +73,7 @@ class CacheStream(BoundedStream):
     stream: Stream
     "The input stream."
 
-    saved: list[Chunk] = dcls.field(default_factory=list)
+    saved: list[td.TensorDict] = dcls.field(default_factory=list)
     "The cache for the input `Stream`."
 
     @typing.override
@@ -89,7 +89,7 @@ class CacheStream(BoundedStream):
         return self.saved[idx]
 
     @typing.override
-    def _next(self) -> Chunk:
+    def _next(self) -> td.TensorDict:
         LOGGER.debug(
             "Executing `__iter__` for `CacheStream`. self.idx=%s, stream.idx=%s",
             self.idx,
@@ -133,15 +133,15 @@ class CacheStream(BoundedStream):
 class ListStream(BoundedStream):
     "A `Stream` backed by a list of `TensorDict`."
 
-    sequence: cabc.Sequence[Chunk]
-    "List of chunks."
+    sequence: cabc.Sequence[td.TensorDict]
+    "List of `td.TensorDict`s."
 
     @typing.override
     def __len__(self) -> int:
         return self.size
 
     @typing.override
-    def _getitem_int(self, idx: int) -> Chunk:
+    def _getitem_int(self, idx: int) -> td.TensorDict:
         return self.sequence[idx]
 
     @property
@@ -156,7 +156,7 @@ class ListStream(BoundedStream):
 
     @functools.cached_property
     def _schema(self) -> AttrSet:
-        schemas = {chunk.attrs for chunk in self.sequence}
+        schemas = {attr_set(chunk) for chunk in self.sequence}
 
         if len(schemas) == 1:
             [schema] = schemas
@@ -165,9 +165,9 @@ class ListStream(BoundedStream):
         raise ValueError("Chunks should have the same schema.")
 
     @typing.override
-    def _next(self) -> Chunk:
+    def _next(self) -> td.TensorDict:
         if self.idx < self.size:
-            return self[self.idx]
+            return self._getitem_int(self.idx)
         else:
             raise StopIteration
 
@@ -210,7 +210,7 @@ class FrameStream(Stream):
     """
 
     @typing.override
-    def _next(self) -> Chunk:
+    def _next(self) -> td.TensorDict:
         try:
             return self._get_batch(self.idx)
         except IndexError as ie:
@@ -243,7 +243,7 @@ class FrameStream(Stream):
         rounding = math.floor if drop_last else math.ceil
         return rounding(len(self.frame) / batch_size)
 
-    def _get_batch(self, idx: int) -> Chunk:
+    def _get_batch(self, idx: int) -> td.TensorDict:
         batch_size = self.options.batch_size
 
         if not -self.size <= idx < self.size:
@@ -253,7 +253,7 @@ class FrameStream(Stream):
             )
 
         idx %= self.size
-        return self.frame[idx : idx + batch_size]
+        return self.frame._getitems_batch(list(range(idx, idx + batch_size)))
 
     @typing.override
     def _inputs(self):

@@ -8,7 +8,8 @@ import functools
 import typing
 from collections import abc as cabc
 
-from aioway.chunks import Chunk
+import tensordict as td
+
 from aioway.schemas import AttrSet
 
 from ..datasets import Dataset, DatasetViewTypes
@@ -43,7 +44,7 @@ class StreamState:
 
 
 @dcls.dataclass(frozen=True)
-class Stream(cabc.Iterator[Chunk], Dataset, abc.ABC):
+class Stream(cabc.Iterator[td.TensorDict], Dataset, abc.ABC):
     """
     `Stream` produces a stream of batches of data, in the form of `TensorDict`s,
     everytime `__next__` is called on it, a `TensorDict` is yielded.
@@ -69,19 +70,12 @@ class Stream(cabc.Iterator[Chunk], Dataset, abc.ABC):
 
     @typing.final
     @typing.override
-    def __next__(self) -> Chunk:
+    def __next__(self) -> td.TensorDict:
         """
         `__next__` allows `Stream`s to be used in `for` loops.
         """
 
         result = self._next()
-        if (
-            False
-            or result.attrs.dtype_list != self.attrs.dtype_list
-            or result.attrs.device_list != self.attrs.device_list
-        ):
-            raise TypeError(f"Schema mismatch: {result.attrs=}, {self.attrs=}.")
-
         self.state.step()
         return result
 
@@ -105,9 +99,9 @@ class Stream(cabc.Iterator[Chunk], Dataset, abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def _next(self) -> Chunk:
+    def _next(self) -> td.TensorDict:
         """
-        Compute the next batch (a `Chunk`).
+        Compute the next batch (a `td.TensorDict`).
 
         An exception raised here would be translated to `StopIteration`.
 

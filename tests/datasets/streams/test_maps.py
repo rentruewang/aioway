@@ -5,8 +5,9 @@ import typing
 from collections import abc as cabc
 
 import pytest
+import tensordict as td
 
-from aioway.chunks import Chunk
+from aioway._common import tdict_all_equal, tdict_rename
 from aioway.datasets import (
     ApplyStream,
     CacheStream,
@@ -17,12 +18,13 @@ from aioway.datasets import (
     Stream,
     StreamState,
 )
+from aioway.schemas import AttrSet
 
 
 @dcls.dataclass
 class SaveLastState(StreamState):
 
-    last: Chunk = dcls.field(init=False, repr=False)
+    last: td.TensorDict = dcls.field(init=False, repr=False)
     "The last batch."
 
 
@@ -33,16 +35,16 @@ class SaveLastMapStream(MapStream):
     state: SaveLastState = dcls.field(default_factory=SaveLastState)
 
     @typing.override
-    def _apply(self, batch: Chunk) -> Chunk:
+    def _apply(self, batch: td.TensorDict) -> td.TensorDict:
         self.state.last = batch
         return batch
 
     @property
-    def attrs(self) -> meta.AttrSet:
+    def attrs(self) -> AttrSet:
         return self.source.attrs
 
     @property
-    def last(self) -> Chunk:
+    def last(self) -> td.TensorDict:
         return self.state.last
 
 
@@ -68,7 +70,7 @@ def map_stream(request: pytest.FixtureRequest, save_last: SaveLastMapStream):
 def _pred_filter_builder(source):
     return FuncFilterStream(
         source=source,
-        predicate=lambda t: (t["f1d"] > 0).torch(),
+        predicate=lambda t: (t["f1d"] > 0),
     )
 
 
@@ -78,12 +80,12 @@ def test_filter(map_stream: Stream, save_last: SaveLastMapStream):
 
     for filtered in map_stream:
         f1d = save_last.last["f1d"]
-        manual_filtered: Chunk = save_last.last[f1d > 0]
+        manual_filtered: td.TensorDict = save_last.last[f1d > 0]
         assert filtered.shape == manual_filtered.shape, {
             "lhs.shape": filtered.shape,
             "rhs.shape": manual_filtered.shape,
         }
-        assert filtered == manual_filtered
+        assert tdict_all_equal(filtered, manual_filtered)
 
 
 def _rename_builder(save_last: SaveLastMapStream):
@@ -96,12 +98,15 @@ def test_rename(map_stream: Stream, save_last: SaveLastMapStream):
     "Testing the renaming functionality."
 
     for renamed in map_stream:
-        manual_renamed = save_last.last.rename(f1d="f1", f2d="f2", i1d="i1", i2d="i2")
-        assert renamed == manual_renamed
+        manual_renamed = tdict_rename(
+            save_last.last, f1d="f1", f2d="f2", i1d="i1", i2d="i2"
+        )
+        assert tdict_all_equal(renamed, manual_renamed)
 
 
 def _apply_builder(save_last: SaveLastMapStream):
-    func = lambda td: td.rename(f1d="f", i1d="i")
+
+    func = lambda td: tdict_rename(td, f1d="f", i1d="i")
     schema = lambda attrs: attrs.rename(f1d="f", i1d="i")
     return ApplyStream(source=save_last, apply=func, schema=schema)
 
@@ -109,7 +114,7 @@ def _apply_builder(save_last: SaveLastMapStream):
 @pytest.mark.parametrize("map_stream", [_apply_builder], indirect=True)
 def test_apply(map_stream: ApplyStream, save_last: SaveLastMapStream):
     for mapped in map_stream:
-        assert mapped == map_stream.apply(save_last.last)
+        assert tdict_all_equal(mapped, map_stream.apply(save_last.last))
 
 
 def _project_builder(save_last: SaveLastMapStream):
@@ -119,7 +124,7 @@ def _project_builder(save_last: SaveLastMapStream):
 @pytest.mark.parametrize("map_stream", [_project_builder], indirect=True)
 def test_project(map_stream: Stream, save_last: SaveLastMapStream):
     for projected in map_stream:
-        assert projected == save_last.last[["f1d", "i2d"]]
+        assert tdict_all_equal(projected, save_last.last.select("f1d", "i2d"))
 
 
 @pytest.mark.parametrize(
