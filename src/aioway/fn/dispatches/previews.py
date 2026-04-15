@@ -27,10 +27,7 @@ class Preview(abc.ABC):
         register_preview(cls.OP, cls)
 
     @typing.final
-    def __call__(self):
-        if not self.ok():
-            return NotImplemented
-
+    def __call__(self) -> torch.Tensor:
         result = self.get()
 
         if not isinstance(result, torch.Tensor):
@@ -66,7 +63,7 @@ def find_preview(
         return NotImplemented
 
     for candidate in PREVIEW_CANDIDATES[op]:
-        if (preview := candidate(*args, **kwargs)) is NotImplemented:
+        if not (preview := candidate(*args, **kwargs)).ok():
             continue
 
         return preview
@@ -89,10 +86,7 @@ class PreviewFn(TorchFn):
 
     @typing.override
     def do(self):
-        if (result := self.preview()) is not NotImplemented:
-            return result
-
-        return self.func(*self.args, **self.kwargs)
+        return self.preview()
 
     @property
     def preview(self):
