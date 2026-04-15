@@ -89,7 +89,10 @@ class PreviewFn(TorchFn):
 
     @typing.override
     def do(self):
-        return self.preview()
+        if (result := self.preview()) is not NotImplemented:
+            return result
+
+        return self.func(*self.args, **self.kwargs)
 
     @property
     def preview(self):
