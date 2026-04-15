@@ -46,6 +46,10 @@ class TorchRouter(typing.Protocol):
     ) -> torch.Tensor: ...
 
 
+class TorchContextManager(typing.Protocol):
+    def __call__(self) -> typing.ContextManager[torch.Tensor]: ...
+
+
 class TorchRouterFactory(typing.Protocol):
     def __call__(
         self,
@@ -56,88 +60,72 @@ class TorchRouterFactory(typing.Protocol):
 
 def torch_context_manager(mode: _TorchRouterMode, /):
     @typing.overload
-    def decorator(typ: type, /) -> type[typing.ContextManager[torch.Tensor]]: ...
+    def decorator[T: type](typ: T, /) -> T: ...
 
     @typing.overload
-    def decorator(func: TorchRouter, /) -> typing.ContextManager[torch.Tensor]: ...
+    def decorator(func: TorchRouter, /) -> TorchContextManager: ...
 
     @typing.no_type_check
     def decorator(obj):
-        return _create_mode(mode, isinstance(obj, type))(obj)
+        return _create_mode(mode, obj)
 
     return decorator
 
 
-def _create_mode(mode: _TorchRouterMode, is_type: bool, /):
-    match mode, is_type:
-        case "dispatch", False:
-            return _dispatch_mode_function
-        case "function", False:
-            return _function_mode_function
-        case "dispatch", True:
-            return _dispatch_mode_class
-        case "function", True:
-            return _function_mode_class
+def _create_mode(mode: _TorchRouterMode, obj: typing.Any, /):
+    base_cls: type
+
+    match mode:
+        case "dispatch":
+            func_name = "__torch_dispatch__"
+            base_cls = pyd.TorchDispatchMode
+        case "function":
+            func_name = "__torch_function__"
+            base_cls = overrides.TorchFunctionMode
+
+    if isinstance(obj, type):
+        return _create_mode_class(
+            typ=obj,
+            base_cls=base_cls,
+            func_name=func_name,
+        )
+
+    elif isinstance(obj, types.FunctionType):
+        return _create_mode_func(
+            function=obj,
+            base_cls=base_cls,
+            func_name=func_name,
+        )
+
+    raise TypeError(f"Unhandled {type(obj)=}.")
 
 
-def _dispatch_mode_function(function: TorchRouter, /):
-    @typing.final
-    class DispatchMode(pyd.TorchDispatchMode):
-        @typing.no_type_check
-        def __torch_dispatch__(self, func, types, args=(), kwargs=None):
-            kwargs = kwargs or {}
-            return function(func, types, args, kwargs)
-
-    return DispatchMode
-
-
-def _function_mode_function(function: TorchRouter, /):
-    @typing.final
-    class FunctionMode(overrides.TorchFunctionMode):
-        @typing.no_type_check
-        def __torch_function__(self, func, types, args=(), kwargs=None):
-            kwargs = kwargs or {}
-            return function(func, types, args, kwargs)
-
-    return FunctionMode
-
-
-def _dispatch_mode_class(base: type[TorchRouter], /):
-    fname = "__torch_dispatch__"
-    assert (dispatch := getattr(base, fname)) is not None
-    assert isinstance(dispatch, types.FunctionType)
+def _create_mode_func(function: TorchRouter, base_cls: type, func_name: str):
+    if not isinstance(function, types.FunctionType):
+        raise ValueError(f"{function=} is not a function.")
 
     @typing.no_type_check
-    def __torch_dispatch__(self, func, types, args=(), kwargs=None):
+    def invoke(self, func, types, args=(), kwargs=None):
         kwargs = kwargs or {}
-        return dispatch(self, func, types, args, kwargs)
+        return function(func, types, args, kwargs)
 
-    new_type = type(
-        base.__name__,
-        (pyd.TorchDispatchMode, base),
-        {"__torch_dispatch__": __torch_dispatch__},
-    )
-
-    return new_type
+    return type(function.__name__, (base_cls,), {func_name: invoke})
 
 
-def _function_mode_class(base: type[TorchRouter], /):
-    fname = "__torch_function__"
-    assert (function := getattr(base, fname)) is not None
+def _create_mode_class(typ: type[TorchRouter], base_cls: type, func_name: str):
+    _check_class_has_call(typ)
+
+    @typing.no_type_check
+    def invoke(self, func, types, args=(), kwargs=None):
+        kwargs = kwargs or {}
+        return self(func, types, args, kwargs)
+
+    return type(typ.__name__, (typ, base_cls), {func_name: invoke})
+
+
+def _check_class_has_call(base: type):
+    assert callable(function := getattr(base, "__call__"))
     assert isinstance(function, types.FunctionType)
-
-    @typing.no_type_check
-    def __torch_function__(self, func, types, args=(), kwargs=None):
-        kwargs = kwargs or {}
-        return function(self, func, types, args, kwargs)
-
-    new_type = type(
-        base.__name__,
-        (overrides.TorchFunctionMode, base),
-        {"__torch_function__": __torch_function__},
-    )
-
-    return new_type
 
 
 @torch_context_manager("dispatch")
@@ -154,21 +142,16 @@ def print_torch_dispatch(
 
 
 @torch_context_manager("dispatch")
-@dcls.dataclass
-class _LogDispatchMode:
+class _LogDispatch(TorchRouter):
     """
     Log every call to dispatch mode.
     """
 
-    _: dcls.KW_ONLY
+    def __init__(self, level: int, logger: logging.Logger = LOGGER):
+        self.level = level
+        self.logger = logger
 
-    logger: logging.Logger
-    "The logger to log to."
-
-    level: int
-    "The logging level to use."
-
-    def __torch_dispatch__(
+    def __call__(
         self,
         func: _ops.OpOverload,
         types: tuple[type[torch.Tensor], ...],
@@ -181,7 +164,7 @@ class _LogDispatchMode:
         return result
 
 
-log_torch_dispatch = _LogDispatchMode
+log_torch_dispatch = _LogDispatch
 """
 Context manager to log the `__torch_dispatch__` calls.
 
