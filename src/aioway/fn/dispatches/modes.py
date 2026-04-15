@@ -15,9 +15,9 @@ from torch.utils import _python_dispatch as pyd
 from aioway.ctx import enabled_fake_mode, fake_mode
 from aioway.schemas.attrs import attr
 
-from ..fn import Fn, PatchTorchFn, TorchFn
+from ..fn import Fn, TorchFn
 from ..torch import is_aten_op, is_prim_op
-from .impls import find_preview
+from .previews import PreviewFn, find_preview
 
 __all__ = [
     "print_torch_dispatch",
@@ -53,6 +53,8 @@ class TorchRouterFactory(typing.Protocol):
         self,
         func: _ops.OpOverload,
         types: tuple[type[torch.Tensor], ...],
+        args: tuple[typing.Any, ...],
+        kwargs: dict[str, typing.Any],
     ) -> _ThunkType: ...
 
 
@@ -114,21 +116,22 @@ Args:
 
 
 def only_route_aten_in_fake(
-    func: _ops.OpOverload, types: tuple[type[torch.Tensor], ...]
+    func: _ops.OpOverload,
+    types: tuple[type[torch.Tensor], ...],
+    args: tuple[typing.Any, ...],
+    kwargs: dict[str, typing.Any],
 ) -> _ThunkType:
     if not enabled_fake_mode():
         raise RuntimeError("Only running in fake mode!")
 
     if is_aten_op(func):
-        return patch_aten_ops(func=func, types=types)
+        return patch_aten_ops(func, types, args, kwargs)
 
     assert is_prim_op(func), func
     return NotImplemented
 
 
-def no_route(
-    func: _ops.OpOverload, types: tuple[type[torch.Tensor], ...]
-) -> _ThunkType:
+def no_route(*args, **kwargs) -> _ThunkType:
     return NotImplemented
 
 
@@ -186,7 +189,7 @@ class TrackDispatchMode(pyd.TorchDispatchMode):
 
         thunk: TorchFn
         # Create a `TorchDispatchThunk` and route implemented methods.
-        if (thunk_init := self.router(func=func, types=types)) is NotImplemented:
+        if (thunk_init := self.router(func, types, args, kwargs)) is NotImplemented:
             thunk = TorchFn(func, types, *args, **kwargs)
         else:
             thunk = thunk_init(*args, **kwargs)
@@ -203,14 +206,17 @@ class TrackDispatchMode(pyd.TorchDispatchMode):
 
 
 def patch_aten_ops(
-    func: _ops.OpOverload, types: tuple[type[torch.Tensor], ...]
+    func: _ops.OpOverload,
+    types: tuple[type[torch.Tensor], ...],
+    args: tuple[typing.Any, ...],
+    kwargs: dict[str, typing.Any],
 ) -> cabc.Callable[..., TorchFn]:
     assert is_aten_op(func), func
 
-    if (patch := find_preview(func)) is NotImplemented:
+    if (preview := find_preview(func, *args, **kwargs)) is NotImplemented:
         return NotImplemented
 
-    return lambda *args, **kwargs: PatchTorchFn(func, patch, types, *args, **kwargs)
+    return lambda *args, **kwargs: PreviewFn(func, preview, types, *args, **kwargs)
 
 
 @ctxl.contextmanager

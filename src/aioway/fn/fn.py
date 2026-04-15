@@ -155,43 +155,6 @@ class TorchFn(Fn):
                 yield arg
 
 
-class PatchTorchFn(TorchFn):
-    def __init__(
-        self,
-        func: cabc.Callable[..., typing.Any],
-        patch: cabc.Callable[..., typing.Any],
-        types: tuple[type, ...],
-        /,
-        *args: typing.Any,
-        **kwargs: typing.Any,
-    ) -> None:
-        super().__init__(func, types, *args, **kwargs)
-        self._patch = patch
-
-    @typing.override
-    def do(self) -> typing.Any:
-        if (patched := self.patch(*self.args, **self.kwargs)) is not NotImplemented:
-            return patched
-
-        return self.func(*self.args, **self.kwargs)
-
-    @property
-    def patch(self):
-        return self._patch
-
-
-class TorchIrFakePatchFn(TorchFn):
-    def __init__(
-        self,
-        func: _ops.OpOverload,
-        types: tuple[type, ...],
-        /,
-        *args: typing.Any,
-        **kwargs: typing.Any,
-    ) -> None:
-        super().__init__(func, types, *args, **kwargs)
-
-
 def _format_function_as_str(
     func: cabc.Callable[..., typing.Any], *args: typing.Any, **kwargs: typing.Any
 ) -> str:
