@@ -141,7 +141,7 @@ class TorchFn[**P, T](Fn[P, T]):
         return self._types
 
 
-class PatchFakeTorchFn[**P, T](TorchFn[P, T]):
+class PatchTorchFn[**P, T](TorchFn[P, T]):
     def __init__(
         self,
         func: cabc.Callable[P, T],

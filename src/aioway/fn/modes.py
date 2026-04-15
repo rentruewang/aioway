@@ -18,7 +18,7 @@ from torch.utils import _python_dispatch as pyd
 from aioway.ctx import enabled_fake_mode, fake_mode
 from aioway.fn.patches import find_patch
 
-from .fn import Fn, PatchFakeTorchFn, TorchFn
+from .fn import Fn, PatchTorchFn, TorchFn
 from .torch import is_aten_op, is_prim_op
 
 __all__ = [
@@ -252,7 +252,7 @@ def patch_aten_ops_in_fake(
     if (patch := find_patch(func)) is NotImplemented:
         return NotImplemented
 
-    return lambda *args, **kwargs: PatchFakeTorchFn(func, patch, types, *args, **kwargs)
+    return lambda *args, **kwargs: PatchTorchFn(func, patch, types, *args, **kwargs)
 
 
 @ctxl.contextmanager
