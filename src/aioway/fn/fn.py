@@ -140,6 +140,15 @@ class TorchFn[**P, T](Fn[P, T]):
     def types(self):
         return self._types
 
+    def parameters(self):
+        def raw_params():
+            yield from self.args
+            yield from self.kwargs.values()
+
+        for arg in raw_params():
+            if isinstance(arg, torch.Tensor):
+                yield arg
+
 
 class PatchTorchFn[**P, T](TorchFn[P, T]):
     def __init__(

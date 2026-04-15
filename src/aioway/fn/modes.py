@@ -16,6 +16,7 @@ from torch.utils import _python_dispatch as pyd
 
 from aioway.ctx import enabled_fake_mode, fake_mode
 from aioway.fn.patches import find_patch
+from aioway.schemas.attrs import attr
 
 from .fn import Fn, PatchTorchFn, TorchFn
 from .torch import is_aten_op, is_prim_op
@@ -44,10 +45,6 @@ class TorchRouter(typing.Protocol):
         args: tuple[typing.Any, ...],
         kwargs: dict[str, typing.Any],
     ) -> torch.Tensor: ...
-
-
-class TorchContextManager(typing.Protocol):
-    def __call__(self) -> typing.ContextManager[torch.Tensor]: ...
 
 
 class TorchRouterFactory(typing.Protocol):
@@ -151,10 +148,43 @@ class _StoreFunctionMode(overrides.TorchFunctionMode):
         return fn()
 
 
+@dcls.dataclass(frozen=True)
+class FnList:
+    data: list[TorchFn] = dcls.field(default_factory=list)
+
+    def __len__(self) -> int:
+        return len(self.data)
+
+    def __getitem__(self, idx: int) -> TorchFn:
+        return self.data[idx]
+
+    def __iter__(self):
+        yield from self.data
+
+    def append(self, item: TorchFn, /):
+        self.data.append(item)
+
+    def pop(self):
+        return self.data.pop()
+
+    def parameters(self):
+        def all_params():
+            for fn in self.data:
+                yield from fn.parameters()
+
+        yield from set(all_params())
+
+    def numel(self) -> int:
+        return sum(param.numel() for param in self.parameters())
+
+    def bits(self) -> int:
+        return sum(attr(param).bits() for param in self.parameters())
+
+
 @dcls.dataclass
 class _StoreDispatchMode(pyd.TorchDispatchMode):
     router: TorchRouterFactory
-    calls: list[TorchFn] = dcls.field(default_factory=list)
+    calls: FnList = dcls.field(default_factory=FnList)
 
     def __torch_dispatch__(
         self,

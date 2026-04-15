@@ -40,6 +40,7 @@ def test_einsum(a: torch.Tensor, b: torch.Tensor):
     assert result.ndim == 0
     assert len(calls)
     assert len(funcs)
+    assert calls.bits()
 
 
 def test_boolean_masking_should_fail(fake_a: torch.Tensor):
