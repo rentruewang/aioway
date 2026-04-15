@@ -13,7 +13,7 @@ _PENDING = object()
 "The object signifying a status of pending. This is a `object()` s.t. `FnCache` can store `None`."
 
 
-class Fn[**P, T]:
+class Fn:
     """
     The thunk for any function, handles both pretty printing and storing the result.
 
@@ -35,7 +35,11 @@ class Fn[**P, T]:
     """
 
     def __init__(
-        self, func: cabc.Callable[P, T], /, *args: P.args, **kwargs: P.kwargs
+        self,
+        func: cabc.Callable[..., typing.Any],
+        /,
+        *args: typing.Any,
+        **kwargs: typing.Any,
     ) -> None:
         if not callable(func):
             raise ValueError("Cannot create thunk for function that isn't callable.")
@@ -59,14 +63,14 @@ class Fn[**P, T]:
 
         return NotImplemented
 
-    def do(self) -> T:
+    def do(self) -> typing.Any:
         """
         Do the computation for `Fn`. Can be overwritten in subclass.
         """
 
         return self.func(*self.args, **self.kwargs)
 
-    def __call__(self) -> T:
+    def __call__(self) -> typing.Any:
         """
         Call and cache the function.
         """
@@ -74,7 +78,7 @@ class Fn[**P, T]:
         if self.__result is _PENDING:
             self.__result = self.do()
 
-        return typing.cast(T, self.__result)
+        return self.__result
 
     @typing.override
     def __repr__(self) -> str:
@@ -112,14 +116,14 @@ class Fn[**P, T]:
         return self.__result is not _PENDING
 
 
-class TorchFn[**P, T](Fn[P, T]):
+class TorchFn(Fn):
     def __init__(
         self,
-        func: cabc.Callable[P, T],
+        func: cabc.Callable[..., typing.Any],
         types: tuple[type, ...],
         /,
-        *args: P.args,
-        **kwargs: P.kwargs,
+        *args: typing.Any,
+        **kwargs: typing.Any,
     ) -> None:
         super().__init__(func, *args, **kwargs)
         self._types = types
@@ -151,21 +155,21 @@ class TorchFn[**P, T](Fn[P, T]):
                 yield arg
 
 
-class PatchTorchFn[**P, T](TorchFn[P, T]):
+class PatchTorchFn(TorchFn):
     def __init__(
         self,
-        func: cabc.Callable[P, T],
-        patch: cabc.Callable[P, T],
+        func: cabc.Callable[..., typing.Any],
+        patch: cabc.Callable[..., typing.Any],
         types: tuple[type, ...],
         /,
-        *args: P.args,
-        **kwargs: P.kwargs,
+        *args: typing.Any,
+        **kwargs: typing.Any,
     ) -> None:
         super().__init__(func, types, *args, **kwargs)
         self._patch = patch
 
     @typing.override
-    def do(self) -> T:
+    def do(self) -> typing.Any:
         if (patched := self.patch(*self.args, **self.kwargs)) is not NotImplemented:
             return patched
 
@@ -176,14 +180,14 @@ class PatchTorchFn[**P, T](TorchFn[P, T]):
         return self._patch
 
 
-class TorchIrFakePatchFn[**P, T](TorchFn):
+class TorchIrFakePatchFn(TorchFn):
     def __init__(
         self,
         func: _ops.OpOverload,
         types: tuple[type, ...],
         /,
-        *args: P.args,
-        **kwargs: P.kwargs,
+        *args: typing.Any,
+        **kwargs: typing.Any,
     ) -> None:
         super().__init__(func, types, *args, **kwargs)
 

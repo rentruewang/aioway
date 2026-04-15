@@ -8,7 +8,7 @@ import torch
 from torch import nn, optim
 from torch.nn import functional as F
 
-from aioway.fn import track_dispatch_fn_mode
+from aioway.fn import track_dispatch_fn
 
 
 def _loss_fns():
@@ -38,7 +38,7 @@ class LossParam(typing.NamedTuple):
 def loss_params(
     request: pytest.FixtureRequest, input: torch.Tensor, target: torch.Tensor
 ):
-    with track_dispatch_fn_mode() as tracker:
+    with track_dispatch_fn() as tracker:
         loss = request.param(input=input, target=target)
     params = list(tracker.parameters())
     return LossParam(loss=loss, params=params)

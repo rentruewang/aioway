@@ -11,7 +11,6 @@ from collections import abc as cabc
 import torch
 from torch import _ops
 from torch import _subclasses as tsc
-from torch import overrides
 from torch.utils import _python_dispatch as pyd
 
 from aioway.ctx import enabled_fake_mode, fake_mode
@@ -24,9 +23,8 @@ from .torch import is_aten_op, is_prim_op
 __all__ = [
     "print_torch_dispatch",
     "log_torch_dispatch",
-    "track_dispatch_fn_mode",
+    "track_dispatch_fn",
     "fake_dispatch_fn_mode",
-    "track_function_fn_mode",
 ]
 
 LOGGER = logging.getLogger(__name__)
@@ -34,6 +32,10 @@ LOGGER = logging.getLogger(__name__)
 
 _ThunkType = cabc.Callable[..., TorchFn]
 _TorchRouterMode = typing.Literal["dispatch", "function"]
+
+
+_dispatch: Fn | None = None
+"The current dispatch."
 
 
 @typing.runtime_checkable
@@ -131,23 +133,6 @@ def no_route(
     return NotImplemented
 
 
-@dcls.dataclass
-class _StoreFunctionMode(overrides.TorchFunctionMode):
-    calls: list[Fn] = dcls.field(default_factory=list)
-
-    def __torch_function__(
-        self,
-        func: _ops.OpOverload,
-        types: tuple[type[torch.Tensor], ...],
-        args: tuple[typing.Any, ...] = (),
-        kwargs: dict[str, typing.Any] | None = None,
-    ):
-        kwargs = kwargs or {}
-        fn = Fn(func, *args, **kwargs)
-        self.calls.append(fn)
-        return fn()
-
-
 @dcls.dataclass(frozen=True)
 class FnList:
     data: list[TorchFn] = dcls.field(default_factory=list)
@@ -187,7 +172,7 @@ class FnList:
 
 
 @dcls.dataclass
-class _StoreDispatchMode(pyd.TorchDispatchMode):
+class TrackDispatchMode(pyd.TorchDispatchMode):
     router: TorchRouterFactory
     calls: FnList = dcls.field(default_factory=FnList)
 
@@ -210,7 +195,9 @@ class _StoreDispatchMode(pyd.TorchDispatchMode):
         self.calls.append(thunk)
 
         try:
-            return thunk()
+            # Ensure that only 1 dispatch is running at any given moment.
+            with _single_dispatch(thunk):
+                return thunk()
         except RuntimeError as re:
             fn = Fn(func, *args, **kwargs)
             raise ValueError(f"Function call '{fn}' failed.") from re
@@ -232,12 +219,12 @@ def patch_aten_ops_in_fake(
 
 
 @ctxl.contextmanager
-def track_dispatch_fn_mode():
+def track_dispatch_fn():
     """
     Track all calls into the torch dispatch mode as `TorchIrFn`.
     """
 
-    with _StoreDispatchMode(router=no_route) as sdm:
+    with TrackDispatchMode(router=no_route) as sdm:
         yield sdm.calls
 
 
@@ -248,11 +235,19 @@ def fake_dispatch_fn_mode():
     when fake mode is active.
     """
 
-    with fake_mode(), _StoreDispatchMode(router=only_route_aten_in_fake) as sdm:
+    with fake_mode(), TrackDispatchMode(router=only_route_aten_in_fake) as sdm:
         yield sdm.calls
 
 
 @ctxl.contextmanager
-def track_function_fn_mode():
-    with _StoreFunctionMode() as sfm:
-        yield sfm.calls
+def _single_dispatch(dispatch: Fn):
+    global _dispatch
+
+    if _dispatch is not None:
+        raise ValueError("Cannot run 2 dispatches at once.")
+
+    try:
+        _dispatch = dispatch
+        yield
+    finally:
+        _dispatch = None
