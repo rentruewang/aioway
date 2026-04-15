@@ -1,9 +1,14 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import typing
+from collections import abc as cabc
+
 import pytest
 import torch
 from torch import nn, optim
 from torch.nn import functional as F
+
+from aioway.fn import track_dispatch_fn_mode
 
 
 def _loss_fns():
@@ -24,9 +29,29 @@ def target(input: torch.Tensor):
     return torch.randn_like(input)
 
 
+class LossParam(typing.NamedTuple):
+    loss: torch.Tensor
+    params: list[torch.Tensor]
+
+
 @pytest.fixture(params=_loss_fns())
-def loss(request: pytest.FixtureRequest, input: torch.Tensor, target: torch.Tensor):
-    return request.param(input=input, target=target)
+def loss_params(
+    request: pytest.FixtureRequest, input: torch.Tensor, target: torch.Tensor
+):
+    with track_dispatch_fn_mode() as tracker:
+        loss = request.param(input=input, target=target)
+    params = list(tracker.parameters())
+    return LossParam(loss=loss, params=params)
+
+
+@pytest.fixture
+def loss(loss_params: LossParam):
+    return loss_params.loss
+
+
+@pytest.fixture
+def params(loss_params: LossParam):
+    return loss_params.params
 
 
 def _optimizer_types():
@@ -54,9 +79,14 @@ def lr(request: pytest.FixtureRequest):
 
 
 @pytest.fixture
-def optimizer(optim_type: type[optim.Optimizer], loss: torch.Tensor, lr: float):
-    pytest.xfail("Optimizer not implemented yet.")
-    return Optim(optim_cls=optim_type, params=loss.parameters(), lr=lr)
+def optimizer(
+    optim_type: cabc.Callable[..., optim.Optimizer], loss_params: LossParam, lr: float
+):
+    return optim_type(params=loss_params.params, lr=lr)
+
+
+def test_params(params: list[torch.Tensor]):
+    assert len(params)
 
 
 def test_loss_fn(loss: torch.Tensor):

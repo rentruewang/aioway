@@ -176,7 +176,7 @@ class FnList:
 
     def parameters(self):
         for tensor in self.tensors():
-            if tensor.requires_grad:
+            if tensor.requires_grad and tensor.is_leaf:
                 yield tensor
 
     def numel(self) -> int:
