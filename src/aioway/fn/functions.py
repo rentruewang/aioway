@@ -13,7 +13,7 @@ from .fn import Fn
 
 __all__ = ["track_function_fn"]
 
-_function: Fn | None = None
+_active_function: Fn | None = None
 "The current function."
 
 
@@ -33,8 +33,7 @@ class TrackFunctionMode(overrides.TorchFunctionMode):
         fn = Fn(func, *args, **kwargs)
         self.functions.append(fn)
 
-        # Ensure that only 1 function is running at any given moment.
-        with _single_function(fn):
+        with _ensure_single_function(fn):
             return fn()
 
 
@@ -45,14 +44,20 @@ def track_function_fn():
 
 
 @ctxl.contextmanager
-def _single_function(function: Fn):
-    global _function
+def _ensure_single_function(fn: Fn):
+    "Ensure that only 1 function is running at any given moment."
 
-    if _function is not None:
+    global _active_function
+
+    if _active_function is not None:
         raise ValueError("Cannot run 2 functions at once.")
 
     try:
-        _function = function
+        _active_function = fn
         yield
     finally:
-        _function = None
+        _active_function = None
+
+
+def active_function():
+    return _active_function

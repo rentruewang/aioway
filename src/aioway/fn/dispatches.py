@@ -24,7 +24,7 @@ __all__ = [
     "print_torch_dispatch",
     "log_torch_dispatch",
     "track_dispatch_fn",
-    "fake_dispatch_fn_mode",
+    "fake_dispatch_fn",
 ]
 
 LOGGER = logging.getLogger(__name__)
@@ -34,7 +34,7 @@ _ThunkType = cabc.Callable[..., TorchFn]
 _TorchRouterMode = typing.Literal["dispatch", "function"]
 
 
-_dispatch: Fn | None = None
+_active_dispatch: Fn | None = None
 "The current dispatch."
 
 
@@ -196,7 +196,7 @@ class TrackDispatchMode(pyd.TorchDispatchMode):
 
         try:
             # Ensure that only 1 dispatch is running at any given moment.
-            with _single_dispatch(thunk):
+            with _ensure_single_dispatch(thunk):
                 return thunk()
         except RuntimeError as re:
             fn = Fn(func, *args, **kwargs)
@@ -229,7 +229,7 @@ def track_dispatch_fn():
 
 
 @ctxl.contextmanager
-def fake_dispatch_fn_mode():
+def fake_dispatch_fn():
     """
     Track all calls into the torch dispatch mode as `TorchIrFn`,
     when fake mode is active.
@@ -240,14 +240,20 @@ def fake_dispatch_fn_mode():
 
 
 @ctxl.contextmanager
-def _single_dispatch(dispatch: Fn):
-    global _dispatch
+def _ensure_single_dispatch(fn: Fn):
+    "Ensure that only 1 dispatch is running at any given moment."
 
-    if _dispatch is not None:
+    global _active_dispatch
+
+    if _active_dispatch is not None:
         raise ValueError("Cannot run 2 dispatches at once.")
 
     try:
-        _dispatch = dispatch
+        _active_dispatch = fn
         yield
     finally:
-        _dispatch = None
+        _active_dispatch = None
+
+
+def active_dispatch():
+    return _active_dispatch
