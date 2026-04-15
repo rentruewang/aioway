@@ -5,7 +5,6 @@
 import contextlib as ctxl
 import dataclasses as dcls
 import logging
-import types
 import typing
 from collections import abc as cabc
 
@@ -30,6 +29,7 @@ __all__ = [
 ]
 
 LOGGER = logging.getLogger(__name__)
+
 
 _ThunkType = cabc.Callable[..., TorchFn]
 _TorchRouterMode = typing.Literal["dispatch", "function"]
@@ -58,106 +58,47 @@ class TorchRouterFactory(typing.Protocol):
     ) -> _ThunkType: ...
 
 
-def torch_context_manager(mode: _TorchRouterMode, /):
-    @typing.overload
-    def decorator[T: type](typ: T, /) -> T: ...
-
-    @typing.overload
-    def decorator(func: TorchRouter, /) -> TorchContextManager: ...
-
-    @typing.no_type_check
-    def decorator(obj):
-        return _create_mode(mode, obj)
-
-    return decorator
-
-
-def _create_mode(mode: _TorchRouterMode, obj: typing.Any, /):
-    base_cls: type
-
-    match mode:
-        case "dispatch":
-            func_name = "__torch_dispatch__"
-            base_cls = pyd.TorchDispatchMode
-        case "function":
-            func_name = "__torch_function__"
-            base_cls = overrides.TorchFunctionMode
-
-    if isinstance(obj, type):
-        return _create_mode_class(
-            typ=obj,
-            base_cls=base_cls,
-            func_name=func_name,
-        )
-
-    elif isinstance(obj, types.FunctionType):
-        return _create_mode_func(
-            function=obj,
-            base_cls=base_cls,
-            func_name=func_name,
-        )
-
-    raise TypeError(f"Unhandled {type(obj)=}.")
-
-
-def _create_mode_func(function: TorchRouter, base_cls: type, func_name: str):
-    if not isinstance(function, types.FunctionType):
-        raise ValueError(f"{function=} is not a function.")
-
-    @typing.no_type_check
-    def invoke(self, func, types, args=(), kwargs=None):
+class _PrintDispatch(pyd.TorchDispatchMode):
+    def __torch_dispatch__(
+        self,
+        func: _ops.OpOverload,
+        types: tuple[type[torch.Tensor], ...],
+        args: tuple[typing.Any, ...] = (),
+        kwargs: dict[str, typing.Any] | None = None,
+    ):
         kwargs = kwargs or {}
-        return function(func, types, args, kwargs)
-
-    return type(function.__name__, (base_cls,), {func_name: invoke})
-
-
-def _create_mode_class(typ: type[TorchRouter], base_cls: type, func_name: str):
-    _check_class_has_call(typ)
-
-    @typing.no_type_check
-    def invoke(self, func, types, args=(), kwargs=None):
-        kwargs = kwargs or {}
-        return self(func, types, args, kwargs)
-
-    return type(typ.__name__, (typ, base_cls), {func_name: invoke})
+        invoke = Fn(func, *args, **kwargs)
+        result = invoke()
+        print(f"{invoke!s} -> {result!r}")
+        return result
 
 
-def _check_class_has_call(base: type):
-    assert callable(function := getattr(base, "__call__"))
-    assert isinstance(function, types.FunctionType)
+@ctxl.contextmanager
+def print_torch_dispatch():
+    with _PrintDispatch():
+        yield
 
 
-@torch_context_manager("dispatch")
-def print_torch_dispatch(
-    func: _ops.OpOverload,
-    types: tuple[type[torch.Tensor], ...],
-    args: tuple[typing.Any, ...],
-    kwargs: dict[str, typing.Any],
-):
-    invoke = Fn(func, *args, **kwargs)
-    result = invoke()
-    print(f"{invoke!s} -> {result!r}")
-    return result
-
-
-@torch_context_manager("dispatch")
-class _LogDispatch(TorchRouter):
+@dcls.dataclass
+class _LogDispatch(pyd.TorchDispatchMode):
     """
     Log every call to dispatch mode.
     """
 
-    def __init__(self, level: int, logger: logging.Logger = LOGGER):
-        self.level = level
-        self.logger = logger
+    level: int
+    "The level to log to."
 
-    def __call__(
+    logger: logging.Logger = LOGGER
+    "The logger to log to. Default to the one in the current module."
+
+    def __torch_dispatch__(
         self,
         func: _ops.OpOverload,
         types: tuple[type[torch.Tensor], ...],
-        args: tuple[typing.Any, ...],
-        kwargs: dict[str, typing.Any],
+        args: tuple[typing.Any, ...] = (),
+        kwargs: dict[str, typing.Any] | None = None,
     ):
+        kwargs = kwargs or {}
         invoke = Fn(func, *args, **kwargs)
         result = invoke()
         self.logger.log(self.level, f"%s -> %s", invoke, result)
