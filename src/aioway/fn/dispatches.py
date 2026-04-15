@@ -121,7 +121,7 @@ def only_route_aten_in_fake(
         raise RuntimeError("Only running in fake mode!")
 
     if is_aten_op(func):
-        return patch_aten_ops_in_fake(func=func, types=types)
+        return patch_aten_ops(func=func, types=types)
 
     assert is_prim_op(func), func
     return NotImplemented
@@ -203,14 +203,10 @@ class TrackDispatchMode(pyd.TorchDispatchMode):
             raise ValueError(f"Function call '{fn}' failed.") from re
 
 
-def patch_aten_ops_in_fake(
+def patch_aten_ops(
     func: _ops.OpOverload, types: tuple[type[torch.Tensor], ...]
 ) -> cabc.Callable[..., TorchFn]:
     assert is_aten_op(func), func
-
-    # If no `tsc.FakeTensor` exists, don't bother patching.
-    if not any(issubclass(typ, tsc.FakeTensor) for typ in types):
-        return NotImplemented
 
     if (patch := find_patch(func)) is NotImplemented:
         return NotImplemented
