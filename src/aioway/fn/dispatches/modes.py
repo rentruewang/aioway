@@ -17,7 +17,7 @@ from aioway.schemas.attrs import attr
 
 from ..fn import Fn, PatchTorchFn, TorchFn
 from ..torch import is_aten_op, is_prim_op
-from .patches import find_patch
+from .impls import find_preview
 
 __all__ = [
     "print_torch_dispatch",
@@ -207,7 +207,7 @@ def patch_aten_ops(
 ) -> cabc.Callable[..., TorchFn]:
     assert is_aten_op(func), func
 
-    if (patch := find_patch(func)) is NotImplemented:
+    if (patch := find_preview(func)) is NotImplemented:
         return NotImplemented
 
     return lambda *args, **kwargs: PatchTorchFn(func, patch, types, *args, **kwargs)
