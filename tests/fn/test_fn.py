@@ -27,5 +27,5 @@ def test_call(a: torch.Tensor, b: torch.Tensor):
     assert result.ndim == 1
     assert len(calls)
     assert len(funcs)
-    assert calls.bits()
+    assert calls.memory()
     assert str(calls[0])

@@ -57,7 +57,7 @@ class Attr:
     def __repr__(self) -> str:
         return f"[{self.shape},{self.dtype},{self.device}]"
 
-    def bits(self):
+    def memory(self):
         return self.dtype.bits * self.shape.numel()
 
     def to_tensor(self):

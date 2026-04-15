@@ -177,8 +177,8 @@ class FnList:
     def numel(self) -> int:
         return sum(param.numel() for param in self.parameters())
 
-    def bits(self) -> int:
-        return sum(attr(param).bits() for param in self.parameters())
+    def memory(self) -> int:
+        return sum(attr(param).memory() for param in self.parameters())
 
 
 @dcls.dataclass
