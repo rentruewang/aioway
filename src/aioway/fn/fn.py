@@ -10,7 +10,7 @@ from torch import _ops
 
 from aioway.ctx import enabled_fake_mode, fake_mode_func, is_fake_tensor
 
-__all__ = ["DoFn", "Fn", "TorchIrFn"]
+__all__ = ["DoFn", "Fn", "TorchFn"]
 
 _PENDING = object()
 "The object signifying a status of pending. This is a `object()` s.t. `FnCache` can store `None`."
@@ -111,7 +111,7 @@ class Fn[**P, T]:
         return self.__result is not _PENDING
 
 
-class TorchIrFn[**P, T](Fn[P, T]):
+class TorchFn[**P, T](Fn[P, T]):
     def __init__(
         self,
         func: cabc.Callable[P, T],
@@ -125,7 +125,7 @@ class TorchIrFn[**P, T](Fn[P, T]):
 
     @typing.override
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, TorchIrFn):
+        if isinstance(other, TorchFn):
             return super().__eq__(other) and self.types == other.types
 
         return NotImplemented
@@ -141,7 +141,7 @@ class TorchIrFn[**P, T](Fn[P, T]):
         return self._types
 
 
-class PatchTorchIrFn[**P, T](TorchIrFn[P, T]):
+class PatchFakeTorchFn[**P, T](TorchFn[P, T]):
     def __init__(
         self,
         func: cabc.Callable[P, T],
@@ -166,7 +166,7 @@ class PatchTorchIrFn[**P, T](TorchIrFn[P, T]):
         return self._patch
 
 
-class TorchIrFakePatchFn[**P, T](TorchIrFn):
+class TorchIrFakePatchFn[**P, T](TorchFn):
     def __init__(
         self,
         func: _ops.OpOverload,

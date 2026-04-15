@@ -18,7 +18,7 @@ from torch.utils import _python_dispatch as pyd
 from aioway.ctx import enabled_fake_mode, fake_mode
 from aioway.fn.patches import find_patch
 
-from .fn import Fn, PatchTorchIrFn, TorchIrFn
+from .fn import Fn, PatchFakeTorchFn, TorchFn
 from .torch import is_aten_op, is_prim_op
 
 __all__ = [
@@ -31,7 +31,7 @@ __all__ = [
 
 LOGGER = logging.getLogger(__name__)
 
-_ThunkType = cabc.Callable[..., TorchIrFn]
+_ThunkType = cabc.Callable[..., TorchFn]
 _TorchRouterMode = typing.Literal["dispatch", "function"]
 
 
@@ -213,7 +213,7 @@ class _StoreFunctionMode(overrides.TorchFunctionMode):
 @dcls.dataclass
 class _StoreDispatchMode(pyd.TorchDispatchMode):
     router: TorchRouterFactory
-    calls: list[TorchIrFn] = dcls.field(default_factory=list)
+    calls: list[TorchFn] = dcls.field(default_factory=list)
 
     def __torch_dispatch__(
         self,
@@ -224,10 +224,10 @@ class _StoreDispatchMode(pyd.TorchDispatchMode):
     ):
         kwargs = kwargs or {}
 
-        thunk: TorchIrFn
+        thunk: TorchFn
         # Create a `TorchDispatchThunk` and route implemented methods.
         if (thunk_init := self.router(func=func, types=types)) is NotImplemented:
-            thunk = TorchIrFn(func, types, *args, **kwargs)
+            thunk = TorchFn(func, types, *args, **kwargs)
         else:
             thunk = thunk_init(*args, **kwargs)
 
@@ -242,7 +242,7 @@ class _StoreDispatchMode(pyd.TorchDispatchMode):
 
 def patch_aten_ops_in_fake(
     func: _ops.OpOverload, types: tuple[type[torch.Tensor], ...]
-) -> cabc.Callable[..., TorchIrFn]:
+) -> cabc.Callable[..., TorchFn]:
     assert is_aten_op(func), func
 
     # If no `tsc.FakeTensor` exists, don't bother patching.
@@ -252,7 +252,7 @@ def patch_aten_ops_in_fake(
     if (patch := find_patch(func)) is NotImplemented:
         return NotImplemented
 
-    return lambda *args, **kwargs: PatchTorchIrFn(func, patch, types, *args, **kwargs)
+    return lambda *args, **kwargs: PatchFakeTorchFn(func, patch, types, *args, **kwargs)
 
 
 @ctxl.contextmanager
