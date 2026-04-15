@@ -10,15 +10,14 @@ from collections import abc as cabc
 
 import torch
 from torch import _ops
-from torch import _subclasses as tsc
 from torch.utils import _python_dispatch as pyd
 
 from aioway.ctx import enabled_fake_mode, fake_mode
-from aioway.fn.patches import find_patch
 from aioway.schemas.attrs import attr
 
-from .fn import Fn, PatchTorchFn, TorchFn
-from .torch import is_aten_op, is_prim_op
+from ..fn import Fn, PatchTorchFn, TorchFn
+from ..torch import is_aten_op, is_prim_op
+from .patches import find_patch
 
 __all__ = [
     "print_torch_dispatch",
