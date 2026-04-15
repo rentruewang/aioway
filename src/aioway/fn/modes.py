@@ -167,18 +167,23 @@ class FnList:
     def pop(self):
         return self.data.pop()
 
-    def parameters(self):
-        def all_params():
+    def tensors(self):
+        def params():
             for fn in self.data:
-                yield from fn.parameters()
+                yield from fn.tensors()
 
-        yield from set(all_params())
+        yield from set(params())
+
+    def parameters(self):
+        for tensor in self.tensors():
+            if tensor.requires_grad:
+                yield tensor
 
     def numel(self) -> int:
-        return sum(param.numel() for param in self.parameters())
+        return sum(param.numel() for param in self.tensors())
 
     def memory(self) -> int:
-        return sum(attr(param).memory() for param in self.parameters())
+        return sum(attr(param).memory() for param in self.tensors())
 
 
 @dcls.dataclass

@@ -141,12 +141,12 @@ class TorchFn[**P, T](Fn[P, T]):
     def types(self):
         return self._types
 
-    def parameters(self):
-        def raw_params():
+    def tensors(self):
+        def all_args():
             yield from self.args
             yield from self.kwargs.values()
 
-        for arg in raw_params():
+        for arg in all_args():
             if isinstance(arg, torch.Tensor):
                 yield arg
 
