@@ -4,6 +4,7 @@
 
 import contextlib as ctxl
 import dataclasses as dcls
+import functools
 import logging
 import typing
 from collections import abc as cabc
@@ -15,21 +16,23 @@ from torch.utils import _python_dispatch as pyd
 from aioway.ctx import enabled_fake_mode, fake_mode
 from aioway.schemas.attrs import attr
 
-from ..fn import Fn, TorchFn
+from ..fn import Fn, Thunk, TorchThunk
 from ..torch import is_aten_op, is_prim_op
-from .previews import PreviewFn, find_preview
+from .previews import Preview, find_preview
 
 __all__ = [
     "print_torch_dispatch",
     "log_torch_dispatch",
     "track_dispatch_fn",
     "fake_dispatch_fn",
+    "FnList",
+    "TrackDispatchMode",
 ]
 
 LOGGER = logging.getLogger(__name__)
 
 
-_ThunkType = cabc.Callable[..., TorchFn]
+_CreatePreview = cabc.Callable[..., Preview]
 _TorchRouterMode = typing.Literal["dispatch", "function"]
 
 
@@ -50,12 +53,8 @@ class TorchRouter(typing.Protocol):
 
 class TorchRouterFactory(typing.Protocol):
     def __call__(
-        self,
-        func: _ops.OpOverload,
-        types: tuple[type[torch.Tensor], ...],
-        args: tuple[typing.Any, ...],
-        kwargs: dict[str, typing.Any],
-    ) -> _ThunkType: ...
+        self, func: _ops.OpOverload, types: tuple[type[torch.Tensor], ...]
+    ) -> _CreatePreview: ...
 
 
 class _PrintDispatch(pyd.TorchDispatchMode):
@@ -67,7 +66,7 @@ class _PrintDispatch(pyd.TorchDispatchMode):
         kwargs: dict[str, typing.Any] | None = None,
     ):
         kwargs = kwargs or {}
-        invoke = Fn(func, *args, **kwargs)
+        invoke = Thunk(func, *args, **kwargs)
         result = invoke()
         print(f"{invoke!s} -> {result!r}")
         return result
@@ -99,7 +98,7 @@ class _LogDispatch(pyd.TorchDispatchMode):
         kwargs: dict[str, typing.Any] | None = None,
     ):
         kwargs = kwargs or {}
-        invoke = Fn(func, *args, **kwargs)
+        invoke = Thunk(func, *args, **kwargs)
         result = invoke()
         self.logger.log(self.level, f"%s -> %s", invoke, result)
         return result
@@ -116,48 +115,55 @@ Args:
 
 
 def only_route_aten_in_fake(
-    func: _ops.OpOverload,
-    types: tuple[type[torch.Tensor], ...],
-    args: tuple[typing.Any, ...],
-    kwargs: dict[str, typing.Any],
-) -> _ThunkType:
+    func: _ops.OpOverload, types: tuple[type[torch.Tensor], ...]
+) -> _CreatePreview:
     if not enabled_fake_mode():
         raise RuntimeError("Only running in fake mode!")
 
     if is_aten_op(func):
-        return patch_aten_ops(func, types, args, kwargs)
+        return aten_ops_preview(func, types)
 
     assert is_prim_op(func), func
     return NotImplemented
 
 
-def no_route(*args, **kwargs) -> _ThunkType:
+def no_route(*args, **kwargs) -> _CreatePreview:
     return NotImplemented
 
 
 @dcls.dataclass(frozen=True)
 class FnList:
-    data: list[TorchFn] = dcls.field(default_factory=list)
+    data: list[Fn] = dcls.field(default_factory=list)
 
     def __len__(self) -> int:
         return len(self.data)
 
-    def __getitem__(self, idx: int) -> TorchFn:
+    def __getitem__(self, idx: int) -> Fn:
         return self.data[idx]
 
     def __iter__(self):
         yield from self.data
 
-    def append(self, item: TorchFn, /):
+    def append(self, item: Fn, /):
         self.data.append(item)
 
     def pop(self):
         return self.data.pop()
 
     def tensors(self):
+
+        def find_tensors(fn: Fn):
+            def all_args():
+                yield from fn.thunk.args
+                yield from fn.thunk.kwargs.values()
+
+            for arg in all_args():
+                if isinstance(arg, torch.Tensor):
+                    yield arg
+
         def params():
             for fn in self.data:
-                yield from fn.tensors()
+                yield from find_tensors(fn)
 
         yield from set(params())
 
@@ -176,7 +182,7 @@ class FnList:
 @dcls.dataclass
 class TrackDispatchMode(pyd.TorchDispatchMode):
     router: TorchRouterFactory
-    calls: FnList = dcls.field(default_factory=FnList)
+    history: FnList = dcls.field(default_factory=FnList)
 
     def __torch_dispatch__(
         self,
@@ -187,36 +193,30 @@ class TrackDispatchMode(pyd.TorchDispatchMode):
     ):
         kwargs = kwargs or {}
 
-        thunk: TorchFn
-        # Create a `TorchDispatchThunk` and route implemented methods.
-        if (thunk_init := self.router(func, types, args, kwargs)) is NotImplemented:
-            thunk = TorchFn(func, types, *args, **kwargs)
-        else:
-            thunk = thunk_init(*args, **kwargs)
+        fn: Fn
 
-        self.calls.append(thunk)
+        # Create a `_ThunkType` and route implemented methods.
+        if (fn_init := self.router(func, types)) is NotImplemented:
+            fn = TorchThunk(func, types, *args, **kwargs)
+        else:
+            fn = fn_init(*args, **kwargs)
+
+        self.history.append(fn)
 
         try:
             # Ensure that only 1 dispatch is running at any given moment.
-            with _ensure_single_dispatch(thunk):
-                return thunk()
-        except RuntimeError as re:
-            fn = Fn(func, *args, **kwargs)
-            raise ValueError(f"Function call '{fn}' failed.") from re
+            with _ensure_single_dispatch(fn):
+                return fn()
+        except RuntimeError as err:
+            fn = Thunk(func, *args, **kwargs)
+            raise ValueError(f"Function call '{fn}' failed.") from err
 
 
-def patch_aten_ops(
-    func: _ops.OpOverload,
-    types: tuple[type[torch.Tensor], ...],
-    args: tuple[typing.Any, ...],
-    kwargs: dict[str, typing.Any],
-) -> cabc.Callable[..., TorchFn]:
+def aten_ops_preview(
+    func: _ops.OpOverload, types: tuple[type[torch.Tensor], ...]
+) -> _CreatePreview:
     assert is_aten_op(func), func
-
-    if (preview := find_preview(func, *args, **kwargs)) is NotImplemented:
-        return NotImplemented
-
-    return lambda *args, **kwargs: PreviewFn(func, preview, types, *args, **kwargs)
+    return functools.partial(find_preview, func)
 
 
 @ctxl.contextmanager
@@ -226,7 +226,7 @@ def track_dispatch_fn():
     """
 
     with TrackDispatchMode(router=no_route) as sdm:
-        yield sdm.calls
+        yield sdm.history
 
 
 @ctxl.contextmanager
@@ -237,7 +237,7 @@ def fake_dispatch_fn():
     """
 
     with fake_mode(), TrackDispatchMode(router=only_route_aten_in_fake) as sdm:
-        yield sdm.calls
+        yield sdm.history
 
 
 @ctxl.contextmanager

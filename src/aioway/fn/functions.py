@@ -9,17 +9,17 @@ import typing
 import torch
 from torch import _ops, overrides
 
-from .fn import Fn
+from .fn import Thunk
 
 __all__ = ["track_function_fn"]
 
-_active_function: Fn | None = None
+_active_function: Thunk | None = None
 "The current function."
 
 
 @dcls.dataclass(frozen=True)
 class TrackFunctionMode(overrides.TorchFunctionMode):
-    functions: list[Fn] = dcls.field(default_factory=list)
+    functions: list[Thunk] = dcls.field(default_factory=list)
 
     @typing.override
     def __torch_function__(
@@ -30,7 +30,7 @@ class TrackFunctionMode(overrides.TorchFunctionMode):
         kwargs: dict[str, typing.Any] | None = None,
     ) -> typing.Any:
         kwargs = kwargs or {}
-        fn = Fn(func, *args, **kwargs)
+        fn = Thunk(func, *args, **kwargs)
         self.functions.append(fn)
 
         with _ensure_single_function(fn):
@@ -44,7 +44,7 @@ def track_function_fn():
 
 
 @ctxl.contextmanager
-def _ensure_single_function(fn: Fn):
+def _ensure_single_function(fn: Thunk):
     "Ensure that only 1 function is running at any given moment."
 
     global _active_function
