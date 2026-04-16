@@ -12,7 +12,7 @@ from torch import _ops
 
 from aioway._common.dcls import dcls_no_repr
 
-from ..fn import Fn, Thunk, pretty_function
+from ..fn import Fn, Thunk, pretty_function_call
 from ..guards import TensorFilter, all_tensors
 
 __all__ = ["find_preview", "all_previews", "TorchFn", "Preview", "TorchThunk"]
@@ -95,7 +95,7 @@ class Preview(TorchFn, abc.ABC):
 
     @typing.override
     def __repr__(self) -> str:
-        return pretty_function(f"preview::{self.name()}", **dcls.asdict(self))
+        return pretty_function_call(f"preview::{self.name()}", **dcls.asdict(self))
 
     @abc.abstractmethod
     def ok(self) -> bool:

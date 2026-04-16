@@ -6,7 +6,7 @@ import functools
 import typing
 from collections import abc as cabc
 
-__all__ = ["Fn", "Thunk", "pretty_function"]
+__all__ = ["Fn", "Thunk", "pretty_function_call"]
 
 _PENDING = object()
 "The object signifying a status of pending. This is a `object()` s.t. `FnCache` can store `None`."
@@ -103,7 +103,7 @@ class Thunk(Fn):
 
     @functools.cached_property
     def __string(self) -> str:
-        pretty = pretty_function(
+        pretty = pretty_function_call(
             self.func.__qualname__,
             *self.args,
             **self.kwargs,
@@ -121,7 +121,7 @@ class Thunk(Fn):
         return self.__result is not _PENDING
 
 
-def pretty_function(func: str, *args: typing.Any, **kwargs: typing.Any) -> str:
+def pretty_function_call(func: str, *args: typing.Any, **kwargs: typing.Any) -> str:
     args_builder: list[str] = []
 
     # Add positional arguments.
