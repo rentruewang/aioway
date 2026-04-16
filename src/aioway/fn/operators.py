@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"This module contains utilities that uses the `__torch_dispatch__` mode."
+"Torch operators, corresponding to `__torch_dispatch__` mode."
 
 import contextlib as ctxl
 import dataclasses as dcls
@@ -16,9 +16,17 @@ from torch.utils import _python_dispatch as pyd
 from aioway.ctx import enabled_fake_mode, fake_mode
 from aioway.schemas.attrs import attr
 
-from ..fn import Fn, Thunk, TorchThunk
-from ..torch import is_aten_op, is_prim_op
-from .previews import Preview, find_preview
+from .fn import Fn, Thunk
+from .previews import (
+    Preview,
+    TensorFilter,
+    TorchFn,
+    TorchThunk,
+    all_tensors,
+    find_preview,
+    is_leaf_has_grad,
+)
+from .torch import is_aten_op, is_prim_op
 
 __all__ = [
     "print_torch_dispatch",
@@ -133,7 +141,7 @@ def no_route(*args, **kwargs) -> _CreatePreview:
 
 @dcls.dataclass(frozen=True)
 class FnList:
-    data: list[Fn] = dcls.field(default_factory=list)
+    data: list[TorchFn] = dcls.field(default_factory=list)
 
     def __len__(self) -> int:
         return len(self.data)
@@ -144,39 +152,29 @@ class FnList:
     def __iter__(self):
         yield from self.data
 
-    def append(self, item: Fn, /):
+    def append(self, item: TorchFn, /):
         self.data.append(item)
 
     def pop(self):
         return self.data.pop()
 
-    def tensors(self):
-
-        def find_tensors(fn: Fn):
-            def all_args():
-                yield from fn.thunk.args
-                yield from fn.thunk.kwargs.values()
-
-            for arg in all_args():
-                if isinstance(arg, torch.Tensor):
-                    yield arg
-
-        def params():
+    def parameters(self, select: TensorFilter = is_leaf_has_grad, unique: bool = True):
+        def data_params():
             for fn in self.data:
-                yield from find_tensors(fn)
+                yield from fn.parameters(select)
 
-        yield from set(params())
+        params = data_params()
 
-    def parameters(self):
-        for tensor in self.tensors():
-            if tensor.requires_grad and tensor.is_leaf:
-                yield tensor
+        if unique:
+            params = set(data_params())
+
+        yield from params
 
     def numel(self) -> int:
-        return sum(param.numel() for param in self.tensors())
+        return sum(param.numel() for param in self.parameters(all_tensors))
 
     def memory(self) -> int:
-        return sum(attr(param).memory() for param in self.tensors())
+        return sum(attr(param).memory() for param in self.parameters(all_tensors))
 
 
 @dcls.dataclass
@@ -193,7 +191,7 @@ class TrackDispatchMode(pyd.TorchDispatchMode):
     ):
         kwargs = kwargs or {}
 
-        fn: Fn
+        fn: TorchFn
 
         # Create a `_ThunkType` and route implemented methods.
         if (fn_init := self.router(func, types)) is NotImplemented:
@@ -208,7 +206,7 @@ class TrackDispatchMode(pyd.TorchDispatchMode):
             with _ensure_single_dispatch(fn):
                 return fn()
         except RuntimeError as err:
-            fn = Thunk(func, *args, **kwargs)
+            fn = TorchThunk(func, types, *args, **kwargs)
             raise ValueError(f"Function call '{fn}' failed.") from err
 
 

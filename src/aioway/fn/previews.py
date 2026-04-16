@@ -10,13 +10,82 @@ from torch import _ops, ops
 
 from ..fn import Fn, Thunk
 
-__all__ = ["register_preview"]
+__all__ = ["register_preview", "TorchFn", "Preview", "TorchThunk", "is_leaf_has_grad"]
 
 PREVIEW_CANDIDATES: dict[_ops.OpOverload, list[cabc.Callable[..., Preview]]] = {}
 
 
+class TensorFilter(typing.Protocol):
+    def __call__(self, tensor: torch.Tensor, /) -> bool: ...
+
+
+def is_leaf_has_grad(tensor: torch.Tensor) -> bool:
+    return tensor.is_leaf and tensor.requires_grad
+
+
+def all_tensors(_: torch.Tensor):
+    return True
+
+
+class TorchFn(Fn, abc.ABC):
+    @abc.abstractmethod
+    @typing.override
+    def __call__(self) -> torch.Tensor:
+        raise NotImplementedError
+
+    def parameters(self, select: TensorFilter = all_tensors, /):
+        for tensor in self.tensors():
+            if select(tensor):
+                yield tensor
+
+    @abc.abstractmethod
+    def tensors(self) -> cabc.Iterator[torch.Tensor]:
+        raise NotImplementedError
+
+
+class TorchThunk(Thunk, TorchFn):
+    def __init__(
+        self,
+        func: cabc.Callable[..., typing.Any],
+        types: tuple[type, ...],
+        /,
+        *args: typing.Any,
+        **kwargs: typing.Any,
+    ) -> None:
+        super().__init__(func, *args, **kwargs)
+        self._types = types
+
+    @typing.override
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, TorchThunk):
+            return super().__eq__(other) and self.types == other.types
+
+        return NotImplemented
+
+    @property
+    @typing.override
+    @typing.no_type_check
+    def func(self) -> _ops.OpOverload:
+        return self._func
+
+    @property
+    def types(self):
+        return self._types
+
+    @typing.override
+    def tensors(self):
+
+        def all_args():
+            yield from self.args
+            yield from self.kwargs.values()
+
+        for arg in all_args():
+            if isinstance(arg, torch.Tensor):
+                yield arg
+
+
 @dcls.dataclass(frozen=True)
-class Preview(Fn, abc.ABC):
+class Preview(TorchFn, abc.ABC):
     """
     `Preview` is a preview for operations,
     allowing for multiple implementations for the same torch IR.
@@ -52,7 +121,6 @@ class Preview(Fn, abc.ABC):
         raise NotImplementedError
 
     @property
-    @typing.override
     def thunk(self) -> Thunk:
         return Thunk(self.OP, **dcls.asdict(self))
 
@@ -101,12 +169,17 @@ class BooleanMasking(Preview):
         return len(self.indices) == 1 and self.indices[0].dtype == torch.bool
 
     @typing.override
-    def __call__(this) -> torch.Tensor:
-        return this.self
+    def __call__(self) -> torch.Tensor:
+        return self.self
 
     @typing.override
     def cost(self) -> int:
         return self().numel()
+
+    @typing.override
+    def tensors(self) -> cabc.Iterator[torch.Tensor]:
+        yield self.self
+        yield from self.indices
 
 
 @dcls.dataclass(frozen=True)
@@ -120,9 +193,14 @@ class IntSelect(Preview):
         return len(self.indices) == 1 and self.indices[0].dtype == torch.int
 
     @typing.override
-    def __call__(this):
-        return this.self[this.indices]
+    def __call__(self):
+        return self.self[self.indices]
 
     @typing.override
     def cost(self) -> int:
         return self().numel()
+
+    @typing.override
+    def tensors(self) -> cabc.Iterator[torch.Tensor]:
+        yield self.self
+        yield from self.indices

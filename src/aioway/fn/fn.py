@@ -1,28 +1,17 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import abc
 import functools
 import typing
 from collections import abc as cabc
 
-from torch import _ops
-
-__all__ = ["Fn", "Thunk", "TorchThunk"]
+__all__ = ["Fn", "Thunk"]
 
 _PENDING = object()
 "The object signifying a status of pending. This is a `object()` s.t. `FnCache` can store `None`."
 
 
 class Fn(typing.Protocol):
-    def __repr__(self) -> str:
-        return repr(self.thunk)
-
     def __call__(self):
-        raise NotImplementedError
-
-    @property
-    @abc.abstractmethod
-    def thunk(self) -> Thunk:
         raise NotImplementedError
 
 
@@ -102,7 +91,6 @@ class Thunk(Fn):
         return self.__string
 
     @property
-    @typing.override
     def thunk(self) -> Thunk:
         return self
 
@@ -132,36 +120,6 @@ class Thunk(Fn):
         "Returns if the cache is previously called."
 
         return self.__result is not _PENDING
-
-
-class TorchThunk(Thunk):
-    def __init__(
-        self,
-        func: cabc.Callable[..., typing.Any],
-        types: tuple[type, ...],
-        /,
-        *args: typing.Any,
-        **kwargs: typing.Any,
-    ) -> None:
-        super().__init__(func, *args, **kwargs)
-        self._types = types
-
-    @typing.override
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, TorchThunk):
-            return super().__eq__(other) and self.types == other.types
-
-        return NotImplemented
-
-    @property
-    @typing.override
-    @typing.no_type_check
-    def func(self) -> _ops.OpOverload:
-        return self._func
-
-    @property
-    def types(self):
-        return self._types
 
 
 def _format_function_as_str(

@@ -1,7 +1,6 @@
-# `TensorFn`s and `TensorDictFn`s.
+# `Fn`s
 
-`TensorFn` are `Fn`s (delayed computation)'s `Tensor` version.
+`Fn`s are an non-invasive way of interactive with `torch` operations and functions,
+leveraging `__torch_function__` and `__torch_dispatch__` contexts.
 
-In addition to `do()` and `deps()` functions that `Fn`s support,
-`TensorFn` should additionally define the `preview()` function
-that generates a quick preview of the current `TensorFn`.
+This means that `Fn`s would work with any valid `torch` operations and can be used on top of existing code.
