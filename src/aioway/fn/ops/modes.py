@@ -1,7 +1,5 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"This module contains utilities that uses the `__torch_dispatch__` mode."
-
 import contextlib as ctxl
 import dataclasses as dcls
 import functools
@@ -13,16 +11,18 @@ import torch
 from torch import _ops
 from torch.utils import _python_dispatch as pyd
 
+from aioway._common.tracking.logging import enable_rich_log
 from aioway.ctx import enabled_fake_mode, fake_mode
 from aioway.schemas.attrs import attr
 
-from ..fn import Fn, Thunk, TorchThunk
-from ..torch import is_aten_op, is_prim_op
-from .previews import Preview, find_preview
+from ..fn import Fn, Thunk
+from ..guards import TensorFilter, all_tensors, is_aten_op, is_leaf_has_grad, is_prim_op
+from .fn import Preview, TorchFn, TorchThunk, find_preview
 
 __all__ = [
     "print_torch_dispatch",
     "log_torch_dispatch",
+    "log_and_enable_rich",
     "track_dispatch_fn",
     "fake_dispatch_fn",
     "FnList",
@@ -72,10 +72,10 @@ class _PrintDispatch(pyd.TorchDispatchMode):
         return result
 
 
-@ctxl.contextmanager
-def print_torch_dispatch():
-    with _PrintDispatch():
-        yield
+print_torch_dispatch = _PrintDispatch
+"""
+Print the dispatcher.
+"""
 
 
 @dcls.dataclass
@@ -114,6 +114,12 @@ Args:
 """
 
 
+@ctxl.contextmanager
+def log_and_enable_rich(level: int, /):
+    with enable_rich_log(level) as logger, log_torch_dispatch(level):
+        yield logger
+
+
 def only_route_aten_in_fake(
     func: _ops.OpOverload, types: tuple[type[torch.Tensor], ...]
 ) -> _CreatePreview:
@@ -133,50 +139,40 @@ def no_route(*args, **kwargs) -> _CreatePreview:
 
 @dcls.dataclass(frozen=True)
 class FnList:
-    data: list[Fn] = dcls.field(default_factory=list)
+    history: list[TorchFn] = dcls.field(default_factory=list)
 
     def __len__(self) -> int:
-        return len(self.data)
+        return len(self.history)
 
     def __getitem__(self, idx: int) -> Fn:
-        return self.data[idx]
+        return self.history[idx]
 
     def __iter__(self):
-        yield from self.data
+        yield from self.history
 
-    def append(self, item: Fn, /):
-        self.data.append(item)
+    def append(self, item: TorchFn, /):
+        self.history.append(item)
 
     def pop(self):
-        return self.data.pop()
+        return self.history.pop()
 
-    def tensors(self):
+    def parameters(self, select: TensorFilter = is_leaf_has_grad, unique: bool = True):
+        def data_params():
+            for fn in self.history:
+                yield from fn.parameters(select)
 
-        def find_tensors(fn: Fn):
-            def all_args():
-                yield from fn.thunk.args
-                yield from fn.thunk.kwargs.values()
+        params = data_params()
 
-            for arg in all_args():
-                if isinstance(arg, torch.Tensor):
-                    yield arg
+        if unique:
+            params = set(data_params())
 
-        def params():
-            for fn in self.data:
-                yield from find_tensors(fn)
-
-        yield from set(params())
-
-    def parameters(self):
-        for tensor in self.tensors():
-            if tensor.requires_grad and tensor.is_leaf:
-                yield tensor
+        yield from params
 
     def numel(self) -> int:
-        return sum(param.numel() for param in self.tensors())
+        return sum(param.numel() for param in self.parameters(all_tensors))
 
     def memory(self) -> int:
-        return sum(attr(param).memory() for param in self.tensors())
+        return sum(attr(param).memory() for param in self.parameters(all_tensors))
 
 
 @dcls.dataclass
@@ -193,14 +189,20 @@ class TrackDispatchMode(pyd.TorchDispatchMode):
     ):
         kwargs = kwargs or {}
 
-        fn: Fn
-
         # Create a `_ThunkType` and route implemented methods.
-        if (fn_init := self.router(func, types)) is NotImplemented:
-            fn = TorchThunk(func, types, *args, **kwargs)
-        else:
-            fn = fn_init(*args, **kwargs)
+        fn_init = self.router(func, types)
+        fn: TorchFn
 
+        if (
+            False
+            # Not ATen operator.
+            or fn_init is NotImplemented
+            # Fn is not handled.
+            or (fn := fn_init(*args, **kwargs)) is NotImplemented
+        ):
+            fn = TorchThunk(func, types, *args, **kwargs)
+
+        assert isinstance(fn, TorchFn), fn
         self.history.append(fn)
 
         try:
@@ -208,7 +210,7 @@ class TrackDispatchMode(pyd.TorchDispatchMode):
             with _ensure_single_dispatch(fn):
                 return fn()
         except RuntimeError as err:
-            fn = Thunk(func, *args, **kwargs)
+            fn = TorchThunk(func, types, *args, **kwargs)
             raise ValueError(f"Function call '{fn}' failed.") from err
 
 

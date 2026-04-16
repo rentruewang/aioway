@@ -1,28 +1,19 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import abc
+"Metadata for torch operators / functions."
+
 import functools
 import typing
 from collections import abc as cabc
 
-from torch import _ops
-
-__all__ = ["Fn", "Thunk", "TorchThunk"]
+__all__ = ["Fn", "Thunk", "pretty_function_call"]
 
 _PENDING = object()
 "The object signifying a status of pending. This is a `object()` s.t. `FnCache` can store `None`."
 
 
 class Fn(typing.Protocol):
-    def __repr__(self) -> str:
-        return repr(self.thunk)
-
     def __call__(self):
-        raise NotImplementedError
-
-    @property
-    @abc.abstractmethod
-    def thunk(self) -> Thunk:
         raise NotImplementedError
 
 
@@ -82,16 +73,9 @@ class Thunk(Fn):
         """
 
         if self.__result is _PENDING:
-            self.__result = self.do()
+            self.__result = self.func(*self.args, **self.kwargs)
 
         return self.__result
-
-    def do(self) -> typing.Any:
-        """
-        Do the computation for `Fn`. Can be overwritten in subclass.
-        """
-
-        return self.func(*self.args, **self.kwargs)
 
     @typing.override
     def __repr__(self) -> str:
@@ -102,7 +86,6 @@ class Thunk(Fn):
         return self.__string
 
     @property
-    @typing.override
     def thunk(self) -> Thunk:
         return self
 
@@ -120,7 +103,11 @@ class Thunk(Fn):
 
     @functools.cached_property
     def __string(self) -> str:
-        pretty = _format_function_as_str(self.func, *self.args, **self.kwargs)
+        pretty = pretty_function_call(
+            self.func.__qualname__,
+            *self.args,
+            **self.kwargs,
+        )
 
         if self.done:
             pretty = f"{pretty} -> {self.__result!r}"
@@ -134,39 +121,7 @@ class Thunk(Fn):
         return self.__result is not _PENDING
 
 
-class TorchThunk(Thunk):
-    def __init__(
-        self,
-        func: cabc.Callable[..., typing.Any],
-        types: tuple[type, ...],
-        /,
-        *args: typing.Any,
-        **kwargs: typing.Any,
-    ) -> None:
-        super().__init__(func, *args, **kwargs)
-        self._types = types
-
-    @typing.override
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, TorchThunk):
-            return super().__eq__(other) and self.types == other.types
-
-        return NotImplemented
-
-    @property
-    @typing.override
-    @typing.no_type_check
-    def func(self) -> _ops.OpOverload:
-        return self._func
-
-    @property
-    def types(self):
-        return self._types
-
-
-def _format_function_as_str(
-    func: cabc.Callable[..., typing.Any], *args: typing.Any, **kwargs: typing.Any
-) -> str:
+def pretty_function_call(func: str, *args: typing.Any, **kwargs: typing.Any) -> str:
     args_builder: list[str] = []
 
     # Add positional arguments.
@@ -178,5 +133,4 @@ def _format_function_as_str(
         args_builder.extend(f"{k!s}={v!r}" for k, v in kwargs.items())
 
     args_str = ", ".join(args_builder)
-    func_str = func.__qualname__
-    return f"{func_str}({args_str})"
+    return f"{func}({args_str})"

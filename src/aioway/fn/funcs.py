@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"This module contains utilities that uses the `__torch_function__` mode."
+"Torch functions, corresponding to `__torch_function__` mode."
 
 import contextlib as ctxl
 import dataclasses as dcls
