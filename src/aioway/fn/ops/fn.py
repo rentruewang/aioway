@@ -8,23 +8,13 @@ from collections import abc as cabc
 import torch
 from torch import _ops, ops
 
-from .fn import Fn, Thunk
+from ..fn import Fn, Thunk
+from ..guards import TensorFilter, all_tensors
 
-__all__ = ["register_preview", "TorchFn", "Preview", "TorchThunk", "is_leaf_has_grad"]
+__all__ = ["register_preview", "find_preview", "TorchFn", "Preview", "TorchThunk"]
+
 
 PREVIEW_CANDIDATES: dict[_ops.OpOverload, list[cabc.Callable[..., Preview]]] = {}
-
-
-class TensorFilter(typing.Protocol):
-    def __call__(self, tensor: torch.Tensor, /) -> bool: ...
-
-
-def is_leaf_has_grad(tensor: torch.Tensor) -> bool:
-    return tensor.is_leaf and tensor.requires_grad
-
-
-def all_tensors(_: torch.Tensor):
-    return True
 
 
 class TorchFn(Fn, abc.ABC):
@@ -52,13 +42,13 @@ class TorchThunk(Thunk, TorchFn):
         *args: typing.Any,
         **kwargs: typing.Any,
     ) -> None:
-        super().__init__(func, *args, **kwargs)
+        Thunk.__init__(self, func, *args, **kwargs)
         self._types = types
 
     @typing.override
     def __eq__(self, other: object) -> bool:
         if isinstance(other, TorchThunk):
-            return super().__eq__(other) and self.types == other.types
+            return Thunk.__eq__(self, other) and self.types == other.types
 
         return NotImplemented
 

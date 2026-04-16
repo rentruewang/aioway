@@ -1,7 +1,5 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"Torch operators, corresponding to `__torch_dispatch__` mode."
-
 import contextlib as ctxl
 import dataclasses as dcls
 import functools
@@ -16,17 +14,9 @@ from torch.utils import _python_dispatch as pyd
 from aioway.ctx import enabled_fake_mode, fake_mode
 from aioway.schemas.attrs import attr
 
-from .fn import Fn, Thunk
-from .previews import (
-    Preview,
-    TensorFilter,
-    TorchFn,
-    TorchThunk,
-    all_tensors,
-    find_preview,
-    is_leaf_has_grad,
-)
-from .torch import is_aten_op, is_prim_op
+from ..fn import Fn, Thunk
+from ..guards import TensorFilter, all_tensors, is_aten_op, is_leaf_has_grad, is_prim_op
+from .fn import Preview, TorchFn, TorchThunk, find_preview
 
 __all__ = [
     "print_torch_dispatch",

@@ -1,5 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+"Metadata for torch operators / functions."
+
 import functools
 import typing
 from collections import abc as cabc
