@@ -142,7 +142,7 @@ class Preview(TorchFn, abc.ABC):
 
         # Mimick defaultdict behavior.
         # Using dict over defaultdict s.t. we don't need special handling in `repr`.
-        if cls.IR not in _PREVIEW_CANDIDATES:
+        if op not in _PREVIEW_CANDIDATES:
             _PREVIEW_CANDIDATES[op] = []
 
         _PREVIEW_CANDIDATES[op].append(cls)
