@@ -140,6 +140,8 @@ class Preview(TorchFn, abc.ABC):
         except AttributeError:
             return
 
+        # Mimick defaultdict behavior.
+        # Using dict over defaultdict s.t. we don't need special handling in `repr`.
         if cls.IR not in _PREVIEW_CANDIDATES:
             _PREVIEW_CANDIDATES[op] = []
 
