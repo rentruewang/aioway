@@ -12,12 +12,31 @@ from .fn import Preview
 
 
 @dcls.dataclass(frozen=True)
-class UFunc(Preview, abc.ABC):
-    pass
+class _BinaryTensorUFunc(Preview, abc.ABC):
+    BINARY: cabc.Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
+
+    self: torch.Tensor
+    other: torch.Tensor
+    alpha: float = 1
+
+    @typing.override
+    def __call__(self) -> torch.Tensor:
+        return self.BINARY(self.self, self.other * self.alpha)
+
+    @typing.final
+    @typing.override
+    def tensors(self) -> cabc.Iterator[torch.Tensor]:
+        yield self.self
+        yield self.other
+
+    @typing.final
+    @typing.override
+    def cost(self) -> int:
+        return torch.broadcast_shapes(self.self.shape, self.other.shape).numel()
 
 
 @dcls.dataclass(frozen=True)
-class GetItem(Preview, abc.ABC):
+class _GetItem(Preview, abc.ABC):
     IR = ops.aten.index.Tensor
 
     self: torch.Tensor
@@ -30,7 +49,7 @@ class GetItem(Preview, abc.ABC):
 
 
 @dcls.dataclass(frozen=True)
-class BooleanMasking(GetItem):
+class BooleanMasking(_GetItem):
     def ok(self) -> bool:
         return len(self.indices) == 1 and self.indices[0].dtype == torch.bool
 
@@ -44,7 +63,7 @@ class BooleanMasking(GetItem):
 
 
 @dcls.dataclass(frozen=True)
-class IntSelect(GetItem):
+class IntSelect(_GetItem):
     def ok(self):
         return len(self.indices) == 1 and self.indices[0].dtype == torch.int
 

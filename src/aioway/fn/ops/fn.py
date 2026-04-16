@@ -12,10 +12,10 @@ from torch import _ops
 from ..fn import Fn, Thunk
 from ..guards import TensorFilter, all_tensors
 
-__all__ = ["find_preview", "TorchFn", "Preview", "TorchThunk"]
+__all__ = ["find_preview", "all_previews", "TorchFn", "Preview", "TorchThunk"]
 
 
-PREVIEW_CANDIDATES: dict[_ops.OpOverload, list[cabc.Callable[..., Preview]]] = {}
+_PREVIEW_CANDIDATES: dict[_ops.OpOverload, list[cabc.Callable[..., Preview]]] = {}
 
 
 class TorchFn(Fn, abc.ABC):
@@ -128,10 +128,10 @@ class Preview(TorchFn, abc.ABC):
         if inspect.isabstract(cls):
             return
 
-        if cls.IR not in PREVIEW_CANDIDATES:
-            PREVIEW_CANDIDATES[cls.IR] = []
+        if cls.IR not in _PREVIEW_CANDIDATES:
+            _PREVIEW_CANDIDATES[cls.IR] = []
 
-        PREVIEW_CANDIDATES[cls.IR].append(cls)
+        _PREVIEW_CANDIDATES[cls.IR].append(cls)
 
 
 def find_preview(
@@ -141,13 +141,17 @@ def find_preview(
     Try finding a preview with the given `op` and its arguments.
     """
 
-    if op not in PREVIEW_CANDIDATES:
+    if op not in _PREVIEW_CANDIDATES:
         return NotImplemented
 
-    for candidate in PREVIEW_CANDIDATES[op]:
+    for candidate in _PREVIEW_CANDIDATES[op]:
         if not (preview := candidate(*args, **kwargs)).ok():
             continue
 
         return preview
 
     return NotImplemented
+
+
+def all_previews():
+    return _PREVIEW_CANDIDATES
