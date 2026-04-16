@@ -3,13 +3,11 @@
 import abc
 import dataclasses as dcls
 import inspect
-from pickle import FALSE
 import typing
 from collections import abc as cabc
 
 import torch
 from torch import _ops
-from torch._dynamo import exc
 
 from ..fn import Fn, Thunk
 from ..guards import TensorFilter, all_tensors

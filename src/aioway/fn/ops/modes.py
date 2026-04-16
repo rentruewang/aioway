@@ -183,6 +183,7 @@ class TrackDispatchMode(pyd.TorchDispatchMode):
 
         # Create a `_ThunkType` and route implemented methods.
         fn_init = self.router(func, types)
+        fn: TorchFn
 
         if (
             False
