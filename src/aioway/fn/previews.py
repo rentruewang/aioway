@@ -8,7 +8,7 @@ from collections import abc as cabc
 import torch
 from torch import _ops, ops
 
-from ..fn import Fn, Thunk
+from .fn import Fn, Thunk
 
 __all__ = ["register_preview", "TorchFn", "Preview", "TorchThunk", "is_leaf_has_grad"]
 
