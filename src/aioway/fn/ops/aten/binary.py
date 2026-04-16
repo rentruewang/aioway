@@ -82,6 +82,7 @@ class _BinaryTensorUFunc(Preview, abc.ABC):
     def _shape(self) -> torch.Size:
         return torch.broadcast_shapes(self.self.shape, self.other.shape)
 
+
 @dcls_no_repr
 class _BinaryScalarUFunc(Preview, abc.ABC):
     BINARY: typing.ClassVar[cabc.Callable[..., typing.Any]]

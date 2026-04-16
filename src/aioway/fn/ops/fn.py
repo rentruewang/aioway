@@ -3,10 +3,11 @@
 import abc
 import dataclasses as dcls
 import inspect
+import re
 import typing
 from collections import abc as cabc
 
-import torch, re
+import torch
 from torch import _ops
 
 from aioway._common.dcls import dcls_no_repr
