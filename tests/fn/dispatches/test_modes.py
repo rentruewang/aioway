@@ -5,9 +5,9 @@ import torch
 
 from aioway.ctx import fake_mode
 from aioway.fn import (
-    fake_dispatch_fn_mode,
-    track_dispatch_fn_mode,
-    track_function_fn_mode,
+    fake_dispatch_fn,
+    track_dispatch_fn,
+    track_function_fn,
 )
 
 
@@ -34,7 +34,7 @@ def fake_b():
 
 
 def test_einsum(a: torch.Tensor, b: torch.Tensor):
-    with track_dispatch_fn_mode() as calls, track_function_fn_mode() as funcs:
+    with track_dispatch_fn() as calls, track_function_fn() as funcs:
         result = torch.einsum("i,j->", a, b)
 
     assert result.ndim == 0
@@ -53,7 +53,7 @@ def test_boolean_masking_should_fail(fake_a: torch.Tensor):
 def test_boolean_masking_patched(fake_a: torch.Tensor):
     idx = torch.randn_like(fake_a) > 0
 
-    with fake_dispatch_fn_mode():
+    with fake_dispatch_fn():
         res = fake_a[idx]
 
     assert res.shape == fake_a.shape

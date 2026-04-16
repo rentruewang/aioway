@@ -1,19 +1,32 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import abc
 import functools
 import typing
 from collections import abc as cabc
 
-import torch
 from torch import _ops
 
-__all__ = ["Fn", "TorchFn"]
+__all__ = ["Fn", "Thunk", "TorchThunk"]
 
 _PENDING = object()
 "The object signifying a status of pending. This is a `object()` s.t. `FnCache` can store `None`."
 
 
-class Fn[**P, T]:
+class Fn(typing.Protocol):
+    def __repr__(self) -> str:
+        return repr(self.thunk)
+
+    def __call__(self):
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def thunk(self) -> Thunk:
+        raise NotImplementedError
+
+
+class Thunk(Fn):
     """
     The thunk for any function, handles both pretty printing and storing the result.
 
@@ -35,7 +48,11 @@ class Fn[**P, T]:
     """
 
     def __init__(
-        self, func: cabc.Callable[P, T], /, *args: P.args, **kwargs: P.kwargs
+        self,
+        func: cabc.Callable[..., typing.Any],
+        /,
+        *args: typing.Any,
+        **kwargs: typing.Any,
     ) -> None:
         if not callable(func):
             raise ValueError("Cannot create thunk for function that isn't callable.")
@@ -49,7 +66,7 @@ class Fn[**P, T]:
 
     @typing.override
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, Fn):
+        if isinstance(other, Thunk):
             return (
                 True
                 and self.func == other.func
@@ -59,14 +76,7 @@ class Fn[**P, T]:
 
         return NotImplemented
 
-    def do(self) -> T:
-        """
-        Do the computation for `Fn`. Can be overwritten in subclass.
-        """
-
-        return self.func(*self.args, **self.kwargs)
-
-    def __call__(self) -> T:
+    def __call__(self) -> typing.Any:
         """
         Call and cache the function.
         """
@@ -74,7 +84,14 @@ class Fn[**P, T]:
         if self.__result is _PENDING:
             self.__result = self.do()
 
-        return typing.cast(T, self.__result)
+        return self.__result
+
+    def do(self) -> typing.Any:
+        """
+        Do the computation for `Fn`. Can be overwritten in subclass.
+        """
+
+        return self.func(*self.args, **self.kwargs)
 
     @typing.override
     def __repr__(self) -> str:
@@ -83,6 +100,11 @@ class Fn[**P, T]:
     @typing.override
     def __str__(self) -> str:
         return self.__string
+
+    @property
+    @typing.override
+    def thunk(self) -> Thunk:
+        return self
 
     @property
     def func(self):
@@ -112,21 +134,21 @@ class Fn[**P, T]:
         return self.__result is not _PENDING
 
 
-class TorchFn[**P, T](Fn[P, T]):
+class TorchThunk(Thunk):
     def __init__(
         self,
-        func: cabc.Callable[P, T],
+        func: cabc.Callable[..., typing.Any],
         types: tuple[type, ...],
         /,
-        *args: P.args,
-        **kwargs: P.kwargs,
+        *args: typing.Any,
+        **kwargs: typing.Any,
     ) -> None:
         super().__init__(func, *args, **kwargs)
         self._types = types
 
     @typing.override
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, TorchFn):
+        if isinstance(other, TorchThunk):
             return super().__eq__(other) and self.types == other.types
 
         return NotImplemented
@@ -140,52 +162,6 @@ class TorchFn[**P, T](Fn[P, T]):
     @property
     def types(self):
         return self._types
-
-    def tensors(self):
-        def all_args():
-            yield from self.args
-            yield from self.kwargs.values()
-
-        for arg in all_args():
-            if isinstance(arg, torch.Tensor):
-                yield arg
-
-
-class PatchTorchFn[**P, T](TorchFn[P, T]):
-    def __init__(
-        self,
-        func: cabc.Callable[P, T],
-        patch: cabc.Callable[P, T],
-        types: tuple[type, ...],
-        /,
-        *args: P.args,
-        **kwargs: P.kwargs,
-    ) -> None:
-        super().__init__(func, types, *args, **kwargs)
-        self._patch = patch
-
-    @typing.override
-    def do(self) -> T:
-        if (patched := self.patch(*self.args, **self.kwargs)) is not NotImplemented:
-            return patched
-
-        return self.func(*self.args, **self.kwargs)
-
-    @property
-    def patch(self):
-        return self._patch
-
-
-class TorchIrFakePatchFn[**P, T](TorchFn):
-    def __init__(
-        self,
-        func: _ops.OpOverload,
-        types: tuple[type, ...],
-        /,
-        *args: P.args,
-        **kwargs: P.kwargs,
-    ) -> None:
-        super().__init__(func, types, *args, **kwargs)
 
 
 def _format_function_as_str(
