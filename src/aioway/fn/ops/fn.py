@@ -6,10 +6,12 @@ import inspect
 import typing
 from collections import abc as cabc
 
-import torch
+import torch, re
 from torch import _ops
 
-from ..fn import Fn, Thunk
+from aioway._common.dcls import dcls_no_repr
+
+from ..fn import Fn, Thunk, pretty_function
 from ..guards import TensorFilter, all_tensors
 
 __all__ = ["find_preview", "all_previews", "TorchFn", "Preview", "TorchThunk"]
@@ -75,7 +77,7 @@ class TorchThunk(Thunk, TorchFn):
                 yield arg
 
 
-@dcls.dataclass(frozen=True)
+@dcls_no_repr
 class Preview(TorchFn, abc.ABC):
     """
     `Preview` is a preview for operations,
@@ -89,6 +91,10 @@ class Preview(TorchFn, abc.ABC):
 
     def __init_subclass__(cls) -> None:
         cls.__register_preview()
+
+    @typing.override
+    def __repr__(self) -> str:
+        return pretty_function(f"preview::{self.name()}", **dcls.asdict(self))
 
     @abc.abstractmethod
     def ok(self) -> bool:
@@ -114,10 +120,6 @@ class Preview(TorchFn, abc.ABC):
 
         raise NotImplementedError
 
-    @property
-    def thunk(self) -> Thunk:
-        return Thunk(self.IR, **dcls.asdict(self))
-
     @classmethod
     def __register_preview(cls):
         """
@@ -142,6 +144,10 @@ class Preview(TorchFn, abc.ABC):
 
         _PREVIEW_CANDIDATES[op].append(cls)
 
+    @classmethod
+    def name(cls) -> str:
+        return _camel_to_snake(cls.__name__)
+
 
 def find_preview(
     op: _ops.OpOverload, *args: typing.Any, **kwargs: typing.Any
@@ -164,3 +170,10 @@ def find_preview(
 
 def all_previews():
     return _PREVIEW_CANDIDATES
+
+
+_CAMEL_CASE_REGEX = re.compile(r"(?<!^)(?=[A-Z])")
+
+
+def _camel_to_snake(name: str) -> str:
+    return re.sub(_CAMEL_CASE_REGEX, "_", name).lower()

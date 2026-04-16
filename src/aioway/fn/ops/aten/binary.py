@@ -1,7 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import abc
-import dataclasses as dcls
 import functools
 import operator
 import typing
@@ -10,6 +9,7 @@ from collections import abc as cabc
 import torch
 from torch import ops
 
+from aioway._common.dcls import dcls_no_repr
 from aioway.fn.guards import is_float
 
 from ..fn import Preview
@@ -40,7 +40,7 @@ __all__ = [
 Scalar = int | float | bool
 
 
-@dcls.dataclass(frozen=True)
+@dcls_no_repr
 class _BinaryTensorUFunc(Preview, abc.ABC):
     BINARY: typing.ClassVar[cabc.Callable[..., typing.Any]]
 
@@ -82,8 +82,7 @@ class _BinaryTensorUFunc(Preview, abc.ABC):
     def _shape(self) -> torch.Size:
         return torch.broadcast_shapes(self.self.shape, self.other.shape)
 
-
-@dcls.dataclass(frozen=True)
+@dcls_no_repr
 class _BinaryScalarUFunc(Preview, abc.ABC):
     BINARY: typing.ClassVar[cabc.Callable[..., typing.Any]]
 

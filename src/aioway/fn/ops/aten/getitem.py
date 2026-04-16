@@ -1,17 +1,20 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import abc
-import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
 import torch
 from torch import ops
 
+from aioway._common.dcls import dcls_no_repr
+
 from ..fn import Preview
 
+__all__ = ["BooleanMasking", "IntSelect"]
 
-@dcls.dataclass(frozen=True)
+
+@dcls_no_repr
 class _GetItem(Preview, abc.ABC):
     IR = ops.aten.index.Tensor
 
@@ -24,7 +27,7 @@ class _GetItem(Preview, abc.ABC):
         yield from self.indices
 
 
-@dcls.dataclass(frozen=True)
+@dcls_no_repr
 class BooleanMasking(_GetItem):
     def ok(self) -> bool:
         return len(self.indices) == 1 and self.indices[0].dtype == torch.bool
@@ -38,7 +41,7 @@ class BooleanMasking(_GetItem):
         return self().numel()
 
 
-@dcls.dataclass(frozen=True)
+@dcls_no_repr
 class IntSelect(_GetItem):
     def ok(self):
         return len(self.indices) == 1 and self.indices[0].dtype == torch.int
