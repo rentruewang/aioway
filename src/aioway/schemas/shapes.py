@@ -101,6 +101,11 @@ class Shape(cabc.Sequence[int]):
     def __array__(self):
         return self.dims
 
+    def unsqueeze(self, dim: int):
+        dims = list(self.dims)
+        dims.insert(dim, 1)
+        return self.parse(dims)
+
     def concrete(self) -> tuple[int, ...]:
         """
         Since `Shape` may have negative dimensions, this generates a valid dimension.
@@ -133,12 +138,29 @@ class Shape(cabc.Sequence[int]):
 
         return is_list_of_int(dims) and (max(dims) >= length or min(dims) < -length)
 
-    def wrap_dims(self, dims: list[int]) -> list[int]:
+    def wrap_index(self, dims: list[int]) -> list[int]:
         # Make the dims positive.
         return [d % len(self) for d in dims]
 
     def numel(self) -> int:
         return np.prod(self.dims).item()
+
+    def broadcastable(self, other: ShapeLike):
+        try:
+            _ = self.broadcast(other)
+            return True
+        except ValueError:
+            return False
+
+    def broadcast(self, other: ShapeLike):
+        other = Shape.parse(other)
+
+        try:
+            result = np.broadcast_shapes(self.dims, other.dims)
+        except ValueError as ve:
+            raise ValueError(f"{self=} and {other=} cannot be broadcasted together.")
+
+        return Shape.parse(*result)
 
     @property
     def ndim(self) -> int:

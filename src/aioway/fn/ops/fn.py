@@ -54,6 +54,9 @@ class TorchThunk(Thunk, TorchFn):
         if isinstance(other, TorchThunk):
             return Thunk.__eq__(self, other) and self.types == other.types
 
+        if isinstance(other, Thunk):
+            return other == self
+
         return NotImplemented
 
     @property
