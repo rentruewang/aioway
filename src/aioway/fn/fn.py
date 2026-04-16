@@ -73,16 +73,9 @@ class Thunk(Fn):
         """
 
         if self.__result is _PENDING:
-            self.__result = self.do()
+            self.__result = self.func(*self.args, **self.kwargs)
 
         return self.__result
-
-    def do(self) -> typing.Any:
-        """
-        Do the computation for `Fn`. Can be overwritten in subclass.
-        """
-
-        return self.func(*self.args, **self.kwargs)
 
     @typing.override
     def __repr__(self) -> str:

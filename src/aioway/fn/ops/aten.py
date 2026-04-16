@@ -2,6 +2,7 @@
 
 import abc
 import dataclasses as dcls
+import functools
 import typing
 from collections import abc as cabc
 
@@ -20,6 +21,14 @@ class _BinaryTensorUFunc(Preview, abc.ABC):
     alpha: float = 1
 
     @typing.override
+    def ok(self) -> bool:
+        try:
+            _ = torch.broadcast_shapes(self.self.shape, self.other.shape)
+            return True
+        except RuntimeError:
+            return False
+
+    @typing.override
     def __call__(self) -> torch.Tensor:
         return self.BINARY(self.self, self.other * self.alpha)
 
@@ -32,7 +41,15 @@ class _BinaryTensorUFunc(Preview, abc.ABC):
     @typing.final
     @typing.override
     def cost(self) -> int:
-        return torch.broadcast_shapes(self.self.shape, self.other.shape).numel()
+        return self._shape.numel()
+
+    @functools.cached_property
+    def _shape(self) -> torch.Size:
+        return torch.broadcast_shapes(self.self.shape, self.other.shape)
+
+
+class AddTensor(_BinaryTensorUFunc):
+    IR = ops.aten.add.Tensor
 
 
 @dcls.dataclass(frozen=True)

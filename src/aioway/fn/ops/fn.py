@@ -3,11 +3,13 @@
 import abc
 import dataclasses as dcls
 import inspect
+from pickle import FALSE
 import typing
 from collections import abc as cabc
 
 import torch
 from torch import _ops
+from torch._dynamo import exc
 
 from ..fn import Fn, Thunk
 from ..guards import TensorFilter, all_tensors
@@ -83,6 +85,9 @@ class Preview(TorchFn, abc.ABC):
     """
 
     IR: typing.ClassVar[_ops.OpOverload]
+    """
+    The torch IR that this `Preview` would be implementing.
+    """
 
     def __init_subclass__(cls) -> None:
         cls.__register_preview()
@@ -124,14 +129,20 @@ class Preview(TorchFn, abc.ABC):
         it will fall back to the default implementation (plain `func(*args, **kwargs)`).
         """
 
-        # Only register non abstract class.
+        # Abstract methods.
         if inspect.isabstract(cls):
             return
 
-        if cls.IR not in _PREVIEW_CANDIDATES:
-            _PREVIEW_CANDIDATES[cls.IR] = []
+        # Abstract `ClassVar`.
+        try:
+            op = cls.IR
+        except AttributeError:
+            return
 
-        _PREVIEW_CANDIDATES[cls.IR].append(cls)
+        if cls.IR not in _PREVIEW_CANDIDATES:
+            _PREVIEW_CANDIDATES[op] = []
+
+        _PREVIEW_CANDIDATES[op].append(cls)
 
 
 def find_preview(

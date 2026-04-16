@@ -181,14 +181,19 @@ class TrackDispatchMode(pyd.TorchDispatchMode):
     ):
         kwargs = kwargs or {}
 
-        fn: TorchFn
-
         # Create a `_ThunkType` and route implemented methods.
-        if (fn_init := self.router(func, types)) is NotImplemented:
-            fn = TorchThunk(func, types, *args, **kwargs)
-        else:
-            fn = fn_init(*args, **kwargs)
+        fn_init = self.router(func, types)
 
+        if (
+            False
+            # Not ATen operator.
+            or fn_init is NotImplemented
+            # Fn is not handled.
+            or (fn := fn_init(*args, **kwargs)) is NotImplemented
+        ):
+            fn = TorchThunk(func, types, *args, **kwargs)
+
+        assert isinstance(fn, TorchFn), fn
         self.history.append(fn)
 
         try:
