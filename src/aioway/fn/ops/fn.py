@@ -2,11 +2,12 @@
 
 import abc
 import dataclasses as dcls
+import inspect
 import typing
 from collections import abc as cabc
 
 import torch
-from torch import _ops, ops
+from torch import _ops
 
 from ..fn import Fn, Thunk
 from ..guards import TensorFilter, all_tensors
@@ -145,52 +146,6 @@ def register_preview(op: _ops.OpOverload, preview: type[Preview]):
     if op not in PREVIEW_CANDIDATES:
         PREVIEW_CANDIDATES[op] = []
 
-    PREVIEW_CANDIDATES[op].append(preview)
-
-
-@dcls.dataclass(frozen=True)
-class BooleanMasking(Preview):
-    OP = ops.aten.index.Tensor
-
-    self: torch.Tensor
-    indices: list[torch.Tensor]
-
-    def ok(self) -> bool:
-        return len(self.indices) == 1 and self.indices[0].dtype == torch.bool
-
-    @typing.override
-    def __call__(self) -> torch.Tensor:
-        return self.self
-
-    @typing.override
-    def cost(self) -> int:
-        return self().numel()
-
-    @typing.override
-    def tensors(self) -> cabc.Iterator[torch.Tensor]:
-        yield self.self
-        yield from self.indices
-
-
-@dcls.dataclass(frozen=True)
-class IntSelect(Preview):
-    OP = ops.aten.index.Tensor
-
-    self: torch.Tensor
-    indices: list[torch.Tensor]
-
-    def ok(self):
-        return len(self.indices) == 1 and self.indices[0].dtype == torch.int
-
-    @typing.override
-    def __call__(self):
-        return self.self[self.indices]
-
-    @typing.override
-    def cost(self) -> int:
-        return self().numel()
-
-    @typing.override
-    def tensors(self) -> cabc.Iterator[torch.Tensor]:
-        yield self.self
-        yield from self.indices
+    # Only register non abstract class.
+    if not inspect.isabstract(preview):
+        PREVIEW_CANDIDATES[op].append(preview)
