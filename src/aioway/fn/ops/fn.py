@@ -12,7 +12,7 @@ from torch import _ops
 from ..fn import Fn, Thunk
 from ..guards import TensorFilter, all_tensors
 
-__all__ = ["register_preview", "find_preview", "TorchFn", "Preview", "TorchThunk"]
+__all__ = ["find_preview", "TorchFn", "Preview", "TorchThunk"]
 
 
 PREVIEW_CANDIDATES: dict[_ops.OpOverload, list[cabc.Callable[..., Preview]]] = {}
@@ -82,10 +82,10 @@ class Preview(TorchFn, abc.ABC):
     allowing for multiple implementations for the same torch IR.
     """
 
-    OP: typing.ClassVar[_ops.OpOverload]
+    IR: typing.ClassVar[_ops.OpOverload]
 
     def __init_subclass__(cls) -> None:
-        register_preview(cls.OP, cls)
+        cls.__register_preview()
 
     @abc.abstractmethod
     def ok(self) -> bool:
@@ -113,7 +113,25 @@ class Preview(TorchFn, abc.ABC):
 
     @property
     def thunk(self) -> Thunk:
-        return Thunk(self.OP, **dcls.asdict(self))
+        return Thunk(self.IR, **dcls.asdict(self))
+
+    @classmethod
+    def __register_preview(cls):
+        """
+        Register a patching function that only runs under fake mode.
+
+        The patch would be called. If the patching function returns `NotImplemented`,
+        it will fall back to the default implementation (plain `func(*args, **kwargs)`).
+        """
+
+        # Only register non abstract class.
+        if inspect.isabstract(cls):
+            return
+
+        if cls.IR not in PREVIEW_CANDIDATES:
+            PREVIEW_CANDIDATES[cls.IR] = []
+
+        PREVIEW_CANDIDATES[cls.IR].append(cls)
 
 
 def find_preview(
@@ -133,19 +151,3 @@ def find_preview(
         return preview
 
     return NotImplemented
-
-
-def register_preview(op: _ops.OpOverload, preview: type[Preview]):
-    """
-    Register a patching function that only runs under fake mode.
-
-    The patch would be called. If the patching function returns `NotImplemented`,
-    it will fall back to the default implementation (plain `func(*args, **kwargs)`).
-    """
-
-    if op not in PREVIEW_CANDIDATES:
-        PREVIEW_CANDIDATES[op] = []
-
-    # Only register non abstract class.
-    if not inspect.isabstract(preview):
-        PREVIEW_CANDIDATES[op].append(preview)

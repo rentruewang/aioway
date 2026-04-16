@@ -12,8 +12,13 @@ from .fn import Preview
 
 
 @dcls.dataclass(frozen=True)
+class UFunc(Preview, abc.ABC):
+    pass
+
+
+@dcls.dataclass(frozen=True)
 class GetItem(Preview, abc.ABC):
-    OP = ops.aten.index.Tensor
+    IR = ops.aten.index.Tensor
 
     self: torch.Tensor
     indices: list[torch.Tensor]
