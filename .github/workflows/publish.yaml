@@ -16,17 +16,11 @@ jobs:
     steps:
       - name: 🔔 Check out
         uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-          fetch-tags: true
 
       - name: ⬇️ Python PDM
         uses: pdm-project/setup-pdm@v4
         with:
           cache: true
 
-      - name: ⚙️ Build
-        run: pip install nox[pbs] && nox -rs build
-
-      - name: 📦 Publish package distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+      - name: 📦 Release
+        run: pip install nox[pbs] && nox -rs publish
