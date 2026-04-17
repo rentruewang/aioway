@@ -8,12 +8,6 @@ import nox
 
 
 @nox.session
-def publish(session: nox.Session):
-    "Nox `publish` command. Calls `pdm publish`."
-    commands(session).publish()
-
-
-@nox.session
 def build(session: nox.Session):
     "Nox `build` command. Calls `pdm build`."
     commands(session).build()
@@ -160,10 +154,6 @@ class _Pdm:
         self.install()
         self._run("pdm", "build")
 
-    def publish(self):
-        self.install()
-        self._run("pdm", "publish")
-
     def run(self, *args: str):
         self.sync()
         self._run("pdm", "run", *args)
@@ -189,10 +179,6 @@ class _Commands:
     def build(self):
         "`pdm build` command."
         self.pdm.build()
-
-    def publish(self):
-        "`pdm publish` command."
-        self.pdm.publish()
 
     def test(self):
         "`pytest` command."
