@@ -22,5 +22,8 @@ jobs:
         with:
           cache: true
 
-      - name: ⚙️ Release
-        run: pip install nox[pbs] && nox -rs publish
+      - name: ⚙️ Build
+        run: pip install nox[pbs] && nox -rs build
+
+      - name: 📦 Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
