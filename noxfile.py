@@ -162,6 +162,10 @@ class _Pdm:
 
     def publish(self):
         self.install()
+
+        # Remove all uncommitted changes s.t. it doesn't mess with builds.
+        _ = self.session.run("git", "reset", "--hard", "HEAD")
+
         self._run("pdm", "publish")
 
     def run(self, *args: str):
