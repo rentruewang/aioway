@@ -161,7 +161,7 @@ class _Pdm:
         self._run("pdm", "build")
 
     def publish(self):
-        self.sync()
+        self.install()
         self._run("pdm", "publish")
 
     def run(self, *args: str):
