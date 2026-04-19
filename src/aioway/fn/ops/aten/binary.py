@@ -64,7 +64,7 @@ class _BinaryTensorUFunc(Preview, abc.ABC):
             return False
 
     @typing.override
-    def __call__(self) -> torch.Tensor:
+    def do(self) -> torch.Tensor:
         return self.BINARY(self.self, self.other * self.alpha)
 
     @typing.final
@@ -99,7 +99,7 @@ class _BinaryScalarUFunc(Preview, abc.ABC):
         return True
 
     @typing.override
-    def __call__(self) -> torch.Tensor:
+    def do(self) -> torch.Tensor:
         return self.BINARY(self.self, self.other)
 
     @typing.final

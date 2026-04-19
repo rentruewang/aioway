@@ -9,17 +9,18 @@ import typing
 import torch
 from torch import _ops, overrides
 
-from .fn import Thunk
+from .fn import FnStack, Thunk
 
 __all__ = ["track_function_fn"]
 
-_active_function: Thunk | None = None
-"The current function."
+_function_tracker: _TrackFunctionMode | None = None
+"The current function tracker. It's a singleton."
 
 
 @dcls.dataclass(frozen=True)
-class TrackFunctionMode(overrides.TorchFunctionMode):
+class _TrackFunctionMode(overrides.TorchFunctionMode):
     functions: list[Thunk] = dcls.field(default_factory=list)
+    stack: FnStack[Thunk] = dcls.field(default_factory=FnStack)
 
     @typing.override
     def __torch_function__(
@@ -33,31 +34,45 @@ class TrackFunctionMode(overrides.TorchFunctionMode):
         fn = Thunk(func, *args, **kwargs)
         self.functions.append(fn)
 
-        with _ensure_single_function(fn):
-            return fn()
+        with self.stack.track(fn):
+            return fn.do()
 
 
 @ctxl.contextmanager
 def track_function_fn():
-    with TrackFunctionMode() as sfm:
-        yield sfm.functions
+    """
+    Activate the tracker that will track all `torch.*` calls.
+    If a tracker is created, it will be reused.
+    """
+
+    global _function_tracker
+
+    # If it already exists, don't create a new one.
+    if _function_tracker:
+        yield _function_tracker.functions
+        return
+
+    # Create a new one, but rememeber to reset it once done.
+    with _TrackFunctionMode() as _function_tracker:
+        try:
+            yield _function_tracker.functions
+        finally:
+            _function_tracker = None
 
 
-@ctxl.contextmanager
-def _ensure_single_function(fn: Thunk):
-    "Ensure that only 1 function is running at any given moment."
+def function_tracker():
+    """
+    Retrieve the current function tracker that is active.
+    Raise `RuntimeError` if one is not found.
+    """
 
-    global _active_function
+    if _function_tracker is None:
+        raise RuntimeError("The function tracker is not active yet.")
 
-    if _active_function is not None:
-        raise ValueError("Cannot run 2 functions at once.")
-
-    try:
-        _active_function = fn
-        yield
-    finally:
-        _active_function = None
+    return _function_tracker
 
 
-def active_function():
-    return _active_function
+def torch_function_stack():
+    "Get the `__torch_function__` stack that is used when `track_function_fn` is enabled."
+
+    return function_tracker().stack

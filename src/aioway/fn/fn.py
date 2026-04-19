@@ -2,18 +2,20 @@
 
 "Metadata for torch operators / functions."
 
+import contextlib as ctxl
+import dataclasses as dcls
 import functools
 import typing
 from collections import abc as cabc
 
-__all__ = ["Fn", "Thunk", "pretty_function_call"]
+__all__ = ["Fn", "Thunk", "FnStack", "pretty_function_call"]
 
 _PENDING = object()
 "The object signifying a status of pending. This is a `object()` s.t. `FnCache` can store `None`."
 
 
 class Fn(typing.Protocol):
-    def __call__(self):
+    def do(self):
         raise NotImplementedError
 
 
@@ -67,7 +69,7 @@ class Thunk(Fn):
 
         return NotImplemented
 
-    def __call__(self) -> typing.Any:
+    def do(self) -> typing.Any:
         """
         Call and cache the function.
         """
@@ -119,6 +121,59 @@ class Thunk(Fn):
         "Returns if the cache is previously called."
 
         return self.__result is not _PENDING
+
+
+@dcls.dataclass
+class FnStack[F: Fn]:
+    """
+    `FnStack` is the tracker for `Fn`, storing `Fn`s that are currengly `do()`-ing.
+    """
+
+    stack: list[F] = dcls.field(default_factory=list)
+    """
+    The stack that is currently in scope.
+    """
+
+    def __bool__(self) -> bool:
+        return bool(len(self))
+
+    def __len__(self) -> int:
+        return len(self.stack)
+
+    @typing.overload
+    def __getitem__(self, idx: int) -> F: ...
+
+    @typing.overload
+    def __getitem__(self, idx: slice[int]) -> typing.Self: ...
+
+    def __getitem__(self, idx: int | slice[int]):
+        match idx:
+            case int():
+                return self.stack[idx]
+            case slice():
+                return type(self)(self.stack[idx])
+
+        raise TypeError(type(idx))
+
+    def __iter__(self) -> cabc.Generator[F]:
+        yield from self.stack
+
+    def top(self) -> F:
+        return self.stack[-1]
+
+    def append(self, fn: F) -> None:
+        self.stack.append(fn)
+
+    def pop(self) -> F:
+        return self.stack.pop()
+
+    @ctxl.contextmanager
+    def track(self, fn: F):
+        self.append(fn)
+        try:
+            yield
+        finally:
+            _ = self.pop()
 
 
 def pretty_function_call(func: str, *args: typing.Any, **kwargs: typing.Any) -> str:

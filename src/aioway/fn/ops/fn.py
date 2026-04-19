@@ -11,20 +11,27 @@ import torch
 from torch import _ops
 
 from aioway._common.dcls import dcls_no_repr
+from aioway.fn.funcs import torch_function_stack
 
 from ..fn import Fn, Thunk, pretty_function_call
 from ..guards import TensorFilter, all_tensors
 
-__all__ = ["find_preview", "all_previews", "TorchFn", "Preview", "TorchThunk"]
+__all__ = ["find_preview", "all_previews", "TorchFn", "Preview", "TorchDispatchThunk"]
 
 
 _PREVIEW_CANDIDATES: dict[_ops.OpOverload, list[cabc.Callable[..., Preview]]] = {}
 
 
 class TorchFn(Fn, abc.ABC):
+    def __init__(self):
+        try:
+            self._torch_function = torch_function_stack().top()
+        except IndexError:
+            raise RuntimeError("There are no `__torch_function__` calls active!")
+
     @abc.abstractmethod
     @typing.override
-    def __call__(self) -> torch.Tensor:
+    def do(self) -> torch.Tensor:
         raise NotImplementedError
 
     def parameters(self, select: TensorFilter = all_tensors, /):
@@ -37,7 +44,7 @@ class TorchFn(Fn, abc.ABC):
         raise NotImplementedError
 
 
-class TorchThunk(Thunk, TorchFn):
+class TorchDispatchThunk(Thunk, TorchFn):
     def __init__(
         self,
         func: cabc.Callable[..., typing.Any],
@@ -47,12 +54,18 @@ class TorchThunk(Thunk, TorchFn):
         **kwargs: typing.Any,
     ) -> None:
         Thunk.__init__(self, func, *args, **kwargs)
+        TorchFn.__init__(self)
         self._types = types
 
     @typing.override
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, TorchThunk):
-            return Thunk.__eq__(self, other) and self.types == other.types
+        if isinstance(other, TorchDispatchThunk):
+            return (
+                True
+                and Thunk.__eq__(self, other)
+                and self.types == other.types
+                and self._torch_function == other._torch_function
+            )
 
         if isinstance(other, Thunk):
             return other == self
@@ -96,6 +109,9 @@ class Preview(TorchFn, abc.ABC):
     def __init_subclass__(cls) -> None:
         cls.__register_preview()
 
+    def __post_init__(self):
+        TorchFn.__init__(self)
+
     @typing.override
     def __repr__(self) -> str:
         return pretty_function_call(f"preview::{self.name()}", **dcls.asdict(self))
@@ -109,7 +125,7 @@ class Preview(TorchFn, abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def __call__(self) -> torch.Tensor:
+    def do(self) -> torch.Tensor:
         """
         Generate the fake tensor.
         """

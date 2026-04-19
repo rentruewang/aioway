@@ -26,6 +26,10 @@ class _GetItem(Preview, abc.ABC):
         yield self.self
         yield from self.indices
 
+    @typing.override
+    def cost(self) -> int:
+        return self.do().numel()
+
 
 @dcls_no_repr
 class BooleanMasking(_GetItem):
@@ -33,12 +37,8 @@ class BooleanMasking(_GetItem):
         return len(self.indices) == 1 and self.indices[0].dtype == torch.bool
 
     @typing.override
-    def __call__(self) -> torch.Tensor:
+    def do(self) -> torch.Tensor:
         return self.self
-
-    @typing.override
-    def cost(self) -> int:
-        return self().numel()
 
 
 @dcls_no_repr
@@ -47,9 +47,5 @@ class IntSelect(_GetItem):
         return len(self.indices) == 1 and self.indices[0].dtype == torch.int
 
     @typing.override
-    def __call__(self):
+    def do(self):
         return self.self[self.indices]
-
-    @typing.override
-    def cost(self) -> int:
-        return self().numel()
