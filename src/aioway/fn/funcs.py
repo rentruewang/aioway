@@ -34,7 +34,7 @@ class TrackFunctionMode(overrides.TorchFunctionMode):
         self.functions.append(fn)
 
         with _ensure_single_function(fn):
-            return fn()
+            return fn.do()
 
 
 @ctxl.contextmanager

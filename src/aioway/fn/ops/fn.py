@@ -24,7 +24,7 @@ _PREVIEW_CANDIDATES: dict[_ops.OpOverload, list[cabc.Callable[..., Preview]]] = 
 class TorchFn(Fn, abc.ABC):
     @abc.abstractmethod
     @typing.override
-    def __call__(self) -> torch.Tensor:
+    def do(self) -> torch.Tensor:
         raise NotImplementedError
 
     def parameters(self, select: TensorFilter = all_tensors, /):
@@ -109,7 +109,7 @@ class Preview(TorchFn, abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def __call__(self) -> torch.Tensor:
+    def do(self) -> torch.Tensor:
         """
         Generate the fake tensor.
         """

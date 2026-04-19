@@ -67,7 +67,10 @@ class _PrintDispatch(pyd.TorchDispatchMode):
     ):
         kwargs = kwargs or {}
         invoke = Thunk(func, *args, **kwargs)
-        result = invoke()
+        return self.invoke_and_print(invoke)
+
+    def invoke_and_print(self, invoke: Thunk):
+        result = invoke.do()
         print(f"{invoke!s} -> {result!r}")
         return result
 
@@ -79,7 +82,7 @@ Print the dispatcher.
 
 
 @dcls.dataclass
-class _LogDispatch(pyd.TorchDispatchMode):
+class _LogDispatch(_PrintDispatch):
     """
     Log every call to dispatch mode.
     """
@@ -90,16 +93,9 @@ class _LogDispatch(pyd.TorchDispatchMode):
     logger: logging.Logger = LOGGER
     "The logger to log to. Default to the one in the current module."
 
-    def __torch_dispatch__(
-        self,
-        func: _ops.OpOverload,
-        types: tuple[type[torch.Tensor], ...],
-        args: tuple[typing.Any, ...] = (),
-        kwargs: dict[str, typing.Any] | None = None,
-    ):
-        kwargs = kwargs or {}
-        invoke = Thunk(func, *args, **kwargs)
-        result = invoke()
+    @typing.override
+    def invoke_and_print(self, invoke: Thunk):
+        result = invoke.do()
         self.logger.log(self.level, f"%s -> %s", invoke, result)
         return result
 
@@ -139,6 +135,10 @@ def no_route(*args, **kwargs) -> _CreatePreview:
 
 @dcls.dataclass(frozen=True)
 class FnList:
+    """
+    The list of `TorchFn` that tracks the current history.
+    """
+
     history: list[TorchFn] = dcls.field(default_factory=list)
 
     def __len__(self) -> int:
@@ -208,7 +208,7 @@ class TrackDispatchMode(pyd.TorchDispatchMode):
         try:
             # Ensure that only 1 dispatch is running at any given moment.
             with _ensure_single_dispatch(fn):
-                return fn()
+                return fn.do()
         except RuntimeError as err:
             fn = TorchThunk(func, types, *args, **kwargs)
             raise ValueError(f"Function call '{fn}' failed.") from err
