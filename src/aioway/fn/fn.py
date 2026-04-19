@@ -129,25 +129,24 @@ class FnStack[F: Fn]:
     `FnStack` is the tracker for `Fn`, storing `Fn`s that are currengly `do()`-ing.
     """
 
-    stack: list[F]
+    stack: list[F] = dcls.field(default_factory=list)
     """
     The stack that is currently in scope.
     """
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return bool(len(self))
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.stack)
 
     @typing.overload
     def __getitem__(self, idx: int) -> F: ...
 
     @typing.overload
-    def __getitem__(self, idx: slice) -> typing.Self: ...
+    def __getitem__(self, idx: slice[int]) -> typing.Self: ...
 
-    @typing.no_type_check
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int | slice[int]):
         match idx:
             case int():
                 return self.stack[idx]
@@ -156,6 +155,12 @@ class FnStack[F: Fn]:
 
         raise TypeError(type(idx))
 
+    def __iter__(self) -> cabc.Generator[F]:
+        yield from self.stack
+
+    def top(self) -> F:
+        return self.stack[-1]
+
     def append(self, fn: F) -> None:
         self.stack.append(fn)
 
@@ -163,13 +168,12 @@ class FnStack[F: Fn]:
         return self.stack.pop()
 
     @ctxl.contextmanager
-    def track_scope(self, fn: F):
+    def track(self, fn: F):
+        self.append(fn)
         try:
             yield
         finally:
-            self.pop()
-
-    # def track_func(self, function: )
+            _ = self.pop()
 
 
 def pretty_function_call(func: str, *args: typing.Any, **kwargs: typing.Any) -> str:
