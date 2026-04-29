@@ -75,7 +75,10 @@ class Thunk(Fn):
         """
 
         if self.__result is _PENDING:
-            self.__result = self.func(*self.args, **self.kwargs)
+            try:
+                self.__result = self.func(*self.args, **self.kwargs)
+            except Exception as e:
+                raise RuntimeError(f"Thunk: {self!r} evaluation failed.") from e
 
         return self.__result
 

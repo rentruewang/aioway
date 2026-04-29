@@ -95,7 +95,7 @@ class _LogDispatch(_PrintDispatch):
     @typing.override
     def invoke_and_print(self, invoke: Thunk):
         result = invoke.do()
-        self.logger.log(self.level, f"%s -> %s", invoke, result)
+        self.logger.log(self.level, "%s -> %s", invoke, result)
         return result
 
 

@@ -72,15 +72,9 @@ def typing(session: nox.Session):
 
 
 @functools.cache
-def github(session: nox.Session):
+def env(session: nox.Session):
     "Global singleton for github."
-    return _Github(session)
-
-
-@functools.cache
-def pdm(session: nox.Session):
-    "Global singleton for pdm."
-    return _Pdm(session)
+    return _Environment(session)
 
 
 @functools.cache
@@ -90,25 +84,28 @@ def commands(session: nox.Session):
 
 
 @dcls.dataclass(frozen=True)
-class _Github:
+class _Environment:
     "The manager for setting up github."
 
     session: nox.Session
     "The nox session to use."
 
-    @functools.cache
-    def setup(self) -> None:
-        "The shared entrypoint to GitHub Actions scripts"
+    def __post_init__(self) -> None:
+        "Setup environment."
+
+        self._github_cleanup()
+
+        if self.in_github():
+            self._run("pdm", "config", "python.use_venv", "true")
+
+    def _github_cleanup(self):
 
         # Does nothing outside of GitHub Actions.
-        if not self.active():
+        if not self.in_github():
             return
 
         self._remove_unwanted_files()
         self._log_storage_usage()
-
-    def _run(self, *args: str):
-        self.session.run_install(*args, external=True)
 
     def _remove_unwanted_files(self) -> None:
         "Remove the files GitHub Actions pre-installed."
@@ -131,7 +128,7 @@ class _Github:
         self._run("df", "-h")
 
     @staticmethod
-    def active() -> bool:
+    def in_github() -> bool:
         "Detect whether or not it is running in GitHub Actions."
 
         print("Checking if we are in GitHub Actions...", end=" ")
@@ -139,48 +136,31 @@ class _Github:
         print("Yes" if result else "No")
         return result
 
-
-@dcls.dataclass(frozen=True)
-class _Pdm:
-    session: nox.Session
-
-    def __post_init__(self):
-        github(self.session).setup()
-
-        if _is_remote(self.session):
-            self._run("pdm", "config", "python.use_venv", "true")
-
-    def sync(self) -> None:
-        self._sync_or_install("sync")
-
-    def install(self):
-        self._sync_or_install("install")
-
-    def build(self):
-        self.install()
+    def pdm_build(self):
+        self.pdm_install()
         self._run("pdm", "build")
 
-    def publish(self):
-        self.install()
+    def pdm_publish(self):
+        self.pdm_install()
 
         # Remove all uncommitted changes s.t. it doesn't mess with builds.
-        _ = self.session.run("git", "reset", "--hard", "HEAD")
+        _ = self._run("git", "reset", "--hard", "HEAD")
 
         self._run("pdm", "publish")
 
-    def run(self, *args: str):
-        self.sync()
+    def pdm_run(self, *args: str):
+        self.pdm_install()
         self._run("pdm", "run", *args)
 
-    def _sync_or_install(self, mode: str) -> None:
+    def pdm_install(self) -> None:
         # Don't repeatedly reinstall locally.
-        if not _is_remote(self.session):
+        if not self.in_github():
             return
 
-        self.session.run_install("pdm", mode, "-G:all")
+        self.session.run_install("pdm", "install", "-G:all")
 
     def _run(self, *args: str):
-        self.session.run(*args, external=True)
+        _ = self.session.run_install(*args, external=True)
 
 
 @dcls.dataclass(frozen=True)
@@ -188,40 +168,36 @@ class _Commands:
     session: nox.Session
 
     def __post_init__(self):
-        github(self.session).setup()
+        _ = self.env
 
     def build(self):
         "`pdm build` command."
-        self.pdm.build()
+        self.env.pdm_build()
 
     def publish(self):
         "`pdm publish` command."
-        self.pdm.publish()
+        self.env.pdm_publish()
 
     def test(self):
         "`pytest` command."
-        self.pdm.run("pytest")
+        self.env.pdm_run("pytest")
 
     def autoflake(self):
         "`autoflake` command."
-        self.pdm.run("autoflake", ".")
+        self.env.pdm_run("autoflake", ".")
 
     def isort(self):
         "`isort` command."
-        self.pdm.run("isort", ".")
+        self.env.pdm_run("isort", ".")
 
     def black(self):
         "`black` command."
-        self.pdm.run("black", ".")
+        self.env.pdm_run("black", ".")
 
     def mypy(self):
         "`mypy` command."
-        self.pdm.run("mypy", "src")
+        self.env.pdm_run("mypy", "src")
 
     @property
-    def pdm(self):
-        return pdm(self.session)
-
-
-def _is_remote(session: nox.Session):
-    return github(session).active()
+    def env(self):
+        return env(self.session)
