@@ -5,7 +5,7 @@
 groups = ["default", "build", "debugging", "faiss", "ibis", "pre-commit", "tests"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:8678bea6e9cc3541726d844b09a996ce7cae4f8717471efe89d10d38371c1aad"
+content_hash = "sha256:63fdffb888f24d71b44fc8549c120741cbcf5f8306a9fc60d4f6bd5039bff04c"
 
 [[metadata.targets]]
 requires_python = ">=3.14,<3.15"
@@ -2930,7 +2930,7 @@ version = "2026.2"
 requires_python = ">=2"
 summary = "Provider of IANA time zone data"
 groups = ["default", "debugging"]
-marker = "sys_platform == \"win32\" or sys_platform == \"emscripten\" or python_version >= \"3.9\""
+marker = "sys_platform == \"emscripten\" or sys_platform == \"win32\" or python_version >= \"3.9\""
 files = [
     {file = "tzdata-2026.2-py2.py3-none-any.whl", hash = "sha256:bbe9af844f658da81a5f95019480da3a89415801f6cc966806612cc7169bffe7"},
     {file = "tzdata-2026.2.tar.gz", hash = "sha256:9173fde7d80d9018e02a662e168e5a2d04f87c41ea174b139fbef642eda62d10"},
