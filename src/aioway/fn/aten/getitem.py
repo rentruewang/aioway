@@ -9,7 +9,7 @@ from torch import ops
 
 from aioway._common.dcls import dcls_no_repr
 
-from ..fn import Preview
+from ..previews import Preview
 
 __all__ = ["BooleanMasking", "IntSelect"]
 

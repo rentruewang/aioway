@@ -13,8 +13,8 @@ from torch import _ops
 from aioway._common.dcls import dcls_no_repr
 from aioway.fn.funcs import torch_function_stack
 
-from ..fn import Fn, Thunk, pretty_function_call
-from ..guards import TensorFilter, all_tensors
+from .fn import Fn, Thunk, pretty_function_call
+from .guards import TensorFilter, all_tensors
 
 __all__ = ["find_preview", "all_previews", "TorchFn", "Preview", "TorchDispatchThunk"]
 

@@ -16,9 +16,9 @@ from aioway.ctx import enabled_fake_mode, fake_mode
 from aioway.fn.funcs import track_function_fn
 from aioway.schemas.attrs import attr
 
-from ..fn import Fn, FnStack, Thunk
-from ..guards import TensorFilter, all_tensors, is_aten_op, is_leaf_has_grad, is_prim_op
-from .fn import Preview, TorchDispatchThunk, TorchFn, find_preview
+from .fn import Fn, FnStack, Thunk
+from .guards import TensorFilter, all_tensors, is_aten_op, is_leaf_has_grad, is_prim_op
+from .previews import Preview, TorchDispatchThunk, TorchFn, find_preview
 
 __all__ = [
     "print_torch_dispatch",

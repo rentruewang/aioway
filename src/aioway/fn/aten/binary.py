@@ -12,7 +12,7 @@ from torch import ops
 from aioway._common.dcls import dcls_no_repr
 from aioway.fn.guards import is_float
 
-from ..fn import Preview
+from ..previews import Preview
 
 __all__ = [
     "AddTensor",
