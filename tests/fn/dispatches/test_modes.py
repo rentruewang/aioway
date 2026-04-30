@@ -3,9 +3,9 @@
 import pytest
 import torch
 
-from aioway.ctx import fake_mode
 from aioway.fn import (
     fake_dispatch_fn,
+    fake_mode,
     function_fn_stack,
     track_dispatch_fn,
 )

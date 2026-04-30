@@ -11,15 +11,15 @@ import torch
 from torch import _ops
 
 from aioway._common.dcls import dcls_no_repr
-from aioway.fn.contexts import torch_function_stack
+from aioway.fn.stacks import torch_function_stack
 
 from .fn import Fn, Thunk, pretty_function_call
 from .guards import TensorFilter, all_tensors
 
-__all__ = ["find_preview", "all_previews", "TorchFn", "Preview", "TorchDispatchThunk"]
+__all__ = ["find_preview", "all_previews", "TorchFn", "PreviewFn", "TorchDispatchThunk"]
 
 
-_PREVIEW_CANDIDATES: dict[_ops.OpOverload, list[cabc.Callable[..., Preview]]] = {}
+_PREVIEW_CANDIDATES: dict[_ops.OpOverload, list[cabc.Callable[..., PreviewFn]]] = {}
 
 
 class TorchFn(Fn, abc.ABC):
@@ -95,7 +95,7 @@ class TorchDispatchThunk(Thunk, TorchFn):
 
 
 @dcls_no_repr
-class Preview(TorchFn, abc.ABC):
+class PreviewFn(TorchFn, abc.ABC):
     """
     `Preview` is a preview for operations,
     allowing for multiple implementations for the same torch IR.
@@ -173,7 +173,7 @@ class Preview(TorchFn, abc.ABC):
 
 def find_preview(
     op: _ops.OpOverload, *args: typing.Any, **kwargs: typing.Any
-) -> Preview:
+) -> PreviewFn:
     """
     Try finding a preview with the given `op` and its arguments.
     """

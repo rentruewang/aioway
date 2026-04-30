@@ -12,7 +12,7 @@ from torch import ops
 from aioway._common.dcls import dcls_no_repr
 from aioway.fn.guards import is_float
 
-from ..previews import Preview
+from ..previews import PreviewFn
 
 __all__ = [
     "AddTensor",
@@ -41,7 +41,7 @@ Scalar = int | float | bool
 
 
 @dcls_no_repr
-class _BinaryTensorUFunc(Preview, abc.ABC):
+class _BinaryTensorUFunc(PreviewFn, abc.ABC):
     BINARY: typing.ClassVar[cabc.Callable[..., typing.Any]]
 
     self: torch.Tensor
@@ -84,7 +84,7 @@ class _BinaryTensorUFunc(Preview, abc.ABC):
 
 
 @dcls_no_repr
-class _BinaryScalarUFunc(Preview, abc.ABC):
+class _BinaryScalarUFunc(PreviewFn, abc.ABC):
     BINARY: typing.ClassVar[cabc.Callable[..., typing.Any]]
 
     self: torch.Tensor

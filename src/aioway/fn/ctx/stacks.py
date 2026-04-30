@@ -8,17 +8,20 @@ import typing
 
 import torch
 from torch import _ops, overrides
+from torch.utils import _python_dispatch as pyd
 
-from .fn import FnStack, Thunk
+from aioway.fn import FnStack, Thunk, TorchDispatchThunk, TorchFn
 
 __all__ = ["function_fn_stack"]
 
-_function_tracker: _TrackFunctionMode | None = None
+_function_tracker: _FunctionStack | None = None
 "The current function tracker. It's a singleton."
+
+_DISPATCH_STACK = FnStack[TorchFn]()
 
 
 @dcls.dataclass(frozen=True)
-class _TrackFunctionMode(overrides.TorchFunctionMode):
+class _FunctionStack(overrides.TorchFunctionMode):
     functions: list[Thunk] = dcls.field(default_factory=list)
     stack: FnStack[Thunk] = dcls.field(default_factory=FnStack)
 
@@ -39,9 +42,7 @@ class _TrackFunctionMode(overrides.TorchFunctionMode):
 
 
 @dcls.dataclass
-class TrackDispatchMode(pyd.TorchDispatchMode):
-    router: TorchRouterFactory
-    history: FnList = dcls.field(default_factory=FnList)
+class _DispatchStack(pyd.TorchDispatchMode):
 
     def __torch_dispatch__(
         self,
@@ -51,24 +52,8 @@ class TrackDispatchMode(pyd.TorchDispatchMode):
         kwargs: dict[str, typing.Any] | None = None,
     ):
         kwargs = kwargs or {}
-
-        # Create a `_ThunkType` and route implemented methods.
-        fn_init = self.router(func, types)
-        fn: TorchFn
-
-        if (
-            False
-            # Not ATen operator.
-            or fn_init is NotImplemented
-            # Fn is not handled.
-            or (fn := fn_init(*args, **kwargs)) is NotImplemented
-        ):
-            fn = TorchDispatchThunk(func, types, *args, **kwargs)
-
-        assert isinstance(fn, TorchFn), fn
-        self.history.append(fn)
-
-        with _DISPATCH_STACK.track(fn), capture_do_error(fn):
+        fn = TorchDispatchThunk(func, types, *args, **kwargs)
+        with _DISPATCH_STACK.track(fn):
             result = func(*args, **kwargs)
 
         # Store it in the history.
@@ -91,7 +76,7 @@ def function_fn_stack():
         return
 
     # Create a new one, but rememeber to reset it once done.
-    with _TrackFunctionMode() as _function_tracker:
+    with _FunctionStack() as _function_tracker:
         try:
             yield _function_tracker.functions
         finally:

@@ -11,14 +11,14 @@ import torch
 from torch import _ops
 from torch.utils import _python_dispatch as pyd
 
-from aioway._common.tracking.logging import enable_rich_log
+from aioway._common import enable_rich_log
 from aioway.ctx import enabled_fake_mode, fake_mode
-from aioway.fn.contexts import function_fn_stack
-from aioway.schemas.attrs import attr
+from aioway.schemas import attr
 
-from .fn import Fn, FnStack, Thunk
+from .fn import Fn, Thunk
 from .guards import TensorFilter, all_tensors, is_aten_op, is_leaf_has_grad, is_prim_op
-from .previews import Preview, TorchDispatchThunk, TorchFn, find_preview
+from .previews import PreviewFn, TorchDispatchThunk, TorchFn, find_preview
+from .stacks import function_fn_stack
 
 __all__ = [
     "print_torch_dispatch",
@@ -33,10 +33,8 @@ __all__ = [
 LOGGER = logging.getLogger(__name__)
 
 
-_CreatePreview = cabc.Callable[..., Preview]
+_CreatePreview = cabc.Callable[..., PreviewFn]
 _TorchRouterMode = typing.Literal["dispatch", "function"]
-
-_DISPATCH_STACK = FnStack[TorchFn]()
 
 
 @typing.runtime_checkable

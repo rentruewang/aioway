@@ -9,13 +9,13 @@ from torch import ops
 
 from aioway._common.dcls import dcls_no_repr
 
-from ..previews import Preview
+from ..previews import PreviewFn
 
 __all__ = ["BooleanMasking", "IntSelect"]
 
 
 @dcls_no_repr
-class _GetItem(Preview, abc.ABC):
+class _GetItem(PreviewFn, abc.ABC):
     IR = ops.aten.index.Tensor
 
     self: torch.Tensor
