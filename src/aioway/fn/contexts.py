@@ -38,6 +38,44 @@ class _TrackFunctionMode(overrides.TorchFunctionMode):
             return func(*args, **kwargs)
 
 
+@dcls.dataclass
+class TrackDispatchMode(pyd.TorchDispatchMode):
+    router: TorchRouterFactory
+    history: FnList = dcls.field(default_factory=FnList)
+
+    def __torch_dispatch__(
+        self,
+        func: _ops.OpOverload,
+        types: tuple[type[torch.Tensor], ...],
+        args: tuple[typing.Any, ...] = (),
+        kwargs: dict[str, typing.Any] | None = None,
+    ):
+        kwargs = kwargs or {}
+
+        # Create a `_ThunkType` and route implemented methods.
+        fn_init = self.router(func, types)
+        fn: TorchFn
+
+        if (
+            False
+            # Not ATen operator.
+            or fn_init is NotImplemented
+            # Fn is not handled.
+            or (fn := fn_init(*args, **kwargs)) is NotImplemented
+        ):
+            fn = TorchDispatchThunk(func, types, *args, **kwargs)
+
+        assert isinstance(fn, TorchFn), fn
+        self.history.append(fn)
+
+        with _DISPATCH_STACK.track(fn), capture_do_error(fn):
+            result = func(*args, **kwargs)
+
+        # Store it in the history.
+        self.history.fn_index[result] = fn
+        return result
+
+
 @ctxl.contextmanager
 def function_fn_stack():
     """

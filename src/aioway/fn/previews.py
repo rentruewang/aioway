@@ -11,7 +11,7 @@ import torch
 from torch import _ops
 
 from aioway._common.dcls import dcls_no_repr
-from aioway.fn.stacks import torch_function_stack
+from aioway.fn.contexts import torch_function_stack
 
 from .fn import Fn, Thunk, pretty_function_call
 from .guards import TensorFilter, all_tensors

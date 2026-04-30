@@ -13,7 +13,7 @@ from torch.utils import _python_dispatch as pyd
 
 from aioway._common.tracking.logging import enable_rich_log
 from aioway.ctx import enabled_fake_mode, fake_mode
-from aioway.fn.stacks import function_fn_stack
+from aioway.fn.contexts import function_fn_stack
 from aioway.schemas.attrs import attr
 
 from .fn import Fn, FnStack, Thunk
