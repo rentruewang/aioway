@@ -13,7 +13,7 @@ from torch.utils import _python_dispatch as pyd
 
 from aioway._common.tracking.logging import enable_rich_log
 from aioway.ctx import enabled_fake_mode, fake_mode
-from aioway.fn.funcs import track_function_fn
+from aioway.fn.stacks import function_fn_stack
 from aioway.schemas.attrs import attr
 
 from .fn import Fn, FnStack, Thunk
@@ -214,7 +214,7 @@ class TrackDispatchMode(pyd.TorchDispatchMode):
         self.history.append(fn)
 
         with _DISPATCH_STACK.track(fn), capture_do_error(fn):
-            result = fn.do()
+            result = func(*args, **kwargs)
 
         # Store it in the history.
         self.history.fn_index[result] = fn
@@ -242,7 +242,7 @@ def track_dispatch_fn(router: TorchRouterFactory = no_route):
     Track all calls into the torch dispatch mode as `TorchIrFn`.
     """
 
-    with track_function_fn(), TrackDispatchMode(router=router) as sdm:
+    with function_fn_stack(), TrackDispatchMode(router=router) as sdm:
         yield sdm.history
 
 

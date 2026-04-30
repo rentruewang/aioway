@@ -11,7 +11,7 @@ from torch import _ops, overrides
 
 from .fn import FnStack, Thunk
 
-__all__ = ["track_function_fn"]
+__all__ = ["function_fn_stack"]
 
 _function_tracker: _TrackFunctionMode | None = None
 "The current function tracker. It's a singleton."
@@ -35,11 +35,11 @@ class _TrackFunctionMode(overrides.TorchFunctionMode):
         self.functions.append(fn)
 
         with self.stack.track(fn):
-            return fn.do()
+            return func(*args, **kwargs)
 
 
 @ctxl.contextmanager
-def track_function_fn():
+def function_fn_stack():
     """
     Activate the tracker that will track all `torch.*` calls.
     If a tracker is created, it will be reused.

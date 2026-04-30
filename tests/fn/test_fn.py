@@ -4,7 +4,7 @@
 import pytest
 import torch
 
-from aioway.fn import track_dispatch_fn, track_function_fn
+from aioway.fn import function_fn_stack, track_dispatch_fn
 
 
 @pytest.fixture
@@ -18,7 +18,7 @@ def b():
 
 
 def test_call(a: torch.Tensor, b: torch.Tensor):
-    with track_dispatch_fn() as calls, track_function_fn() as funcs:
+    with track_dispatch_fn() as calls, function_fn_stack() as funcs:
         result = a + b
 
     assert result.ndim == 1
