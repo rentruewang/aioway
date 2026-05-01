@@ -207,6 +207,7 @@ class RouteDispatchOp(TorchDispatchMode):
         assert isinstance(fn, _TorchThunk), type(fn)
         self.history.append(fn)
 
+        # Here, we overwrite `fn`'s `__call__` inside `PreviewFn` if it's a special function.
         with capture_do_error(fn):
             result = fn.do()
 
