@@ -9,16 +9,15 @@ from collections import abc as cabc
 
 import torch
 from torch import _ops
-from torch.utils import _python_dispatch as pyd
 
 from aioway._common import enable_rich_log
 from aioway.schemas import attr
 
+from .ctx import TorchDispatchMode, function_fn_stack
 from .fake import enabled_fake_mode, fake_mode
 from .fn import Fn, Thunk
 from .guards import TensorFilter, all_tensors, is_aten_op, is_leaf_has_grad, is_prim_op
 from .previews import PreviewFn, TorchDispatchThunk, TorchFn, find_preview
-from .stacks import function_fn_stack
 
 __all__ = [
     "print_torch_dispatch",
@@ -27,7 +26,7 @@ __all__ = [
     "track_dispatch_fn",
     "fake_dispatch_fn",
     "FnList",
-    "TrackDispatchMode",
+    "RouteDispatchOp",
 ]
 
 LOGGER = logging.getLogger(__name__)
@@ -54,15 +53,14 @@ class TorchRouterFactory(typing.Protocol):
     ) -> _CreatePreview: ...
 
 
-class _PrintDispatch(pyd.TorchDispatchMode):
-    def __torch_dispatch__(
+class _PrintDispatch(TorchDispatchMode):
+    def __call__(
         self,
         func: _ops.OpOverload,
         types: tuple[type[torch.Tensor], ...],
-        args: tuple[typing.Any, ...] = (),
-        kwargs: dict[str, typing.Any] | None = None,
+        args: tuple[typing.Any, ...],
+        kwargs: dict[str, typing.Any],
     ):
-        kwargs = kwargs or {}
         invoke = Thunk(func, *args, **kwargs)
         return self.invoke_and_print(invoke)
 
@@ -182,19 +180,17 @@ class FnList:
 
 
 @dcls.dataclass
-class TrackDispatchMode(pyd.TorchDispatchMode):
+class RouteDispatchOp(TorchDispatchMode):
     router: TorchRouterFactory
     history: FnList = dcls.field(default_factory=FnList)
 
-    def __torch_dispatch__(
+    def __call__(
         self,
         func: _ops.OpOverload,
         types: tuple[type[torch.Tensor], ...],
-        args: tuple[typing.Any, ...] = (),
-        kwargs: dict[str, typing.Any] | None = None,
+        args: tuple[typing.Any, ...],
+        kwargs: dict[str, typing.Any],
     ):
-        kwargs = kwargs or {}
-
         # Create a `_ThunkType` and route implemented methods.
         fn_init = self.router(func, types)
         fn: TorchFn
@@ -211,7 +207,7 @@ class TrackDispatchMode(pyd.TorchDispatchMode):
         assert isinstance(fn, TorchFn), fn
         self.history.append(fn)
 
-        with _DISPATCH_STACK.track(fn), capture_do_error(fn):
+        with capture_do_error(fn):
             result = func(*args, **kwargs)
 
         # Store it in the history.
@@ -240,7 +236,7 @@ def track_dispatch_fn(router: TorchRouterFactory = no_route):
     Track all calls into the torch dispatch mode as `TorchIrFn`.
     """
 
-    with function_fn_stack(), TrackDispatchMode(router=router) as sdm:
+    with function_fn_stack(), RouteDispatchOp(router=router) as sdm:
         yield sdm.history
 
 
@@ -253,7 +249,3 @@ def fake_dispatch_fn():
 
     with fake_mode(), track_dispatch_fn(only_route_aten_in_fake) as history:
         yield history
-
-
-def torch_dispatch_stack():
-    return _DISPATCH_STACK

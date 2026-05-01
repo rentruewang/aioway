@@ -12,86 +12,13 @@ from torch import _ops
 
 from aioway._common.dcls import dcls_no_repr
 
-from .fn import Fn, Thunk, render_fcall
+from .fn import render_fcall
 from .guards import TensorFilter, all_tensors
-from .stacks import torch_function_stack
 
 __all__ = ["find_preview", "all_previews", "TorchFn", "PreviewFn", "TorchDispatchThunk"]
 
 
 _PREVIEW_CANDIDATES: dict[_ops.OpOverload, list[cabc.Callable[..., PreviewFn]]] = {}
-
-
-class TorchFn(Fn, abc.ABC):
-    def __init__(self):
-        try:
-            self._torch_function = torch_function_stack().top()
-        except IndexError:
-            raise RuntimeError("There are no `__torch_function__` calls active!")
-
-    @abc.abstractmethod
-    @typing.override
-    def do(self) -> torch.Tensor:
-        raise NotImplementedError
-
-    def parameters(self, select: TensorFilter = all_tensors, /):
-        for tensor in self.tensors():
-            if select(tensor):
-                yield tensor
-
-    @abc.abstractmethod
-    def tensors(self) -> cabc.Iterator[torch.Tensor]:
-        raise NotImplementedError
-
-
-class TorchDispatchThunk(Thunk, TorchFn):
-    def __init__(
-        self,
-        func: cabc.Callable[..., typing.Any],
-        types: tuple[type, ...],
-        /,
-        *args: typing.Any,
-        **kwargs: typing.Any,
-    ) -> None:
-        Thunk.__init__(self, func, *args, **kwargs)
-        TorchFn.__init__(self)
-        self._types = types
-
-    @typing.override
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, TorchDispatchThunk):
-            return (
-                True
-                and Thunk.__eq__(self, other)
-                and self.types == other.types
-                and self._torch_function == other._torch_function
-            )
-
-        if isinstance(other, Thunk):
-            return other == self
-
-        return NotImplemented
-
-    @property
-    @typing.override
-    @typing.no_type_check
-    def func(self) -> _ops.OpOverload:
-        return self._func
-
-    @property
-    def types(self):
-        return self._types
-
-    @typing.override
-    def tensors(self):
-
-        def all_args():
-            yield from self.args
-            yield from self.kwargs.values()
-
-        for arg in all_args():
-            if isinstance(arg, torch.Tensor):
-                yield arg
 
 
 @dcls_no_repr
@@ -138,6 +65,15 @@ class PreviewFn(TorchFn, abc.ABC):
         Return the cost of each operation.
         """
 
+        raise NotImplementedError
+
+    def parameters(self, select: TensorFilter = all_tensors, /):
+        for tensor in self.tensors():
+            if select(tensor):
+                yield tensor
+
+    @abc.abstractmethod
+    def tensors(self) -> cabc.Iterator[torch.Tensor]:
         raise NotImplementedError
 
     @classmethod
