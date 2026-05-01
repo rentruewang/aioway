@@ -19,6 +19,7 @@ __all__ = [
     "is_real_tensor",
     "to_fake_tensor",
     "to_fake_tensordict",
+    "enabled_fake_mode",
 ]
 
 LOGGER = logging.getLogger(__name__)

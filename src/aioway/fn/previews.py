@@ -11,10 +11,10 @@ import torch
 from torch import _ops
 
 from aioway._common.dcls import dcls_no_repr
-from aioway.fn.stacks import torch_function_stack
 
-from .fn import Fn, Thunk, pretty_function_call
+from .fn import Fn, Thunk, render_fcall
 from .guards import TensorFilter, all_tensors
+from .stacks import torch_function_stack
 
 __all__ = ["find_preview", "all_previews", "TorchFn", "PreviewFn", "TorchDispatchThunk"]
 
@@ -114,7 +114,7 @@ class PreviewFn(TorchFn, abc.ABC):
 
     @typing.override
     def __repr__(self) -> str:
-        return pretty_function_call(f"preview::{self.name()}", **dcls.asdict(self))
+        return render_fcall(f"preview::{self.name()}", **dcls.asdict(self))
 
     @abc.abstractmethod
     def ok(self) -> bool:

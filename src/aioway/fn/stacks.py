@@ -12,11 +12,9 @@ from torch.utils import _python_dispatch as pyd
 
 from aioway.fn import FnStack, Thunk, TorchDispatchThunk, TorchFn
 
-__all__ = ["function_fn_stack"]
+__all__ = ["function_fn_stack", "torch_function_stack"]
 
-_function_tracker: _FunctionStack | None = None
-"The current function tracker. It's a singleton."
-
+_FUNCTION_STACK = FnStack[Thunk]()
 _DISPATCH_STACK = FnStack[TorchFn]()
 
 
@@ -68,19 +66,9 @@ def function_fn_stack():
     If a tracker is created, it will be reused.
     """
 
-    global _function_tracker
-
-    # If it already exists, don't create a new one.
-    if _function_tracker:
-        yield _function_tracker.functions
-        return
-
     # Create a new one, but rememeber to reset it once done.
     with _FunctionStack() as _function_tracker:
-        try:
-            yield _function_tracker.functions
-        finally:
-            _function_tracker = None
+        yield _function_tracker
 
 
 def function_tracker():
@@ -98,4 +86,4 @@ def function_tracker():
 def torch_function_stack():
     "Get the `__torch_function__` stack that is used when `track_function_fn` is enabled."
 
-    return function_tracker().stack
+    return _FUNCTION_STACK

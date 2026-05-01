@@ -12,9 +12,9 @@ from torch import _ops
 from torch.utils import _python_dispatch as pyd
 
 from aioway._common import enable_rich_log
-from aioway.ctx import enabled_fake_mode, fake_mode
 from aioway.schemas import attr
 
+from .fake import enabled_fake_mode, fake_mode
 from .fn import Fn, Thunk
 from .guards import TensorFilter, all_tensors, is_aten_op, is_leaf_has_grad, is_prim_op
 from .previews import PreviewFn, TorchDispatchThunk, TorchFn, find_preview
