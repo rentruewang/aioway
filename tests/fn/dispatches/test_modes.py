@@ -8,6 +8,7 @@ from aioway.fn import (
     fake_mode,
     track_dispatch_fn,
 )
+from aioway.fn.tracking import TorchDispatchStack, TorchFunctionStack
 
 
 @pytest.fixture
@@ -33,12 +34,19 @@ def fake_b():
 
 
 def test_einsum(a: torch.Tensor, b: torch.Tensor):
-    with track_dispatch_fn() as calls, function_fn_stack() as funcs:
+    with (
+        track_dispatch_fn() as calls,
+        TorchFunctionStack() as funcs,
+        TorchDispatchStack() as ops,
+    ):
         result = torch.einsum("i,j->", a, b)
 
     assert result.ndim == 0
     assert len(calls)
-    assert len(funcs)
+
+    assert not len(funcs.stack)
+    assert not len(ops.stack)
+
     assert calls.memory()
 
 

@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"Torch functions, corresponding to `__torch_function__` mode."
+"Torch function/dispatch modes, corresponding to `__torch_function__`/`__torch_dispatch__`."
 
 import abc
 import contextlib as ctxl
@@ -13,18 +13,22 @@ from torch.utils import _python_dispatch as pyd
 
 from aioway._common import dcls_no_repr, render_fcall
 
-from .fn import Fn
-from .previews import HasParams
+from .fn import Fn, FnStack
+from .previews import TensorFn
 
 __all__ = [
     "TorchFunctionMode",
     "TorchDispatchMode",
     "active_function_modes",
     "active_dispatch_modes",
+    "TorchFunctionFn",
+    "TorchDispatchFn",
+    "TorchFunctionModeFn",
+    "TorchDispatchModeFn",
 ]
 
-_ACTIVE_FUNCTION_MODES: list[_TorchFunctionModeT] = []
-_ACTIVE_DISPATCH_MODES: list[_TorchDispatchModeT] = []
+_ACTIVE_FUNCTION_MODES: FnStack[TorchFunctionModeFn] = FnStack()
+_ACTIVE_DISPATCH_MODES: FnStack[TorchDispatchModeFn] = FnStack()
 
 
 class _TorchMode(typing.Protocol):
@@ -34,13 +38,7 @@ class _TorchMode(typing.Protocol):
     This is the protocol that constrains our implementations to follow the same signature.
     """
 
-    def __call__(
-        self,
-        func: cabc.Callable[..., typing.Any],
-        types: tuple[type[torch.Tensor], ...],
-        args: tuple[typing.Any, ...],
-        kwargs: dict[str, typing.Any],
-    ) -> typing.Any: ...
+    def __call__(self, func, types, *args, **kwargs) -> typing.Any: ...
 
 
 class TorchFunctionMode(overrides.TorchFunctionMode, abc.ABC):
@@ -67,17 +65,23 @@ class TorchFunctionMode(overrides.TorchFunctionMode, abc.ABC):
         kwargs = kwargs or {}
         args = () if args == ... else args
 
-        thunk = _TorchFunctionModeT(self, func, types, args, kwargs)
-        with _push_current_call(thunk, _ACTIVE_FUNCTION_MODES):
-            return self(func, types, *args, **kwargs)
+        thunk = TorchFunctionModeFn(self, func, types, args, kwargs)
+        with active_function_modes().track(thunk):
+            return thunk.do()
 
     @staticmethod
-    def register(func: _TorchMode) -> cabc.Callable[[], typing.ContextManager[None]]:
+    def register(f: _TorchMode) -> cabc.Callable[[], typing.ContextManager[None]]:
 
         class _FuncTorchFunctionMode(TorchFunctionMode):
             @typing.override
-            def __call__(self, *args, **kwargs):
-                return func(*args, **kwargs)
+            def __call__(
+                self,
+                func: cabc.Callable[..., typing.Any],
+                types: tuple[type, ...],
+                *args: typing.Any,
+                **kwargs: typing.Any,
+            ):
+                return f(func, types, *args, **kwargs)
 
         @ctxl.contextmanager
         def ctx_man():
@@ -111,16 +115,22 @@ class TorchDispatchMode(pyd.TorchDispatchMode, abc.ABC):
         kwargs = kwargs or {}
         args = () if args == ... else args
 
-        thunk = _TorchDispatchModeT(self, op, types, args, kwargs)
-        with _push_current_call(thunk, _ACTIVE_DISPATCH_MODES):
-            result = self(op, types, *args, **kwargs)
+        thunk = TorchDispatchModeFn(self, op, types, args, kwargs)
+        with active_dispatch_modes().track(thunk):
+            result = thunk.do()
         return result
 
     @staticmethod
-    def register(func: _TorchMode) -> cabc.Callable[[], typing.ContextManager[None]]:
+    def register(f: _TorchMode) -> cabc.Callable[[], typing.ContextManager[None]]:
         class _FuncTorchDispatchMode(TorchDispatchMode):
-            def __call__(self, *args, **kwargs):
-                return func(*args, **kwargs)
+            def __call__(
+                self,
+                op: _ops.OpOverload,
+                types: tuple[type[torch.Tensor], ...],
+                *args: typing.Any,
+                **kwargs: typing.Any,
+            ):
+                return f(op, types, *args, **kwargs)
 
         @ctxl.contextmanager
         def ctx_man():
@@ -131,25 +141,55 @@ class TorchDispatchMode(pyd.TorchDispatchMode, abc.ABC):
 
 
 @dcls_no_repr
-class TorchFunctionT:
+class TorchFunctionFn(Fn):
+    """
+    `TorchFunctionT` is the thunk capturing the function calls initiated by `torch`.
+    """
+
     func: cabc.Callable[..., typing.Any]
+    "The `torch.*`, `Tensor.*` functions."
+
     types: tuple[type, ...]
+    "The types of the arguments."
+
     args: tuple[typing.Any, ...]
+    "The positional args."
+
     kwargs: dict[str, typing.Any]
+    "The keyword arguments."
 
     def __repr__(self) -> str:
         return render_fcall(self.func, *self.args, **self.kwargs)
 
+    @typing.override
+    def do(self) -> torch.Tensor:
+        return self.func(*self.args, **self.kwargs)
+
 
 @dcls_no_repr
-class TorchDispatchT(HasParams, Fn):
+class TorchDispatchFn(TensorFn):
+    """
+    `TorchDispatchT` is the thunk capturing the function calls initiated by `torch`.
+    This is by default what a null-op `__torch_dispatch__` would call.
+    """
+
     op: _ops.OpOverload
+    "The `torch.ops.*` operator."
+
     types: tuple[type, ...]
+    "The types of the arguments."
+
     args: tuple[typing.Any, ...]
+    "The positional args."
+
     kwargs: dict[str, typing.Any]
+    "The keyword arguments."
+
+    def __repr__(self) -> str:
+        return render_fcall(self.op.name(), *self.args, **self.kwargs)
 
     @typing.override
-    def do(self):
+    def do(self) -> torch.Tensor:
         return self.op(*self.args, **self.kwargs)
 
     @typing.override
@@ -162,9 +202,6 @@ class TorchDispatchT(HasParams, Fn):
             if isinstance(arg, torch.Tensor):
                 yield arg
 
-    def __repr__(self) -> str:
-        return render_fcall(self.op.name(), *self.args, **self.kwargs)
-
 
 @dcls_no_repr
 class _HasMode[T]:
@@ -172,24 +209,29 @@ class _HasMode[T]:
 
 
 @dcls_no_repr
-class _TorchFunctionModeT(TorchFunctionT, _HasMode[TorchFunctionMode]): ...
+class TorchFunctionModeFn(TorchFunctionFn, _HasMode[TorchFunctionMode]):
+    """
+    `TorchFunctionFn` + `mode` argument.
+    Handles passing over the function calls to `mode.__call__`,
+    which invokes `TorchFunctionMode` subclasses.
+    """
+
+    @typing.override
+    def do(self) -> torch.Tensor:
+        return self.mode(self.func, self.types, *self.args, **self.kwargs)
 
 
 @dcls_no_repr
-class _TorchDispatchModeT(TorchDispatchT, _HasMode[TorchDispatchMode]): ...
-
-
-@ctxl.contextmanager
-def _push_current_call[T](item: T, stack: list[T]):
+class TorchDispatchModeFn(TorchDispatchFn, _HasMode[TorchDispatchMode]):
     """
-    Add the current call to the stack, pop after.
+    `TorchDispatchFn` + `mode` argument.
+    Handles passing over the function calls to `mode.__call__`,
+    which invokes `TorchDispatchMode` subclasses.
     """
 
-    try:
-        stack.append(item)
-        yield
-    finally:
-        _ = stack.pop()
+    @typing.override
+    def do(self) -> torch.Tensor:
+        return self.mode(self.op, self.types, *self.args, **self.kwargs)
 
 
 def active_function_modes():

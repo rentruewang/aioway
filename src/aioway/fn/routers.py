@@ -9,19 +9,14 @@ from collections import abc as cabc
 import torch
 from torch import _ops
 
-from aioway._common import enable_rich_log
 from aioway.schemas import attr
 
 from .fake import enabled_fake_mode, fake_mode
-from .fn import Thunk
 from .guards import TensorFilter, all_tensors, is_aten_op, is_leaf_has_grad, is_prim_op
+from .modes import TorchDispatchFn, TorchDispatchMode
 from .previews import PreviewFn, PreviewFnFinder
-from .stacks import TorchDispatchMode, TorchDispatchT
 
 __all__ = [
-    "print_torch_dispatch",
-    "log_torch_dispatch",
-    "log_and_enable_rich",
     "track_dispatch_fn",
     "fake_dispatch_fn",
     "FnList",
@@ -33,7 +28,7 @@ LOGGER = logging.getLogger(__name__)
 
 _CreatePreview = cabc.Callable[..., PreviewFn]
 _TorchRouterMode = typing.Literal["dispatch", "function"]
-_TorchThunk = TorchDispatchT | PreviewFn
+_TorchThunk = TorchDispatchFn | PreviewFn
 
 
 @typing.runtime_checkable
@@ -51,64 +46,6 @@ class TorchRouterFactory(typing.Protocol):
     def __call__(
         self, func: _ops.OpOverload, types: tuple[type[torch.Tensor], ...]
     ) -> _CreatePreview: ...
-
-
-class _PrintDispatch(TorchDispatchMode):
-    def __call__(
-        self,
-        func: _ops.OpOverload,
-        types: tuple[type[torch.Tensor], ...],
-        args: tuple[typing.Any, ...],
-        kwargs: dict[str, typing.Any],
-    ):
-        invoke = Thunk(func, *args, **kwargs)
-        return self.invoke_and_print(invoke)
-
-    def invoke_and_print(self, invoke: Thunk):
-        result = invoke.do()
-        print(f"{invoke!s} -> {result!r}")
-        return result
-
-
-print_torch_dispatch = _PrintDispatch
-"""
-Print the dispatcher.
-"""
-
-
-@dcls.dataclass
-class _LogDispatch(_PrintDispatch):
-    """
-    Log every call to dispatch mode.
-    """
-
-    level: int
-    "The level to log to."
-
-    logger: logging.Logger = LOGGER
-    "The logger to log to. Default to the one in the current module."
-
-    @typing.override
-    def invoke_and_print(self, invoke: Thunk):
-        result = invoke.do()
-        self.logger.log(self.level, "%s -> %s", invoke, result)
-        return result
-
-
-log_torch_dispatch = _LogDispatch
-"""
-Context manager to log the `__torch_dispatch__` calls.
-
-Args:
-    logger: The logger to use. Default to the one in this module.
-    level: The level to log to. Default to `logging.DEBUG`.
-"""
-
-
-@ctxl.contextmanager
-def log_and_enable_rich(level: int, /):
-    with enable_rich_log(level) as logger, log_torch_dispatch(level):
-        yield logger
 
 
 def only_route_aten_in_fake(
@@ -202,7 +139,7 @@ class RouteDispatchOp(TorchDispatchMode):
             # Fn is not handled.
             or (fn := fn_init(*args, **kwargs)) is NotImplemented
         ):
-            fn = TorchDispatchT(op, types, args, kwargs)
+            fn = TorchDispatchFn(op, types, args, kwargs)
 
         assert isinstance(fn, _TorchThunk), type(fn)
         self.history.append(fn)

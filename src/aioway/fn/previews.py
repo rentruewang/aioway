@@ -21,7 +21,12 @@ __all__ = ["find_preview", "PreviewFnFinder", "all_previews", "PreviewFn"]
 _PREVIEW_CANDIDATES: dict[_ops.OpOverload, list[cabc.Callable[..., PreviewFn]]] = {}
 
 
-class HasParams(abc.ABC):
+class TensorFn(Fn, abc.ABC):
+    @abc.abstractmethod
+    @typing.override
+    def do(self) -> torch.Tensor:
+        raise NotImplementedError
+
     def parameters(self, select: TensorFilter = all_tensors, /):
         for tensor in self.tensors():
             if select(tensor):
@@ -33,7 +38,7 @@ class HasParams(abc.ABC):
 
 
 @dcls_no_repr
-class PreviewFn(HasParams, Fn, abc.ABC):
+class PreviewFn(TensorFn, abc.ABC):
     """
     `Preview` is a preview for operations,
     allowing for multiple implementations for the same torch IR.
