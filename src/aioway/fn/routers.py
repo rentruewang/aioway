@@ -2,7 +2,6 @@
 
 import contextlib as ctxl
 import dataclasses as dcls
-import functools
 import logging
 import typing
 from collections import abc as cabc
@@ -16,11 +15,8 @@ from aioway.schemas import attr
 from .fake import enabled_fake_mode, fake_mode
 from .fn import Thunk
 from .guards import TensorFilter, all_tensors, is_aten_op, is_leaf_has_grad, is_prim_op
-from .previews import PreviewFn, find_preview
-from .stacks import (
-    TorchDispatchMode,
-    TorchDispatchT,
-)
+from .previews import PreviewFn, PreviewFnFinder
+from .stacks import TorchDispatchMode, TorchDispatchT
 
 __all__ = [
     "print_torch_dispatch",
@@ -37,6 +33,7 @@ LOGGER = logging.getLogger(__name__)
 
 _CreatePreview = cabc.Callable[..., PreviewFn]
 _TorchRouterMode = typing.Literal["dispatch", "function"]
+_TorchThunk = TorchDispatchT | PreviewFn
 
 
 @typing.runtime_checkable
@@ -134,27 +131,27 @@ def no_route(*args, **kwargs) -> _CreatePreview:
 @dcls.dataclass(frozen=True)
 class FnList:
     """
-    The list of `TorchDispatchT` that tracks the current history.
+    The list of `_TorchOp` that tracks the current history.
     """
 
-    history: list[TorchDispatchT] = dcls.field(default_factory=list)
+    history: list[_TorchThunk] = dcls.field(default_factory=list)
     """
     The `TorchFn` that has been called, in order.
     """
 
-    fn_index: dict[torch.Tensor, TorchDispatchT] = dcls.field(default_factory=dict)
+    fn_index: dict[torch.Tensor, _TorchThunk] = dcls.field(default_factory=dict)
     "The mapping from output to tensor input."
 
     def __len__(self) -> int:
         return len(self.history)
 
-    def __getitem__(self, idx: int) -> TorchDispatchT:
+    def __getitem__(self, idx: int) -> _TorchThunk:
         return self.history[idx]
 
     def __iter__(self):
         yield from self.history
 
-    def append(self, item: TorchDispatchT, /):
+    def append(self, item: _TorchThunk, /):
         self.history.append(item)
 
     def pop(self):
@@ -196,7 +193,7 @@ class RouteDispatchOp(TorchDispatchMode):
     ):
         # Create a `_ThunkType` and route implemented methods.
         fn_init = self.router(op, types)
-        fn: TorchDispatchT
+        fn: _TorchThunk
 
         if (
             False
@@ -207,11 +204,11 @@ class RouteDispatchOp(TorchDispatchMode):
         ):
             fn = TorchDispatchT(op, types, args, kwargs)
 
-        assert isinstance(fn, TorchDispatchT), fn
+        assert isinstance(fn, _TorchThunk), type(fn)
         self.history.append(fn)
 
         with capture_do_error(fn):
-            result = op(*args, **kwargs)
+            result = fn.do()
 
         # Store it in the history.
         self.history.fn_index[result] = fn
@@ -222,11 +219,11 @@ def aten_ops_preview(
     func: _ops.OpOverload, types: tuple[type[torch.Tensor], ...]
 ) -> _CreatePreview:
     assert is_aten_op(func), func
-    return functools.partial(find_preview, func)
+    return PreviewFnFinder(func)
 
 
 @ctxl.contextmanager
-def capture_do_error(fn: TorchDispatchT):
+def capture_do_error(fn: _TorchThunk):
     try:
         yield
     except RuntimeError as err:

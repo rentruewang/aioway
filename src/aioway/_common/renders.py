@@ -20,7 +20,7 @@ def render_fcall(func: FunctionLike, *args: typing.Any, **kwargs: typing.Any) ->
         args_builder.extend(f"{k!s}={v!r}" for k, v in kwargs.items())
 
     args_str = ", ".join(args_builder)
-    return f"{func!r}({args_str})"
+    return f"{func!s}({args_str})"
 
 
 def render_fcall_done(

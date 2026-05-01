@@ -13,16 +13,27 @@ from torch import _ops
 from aioway._common import dcls_no_repr, render_fcall
 
 from .fn import Fn
-from .stacks import TorchDispatchT
+from .guards import TensorFilter, all_tensors
 
-__all__ = ["find_preview", "all_previews", "PreviewFn"]
+__all__ = ["find_preview", "PreviewFnFinder", "all_previews", "PreviewFn"]
 
 
 _PREVIEW_CANDIDATES: dict[_ops.OpOverload, list[cabc.Callable[..., PreviewFn]]] = {}
 
 
+class HasParams(abc.ABC):
+    def parameters(self, select: TensorFilter = all_tensors, /):
+        for tensor in self.tensors():
+            if select(tensor):
+                yield tensor
+
+    @abc.abstractmethod
+    def tensors(self) -> cabc.Iterator[torch.Tensor]:
+        raise NotImplementedError
+
+
 @dcls_no_repr
-class PreviewFn(TorchDispatchT, Fn, abc.ABC):
+class PreviewFn(HasParams, Fn, abc.ABC):
     """
     `Preview` is a preview for operations,
     allowing for multiple implementations for the same torch IR.
@@ -105,13 +116,29 @@ def find_preview(
     if op not in _PREVIEW_CANDIDATES:
         return NotImplemented
 
-    for candidate in _PREVIEW_CANDIDATES[op]:
-        if not (preview := candidate(*args, **kwargs)).ok():
-            continue
+    return PreviewFnFinder(op)(*args, **kwargs)
 
-        return preview
 
-    return NotImplemented
+@dcls.dataclass(frozen=True)
+class PreviewFnFinder:
+    op: _ops.OpOverload
+
+    def __repr__(self):
+        name = self.__class__.__qualname__
+        return f"{name}({self.candidates})"
+
+    def __call__(self, *args, **kwargs):
+        for candidate in self.candidates:
+            if not (preview := candidate(*args, **kwargs)).ok():
+                continue
+
+            return preview
+
+        return NotImplemented
+
+    @property
+    def candidates(self):
+        return _PREVIEW_CANDIDATES[self.op]
 
 
 def all_previews():

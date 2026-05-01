@@ -13,7 +13,8 @@ from torch.utils import _python_dispatch as pyd
 
 from aioway._common import dcls_no_repr, render_fcall
 
-from .guards import TensorFilter, all_tensors
+from .fn import Fn
+from .previews import HasParams
 
 __all__ = [
     "TorchFunctionMode",
@@ -141,17 +142,17 @@ class TorchFunctionT:
 
 
 @dcls_no_repr
-class TorchDispatchT:
+class TorchDispatchT(HasParams, Fn):
     op: _ops.OpOverload
     types: tuple[type, ...]
     args: tuple[typing.Any, ...]
     kwargs: dict[str, typing.Any]
 
-    def parameters(self, select: TensorFilter = all_tensors, /):
-        for tensor in self.tensors():
-            if select(tensor):
-                yield tensor
+    @typing.override
+    def do(self):
+        return self.op(*self.args, **self.kwargs)
 
+    @typing.override
     def tensors(self) -> cabc.Iterator[torch.Tensor]:
         for arg in self.args:
             if isinstance(arg, torch.Tensor):
