@@ -10,25 +10,18 @@ from collections import abc as cabc
 import torch
 from torch import _ops
 
-from aioway._common.dcls import dcls_no_repr
-from aioway.fn.funcs import torch_function_stack
+from aioway._common import dcls_no_repr, render_fcall
 
-from ..fn import Fn, Thunk, pretty_function_call
-from ..guards import TensorFilter, all_tensors
+from .fn import Fn
+from .guards import TensorFilter, all_tensors
 
-__all__ = ["find_preview", "all_previews", "TorchFn", "Preview", "TorchDispatchThunk"]
-
-
-_PREVIEW_CANDIDATES: dict[_ops.OpOverload, list[cabc.Callable[..., Preview]]] = {}
+__all__ = ["find_preview", "PreviewFnFinder", "all_previews", "PreviewFn"]
 
 
-class TorchFn(Fn, abc.ABC):
-    def __init__(self):
-        try:
-            self._torch_function = torch_function_stack().top()
-        except IndexError:
-            raise RuntimeError("There are no `__torch_function__` calls active!")
+_PREVIEW_CANDIDATES: dict[_ops.OpOverload, list[cabc.Callable[..., PreviewFn]]] = {}
 
+
+class TensorFn(Fn, abc.ABC):
     @abc.abstractmethod
     @typing.override
     def do(self) -> torch.Tensor:
@@ -44,58 +37,8 @@ class TorchFn(Fn, abc.ABC):
         raise NotImplementedError
 
 
-class TorchDispatchThunk(Thunk, TorchFn):
-    def __init__(
-        self,
-        func: cabc.Callable[..., typing.Any],
-        types: tuple[type, ...],
-        /,
-        *args: typing.Any,
-        **kwargs: typing.Any,
-    ) -> None:
-        Thunk.__init__(self, func, *args, **kwargs)
-        TorchFn.__init__(self)
-        self._types = types
-
-    @typing.override
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, TorchDispatchThunk):
-            return (
-                True
-                and Thunk.__eq__(self, other)
-                and self.types == other.types
-                and self._torch_function == other._torch_function
-            )
-
-        if isinstance(other, Thunk):
-            return other == self
-
-        return NotImplemented
-
-    @property
-    @typing.override
-    @typing.no_type_check
-    def func(self) -> _ops.OpOverload:
-        return self._func
-
-    @property
-    def types(self):
-        return self._types
-
-    @typing.override
-    def tensors(self):
-
-        def all_args():
-            yield from self.args
-            yield from self.kwargs.values()
-
-        for arg in all_args():
-            if isinstance(arg, torch.Tensor):
-                yield arg
-
-
 @dcls_no_repr
-class Preview(TorchFn, abc.ABC):
+class PreviewFn(TensorFn, abc.ABC):
     """
     `Preview` is a preview for operations,
     allowing for multiple implementations for the same torch IR.
@@ -109,12 +52,9 @@ class Preview(TorchFn, abc.ABC):
     def __init_subclass__(cls) -> None:
         cls.__register_preview()
 
-    def __post_init__(self):
-        TorchFn.__init__(self)
-
     @typing.override
     def __repr__(self) -> str:
-        return pretty_function_call(f"preview::{self.name()}", **dcls.asdict(self))
+        return render_fcall(f"preview::{self.name()}", **dcls.asdict(self))
 
     @abc.abstractmethod
     def ok(self) -> bool:
@@ -173,7 +113,7 @@ class Preview(TorchFn, abc.ABC):
 
 def find_preview(
     op: _ops.OpOverload, *args: typing.Any, **kwargs: typing.Any
-) -> Preview:
+) -> PreviewFn:
     """
     Try finding a preview with the given `op` and its arguments.
     """
@@ -181,13 +121,29 @@ def find_preview(
     if op not in _PREVIEW_CANDIDATES:
         return NotImplemented
 
-    for candidate in _PREVIEW_CANDIDATES[op]:
-        if not (preview := candidate(*args, **kwargs)).ok():
-            continue
+    return PreviewFnFinder(op)(*args, **kwargs)
 
-        return preview
 
-    return NotImplemented
+@dcls.dataclass(frozen=True)
+class PreviewFnFinder:
+    op: _ops.OpOverload
+
+    def __repr__(self):
+        name = self.__class__.__qualname__
+        return f"{name}({self.candidates})"
+
+    def __call__(self, *args, **kwargs):
+        for candidate in self.candidates:
+            if not (preview := candidate(*args, **kwargs)).ok():
+                continue
+
+            return preview
+
+        return NotImplemented
+
+    @property
+    def candidates(self):
+        return _PREVIEW_CANDIDATES[self.op]
 
 
 def all_previews():

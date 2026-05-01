@@ -8,7 +8,9 @@ import functools
 import typing
 from collections import abc as cabc
 
-__all__ = ["Fn", "Thunk", "FnStack", "pretty_function_call"]
+from aioway._common import render_fcall, render_fcall_done
+
+__all__ = ["Fn", "Thunk", "FnStack"]
 
 _PENDING = object()
 "The object signifying a status of pending. This is a `object()` s.t. `FnCache` can store `None`."
@@ -108,16 +110,12 @@ class Thunk(Fn):
 
     @functools.cached_property
     def __string(self) -> str:
-        pretty = pretty_function_call(
-            self.func.__qualname__,
-            *self.args,
-            **self.kwargs,
-        )
+        args, kwargs = self.args, self.kwargs
 
         if self.done:
-            pretty = f"{pretty} -> {self.__result!r}"
-
-        return pretty
+            return render_fcall_done(self.func, self.__result, *args, **kwargs)
+        else:
+            return render_fcall(self.func, *args, **kwargs)
 
     @property
     def done(self) -> bool:
@@ -177,18 +175,3 @@ class FnStack[F: Fn]:
             yield
         finally:
             _ = self.pop()
-
-
-def pretty_function_call(func: str, *args: typing.Any, **kwargs: typing.Any) -> str:
-    args_builder: list[str] = []
-
-    # Add positional arguments.
-    if args:
-        args_builder.extend(f"{arg!r}" for arg in args)
-
-    # Add keyword arguments.
-    if kwargs:
-        args_builder.extend(f"{k!s}={v!r}" for k, v in kwargs.items())
-
-    args_str = ", ".join(args_builder)
-    return f"{func}({args_str})"
