@@ -9,17 +9,18 @@ from collections import abc as cabc
 import torch
 from torch import _ops
 
-from aioway.schemas import attr
+from aioway.fn.fn import Thunk
 
 from .fake import enabled_fake_mode, fake_mode
-from .guards import TensorFilter, all_tensors, is_aten_op, is_leaf_has_grad, is_prim_op
-from .modes import TorchDispatchFn, TorchDispatchMode
+from .guards import is_aten_op, is_prim_op
+from .modes import TorchDispatchFn, TorchDispatchMode, TorchFunctionMode
 from .previews import PreviewFn, PreviewFnFinder
+from .tracking import FnList, TensorFnList
 
 __all__ = [
+    "track_function_fn",
     "track_dispatch_fn",
     "fake_dispatch_fn",
-    "FnList",
     "RouteDispatchOp",
 ]
 
@@ -65,61 +66,27 @@ def no_route(*args, **kwargs) -> _CreatePreview:
     return NotImplemented
 
 
-@dcls.dataclass(frozen=True)
-class FnList:
-    """
-    The list of `_TorchOp` that tracks the current history.
-    """
+@dcls.dataclass
+class SaveFunctionHistory(TorchFunctionMode):
+    history: FnList = dcls.field(default_factory=FnList)
 
-    history: list[_TorchThunk] = dcls.field(default_factory=list)
-    """
-    The `TorchFn` that has been called, in order.
-    """
-
-    fn_index: dict[torch.Tensor, _TorchThunk] = dcls.field(default_factory=dict)
-    "The mapping from output to tensor input."
-
-    def __len__(self) -> int:
-        return len(self.history)
-
-    def __getitem__(self, idx: int) -> _TorchThunk:
-        return self.history[idx]
-
-    def __iter__(self):
-        yield from self.history
-
-    def append(self, item: _TorchThunk, /):
-        self.history.append(item)
-
-    def pop(self):
-        return self.history.pop()
-
-    def parameters(self, select: TensorFilter = is_leaf_has_grad, unique: bool = True):
-        def data_params():
-            for fn in self.history:
-                yield from fn.parameters(select)
-
-        params = data_params()
-
-        if unique:
-            params = set(data_params())
-
-        yield from params
-
-    def numel(self) -> int:
-        return sum(param.numel() for param in self.parameters(all_tensors))
-
-    def memory(self) -> int:
-        return sum(attr(param).memory() for param in self.parameters(all_tensors))
-
-    def find_fn(self, tensor: torch.Tensor):
-        return self.fn_index[tensor]
+    @typing.override
+    def __call__(
+        self,
+        func: cabc.Callable[..., typing.Any],
+        types: tuple[type, ...],
+        *args: typing.Any,
+        **kwargs: typing.Any,
+    ) -> typing.Any:
+        thunk = Thunk(func, *args, **kwargs)
+        self.history.append(thunk)
+        return thunk.do()
 
 
 @dcls.dataclass
 class RouteDispatchOp(TorchDispatchMode):
     router: TorchRouterFactory
-    history: FnList = dcls.field(default_factory=FnList)
+    history: TensorFnList = dcls.field(default_factory=TensorFnList)
 
     def __call__(
         self,
@@ -166,6 +133,16 @@ def capture_do_error(fn: _TorchThunk):
         yield
     except RuntimeError as err:
         raise ValueError(f"Function call '{fn}' failed.") from err
+
+
+@ctxl.contextmanager
+def track_function_fn():
+    """
+    Track all `torch.*` and `Tensor.*` function calls.
+    """
+
+    with SaveFunctionHistory() as sfh:
+        yield sfh.history
 
 
 @ctxl.contextmanager

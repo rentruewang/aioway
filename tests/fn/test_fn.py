@@ -5,6 +5,7 @@ import pytest
 import torch
 
 from aioway.fn import TorchDispatchStack, TorchFunctionStack, track_dispatch_fn
+from aioway.fn.routers import track_function_fn
 
 
 @pytest.fixture
@@ -19,18 +20,20 @@ def b():
 
 def test_call(a: torch.Tensor, b: torch.Tensor):
     with (
-        track_dispatch_fn() as calls,
+        track_function_fn() as func_hist,
+        track_dispatch_fn() as dis_hist,
         TorchFunctionStack() as funcs,
         TorchDispatchStack() as ops,
     ):
         result = a + b
 
     assert result.ndim == 1
-    assert len(calls)
+    assert len(func_hist)
+    assert len(dis_hist)
 
     # After calling so of course it's empty
     assert not len(funcs.stack)
     assert not len(ops.stack)
 
-    assert calls.memory()
-    assert str(calls[0])
+    assert dis_hist.memory()
+    assert str(dis_hist[0])
