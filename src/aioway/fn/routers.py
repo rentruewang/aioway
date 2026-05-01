@@ -13,11 +13,14 @@ from torch import _ops
 from aioway._common import enable_rich_log
 from aioway.schemas import attr
 
-from .ctx import TorchDispatchMode, function_fn_stack
 from .fake import enabled_fake_mode, fake_mode
-from .fn import Fn, Thunk
+from .fn import Thunk
 from .guards import TensorFilter, all_tensors, is_aten_op, is_leaf_has_grad, is_prim_op
-from .previews import PreviewFn, TorchDispatchThunk, TorchFn, find_preview
+from .previews import PreviewFn, find_preview
+from .stacks import (
+    TorchDispatchMode,
+    TorchDispatchT,
+)
 
 __all__ = [
     "print_torch_dispatch",
@@ -131,27 +134,27 @@ def no_route(*args, **kwargs) -> _CreatePreview:
 @dcls.dataclass(frozen=True)
 class FnList:
     """
-    The list of `TorchFn` that tracks the current history.
+    The list of `TorchDispatchT` that tracks the current history.
     """
 
-    history: list[TorchFn] = dcls.field(default_factory=list)
+    history: list[TorchDispatchT] = dcls.field(default_factory=list)
     """
     The `TorchFn` that has been called, in order.
     """
 
-    fn_index: dict[torch.Tensor, TorchFn] = dcls.field(default_factory=dict)
+    fn_index: dict[torch.Tensor, TorchDispatchT] = dcls.field(default_factory=dict)
     "The mapping from output to tensor input."
 
     def __len__(self) -> int:
         return len(self.history)
 
-    def __getitem__(self, idx: int) -> Fn:
+    def __getitem__(self, idx: int) -> TorchDispatchT:
         return self.history[idx]
 
     def __iter__(self):
         yield from self.history
 
-    def append(self, item: TorchFn, /):
+    def append(self, item: TorchDispatchT, /):
         self.history.append(item)
 
     def pop(self):
@@ -186,14 +189,14 @@ class RouteDispatchOp(TorchDispatchMode):
 
     def __call__(
         self,
-        func: _ops.OpOverload,
+        op: _ops.OpOverload,
         types: tuple[type[torch.Tensor], ...],
-        args: tuple[typing.Any, ...],
-        kwargs: dict[str, typing.Any],
+        *args: tuple[typing.Any, ...],
+        **kwargs: dict[str, typing.Any],
     ):
         # Create a `_ThunkType` and route implemented methods.
-        fn_init = self.router(func, types)
-        fn: TorchFn
+        fn_init = self.router(op, types)
+        fn: TorchDispatchT
 
         if (
             False
@@ -202,13 +205,13 @@ class RouteDispatchOp(TorchDispatchMode):
             # Fn is not handled.
             or (fn := fn_init(*args, **kwargs)) is NotImplemented
         ):
-            fn = TorchDispatchThunk(func, types, *args, **kwargs)
+            fn = TorchDispatchT(op, types, args, kwargs)
 
-        assert isinstance(fn, TorchFn), fn
+        assert isinstance(fn, TorchDispatchT), fn
         self.history.append(fn)
 
         with capture_do_error(fn):
-            result = func(*args, **kwargs)
+            result = op(*args, **kwargs)
 
         # Store it in the history.
         self.history.fn_index[result] = fn
@@ -223,7 +226,7 @@ def aten_ops_preview(
 
 
 @ctxl.contextmanager
-def capture_do_error(fn: TorchFn):
+def capture_do_error(fn: TorchDispatchT):
     try:
         yield
     except RuntimeError as err:
@@ -236,7 +239,7 @@ def track_dispatch_fn(router: TorchRouterFactory = no_route):
     Track all calls into the torch dispatch mode as `TorchIrFn`.
     """
 
-    with function_fn_stack(), RouteDispatchOp(router=router) as sdm:
+    with RouteDispatchOp(router=router) as sdm:
         yield sdm.history
 
 

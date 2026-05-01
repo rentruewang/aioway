@@ -6,7 +6,6 @@ import torch
 from aioway.fn import (
     fake_dispatch_fn,
     fake_mode,
-    function_fn_stack,
     track_dispatch_fn,
 )
 

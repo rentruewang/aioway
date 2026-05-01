@@ -13,7 +13,14 @@ from torch.utils import _python_dispatch as pyd
 
 from aioway._common import dcls_no_repr, render_fcall
 
-__all__ = ["TorchFunctionMode", "TorchDispatchMode"]
+from .guards import TensorFilter, all_tensors
+
+__all__ = [
+    "TorchFunctionMode",
+    "TorchDispatchMode",
+    "active_function_modes",
+    "active_dispatch_modes",
+]
 
 _ACTIVE_FUNCTION_MODES: list[_TorchFunctionModeT] = []
 _ACTIVE_DISPATCH_MODES: list[_TorchDispatchModeT] = []
@@ -103,11 +110,9 @@ class TorchDispatchMode(pyd.TorchDispatchMode, abc.ABC):
         kwargs = kwargs or {}
         args = () if args == ... else args
 
-        func = _ACTIVE_FUNCTION_MODES[-1].func
-        thunk = _TorchDispatchModeT(self, op, func, types, args, kwargs)
+        thunk = _TorchDispatchModeT(self, op, types, args, kwargs)
         with _push_current_call(thunk, _ACTIVE_DISPATCH_MODES):
             result = self(op, types, *args, **kwargs)
-        assert isinstance(result, torch.Tensor)
         return result
 
     @staticmethod
@@ -138,25 +143,26 @@ class TorchFunctionT:
 @dcls_no_repr
 class TorchDispatchT:
     op: _ops.OpOverload
-    func: cabc.Callable[..., typing.Any]
     types: tuple[type, ...]
     args: tuple[typing.Any, ...]
     kwargs: dict[str, typing.Any]
 
-    def __repr__(self) -> str:
-        func_name = f"{self.func}->{self.op}"
-        return render_fcall(func_name, *self.args, **self.kwargs)
+    def parameters(self, select: TensorFilter = all_tensors, /):
+        for tensor in self.tensors():
+            if select(tensor):
+                yield tensor
 
-    @classmethod
-    def init_with_context(
-        cls,
-        op: _ops.OpOverload,
-        types: tuple[type[torch.Tensor], ...],
-        *args: typing.Any,
-        **kwargs: typing.Any,
-    ):
-        func = _ACTIVE_FUNCTION_MODES[-1].func
-        return cls(op, func, types, args, kwargs)
+    def tensors(self) -> cabc.Iterator[torch.Tensor]:
+        for arg in self.args:
+            if isinstance(arg, torch.Tensor):
+                yield arg
+
+        for arg in self.kwargs.values():
+            if isinstance(arg, torch.Tensor):
+                yield arg
+
+    def __repr__(self) -> str:
+        return render_fcall(self.op.name(), *self.args, **self.kwargs)
 
 
 @dcls_no_repr
@@ -182,4 +188,28 @@ def _push_current_call[T](item: T, stack: list[T]):
         stack.append(item)
         yield
     finally:
-        stack.pop()
+        _ = stack.pop()
+
+
+def active_function_modes():
+    return _ACTIVE_FUNCTION_MODES
+
+
+def active_dispatch_modes():
+    return _ACTIVE_DISPATCH_MODES
+
+
+def active_functions():
+    """
+    Get all the currently active torch functions.
+    """
+
+    yield from {mode.func for mode in active_function_modes()}
+
+
+def active_dispatches():
+    """
+    Get all the current active torch dispatches.
+    """
+
+    yield from {mode.op for mode in active_dispatch_modes()}

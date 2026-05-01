@@ -108,17 +108,12 @@ class Thunk(Fn):
 
     @functools.cached_property
     def __string(self) -> str:
-        if self.done:
-            return render_fcall_done(
-                self.func.__qualname__, self.__result, *self.args, **self.kwargs
-            )
-        else:
+        args, kwargs = self.args, self.kwargs
 
-            return render_fcall(
-                self.func.__qualname__,
-                *self.args,
-                **self.kwargs,
-            )
+        if self.done:
+            return render_fcall_done(self.func, self.__result, *args, **kwargs)
+        else:
+            return render_fcall(self.func, *args, **kwargs)
 
     @property
     def done(self) -> bool:

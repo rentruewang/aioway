@@ -4,7 +4,7 @@
 import pytest
 import torch
 
-from aioway.fn import function_fn_stack, track_dispatch_fn
+from aioway.fn import track_dispatch_fn
 
 
 @pytest.fixture

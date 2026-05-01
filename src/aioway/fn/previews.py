@@ -10,19 +10,19 @@ from collections import abc as cabc
 import torch
 from torch import _ops
 
-from aioway._common.dcls import dcls_no_repr
+from aioway._common import dcls_no_repr, render_fcall
 
-from .fn import render_fcall
-from .guards import TensorFilter, all_tensors
+from .fn import Fn
+from .stacks import TorchDispatchT
 
-__all__ = ["find_preview", "all_previews", "TorchFn", "PreviewFn", "TorchDispatchThunk"]
+__all__ = ["find_preview", "all_previews", "PreviewFn"]
 
 
 _PREVIEW_CANDIDATES: dict[_ops.OpOverload, list[cabc.Callable[..., PreviewFn]]] = {}
 
 
 @dcls_no_repr
-class PreviewFn(TorchFn, abc.ABC):
+class PreviewFn(TorchDispatchT, Fn, abc.ABC):
     """
     `Preview` is a preview for operations,
     allowing for multiple implementations for the same torch IR.
@@ -35,9 +35,6 @@ class PreviewFn(TorchFn, abc.ABC):
 
     def __init_subclass__(cls) -> None:
         cls.__register_preview()
-
-    def __post_init__(self):
-        TorchFn.__init__(self)
 
     @typing.override
     def __repr__(self) -> str:
@@ -65,15 +62,6 @@ class PreviewFn(TorchFn, abc.ABC):
         Return the cost of each operation.
         """
 
-        raise NotImplementedError
-
-    def parameters(self, select: TensorFilter = all_tensors, /):
-        for tensor in self.tensors():
-            if select(tensor):
-                yield tensor
-
-    @abc.abstractmethod
-    def tensors(self) -> cabc.Iterator[torch.Tensor]:
         raise NotImplementedError
 
     @classmethod
