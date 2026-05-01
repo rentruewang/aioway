@@ -47,6 +47,7 @@ def test_einsum(a: torch.Tensor, b: torch.Tensor):
     assert len(func_calls)
     assert len(dis_calls)
 
+    # Outside of calls, must be clear!
     assert not len(funcs.stack)
     assert not len(ops.stack)
 
