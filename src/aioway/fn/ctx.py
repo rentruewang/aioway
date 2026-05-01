@@ -4,7 +4,6 @@
 
 import abc
 import contextlib as ctxl
-import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
@@ -12,7 +11,7 @@ import torch
 from torch import _ops, overrides
 from torch.utils import _python_dispatch as pyd
 
-from .fn import Thunk
+from aioway._common import dcls_no_repr, render_fcall
 
 __all__ = ["TorchFunctionMode", "TorchDispatchMode"]
 
@@ -65,12 +64,16 @@ class TorchFunctionMode(overrides.TorchFunctionMode, abc.ABC):
             return self(func, types, *args, **kwargs)
 
     @staticmethod
-    def register(
-        func: _TorchMode,
-    ) -> cabc.Callable[[], typing.ContextManager[None]]:
+    def register(func: _TorchMode) -> cabc.Callable[[], typing.ContextManager[None]]:
+
+        class _FuncTorchFunctionMode(TorchFunctionMode):
+            @typing.override
+            def __call__(self, *args, **kwargs):
+                return func(*args, **kwargs)
+
         @ctxl.contextmanager
         def ctx_man():
-            with _FuncFunMode(func):
+            with _FuncTorchFunctionMode():
                 yield
 
         return ctx_man
@@ -87,7 +90,7 @@ class TorchDispatchMode(pyd.TorchDispatchMode, abc.ABC):
     @abc.abstractmethod
     def __call__(
         self,
-        func: _ops.OpOverload,
+        op: _ops.OpOverload,
         types: tuple[type[torch.Tensor], ...],
         *args: typing.Any,
         **kwargs: typing.Any,
@@ -96,59 +99,76 @@ class TorchDispatchMode(pyd.TorchDispatchMode, abc.ABC):
 
     @typing.final
     @typing.override
-    def __torch_dispatch__(self, func, types, args=..., kwargs=None) -> typing.Any:
+    def __torch_dispatch__(self, op, types, args=..., kwargs=None) -> typing.Any:
         kwargs = kwargs or {}
         args = () if args == ... else args
 
-        thunk = _TorchDispatchModeT(self, func, types, args, kwargs)
+        func = _ACTIVE_FUNCTION_MODES[-1].func
+        thunk = _TorchDispatchModeT(self, op, func, types, args, kwargs)
         with _push_current_call(thunk, _ACTIVE_DISPATCH_MODES):
-            result = self(func, types, *args, **kwargs)
+            result = self(op, types, *args, **kwargs)
         assert isinstance(result, torch.Tensor)
         return result
 
     @staticmethod
-    def register(
-        func: _TorchMode,
-    ) -> cabc.Callable[[], typing.ContextManager[None]]:
+    def register(func: _TorchMode) -> cabc.Callable[[], typing.ContextManager[None]]:
+        class _FuncTorchDispatchMode(TorchDispatchMode):
+            def __call__(self, *args, **kwargs):
+                return func(*args, **kwargs)
+
         @ctxl.contextmanager
         def ctx_man():
-            with _FuncDisMode(func):
+            with _FuncTorchDispatchMode():
                 yield
 
         return ctx_man
 
 
-@dcls.dataclass(frozen=True)
-class _TorchModeLike:
-    func: typing.Any
+@dcls_no_repr
+class TorchFunctionT:
+    func: cabc.Callable[..., typing.Any]
     types: tuple[type, ...]
     args: tuple[typing.Any, ...]
     kwargs: dict[str, typing.Any]
 
-    @typing.override
     def __repr__(self) -> str:
-        return repr(Thunk(self.func, *self.args, **self.kwargs))
+        return render_fcall(self.func, *self.args, **self.kwargs)
 
 
-class TorchFunctionT(_TorchModeLike):
+@dcls_no_repr
+class TorchDispatchT:
+    op: _ops.OpOverload
     func: cabc.Callable[..., typing.Any]
+    types: tuple[type, ...]
+    args: tuple[typing.Any, ...]
+    kwargs: dict[str, typing.Any]
+
+    def __repr__(self) -> str:
+        func_name = f"{self.func}->{self.op}"
+        return render_fcall(func_name, *self.args, **self.kwargs)
+
+    @classmethod
+    def init_with_context(
+        cls,
+        op: _ops.OpOverload,
+        types: tuple[type[torch.Tensor], ...],
+        *args: typing.Any,
+        **kwargs: typing.Any,
+    ):
+        func = _ACTIVE_FUNCTION_MODES[-1].func
+        return cls(op, func, types, args, kwargs)
 
 
-@dcls.dataclass(frozen=True)
-class TorchDispatchT(_TorchModeLike):
-    func: _ops.OpOverload
-
-
-@dcls.dataclass(frozen=True)
+@dcls_no_repr
 class _HasMode[T]:
     mode: T
 
 
-@dcls.dataclass(frozen=True)
+@dcls_no_repr
 class _TorchFunctionModeT(TorchFunctionT, _HasMode[TorchFunctionMode]): ...
 
 
-@dcls.dataclass(frozen=True)
+@dcls_no_repr
 class _TorchDispatchModeT(TorchDispatchT, _HasMode[TorchDispatchMode]): ...
 
 
@@ -163,21 +183,3 @@ def _push_current_call[T](item: T, stack: list[T]):
         yield
     finally:
         stack.pop()
-
-
-@dcls.dataclass(frozen=True)
-class _FuncFunMode(TorchFunctionMode):
-    func: _TorchMode
-
-    @typing.override
-    def __call__(self, *args, **kwargs):
-        return self.func(*args, **kwargs)
-
-
-@dcls.dataclass(frozen=True)
-class _FuncDisMode(TorchDispatchMode):
-    func: _TorchMode
-
-    @typing.override
-    def __call__(self, *args, **kwargs):
-        return self.func(*args, **kwargs)
