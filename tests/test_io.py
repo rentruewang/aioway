@@ -2,9 +2,10 @@
 
 import pathlib
 
-import pytest, torch
+import pytest
+import torch
 
-from aioway.io import read_image_from_path, read_audio_from_path
+from aioway.io import read_audio_from_path, read_image_from_path, read_video_from_path
 
 
 @pytest.fixture(scope="session")
@@ -44,8 +45,13 @@ def example_image(request: pytest.FixtureRequest):
     return request.getfixturevalue(request.param)
 
 
-@pytest.fixture(params=[example_mp3.name])
+@pytest.fixture(params=[example_mp3.name, example_mp4.name])
 def example_audio(request: pytest.FixtureRequest):
+    return request.getfixturevalue(request.param)
+
+
+@pytest.fixture(params=[example_mp4.name])
+def example_video(request: pytest.FixtureRequest):
     return request.getfixturevalue(request.param)
 
 
@@ -67,3 +73,8 @@ def test_read_img(example_image: pathlib.Path):
 def test_read_audio(example_audio: pathlib.Path):
     audio = read_audio_from_path(example_audio)
     assert isinstance(audio.data, torch.Tensor)
+
+
+def test_read_video(example_video: pathlib.Path):
+    video = read_video_from_path(example_video)
+    assert isinstance(video, torch.Tensor)
