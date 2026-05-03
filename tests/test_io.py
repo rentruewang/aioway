@@ -1,25 +1,47 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import pytest, pathlib
+import pathlib
 
-_MEDIA_ROOT = pathlib.Path(__file__).parent.parent / "media"
+import pytest
+
+from aioway.io.images import read_image
 
 
 @pytest.fixture(scope="session")
 def media():
-    return _MEDIA_ROOT
+    return pathlib.Path(__file__).parent.parent / "media"
 
 
-def _example_files():
-    yield _MEDIA_ROOT / "file_example_JPG_2500kB.jpg"
-    yield _MEDIA_ROOT / "file_example_MP3_5MG.mp3"
-    yield _MEDIA_ROOT / "file_example_MP4_1920_18MG.mp4"
-    yield _MEDIA_ROOT / "file_example_PNG_3MB.png"
+@pytest.fixture
+def example_jpg(media: pathlib.Path):
+    return media / "file_example_JPG_2500kB.jpg"
 
 
-@pytest.fixture(params=_example_files())
+@pytest.fixture
+def example_png(media: pathlib.Path):
+    return media / "file_example_PNG_3MB.png"
+
+
+@pytest.fixture
+def example_mp4(media: pathlib.Path):
+    return media / "file_example_MP4_1920_18MG.mp4"
+
+
+@pytest.fixture
+def example_mp3(media: pathlib.Path):
+    return media / "file_example_MP3_5MG.mp3"
+
+
+@pytest.fixture(
+    params=[example_jpg.name, example_png.name, example_mp3.name, example_mp4.name]
+)
 def example_file(request: pytest.FixtureRequest):
-    return request.param
+    return request.getfixturevalue(request.param)
+
+
+@pytest.fixture(params=[example_jpg.name, example_png.name])
+def example_image(request: pytest.FixtureRequest):
+    return request.getfixturevalue(request.param)
 
 
 def test_media_exits(media: pathlib.Path):
@@ -30,3 +52,7 @@ def test_media_exits(media: pathlib.Path):
 def test_example_file_exists(example_file: pathlib.Path):
     assert example_file.exists()
     assert example_file.is_file()
+
+
+def test_read_img(example_image: pathlib.Path):
+    img = read_image(example_image)
