@@ -7,6 +7,8 @@ jobs:
     steps:
       - name: 🔔 Check out
         uses: actions/checkout@v3
+        with:
+          lfs: true
 
       - name: ⬇️ Python PDM
         uses: pdm-project/setup-pdm@v4
