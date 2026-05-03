@@ -129,8 +129,8 @@ class PreviewFnFinder:
     op: _ops.OpOverload
 
     def __repr__(self):
-        name = self.__class__.__qualname__
-        return f"{name}({self.candidates})"
+        name = type(self).__qualname__
+        return f"{name}[{self.op.name()}]({self.candidates})"
 
     def __call__(self, *args, **kwargs):
         for candidate in self.candidates:

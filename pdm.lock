@@ -5,7 +5,7 @@
 groups = ["default", "build", "debugging", "faiss", "ibis", "pre-commit", "tests"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:63fdffb888f24d71b44fc8549c120741cbcf5f8306a9fc60d4f6bd5039bff04c"
+content_hash = "sha256:8678bea6e9cc3541726d844b09a996ce7cae4f8717471efe89d10d38371c1aad"
 
 [[metadata.targets]]
 requires_python = ">=3.14,<3.15"

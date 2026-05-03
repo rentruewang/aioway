@@ -3,6 +3,9 @@
 import dataclasses as dcls
 import functools
 import os
+import subprocess as sp
+import sys
+from collections import abc as cabc
 
 import nox
 
@@ -95,13 +98,15 @@ class _Environment:
 
         self._github_cleanup()
 
-        if self.in_github():
+        if in_github():
             self._run("pdm", "config", "python.use_venv", "true")
+
+        self._install_ffmpeg()
 
     def _github_cleanup(self):
 
         # Does nothing outside of GitHub Actions.
-        if not self.in_github():
+        if not in_github():
             return
 
         self._remove_unwanted_files()
@@ -127,14 +132,18 @@ class _Environment:
 
         self._run("df", "-h")
 
-    @staticmethod
-    def in_github() -> bool:
-        "Detect whether or not it is running in GitHub Actions."
+    def _install_ffmpeg(self) -> None:
+        if ffmpeg_is_installed():
+            return
 
-        print("Checking if we are in GitHub Actions...", end=" ")
-        result = os.getenv("GITHUB_ACTIONS") == "true"
-        print("Yes" if result else "No")
-        return result
+        # Install since it's not installed yet.
+        match sys.platform:
+            case "darwin":
+                self._run("brew", "install", "ffmpeg")
+            case "linux":
+                self._run("sudo", "apt-get", "install", "ffmpeg")
+            case _:
+                raise RuntimeError(f"Platform {sys.platform} is not supported yet.")
 
     def pdm_build(self):
         self.pdm_install()
@@ -154,7 +163,7 @@ class _Environment:
 
     def pdm_install(self) -> None:
         # Don't repeatedly reinstall locally.
-        if not self.in_github():
+        if not in_github():
             return
 
         self.session.run_install("pdm", "install", "-G:all")
@@ -201,3 +210,32 @@ class _Commands:
     @property
     def env(self):
         return env(self.session)
+
+
+def checking_if(condition: str):
+    def decorator[**P](function: cabc.Callable[P, bool]) -> cabc.Callable[P, bool]:
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> bool:
+            print(f"Checking if {condition}...", end=" ")
+            answer = function(*args, **kwargs)
+            print("Yes" if answer else "No")
+            return answer
+
+        return wrapper
+
+    return decorator
+
+
+@checking_if("we are in GitHub Actions")
+def in_github() -> bool:
+    "Detect whether or not it is running in GitHub Actions."
+
+    return os.getenv("GITHUB_ACTIONS") == "true"
+
+
+@checking_if("ffmpeg is installed")
+def ffmpeg_is_installed():
+    try:
+        result = sp.run(["ffmpeg", "-version"], stdout=sp.PIPE, stderr=sp.PIPE)
+        return result.returncode == 0
+    except FileNotFoundError:
+        return False
