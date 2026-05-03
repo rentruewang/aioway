@@ -5,6 +5,8 @@ import pathlib
 
 from torchvision import io as vio
 
+__all__ = ["read_image_from_path", "read_image_normalized"]
+
 
 def read_image_from_path(fname: os.PathLike[str]):
     fname_path = pathlib.Path(fname)

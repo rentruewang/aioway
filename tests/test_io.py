@@ -2,9 +2,9 @@
 
 import pathlib
 
-import pytest
+import pytest, torch
 
-from aioway.io.images import read_image_from_path
+from aioway.io import read_image_from_path, read_audio_from_path
 
 
 @pytest.fixture(scope="session")
@@ -44,6 +44,11 @@ def example_image(request: pytest.FixtureRequest):
     return request.getfixturevalue(request.param)
 
 
+@pytest.fixture(params=[example_mp3.name])
+def example_audio(request: pytest.FixtureRequest):
+    return request.getfixturevalue(request.param)
+
+
 def test_media_exits(media: pathlib.Path):
     assert media.exists()
     assert media.is_dir()
@@ -56,3 +61,9 @@ def test_example_file_exists(example_file: pathlib.Path):
 
 def test_read_img(example_image: pathlib.Path):
     img = read_image_from_path(example_image)
+    assert isinstance(img, torch.Tensor)
+
+
+def test_read_audio(example_audio: pathlib.Path):
+    audio = read_audio_from_path(example_audio)
+    assert isinstance(audio.data, torch.Tensor)
