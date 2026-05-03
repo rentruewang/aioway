@@ -4,7 +4,7 @@ import pathlib
 
 import pytest
 
-from aioway.io.images import read_image
+from aioway.io.images import read_image_from_path
 
 
 @pytest.fixture(scope="session")
@@ -55,4 +55,4 @@ def test_example_file_exists(example_file: pathlib.Path):
 
 
 def test_read_img(example_image: pathlib.Path):
-    img = read_image(example_image)
+    img = read_image_from_path(example_image)
