@@ -27,7 +27,7 @@ __all__ = [
     "LogTorchDispatch",
     "TorchFunctionStack",
     "TorchDispatchStack",
-    "FnList",
+    "FnHistory",
     "TensorFnList",
 ]
 
@@ -112,7 +112,7 @@ class TorchDispatchStack(TorchDispatchMode):
 
 
 @dcls.dataclass(frozen=True)
-class FnList[T: Fn]:
+class FnHistory[T: Fn]:
     """
     The list of `Fn` that tracks the current history.
     """
@@ -141,7 +141,7 @@ class FnList[T: Fn]:
         return self.history.pop()
 
 
-class TensorFnList(FnList[TensorFn]):
+class TensorFnList(FnHistory[TensorFn]):
     def parameters(self, select: TensorFilter = is_leaf_has_grad, unique: bool = True):
         def data_params():
             for fn in self.history:

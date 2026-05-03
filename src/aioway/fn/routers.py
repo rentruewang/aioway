@@ -15,7 +15,7 @@ from .fake import enabled_fake_mode, fake_mode
 from .guards import is_aten_op, is_prim_op
 from .modes import TorchDispatchFn, TorchDispatchMode, TorchFunctionMode
 from .previews import PreviewFn, PreviewFnFinder
-from .tracking import FnList, TensorFnList
+from .tracking import FnHistory, TensorFnList
 
 __all__ = [
     "track_function_fn",
@@ -68,7 +68,7 @@ def no_route(*args, **kwargs) -> _CreatePreview:
 
 @dcls.dataclass
 class SaveFunctionHistory(TorchFunctionMode):
-    history: FnList = dcls.field(default_factory=FnList)
+    history: FnHistory[Thunk] = dcls.field(default_factory=FnHistory)
 
     @typing.override
     def __call__(
@@ -79,8 +79,10 @@ class SaveFunctionHistory(TorchFunctionMode):
         **kwargs: typing.Any,
     ) -> typing.Any:
         thunk = Thunk(func, *args, **kwargs)
+        result = thunk.do()
         self.history.append(thunk)
-        return thunk.do()
+        assert result is thunk.result()
+        return result
 
 
 @dcls.dataclass
