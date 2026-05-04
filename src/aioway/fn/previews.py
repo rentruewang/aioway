@@ -7,11 +7,10 @@ import re
 import typing
 from collections import abc as cabc
 
-import numpy as np
 import torch
 from torch import _ops
 
-from aioway._common import dcls_no_repr, render_fcall
+from aioway._common import dcls_no_repr, find_nested_tensors, render_fcall
 
 from .fn import Fn
 from .guards import TensorFilter, all_tensors
@@ -58,32 +57,8 @@ class TensorThunk(TensorFn):
 
     @typing.override
     def tensors(self) -> cabc.Iterator[torch.Tensor]:
-        yield from _discover_tensors(self.args)
-        yield from _discover_tensors(self.kwargs)
-
-
-def _discover_tensors(obj: object) -> cabc.Iterator[torch.Tensor]:
-    if isinstance(obj, torch.Tensor):
-        yield obj
-        return
-
-    if obj in [None, NotImplemented]:
-        return
-
-    if isinstance(obj, int | float | bool | str | np.ndarray):
-        return
-
-    if isinstance(obj, cabc.Sequence):
-        for elem in obj:
-            yield from _discover_tensors(elem)
-        return
-
-    if isinstance(obj, cabc.Mapping):
-        for elem in obj.values():
-            yield from _discover_tensors(elem)
-        return
-
-    raise TypeError(f"Unknown type: {type(obj)=}.")
+        yield from find_nested_tensors(self.args)
+        yield from find_nested_tensors(self.kwargs)
 
 
 @dcls_no_repr

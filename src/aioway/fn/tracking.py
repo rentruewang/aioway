@@ -7,7 +7,6 @@ import logging
 import typing
 from collections import abc as cabc
 
-from tensordict.nn.tensorclass_module import InputTensorClass
 import torch
 from torch import _ops
 

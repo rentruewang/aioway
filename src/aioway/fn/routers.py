@@ -13,7 +13,7 @@ from .fake import enabled_fake_mode, fake_mode
 from .guards import is_aten_op, is_prim_op
 from .modes import TorchDispatchFn, TorchDispatchMode, TorchFunctionMode
 from .previews import PreviewFn, PreviewFnFinder, TensorThunk
-from .tracking import FnHistory, DispatchHistory
+from .tracking import DispatchHistory, FnHistory
 
 __all__ = [
     "track_function_fn",
