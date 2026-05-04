@@ -117,6 +117,14 @@ class Thunk(Fn):
         else:
             return render_fcall(self.func, *args, **kwargs)
 
+    def result(self) -> object:
+        "Get the result. If not done, an error is raised."
+
+        if self.__result is None:
+            raise RuntimeError("Still waiting for the result!")
+
+        return self.__result
+
     @property
     def done(self) -> bool:
         "Returns if the cache is previously called."

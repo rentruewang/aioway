@@ -7,9 +7,11 @@ import logging
 import typing
 from collections import abc as cabc
 
+from tensordict.nn.tensorclass_module import InputTensorClass
 import torch
 from torch import _ops
 
+from aioway.fn.modes import TorchDispatchFn
 from aioway.schemas import attr
 
 from .fn import Fn, FnStack, Thunk
@@ -27,8 +29,8 @@ __all__ = [
     "LogTorchDispatch",
     "TorchFunctionStack",
     "TorchDispatchStack",
-    "FnList",
-    "TensorFnList",
+    "FnHistory",
+    "DispatchHistory",
 ]
 
 LOGGER = logging.getLogger(__name__)
@@ -108,44 +110,98 @@ class TorchDispatchStack(TorchDispatchMode):
     ) -> torch.Tensor:
         thunk = TorchDispatchFn(op, types, args, kwargs)
         with self.stack.track(thunk):
-            return thunk.do()
+            print(" stack before")
+            result = thunk.do()
+            print(" stack after")
+            return result
+
+    def __len__(self) -> int:
+        return len(self.stack)
+
+    def top(self) -> TorchDispatchFn:
+        return self.stack.top()
 
 
 @dcls.dataclass(frozen=True)
-class FnList[T: Fn]:
+class FnResult[F: Fn]:
+    fn: F
+    result: torch.Tensor
+
+
+@dcls.dataclass(frozen=True)
+class FnHistory[T: TensorFn]:
     """
     The list of `Fn` that tracks the current history.
     """
 
-    history: list[T] = dcls.field(default_factory=list)
+    history: list[FnResult[T]] = dcls.field(default_factory=list)
     """
     The `TorchFn` that has been called, in order.
     """
 
-    fn_index: dict[torch.Tensor, T] = dcls.field(default_factory=dict)
-    "The mapping from output to tensor input."
+    input_to_thunk: dict[torch.Tensor, T] = dcls.field(default_factory=dict)
+    "The mapping from input to the thunk containing that input."
+
+    output_to_thunk: dict[torch.Tensor, T] = dcls.field(default_factory=dict)
+    "The mapping from output to thunk that generates it."
+
+    thunk_index: dict[int, int] = dcls.field(default_factory=dict)
+    """
+    The reverse of history, hash of thunk to index of thunk.
+    """
+
+    edges: list[tuple[int, int]] = dcls.field(default_factory=list)
+    """
+    The edges between 2 elements in the history.
+    """
 
     def __len__(self) -> int:
         return len(self.history)
 
-    def __getitem__(self, idx: int) -> T:
+    def __getitem__(self, idx: int) -> FnResult[T]:
         return self.history[idx]
 
     def __iter__(self):
         yield from self.history
 
-    def append(self, item: T, /):
-        self.history.append(item)
+    def append(self, item: T, result: torch.Tensor, /):
+        self.history.append(FnResult(item, result))
+        self._update_ref(item, result)
 
     def pop(self):
         return self.history.pop()
 
+    def _update_ref(self, item: T, output: torch.Tensor):
+        # Update index.
+        curr_idx = len(self.history) - 1
+        self.thunk_index[id(item)] = curr_idx
 
-class TensorFnList(FnList[TensorFn]):
+        # Update output.
+        assert output not in self.output_to_thunk
+        self.output_to_thunk[output] = item
+
+        # Update input.
+        for input_tensor in item.tensors():
+            assert input_tensor not in self.input_to_thunk
+            self.input_to_thunk[input_tensor] = item
+
+            if input_tensor in self.output_to_thunk:
+                thunk = self.output_to_thunk[input_tensor]
+                idx = self.thunk_index[id(thunk)]
+                self.edges.append((idx, curr_idx))
+
+
+class DispatchHistory(FnHistory[TensorFn]):
+    @typing.override
+    def _update_ref(self, item: TensorFn, output: torch.Tensor):
+        # Here, in dispatch mode, we may deal with non tensor outputs.
+        if isinstance(output, torch.Tensor):
+            super()._update_ref(item, output)
+
     def parameters(self, select: TensorFilter = is_leaf_has_grad, unique: bool = True):
         def data_params():
-            for fn in self.history:
-                yield from fn.parameters(select)
+            for result in self.history:
+                yield from result.fn.parameters(select)
 
         params = data_params()
 
@@ -161,4 +217,4 @@ class TensorFnList(FnList[TensorFn]):
         return sum(attr(param).memory() for param in self.parameters(all_tensors))
 
     def find_fn(self, tensor: torch.Tensor):
-        return self.fn_index[tensor]
+        return self.output_to_thunk[tensor]

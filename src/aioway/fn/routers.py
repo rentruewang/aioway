@@ -9,13 +9,11 @@ from collections import abc as cabc
 import torch
 from torch import _ops
 
-from aioway.fn.fn import Thunk
-
 from .fake import enabled_fake_mode, fake_mode
 from .guards import is_aten_op, is_prim_op
 from .modes import TorchDispatchFn, TorchDispatchMode, TorchFunctionMode
-from .previews import PreviewFn, PreviewFnFinder
-from .tracking import FnList, TensorFnList
+from .previews import PreviewFn, PreviewFnFinder, TensorThunk
+from .tracking import FnHistory, DispatchHistory
 
 __all__ = [
     "track_function_fn",
@@ -68,7 +66,15 @@ def no_route(*args, **kwargs) -> _CreatePreview:
 
 @dcls.dataclass
 class SaveFunctionHistory(TorchFunctionMode):
-    history: FnList = dcls.field(default_factory=FnList)
+    """
+    Saves the intermediate graph into a `FnHistory` object.
+    """
+
+    history: FnHistory[TensorThunk] = dcls.field(default_factory=FnHistory)
+    """
+    The `FnHistory` instance that would be responsible for tracking history,
+    and which provides a graph API to interact with saved tensors.
+    """
 
     @typing.override
     def __call__(
@@ -78,15 +84,16 @@ class SaveFunctionHistory(TorchFunctionMode):
         *args: typing.Any,
         **kwargs: typing.Any,
     ) -> typing.Any:
-        thunk = Thunk(func, *args, **kwargs)
-        self.history.append(thunk)
-        return thunk.do()
+        thunk = TensorThunk(func, args, kwargs)
+        result = thunk.do()
+        self.history.append(thunk, result)
+        return result
 
 
 @dcls.dataclass
 class RouteDispatchOp(TorchDispatchMode):
     router: TorchRouterFactory
-    history: TensorFnList = dcls.field(default_factory=TensorFnList)
+    history: DispatchHistory = dcls.field(default_factory=DispatchHistory)
 
     def __call__(
         self,
@@ -109,14 +116,12 @@ class RouteDispatchOp(TorchDispatchMode):
             fn = TorchDispatchFn(op, types, args, kwargs)
 
         assert isinstance(fn, _TorchThunk), type(fn)
-        self.history.append(fn)
 
         # Here, we overwrite `fn`'s `__call__` inside `PreviewFn` if it's a special function.
         with capture_do_error(fn):
             result = fn.do()
 
-        # Store it in the history.
-        self.history.fn_index[result] = fn
+        self.history.append(fn, result)
         return result
 
 
