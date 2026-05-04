@@ -3,6 +3,7 @@
 "Torch function/dispatch modes, corresponding to `__torch_function__`/`__torch_dispatch__`."
 
 import abc
+from annotationlib import type_repr
 import contextlib as ctxl
 import typing
 from collections import abc as cabc
@@ -57,6 +58,16 @@ class TorchThunkFn[T: _TorchCallable](TensorFn, abc.ABC):
     kwargs: dict[str, typing.Any]
     "The keyword arguments."
 
+    def __post_init__(self):
+        if not callable(self.func):
+            raise TypeError(f"{self.func=} is not callable.")
+
+        if not isinstance(self.args, tuple):
+            raise TypeError(f"{self.args=} is not a tuple.")
+
+        if not isinstance(self.kwargs, dict):
+            raise TypeError(f"{self.kwargs=} is not a dict.")
+
     @typing.override
     @typing.no_type_check
     def do(self) -> torch.Tensor:
@@ -91,14 +102,11 @@ class TorchDispatchFn(TorchThunkFn[_ops.OpOverload]):
     func: _ops.OpOverload
     "The `torch.ops.*` operator."
 
-    types: tuple[type, ...]
-    "The types of the arguments."
+    def __post_init__(self):
+        super().__post_init__()
 
-    args: tuple[typing.Any, ...]
-    "The positional args."
-
-    kwargs: dict[str, typing.Any]
-    "The keyword arguments."
+        if not isinstance(self.func, _ops.OpOverload):
+            raise TypeError(f"{self.func=} is not a `torch._ops.OpOverload`.")
 
     def __hash__(self) -> int:
         return id(self)
@@ -132,13 +140,10 @@ class TorchFunctionMode(
 
     @typing.final
     @typing.override
-    def __torch_function__(self, func, types, args=..., kwargs=None) -> typing.Any:
+    def __torch_function__(self, func, types, args=(), kwargs=None) -> typing.Any:
         kwargs = kwargs or {}
-        args = () if args == ... else args
-
-        thunk = TorchFunctionModeFn(self, func, types, args, kwargs)
-        with active_function_modes().track(thunk):
-            return thunk.do()
+        thunk = TorchFunctionFn(func, types, args, kwargs)
+        return thunk.do()
 
     @staticmethod
     def register(f: _TorchLikeFunc) -> cabc.Callable[[], typing.ContextManager[None]]:
@@ -156,7 +161,7 @@ class TorchFunctionMode(
         return ctx_man
 
 
-class TorchDispatchMode(pyd.TorchDispatchMode, abc.ABC):
+class TorchDispatchMode(pyd.TorchDispatchMode, TorchMode[TorchDispatchFn], abc.ABC):
     """
     `TorchDispatchMode` is the adaptor for `torch.data._python_dispatch.TorchDispatchMode`.
 
@@ -170,14 +175,10 @@ class TorchDispatchMode(pyd.TorchDispatchMode, abc.ABC):
 
     @typing.final
     @typing.override
-    def __torch_dispatch__(self, op, types, args=..., kwargs=None) -> typing.Any:
+    def __torch_dispatch__(self, func, types, args=(), kwargs=None) -> typing.Any:
         kwargs = kwargs or {}
-        args = () if args == ... else args
-
-        thunk = TorchDispatchFn(func=op, types=types, args=args, kwargs=kwargs)
-        with active_dispatch_modes().track(thunk):
-            result = thunk.do()
-        return result
+        thunk = TorchDispatchFn(func, types, args, kwargs)
+        return thunk.do()
 
     @staticmethod
     def register(f: _TorchLikeFunc) -> cabc.Callable[[], typing.ContextManager[None]]:
