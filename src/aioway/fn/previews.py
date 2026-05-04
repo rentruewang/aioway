@@ -7,6 +7,7 @@ import re
 import typing
 from collections import abc as cabc
 
+import numpy as np
 import torch
 from torch import _ops
 
@@ -22,6 +23,10 @@ _PREVIEW_CANDIDATES: dict[_ops.OpOverload, list[cabc.Callable[..., PreviewFn]]] 
 
 
 class TensorFn(Fn, abc.ABC):
+    @typing.override
+    def __hash__(self) -> int:
+        return id(self)
+
     @abc.abstractmethod
     @typing.override
     def do(self) -> torch.Tensor:
@@ -35,6 +40,50 @@ class TensorFn(Fn, abc.ABC):
     @abc.abstractmethod
     def tensors(self) -> cabc.Iterator[torch.Tensor]:
         raise NotImplementedError
+
+
+@dcls_no_repr
+class TensorThunk(TensorFn):
+    func: cabc.Callable[..., typing.Any]
+    args: tuple[typing.Any, ...]
+    kwargs: dict[str, typing.Any]
+
+    @typing.override
+    def __hash__(self) -> int:
+        return id(self)
+
+    @typing.override
+    def do(self) -> torch.Tensor:
+        return self.func(*self.args, **self.kwargs)
+
+    @typing.override
+    def tensors(self) -> cabc.Iterator[torch.Tensor]:
+        yield from _discover_tensors(self.args)
+        yield from _discover_tensors(self.kwargs)
+
+
+def _discover_tensors(obj: object) -> cabc.Iterator[torch.Tensor]:
+    if isinstance(obj, torch.Tensor):
+        yield obj
+        return
+
+    if obj in [None, NotImplemented]:
+        return
+
+    if isinstance(obj, int | float | bool | str | np.ndarray):
+        return
+
+    if isinstance(obj, cabc.Sequence):
+        for elem in obj:
+            yield from _discover_tensors(elem)
+        return
+
+    if isinstance(obj, cabc.Mapping):
+        for elem in obj.values():
+            yield from _discover_tensors(elem)
+        return
+
+    raise TypeError(f"Unknown type: {type(obj)=}.")
 
 
 @dcls_no_repr

@@ -185,6 +185,9 @@ class TorchDispatchFn(TensorFn):
     kwargs: dict[str, typing.Any]
     "The keyword arguments."
 
+    def __hash__(self):
+        return id(self)
+
     def __repr__(self) -> str:
         return render_fcall(self.op.name(), *self.args, **self.kwargs)
 

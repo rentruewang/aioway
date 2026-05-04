@@ -153,7 +153,8 @@ class _Environment:
         self.pdm_install()
 
         # Remove all uncommitted changes s.t. it doesn't mess with builds.
-        _ = self._run("git", "reset", "--hard", "HEAD")
+        if in_github():
+            _ = self._run("git", "reset", "--hard", "HEAD")
 
         self._run("pdm", "publish")
 
