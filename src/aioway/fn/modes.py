@@ -129,9 +129,6 @@ class TorchFunctionMode(
 ):
     """
     `TorchFunctionMode` is the adaptor for `torch.overrides.TorchFunctionMode`.
-
-    It automatically stores the current active mode into a stack,
-    so we have better observing and debugging ability.
     """
 
     @abc.abstractmethod
@@ -140,10 +137,10 @@ class TorchFunctionMode(
 
     @typing.final
     @typing.override
-    def __torch_function__(self, func, types, args=(), kwargs=None) -> typing.Any:
+    def __torch_function__(self, func, types, args=(), kwargs=None):
         kwargs = kwargs or {}
         thunk = TorchFunctionFn(func, types, args, kwargs)
-        return thunk.do()
+        return self(thunk)
 
     @staticmethod
     def register(f: _TorchLikeFunc) -> cabc.Callable[[], typing.ContextManager[None]]:
@@ -164,9 +161,6 @@ class TorchFunctionMode(
 class TorchDispatchMode(pyd.TorchDispatchMode, TorchMode[TorchDispatchFn], abc.ABC):
     """
     `TorchDispatchMode` is the adaptor for `torch.data._python_dispatch.TorchDispatchMode`.
-
-    It automatically stores the current active mode into a stack,
-    so we have better observing and debugging ability.
     """
 
     @abc.abstractmethod
@@ -178,13 +172,13 @@ class TorchDispatchMode(pyd.TorchDispatchMode, TorchMode[TorchDispatchFn], abc.A
     def __torch_dispatch__(self, func, types, args=(), kwargs=None) -> typing.Any:
         kwargs = kwargs or {}
         thunk = TorchDispatchFn(func, types, args, kwargs)
-        return thunk.do()
+        return self(thunk)
 
     @staticmethod
     def register(f: _TorchLikeFunc) -> cabc.Callable[[], typing.ContextManager[None]]:
         class _FuncTorchDispatchMode(TorchDispatchMode):
             @typing.override
-            def __call__(self, thunk: TorchDispatchFn, /) -> torch.Tensor:
+            def __call__(self, t: TorchDispatchFn, /) -> torch.Tensor:
                 return f(t.func, t.types, *t.args, **t.kwargs)
 
         @ctxl.contextmanager
