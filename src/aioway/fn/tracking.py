@@ -13,7 +13,7 @@ import torch
 from aioway.fn.modes import TorchDispatchFn
 from aioway.schemas import attr
 
-from .fn import Fn, FnStack
+from .fn import FnStack
 from .guards import TensorFilter, all_tensors, is_leaf_has_grad
 from .modes import (
     TorchDispatchFn,
@@ -35,6 +35,17 @@ __all__ = [
 LOGGER = logging.getLogger(__name__)
 
 
+@TorchFunctionMode.register
+def print_torch_function(thunk: TorchFunctionFn) -> torch.Tensor:
+    """
+    Print the function calls.
+    """
+
+    result = thunk.do()
+    print(thunk)
+    return result
+
+
 @TorchDispatchMode.register
 def print_torch_dispatch(thunk: TorchDispatchFn) -> torch.Tensor:
     """
@@ -44,6 +55,25 @@ def print_torch_dispatch(thunk: TorchDispatchFn) -> torch.Tensor:
     result = thunk.do()
     print(thunk)
     return result
+
+
+@dcls.dataclass
+class LogTorchFunction(TorchFunctionMode):
+    """
+    Log every call to function mode.
+    """
+
+    level: int
+    "The level to log to."
+
+    logger: logging.Logger = LOGGER
+    "The logger to log to. Default to the one in the current module."
+
+    @typing.override
+    def __call__(self, thunk: TorchFunctionFn) -> torch.Tensor:
+        result = thunk.do()
+        self.logger.log(self.level, "%s", thunk)
+        return result
 
 
 @dcls.dataclass
@@ -92,9 +122,13 @@ class TorchDispatchStack(TorchDispatchMode):
 
 
 @dcls.dataclass(frozen=True)
-class FnResult[F: Fn]:
+class FnResult[F: PreviewFn | TorchFunctionFn | TorchDispatchFn]:
     fn: F
     result: torch.Tensor
+
+    @typing.override
+    def __repr__(self) -> str:
+        return f"{self.fn!r} -> {self.result}"
 
 
 @dcls.dataclass(frozen=True)
