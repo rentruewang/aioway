@@ -114,7 +114,7 @@ class TFunctionFn(_TThunkBaseFn[cabc.Callable[..., typing.Any]]):
 
     def __repr__(self) -> str:
         func_name = _render_func_name(self.func)
-        return _render_replace_tensors("function::" + func_name, self.args, self.kwargs)
+        return _render_tensor_as_attr("function::" + func_name, self.args, self.kwargs)
 
 
 @dcls.dataclass(match_args=False)
@@ -137,7 +137,7 @@ class TDispatchFn(_TThunkBaseFn[_ops.OpOverload]):
 
     def __repr__(self) -> str:
         func_name = _render_func_name(self.func)
-        return _render_replace_tensors("dispatch::" + func_name, self.args, self.kwargs)
+        return _render_tensor_as_attr("dispatch::" + func_name, self.args, self.kwargs)
 
 
 def _render_func_name(func: cabc.Callable[..., typing.Any]) -> str:
@@ -146,7 +146,7 @@ def _render_func_name(func: cabc.Callable[..., typing.Any]) -> str:
     # It seems that there isn't an attribute that expose the name of the `OpOverload`,
     # so here we combine `namespace` (aten, prim, ...) and `__name__` (packet.type).
     if isinstance(func, _ops.OpOverload):
-        return f"torch.ops.{func.namespace}.{func.__name__}"
+        return f"torch.ops.{func.namespace}.{name}"
 
     # Just converting to `str` works.
     if isinstance(func, _ops.OpOverloadPacket):
@@ -165,7 +165,7 @@ def _render_func_name(func: cabc.Callable[..., typing.Any]) -> str:
 
 
 @typing.no_type_check
-def _render_replace_tensors(
+def _render_tensor_as_attr(
     func: str, args: tuple[typing.Any, ...], kwargs: dict[str, typing.Any]
 ):
     # `Attr`s are better for display than `torch.Tensor`s.
