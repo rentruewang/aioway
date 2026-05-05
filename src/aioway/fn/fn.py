@@ -2,6 +2,7 @@
 
 "Metadata for torch operators / functions."
 
+import abc
 import contextlib as ctxl
 import dataclasses as dcls
 import functools
@@ -16,8 +17,19 @@ _PENDING = object()
 "The object signifying a status of pending. This is a `object()` s.t. `FnCache` can store `None`."
 
 
-class Fn(typing.Protocol):
-    def do(self):
+class Fn(abc.ABC):
+    """
+    `Fn` is the base class for delayed computation.
+
+    `Fn.do` executes the computation, `Fn` base class itself does not make any more assumption.
+    """
+
+    @abc.abstractmethod
+    def do(self) -> typing.Any:
+        """
+        Execute the computation.
+        """
+
         raise NotImplementedError
 
 
