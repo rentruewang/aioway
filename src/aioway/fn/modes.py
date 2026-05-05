@@ -152,7 +152,7 @@ def _render_func_name(func: cabc.Callable[..., typing.Any]) -> str:
         return f"torch.Tensor.{name}"
 
     if isinstance(func, _ops.OpOverload):
-        return f"{func.namespace}.{func.__name__}"
+        return f"torch.ops.{func.namespace}.{func.__name__}"
 
     # For torchvision items, a `torch._ops.OpOverloadPacket` is passed.
     if isinstance(func, _ops.OpOverloadPacket):
