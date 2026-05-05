@@ -143,6 +143,15 @@ class TDispatchFn(_TThunkBaseFn[_ops.OpOverload]):
 def _render_func_name(func: cabc.Callable[..., typing.Any]) -> str:
     name = func.__name__
 
+    # It seems that there isn't an attribute that expose the name of the `OpOverload`,
+    # so here we combine `namespace` (aten, prim, ...) and `__name__` (packet.type).
+    if isinstance(func, _ops.OpOverload):
+        return f"torch.ops.{func.namespace}.{func.__name__}"
+
+    # Just converting to `str` works.
+    if isinstance(func, _ops.OpOverloadPacket):
+        return f"torch.ops.{func!s}"
+
     # If it's `torch.*`.
     if getattr(torch, name, None) is func:
         return f"torch.{name}"
@@ -150,13 +159,6 @@ def _render_func_name(func: cabc.Callable[..., typing.Any]) -> str:
     # If it's `torch.Tensor.*`.
     if getattr(torch.Tensor, name, None) is func:
         return f"torch.Tensor.{name}"
-
-    if isinstance(func, _ops.OpOverload):
-        return f"torch.ops.{func.namespace}.{func.__name__}"
-
-    # For torchvision items, a `torch._ops.OpOverloadPacket` is passed.
-    if isinstance(func, _ops.OpOverloadPacket):
-        return f"torch.ops.{func!s}"
 
     # Don't know what this is. Use `repr`.
     return repr(func)
