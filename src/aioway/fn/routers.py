@@ -28,8 +28,6 @@ LOGGER = logging.getLogger(__name__)
 
 
 PreviewRouter = cabc.Callable[[TorchDispatchFn], PreviewFn]
-_TorchRouterMode = typing.Literal["dispatch", "function"]
-_TorchThunk = TorchDispatchFn | PreviewFn
 
 
 def only_route_aten_in_fake(thunk: TorchDispatchFn):
@@ -74,15 +72,13 @@ class RouteDispatchOp(TorchDispatchMode):
     def __call__(self, thunk: TorchDispatchFn):
         # Create a `_ThunkType` and route implemented methods.
 
-        op, types, args, kwargs = thunk
-
-        fn: _TorchThunk
+        fn: TorchDispatchFn | PreviewFn
 
         if (fn := self.router(thunk)) is NotImplemented:
             # Fn initialization failed, set it to the input `thunk`.
             fn = thunk
 
-        assert isinstance(fn, _TorchThunk), type(fn)
+        assert isinstance(fn, TorchDispatchFn | PreviewFn), type(fn)
 
         # Here, we overwrite `fn`'s `__call__` inside `PreviewFn` if it's a special function.
         with capture_do_error(fn):
@@ -93,7 +89,7 @@ class RouteDispatchOp(TorchDispatchMode):
 
 
 @ctxl.contextmanager
-def capture_do_error(fn: _TorchThunk):
+def capture_do_error(fn: TorchDispatchFn | PreviewFn):
     try:
         yield
     except RuntimeError as err:
