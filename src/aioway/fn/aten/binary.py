@@ -9,10 +9,10 @@ from collections import abc as cabc
 import torch
 from torch import ops
 
-from aioway._common.dcls import dcls_no_repr
+from aioway._common.dcls import dcls_frozen_no_repr
 from aioway.fn.guards import is_float
 
-from ..previews import PreviewFn
+from ..previews import Preview
 
 __all__ = [
     "AddTensor",
@@ -40,8 +40,8 @@ __all__ = [
 Scalar = int | float | bool
 
 
-@dcls_no_repr
-class _BinaryTensorUFunc(PreviewFn, abc.ABC):
+@dcls_frozen_no_repr
+class _BinaryTensorUFunc(Preview, abc.ABC):
     BINARY: typing.ClassVar[cabc.Callable[..., typing.Any]]
 
     self: torch.Tensor
@@ -83,8 +83,8 @@ class _BinaryTensorUFunc(PreviewFn, abc.ABC):
         return torch.broadcast_shapes(self.self.shape, self.other.shape)
 
 
-@dcls_no_repr
-class _BinaryScalarUFunc(PreviewFn, abc.ABC):
+@dcls_frozen_no_repr
+class _BinaryScalarUFunc(Preview, abc.ABC):
     BINARY: typing.ClassVar[cabc.Callable[..., typing.Any]]
 
     self: torch.Tensor

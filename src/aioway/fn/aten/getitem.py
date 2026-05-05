@@ -7,19 +7,22 @@ from collections import abc as cabc
 import torch
 from torch import ops
 
-from aioway._common.dcls import dcls_no_repr
+from aioway._common.dcls import dcls_frozen_no_repr
 
-from ..previews import PreviewFn
+from ..previews import Preview
 
 __all__ = ["BooleanMasking", "IntSelect"]
 
 
-@dcls_no_repr
-class _GetItem(PreviewFn, abc.ABC):
+@dcls_frozen_no_repr
+class _GetItem(Preview, abc.ABC):
     IR = ops.aten.index.Tensor
 
     self: torch.Tensor
     indices: list[torch.Tensor]
+
+    def __hash__(self) -> int:
+        return id(self)
 
     @typing.final
     def tensors(self) -> cabc.Iterator[torch.Tensor]:
@@ -31,7 +34,7 @@ class _GetItem(PreviewFn, abc.ABC):
         return self.do().numel()
 
 
-@dcls_no_repr
+@dcls_frozen_no_repr
 class BooleanMasking(_GetItem):
     def ok(self) -> bool:
         return len(self.indices) == 1 and self.indices[0].dtype == torch.bool
@@ -41,7 +44,7 @@ class BooleanMasking(_GetItem):
         return self.self
 
 
-@dcls_no_repr
+@dcls_frozen_no_repr
 class IntSelect(_GetItem):
     def ok(self):
         return len(self.indices) == 1 and self.indices[0].dtype == torch.int

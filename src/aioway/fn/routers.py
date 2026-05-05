@@ -11,8 +11,13 @@ from torch import _ops
 
 from .fake import enabled_fake_mode, fake_mode
 from .guards import is_aten_op, is_prim_op
-from .modes import TorchDispatchFn, TorchDispatchMode, TorchFunctionMode
-from .previews import PreviewFn, PreviewFnFinder, TensorThunk
+from .modes import (
+    TorchDispatchFn,
+    TorchDispatchMode,
+    TorchFunctionFn,
+    TorchFunctionMode,
+)
+from .previews import PreviewFn, PreviewFnFinder
 from .tracking import DispatchHistory, FnHistory
 
 __all__ = [
@@ -30,18 +35,7 @@ _TorchRouterMode = typing.Literal["dispatch", "function"]
 _TorchThunk = TorchDispatchFn | PreviewFn
 
 
-@typing.runtime_checkable
 class TorchRouter(typing.Protocol):
-    def __call__(
-        self,
-        func: _ops.OpOverload,
-        types: tuple[type[torch.Tensor], ...],
-        args: tuple[typing.Any, ...],
-        kwargs: dict[str, typing.Any],
-    ) -> torch.Tensor: ...
-
-
-class TorchRouterFactory(typing.Protocol):
     def __call__(
         self, func: _ops.OpOverload, types: tuple[type[torch.Tensor], ...]
     ) -> _CreatePreview: ...
@@ -70,21 +64,14 @@ class SaveFunctionHistory(TorchFunctionMode):
     Saves the intermediate graph into a `FnHistory` object.
     """
 
-    history: FnHistory[TensorThunk] = dcls.field(default_factory=FnHistory)
+    history: FnHistory[TorchFunctionFn] = dcls.field(default_factory=FnHistory)
     """
     The `FnHistory` instance that would be responsible for tracking history,
     and which provides a graph API to interact with saved tensors.
     """
 
     @typing.override
-    def __call__(
-        self,
-        func: cabc.Callable[..., typing.Any],
-        types: tuple[type, ...],
-        *args: typing.Any,
-        **kwargs: typing.Any,
-    ) -> typing.Any:
-        thunk = TensorThunk(func, args, kwargs)
+    def __call__(self, thunk: TorchFunctionFn) -> typing.Any:
         result = thunk.do()
         self.history.append(thunk, result)
         return result
@@ -92,28 +79,24 @@ class SaveFunctionHistory(TorchFunctionMode):
 
 @dcls.dataclass
 class RouteDispatchOp(TorchDispatchMode):
-    router: TorchRouterFactory
+    router: TorchRouter
     history: DispatchHistory = dcls.field(default_factory=DispatchHistory)
 
-    def __call__(
-        self,
-        op: _ops.OpOverload,
-        types: tuple[type[torch.Tensor], ...],
-        *args: tuple[typing.Any, ...],
-        **kwargs: dict[str, typing.Any],
-    ):
+    def __call__(self, thunk: TorchDispatchFn):
         # Create a `_ThunkType` and route implemented methods.
+
+        op, types, args, kwargs = thunk
+
         fn_init = self.router(op, types)
         fn: _TorchThunk
 
         if (
             False
-            # Not ATen operator.
             or fn_init is NotImplemented
-            # Fn is not handled.
             or (fn := fn_init(*args, **kwargs)) is NotImplemented
         ):
-            fn = TorchDispatchFn(op, types, args, kwargs)
+            # Fn initialization failed, set it to the input `thunk`.
+            fn = thunk
 
         assert isinstance(fn, _TorchThunk), type(fn)
 
@@ -151,7 +134,7 @@ def track_function_fn():
 
 
 @ctxl.contextmanager
-def track_dispatch_fn(router: TorchRouterFactory = no_route):
+def track_dispatch_fn(router: TorchRouter = no_route):
     """
     Track all calls into the torch dispatch mode as `TorchIrFn`.
     """

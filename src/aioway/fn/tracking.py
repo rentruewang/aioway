@@ -2,18 +2,17 @@
 
 "Tracking / logging related utilities."
 
+import collections
 import dataclasses as dcls
 import logging
 import typing
-from collections import abc as cabc
 
 import torch
-from torch import _ops
 
 from aioway.fn.modes import TorchDispatchFn
 from aioway.schemas import attr
 
-from .fn import Fn, FnStack, Thunk
+from .fn import Fn, FnStack
 from .guards import TensorFilter, all_tensors, is_leaf_has_grad
 from .modes import (
     TorchDispatchFn,
@@ -21,7 +20,7 @@ from .modes import (
     TorchFunctionFn,
     TorchFunctionMode,
 )
-from .previews import TensorFn
+from .previews import HasParamFn
 
 __all__ = [
     "print_torch_dispatch",
@@ -36,19 +35,13 @@ LOGGER = logging.getLogger(__name__)
 
 
 @TorchDispatchMode.register
-def print_torch_dispatch(
-    func: _ops.OpOverload,
-    types: tuple[type[torch.Tensor], ...],
-    args: tuple[typing.Any, ...],
-    kwargs: dict[str, typing.Any],
-):
+def print_torch_dispatch(thunk: TorchDispatchFn) -> torch.Tensor:
     """
     Print the dispatcher.
     """
-    invoke = Thunk(func, *args, **kwargs)
 
-    result = invoke.do()
-    print(invoke)
+    result = thunk.do()
+    print(thunk)
     return result
 
 
@@ -65,16 +58,9 @@ class LogTorchDispatch(TorchDispatchMode):
     "The logger to log to. Default to the one in the current module."
 
     @typing.override
-    def __call__(
-        self,
-        op: _ops.OpOverload,
-        types: tuple[type[torch.Tensor], ...],
-        *args: typing.Any,
-        **kwargs: typing.Any,
-    ) -> torch.Tensor:
-        invoke = Thunk(op, *args, **kwargs)
-        result = invoke.do()
-        self.logger.log(self.level, "%s", invoke)
+    def __call__(self, thunk: TorchDispatchFn) -> torch.Tensor:
+        result = thunk.do()
+        self.logger.log(self.level, "%s", thunk)
         return result
 
 
@@ -83,14 +69,7 @@ class TorchFunctionStack(TorchFunctionMode):
     stack: FnStack[TorchFunctionFn] = dcls.field(default_factory=FnStack)
 
     @typing.override
-    def __call__(
-        self,
-        func: cabc.Callable[..., typing.Any],
-        types: tuple[type, ...],
-        *args: typing.Any,
-        **kwargs: typing.Any,
-    ) -> typing.Any:
-        thunk = TorchFunctionFn(func, types, args, kwargs)
+    def __call__(self, thunk: TorchFunctionFn) -> typing.Any:
         with self.stack.track(thunk):
             return thunk.do()
 
@@ -100,19 +79,9 @@ class TorchDispatchStack(TorchDispatchMode):
     stack: FnStack[TorchDispatchFn] = dcls.field(default_factory=FnStack)
 
     @typing.override
-    def __call__(
-        self,
-        op: _ops.OpOverload,
-        types: tuple[type[torch.Tensor], ...],
-        *args: typing.Any,
-        **kwargs: typing.Any,
-    ) -> torch.Tensor:
-        thunk = TorchDispatchFn(op, types, args, kwargs)
+    def __call__(self, thunk: TorchDispatchFn) -> torch.Tensor:
         with self.stack.track(thunk):
-            print(" stack before")
-            result = thunk.do()
-            print(" stack after")
-            return result
+            return thunk.do()
 
     def __len__(self) -> int:
         return len(self.stack)
@@ -128,7 +97,7 @@ class FnResult[F: Fn]:
 
 
 @dcls.dataclass(frozen=True)
-class FnHistory[T: TensorFn]:
+class FnHistory[T: HasParamFn]:
     """
     The list of `Fn` that tracks the current history.
     """
@@ -138,7 +107,9 @@ class FnHistory[T: TensorFn]:
     The `TorchFn` that has been called, in order.
     """
 
-    input_to_thunk: dict[torch.Tensor, T] = dcls.field(default_factory=dict)
+    input_to_thunk: dict[torch.Tensor, list[T]] = dcls.field(
+        default_factory=lambda: collections.defaultdict(list)
+    )
     "The mapping from input to the thunk containing that input."
 
     output_to_thunk: dict[torch.Tensor, T] = dcls.field(default_factory=dict)
@@ -181,8 +152,7 @@ class FnHistory[T: TensorFn]:
 
         # Update input.
         for input_tensor in item.tensors():
-            assert input_tensor not in self.input_to_thunk
-            self.input_to_thunk[input_tensor] = item
+            self.input_to_thunk[input_tensor].append(item)
 
             if input_tensor in self.output_to_thunk:
                 thunk = self.output_to_thunk[input_tensor]
@@ -190,9 +160,9 @@ class FnHistory[T: TensorFn]:
                 self.edges.append((idx, curr_idx))
 
 
-class DispatchHistory(FnHistory[TensorFn]):
+class DispatchHistory(FnHistory[HasParamFn]):
     @typing.override
-    def _update_ref(self, item: TensorFn, output: torch.Tensor):
+    def _update_ref(self, item: HasParamFn, output: torch.Tensor):
         # Here, in dispatch mode, we may deal with non tensor outputs.
         if isinstance(output, torch.Tensor):
             super()._update_ref(item, output)
