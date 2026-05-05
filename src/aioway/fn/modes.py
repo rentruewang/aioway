@@ -151,9 +151,6 @@ class TorchDispatchFn(_TorchThunkBaseFn[_ops.OpOverload]):
         return render_fcall(self.func.name(), *self.args, **self.kwargs)
 
 
-type _FunctionOrDispatch = TorchFunctionFn | TorchDispatchFn
-
-
 class TorchMode[T](typing.Protocol):
     @abc.abstractmethod
     def __call__(self, thunk: T, /) -> torch.Tensor:
