@@ -113,24 +113,8 @@ class TFunctionFn(_TThunkBaseFn[cabc.Callable[..., typing.Any]]):
         return id(self)
 
     def __repr__(self) -> str:
-        func_name = self._get_function_name()
+        func_name = _render_func_name(self.func)
         return _render_replace_tensors("function::" + func_name, self.args, self.kwargs)
-
-    def _get_function_name(self):
-        name = self.func.__name__
-
-        # If it's `torch.*`.
-        if getattr(torch, name, None) is self.func:
-            return f"torch.{name}"
-        # If it's `torch.Tensor.*`.
-        elif getattr(torch.Tensor, name, None) is self.func:
-            return f"torch.Tensor.{name}"
-        # For torchvision items, a `torch._ops.OpOverloadPacket` is passed.
-        elif isinstance(self.func, _ops.OpOverloadPacket):
-            return f"torch.ops.{self.func!s}"
-        # Don't know what this is. Use `repr`.
-        else:
-            return repr(self.func)
 
 
 @dcls.dataclass(match_args=False)
@@ -152,8 +136,30 @@ class TDispatchFn(_TThunkBaseFn[_ops.OpOverload]):
         return id(self)
 
     def __repr__(self) -> str:
-        func_name = f"torch.ops.{self.func.overloadpacket!s}"
+        func_name = _render_func_name(self.func)
         return _render_replace_tensors("dispatch::" + func_name, self.args, self.kwargs)
+
+
+def _render_func_name(func: cabc.Callable[..., typing.Any]) -> str:
+    name = func.__name__
+
+    # If it's `torch.*`.
+    if getattr(torch, name, None) is func:
+        return f"torch.{name}"
+
+    # If it's `torch.Tensor.*`.
+    if getattr(torch.Tensor, name, None) is func:
+        return f"torch.Tensor.{name}"
+
+    if isinstance(func, _ops.OpOverload):
+        return f"{func.namespace}.{func.__name__}"
+
+    # For torchvision items, a `torch._ops.OpOverloadPacket` is passed.
+    if isinstance(func, _ops.OpOverloadPacket):
+        return f"torch.ops.{func!s}"
+
+    # Don't know what this is. Use `repr`.
+    return repr(func)
 
 
 @typing.no_type_check
