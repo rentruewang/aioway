@@ -55,7 +55,7 @@ class Attr:
 
     @typing.override
     def __repr__(self) -> str:
-        return f"[{self.shape},{self.dtype},{self.device}]"
+        return f"[shape={self.shape},dtype={self.dtype},device={self.device}]"
 
     def memory(self):
         return self.dtype.bits * self.shape.numel()

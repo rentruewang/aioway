@@ -12,8 +12,8 @@ import torch
 from torch import _ops, overrides
 from torch.utils import _python_dispatch as pyd
 
-from aioway._common import render_fcall
-from aioway._common.torch import find_nested_tensors
+from aioway._common import find_nested_tensors, render_fcall, replace_tensors
+from aioway.schemas import attr
 
 from .fn import Fn
 from .guards import TensorFilter, all_tensors
@@ -126,7 +126,7 @@ class TFunctionFn(_TThunkBaseFn[cabc.Callable[..., typing.Any]]):
         else:
             func_name = repr(self.func)
 
-        return render_fcall(func_name, *self.args, **self.kwargs)
+        return _render_replace_tensors(func_name, self.args, self.kwargs)
 
 
 @dcls.dataclass(match_args=False)
@@ -148,7 +148,17 @@ class TDispatchFn(_TThunkBaseFn[_ops.OpOverload]):
         return id(self)
 
     def __repr__(self) -> str:
-        return render_fcall(self.func.name(), *self.args, **self.kwargs)
+        return _render_replace_tensors(self.func.name(), self.args, self.kwargs)
+
+
+@typing.no_type_check
+def _render_replace_tensors(
+    func: str, args: tuple[typing.Any, ...], kwargs: dict[str, typing.Any]
+):
+    # `Attr`s are better for display than `torch.Tensor`s.
+    args = replace_tensors(args, attr)
+    kwargs = replace_tensors(kwargs, attr)
+    return render_fcall(func, *args, **kwargs)
 
 
 class TMode[T](typing.Protocol):

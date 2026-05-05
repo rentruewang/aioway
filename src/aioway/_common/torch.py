@@ -2,11 +2,10 @@
 
 from collections import abc as cabc
 
-import numpy as np
 import tensordict as td
 import torch
 
-__all__ = ["tdict_rename", "tdict_all_equal", "find_nested_tensors"]
+__all__ = ["tdict_rename", "tdict_all_equal", "replace_tensors", "find_nested_tensors"]
 
 
 def tdict_rename(tdict: td.TensorDict, **renames: str):
@@ -21,6 +20,25 @@ def tdict_all_equal(left: td.TensorDict, right: td.TensorDict, /):
     return eq.all()
 
 
+def replace_tensors(
+    obj: object, replace: cabc.Callable[[torch.Tensor], object]
+) -> object:
+    """
+    Replace tensors whenever encountered with the given function.
+    """
+
+    if isinstance(obj, torch.Tensor):
+        return replace(obj)
+
+    if isinstance(obj, cabc.Sequence):
+        return [replace_tensors(elem, replace) for elem in obj]
+
+    if isinstance(obj, cabc.Mapping):
+        return {key: replace_tensors(elem, replace) for key, elem in obj.items()}
+
+    return obj
+
+
 def find_nested_tensors(obj: object) -> cabc.Iterator[torch.Tensor]:
     """
     Find and unpack tensors from containers.
@@ -28,12 +46,6 @@ def find_nested_tensors(obj: object) -> cabc.Iterator[torch.Tensor]:
 
     if isinstance(obj, torch.Tensor):
         yield obj
-        return
-
-    if obj in [None, NotImplemented]:
-        return
-
-    if isinstance(obj, int | float | bool | str | np.ndarray):
         return
 
     if isinstance(obj, cabc.Sequence):
@@ -45,5 +57,3 @@ def find_nested_tensors(obj: object) -> cabc.Iterator[torch.Tensor]:
         for elem in obj.values():
             yield from find_nested_tensors(elem)
         return
-
-    raise TypeError(f"Unknown type: {type(obj)=}.")

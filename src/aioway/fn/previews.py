@@ -111,6 +111,9 @@ class PreviewFn(HasParam, Fn):
     original: TDispatchFn
     "The original `TorchDispatchFn` from which the `Preview` is translated."
 
+    def __repr__(self) -> str:
+        return repr(self.preview)
+
     @typing.override
     def do(self) -> torch.Tensor:
         return self.preview.do()

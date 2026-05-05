@@ -8,6 +8,7 @@ import logging
 import typing
 
 import networkx as nx
+import rich
 import torch
 
 from aioway.schemas import attr
@@ -43,7 +44,7 @@ def print_torch_function(thunk: TFunctionFn) -> torch.Tensor:
     """
 
     result = thunk.do()
-    print(thunk)
+    rich.print(thunk)
     return result
 
 
@@ -54,7 +55,7 @@ def print_torch_dispatch(thunk: TDispatchFn) -> torch.Tensor:
     """
 
     result = thunk.do()
-    print(thunk)
+    rich.print(thunk)
     return result
 
 
