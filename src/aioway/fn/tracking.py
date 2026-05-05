@@ -7,6 +7,7 @@ import dataclasses as dcls
 import logging
 import typing
 
+import networkx as nx
 import torch
 
 from aioway.fn.modes import TorchDispatchFn
@@ -20,7 +21,7 @@ from .modes import (
     TorchFunctionFn,
     TorchFunctionMode,
 )
-from .previews import HasParamFn
+from .previews import PreviewFn
 
 __all__ = [
     "print_torch_dispatch",
@@ -97,7 +98,7 @@ class FnResult[F: Fn]:
 
 
 @dcls.dataclass(frozen=True)
-class FnHistory[T: HasParamFn]:
+class FnHistory[T: PreviewFn | TorchFunctionFn | TorchDispatchFn]:
     """
     The list of `Fn` that tracks the current history.
     """
@@ -107,23 +108,13 @@ class FnHistory[T: HasParamFn]:
     The `TorchFn` that has been called, in order.
     """
 
-    input_to_thunk: dict[torch.Tensor, list[T]] = dcls.field(
+    input_to_thunk_list: dict[torch.Tensor, list[T]] = dcls.field(
         default_factory=lambda: collections.defaultdict(list)
     )
     "The mapping from input to the thunk containing that input."
 
     output_to_thunk: dict[torch.Tensor, T] = dcls.field(default_factory=dict)
     "The mapping from output to thunk that generates it."
-
-    thunk_index: dict[int, int] = dcls.field(default_factory=dict)
-    """
-    The reverse of history, hash of thunk to index of thunk.
-    """
-
-    edges: list[tuple[int, int]] = dcls.field(default_factory=list)
-    """
-    The edges between 2 elements in the history.
-    """
 
     def __len__(self) -> int:
         return len(self.history)
@@ -142,27 +133,33 @@ class FnHistory[T: HasParamFn]:
         return self.history.pop()
 
     def _update_ref(self, item: T, output: torch.Tensor):
-        # Update index.
-        curr_idx = len(self.history) - 1
-        self.thunk_index[id(item)] = curr_idx
-
         # Update output.
         assert output not in self.output_to_thunk
         self.output_to_thunk[output] = item
 
         # Update input.
         for input_tensor in item.tensors():
-            self.input_to_thunk[input_tensor].append(item)
+            self.input_to_thunk_list[input_tensor].append(item)
 
-            if input_tensor in self.output_to_thunk:
-                thunk = self.output_to_thunk[input_tensor]
-                idx = self.thunk_index[id(thunk)]
-                self.edges.append((idx, curr_idx))
+    def networkx(self) -> nx.DiGraph[T]:
+        graph: nx.DiGraph[T] = nx.DiGraph()
+        graph.add_nodes_from(hist.fn for hist in self.history)
+
+        input_thunks = self.input_to_thunk_list
+        output_thunks = self.output_to_thunk
+
+        tensors = set(input_thunks.keys()).intersection(output_thunks.keys())
+
+        for tensor in tensors:
+            for target_thunk in input_thunks[tensor]:
+                _ = graph.add_edge(self.output_to_thunk[tensor], target_thunk)
+
+        return graph
 
 
-class DispatchHistory(FnHistory[HasParamFn]):
+class DispatchHistory(FnHistory[PreviewFn | TorchDispatchFn]):
     @typing.override
-    def _update_ref(self, item: HasParamFn, output: torch.Tensor):
+    def _update_ref(self, item: PreviewFn | TorchDispatchFn, output: torch.Tensor):
         # Here, in dispatch mode, we may deal with non tensor outputs.
         if isinstance(output, torch.Tensor):
             super()._update_ref(item, output)

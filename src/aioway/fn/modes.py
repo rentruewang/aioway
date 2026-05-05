@@ -24,7 +24,6 @@ __all__ = [
     "TorchFunctionFn",
     "TorchDispatchFn",
     "HasParam",
-    "HasParamFn",
 ]
 
 
@@ -55,19 +54,8 @@ class HasParam(abc.ABC):
         raise NotImplementedError
 
 
-class HasParamFn(HasParam, Fn, abc.ABC):
-    """
-    This is a `Fn` with `HasParam` mixin.
-    """
-
-    @abc.abstractmethod
-    @typing.override
-    def do(self) -> torch.Tensor:
-        raise NotImplementedError
-
-
 @dcls.dataclass(match_args=False)
-class _TorchThunkBaseFn[T: _TorchCallable](HasParamFn, abc.ABC):
+class _TorchThunkBaseFn[T: _TorchCallable](HasParam, Fn, abc.ABC):
     """
     `TorchThunkFn` is the thunk capturing the function calls initiated by `torch`.
     It's the base class for both `TorchFunctionFn` and `TorchDispatchFn`
@@ -118,13 +106,27 @@ class _TorchThunkBaseFn[T: _TorchCallable](HasParamFn, abc.ABC):
 class TorchFunctionFn(_TorchThunkBaseFn[cabc.Callable[..., typing.Any]], Fn):
     """
     `TorchFunctionT` is the thunk capturing the function calls initiated by `torch`.
+
+    The `func` here are `torch.*` or `torch.Tensor` operators.
     """
 
     def __hash__(self) -> int:
         return id(self)
 
     def __repr__(self) -> str:
-        return render_fcall(self.func, *self.args, **self.kwargs)
+        name = self.func.__name__
+
+        # If it's `torch.*`
+        if getattr(torch, name, None) is self.func:
+            func_name = f"torch.{name}"
+        # If it's `torch.Tensor.*`
+        elif getattr(torch.Tensor, name, None) is self.func:
+            func_name = f"torch.Tensor.{name}"
+        # Don't know what this is. Use `repr`.
+        else:
+            func_name = repr(self.func)
+
+        return render_fcall(func_name, *self.args, **self.kwargs)
 
 
 @dcls.dataclass(match_args=False)
@@ -132,10 +134,9 @@ class TorchDispatchFn(_TorchThunkBaseFn[_ops.OpOverload]):
     """
     `TorchDispatchT` is the thunk capturing the function calls initiated by `torch`.
     This is by default what a null-op `__torch_dispatch__` would call.
-    """
 
-    func: _ops.OpOverload
-    "The `torch.ops.*` operator."
+    The `func` here are `torch.ops.aten.*` operators.
+    """
 
     def __post_init__(self):
         super().__post_init__()
@@ -148,9 +149,6 @@ class TorchDispatchFn(_TorchThunkBaseFn[_ops.OpOverload]):
 
     def __repr__(self) -> str:
         return render_fcall(self.func.name(), *self.args, **self.kwargs)
-
-
-type _FunctionOrDispatch = TorchFunctionFn | TorchDispatchFn
 
 
 class TorchMode[T](typing.Protocol):
