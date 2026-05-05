@@ -24,48 +24,10 @@ __all__ = [
     "TFunctionFn",
     "TDispatchFn",
     "HasParam",
-    "TFunctionThunk",
-    "TDispatchThunk",
 ]
 
 
 type _TorchCallable = cabc.Callable[..., typing.Any] | _ops.OpOverload
-
-
-class TFunctionThunk(typing.Protocol):
-    """
-    `TorchFunctionThunk` are types compatible with `TorchFunctionMode`.
-    """
-
-    func: cabc.Callable[..., typing.Any]
-    "The `torch.*`, `Tensor.*` functions."
-
-    types: tuple[type, ...]
-    "The types of the arguments."
-
-    args: tuple[typing.Any, ...]
-    "The positional args."
-
-    kwargs: dict[str, typing.Any]
-    "The keyword arguments."
-
-
-class TDispatchThunk(typing.Protocol):
-    """
-    `TorchDispatchThunk` are types compatible with `TorchDispatchMode`.
-    """
-
-    func: _ops.OpOverload
-    "The `torch.*`, `Tensor.*` functions."
-
-    types: tuple[type, ...]
-    "The types of the arguments."
-
-    args: tuple[typing.Any, ...]
-    "The positional args."
-
-    kwargs: dict[str, typing.Any]
-    "The keyword arguments."
 
 
 class HasParam(abc.ABC):
@@ -141,7 +103,7 @@ class _TThunkBaseFn[T: _TorchCallable](HasParam, Fn, abc.ABC):
 
 
 @dcls.dataclass(match_args=False)
-class TFunctionFn(_TThunkBaseFn[cabc.Callable[..., typing.Any]], TFunctionThunk):
+class TFunctionFn(_TThunkBaseFn[cabc.Callable[..., typing.Any]]):
     """
     `TorchFunctionT` is the thunk capturing the function calls initiated by `torch`.
 
@@ -168,7 +130,7 @@ class TFunctionFn(_TThunkBaseFn[cabc.Callable[..., typing.Any]], TFunctionThunk)
 
 
 @dcls.dataclass(match_args=False)
-class TDispatchFn(_TThunkBaseFn[_ops.OpOverload], TDispatchThunk):
+class TDispatchFn(_TThunkBaseFn[_ops.OpOverload]):
     """
     `TorchDispatchT` is the thunk capturing the function calls initiated by `torch`.
     This is by default what a null-op `__torch_dispatch__` would call.
