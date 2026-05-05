@@ -26,7 +26,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 @dcls.dataclass
-class FakeModeRc:
+class _FakeModeRc:
     """
     Do "reference counting" for fake mode.
     """
@@ -58,7 +58,7 @@ class FakeModeRc:
 
 
 _FAKE_MODE = tsc.FakeTensorMode(allow_non_fake_inputs=True)
-_FAKE_MODE_RC = FakeModeRc(_FAKE_MODE)
+_FAKE_MODE_RC = _FakeModeRc(_FAKE_MODE)
 
 
 def to_fake_tensor(tensor: torch.Tensor) -> tsc.FakeTensor:

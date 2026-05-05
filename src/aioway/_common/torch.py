@@ -2,6 +2,7 @@
 
 from collections import abc as cabc
 
+import numpy as np
 import tensordict as td
 import torch
 
@@ -30,6 +31,9 @@ def replace_tensors(
     if isinstance(obj, torch.Tensor):
         return replace(obj)
 
+    if _is_primitive(obj):
+        return obj
+
     if isinstance(obj, cabc.Sequence):
         return [replace_tensors(elem, replace) for elem in obj]
 
@@ -48,6 +52,9 @@ def find_nested_tensors(obj: object) -> cabc.Iterator[torch.Tensor]:
         yield obj
         return
 
+    if _is_primitive(obj):
+        return
+
     if isinstance(obj, cabc.Sequence):
         for elem in obj:
             yield from find_nested_tensors(elem)
@@ -57,3 +64,13 @@ def find_nested_tensors(obj: object) -> cabc.Iterator[torch.Tensor]:
         for elem in obj.values():
             yield from find_nested_tensors(elem)
         return
+
+
+def _is_primitive(obj: object) -> bool:
+    if obj in [None, NotImplemented, ...]:
+        return True
+
+    if isinstance(obj, int | float | bool | str | np.ndarray):
+        return True
+
+    return False

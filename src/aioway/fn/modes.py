@@ -11,7 +11,6 @@ from collections import abc as cabc
 import torch
 from torch import _ops, overrides
 from torch.utils import _python_dispatch as pyd
-
 from aioway._common import find_nested_tensors, render_fcall, replace_tensors
 from aioway.schemas import attr
 
@@ -114,19 +113,24 @@ class TFunctionFn(_TThunkBaseFn[cabc.Callable[..., typing.Any]]):
         return id(self)
 
     def __repr__(self) -> str:
+        func_name = self._get_function_name()
+        return _render_replace_tensors("function::" + func_name, self.args, self.kwargs)
+
+    def _get_function_name(self):
         name = self.func.__name__
 
-        # If it's `torch.*`
+        # If it's `torch.*`.
         if getattr(torch, name, None) is self.func:
-            func_name = f"torch.{name}"
-        # If it's `torch.Tensor.*`
+            return f"torch.{name}"
+        # If it's `torch.Tensor.*`.
         elif getattr(torch.Tensor, name, None) is self.func:
-            func_name = f"torch.Tensor.{name}"
+            return f"torch.Tensor.{name}"
+        # For torchvision items, a `torch._ops.OpOverloadPacket` is passed.
+        elif isinstance(self.func, _ops.OpOverloadPacket):
+            return f"torch.ops.{self.func!s}"
         # Don't know what this is. Use `repr`.
         else:
-            func_name = repr(self.func)
-
-        return _render_replace_tensors(func_name, self.args, self.kwargs)
+            return repr(self.func)
 
 
 @dcls.dataclass(match_args=False)
@@ -148,7 +152,8 @@ class TDispatchFn(_TThunkBaseFn[_ops.OpOverload]):
         return id(self)
 
     def __repr__(self) -> str:
-        return _render_replace_tensors(self.func.name(), self.args, self.kwargs)
+        func_name = f"torch.ops.{self.func.overloadpacket!s}"
+        return _render_replace_tensors("dispatch::" + func_name, self.args, self.kwargs)
 
 
 @typing.no_type_check
