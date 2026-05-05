@@ -6,9 +6,6 @@ import logging
 import typing
 from collections import abc as cabc
 
-import torch
-from torch import _ops
-
 from .fake import enabled_fake_mode, fake_mode
 from .guards import is_aten_op, is_prim_op
 from .modes import (
@@ -17,7 +14,7 @@ from .modes import (
     TorchFunctionFn,
     TorchFunctionMode,
 )
-from .previews import PreviewFn, PreviewFnFinder
+from .previews import PreviewFn, find_preview
 from .tracking import DispatchHistory, FnHistory
 
 __all__ = [
@@ -30,31 +27,23 @@ __all__ = [
 LOGGER = logging.getLogger(__name__)
 
 
-_CreatePreview = cabc.Callable[..., PreviewFn]
+PreviewRouter = cabc.Callable[[TorchDispatchFn], PreviewFn]
 _TorchRouterMode = typing.Literal["dispatch", "function"]
 _TorchThunk = TorchDispatchFn | PreviewFn
 
 
-class TorchRouter(typing.Protocol):
-    def __call__(
-        self, func: _ops.OpOverload, types: tuple[type[torch.Tensor], ...]
-    ) -> _CreatePreview: ...
-
-
-def only_route_aten_in_fake(
-    func: _ops.OpOverload, types: tuple[type[torch.Tensor], ...]
-) -> _CreatePreview:
+def only_route_aten_in_fake(thunk: TorchDispatchFn):
     if not enabled_fake_mode():
         raise RuntimeError("Only running in fake mode!")
 
-    if is_aten_op(func):
-        return aten_ops_preview(func, types)
+    if is_aten_op(thunk.func):
+        return find_preview(thunk)
 
-    assert is_prim_op(func), func
+    assert is_prim_op(thunk.func), thunk.func
     return NotImplemented
 
 
-def no_route(*args, **kwargs) -> _CreatePreview:
+def no_route(thunk: TorchDispatchFn):
     return NotImplemented
 
 
@@ -79,7 +68,7 @@ class SaveFunctionHistory(TorchFunctionMode):
 
 @dcls.dataclass
 class RouteDispatchOp(TorchDispatchMode):
-    router: TorchRouter
+    router: PreviewRouter
     history: DispatchHistory = dcls.field(default_factory=DispatchHistory)
 
     def __call__(self, thunk: TorchDispatchFn):
@@ -87,14 +76,9 @@ class RouteDispatchOp(TorchDispatchMode):
 
         op, types, args, kwargs = thunk
 
-        fn_init = self.router(op, types)
         fn: _TorchThunk
 
-        if (
-            False
-            or fn_init is NotImplemented
-            or (fn := fn_init(*args, **kwargs)) is NotImplemented
-        ):
+        if (fn := self.router(thunk)) is NotImplemented:
             # Fn initialization failed, set it to the input `thunk`.
             fn = thunk
 
@@ -106,13 +90,6 @@ class RouteDispatchOp(TorchDispatchMode):
 
         self.history.append(fn, result)
         return result
-
-
-def aten_ops_preview(
-    func: _ops.OpOverload, types: tuple[type[torch.Tensor], ...]
-) -> _CreatePreview:
-    assert is_aten_op(func), func
-    return PreviewFnFinder(func)
 
 
 @ctxl.contextmanager
@@ -134,7 +111,7 @@ def track_function_fn():
 
 
 @ctxl.contextmanager
-def track_dispatch_fn(router: TorchRouter = no_route):
+def track_dispatch_fn(router: PreviewRouter = no_route):
     """
     Track all calls into the torch dispatch mode as `TorchIrFn`.
     """

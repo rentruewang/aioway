@@ -14,7 +14,7 @@ from aioway._common import dcls_frozen_no_repr, render_fcall
 
 from .modes import HasParam, HasParamFn, TorchDispatchFn
 
-__all__ = ["find_preview", "PreviewFnFinder", "all_previews", "PreviewFn"]
+__all__ = ["find_preview", "all_previews", "PreviewFn", "Preview"]
 
 
 _PREVIEW_CANDIDATES: dict[_ops.OpOverload, list[type[Preview]]] = {}
@@ -124,29 +124,13 @@ def find_preview(thunk: TorchDispatchFn) -> PreviewFn:
     if thunk.func not in _PREVIEW_CANDIDATES:
         return NotImplemented
 
-    return PreviewFnFinder(thunk.func)(*thunk.args, **thunk.kwargs)
+    for candidate in _PREVIEW_CANDIDATES[thunk.func]:
+        if not (preview := candidate(*thunk.args, **thunk.kwargs)).ok():
+            continue
 
+        return PreviewFn(preview)
 
-@dcls.dataclass(frozen=True)
-class PreviewFnFinder:
-    op: _ops.OpOverload
-
-    def __repr__(self):
-        name = type(self).__qualname__
-        return f"{name}[{self.op.name()}]({self.candidates})"
-
-    def __call__(self, *args, **kwargs):
-        for candidate in self.candidates:
-            if not (preview := candidate(*args, **kwargs)).ok():
-                continue
-
-            return PreviewFn(preview)
-
-        return NotImplemented
-
-    @property
-    def candidates(self):
-        return _PREVIEW_CANDIDATES[self.op]
+    return NotImplemented
 
 
 def all_previews():

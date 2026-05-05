@@ -18,8 +18,18 @@ _PENDING = object()
 
 
 class Fn(abc.ABC):
+    """
+    `Fn` is the base class for delayed computation.
+
+    `Fn.do` executes the computation, `Fn` base class itself does not make any more assumption.
+    """
+
     @abc.abstractmethod
     def do(self) -> typing.Any:
+        """
+        Execute the computation.
+        """
+
         raise NotImplementedError
 
 
