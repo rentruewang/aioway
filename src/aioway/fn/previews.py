@@ -12,7 +12,8 @@ from torch import _ops
 
 from aioway._common import dcls_frozen_no_repr, render_fcall
 
-from .modes import HasParam, HasParamFn, TorchDispatchFn
+from .fn import Fn
+from .modes import HasParam, TorchDispatchFn
 
 __all__ = ["find_preview", "all_previews", "PreviewFn", "Preview"]
 
@@ -94,7 +95,7 @@ class Preview(HasParam, abc.ABC):
 
 @typing.final
 @dcls.dataclass(frozen=True)
-class PreviewFn(HasParamFn):
+class PreviewFn(HasParam, Fn):
     """
     `PreviewFn` wraps a `Preview` object, which is split out so as to declutter subclasses for `Fn`.
 

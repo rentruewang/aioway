@@ -24,7 +24,6 @@ __all__ = [
     "TorchFunctionFn",
     "TorchDispatchFn",
     "HasParam",
-    "HasParamFn",
 ]
 
 
@@ -55,19 +54,8 @@ class HasParam(abc.ABC):
         raise NotImplementedError
 
 
-class HasParamFn(HasParam, Fn, abc.ABC):
-    """
-    This is a `Fn` with `HasParam` mixin.
-    """
-
-    @abc.abstractmethod
-    @typing.override
-    def do(self) -> torch.Tensor:
-        raise NotImplementedError
-
-
 @dcls.dataclass(match_args=False)
-class _TorchThunkBaseFn[T: _TorchCallable](HasParamFn, abc.ABC):
+class _TorchThunkBaseFn[T: _TorchCallable](HasParam, Fn, abc.ABC):
     """
     `TorchThunkFn` is the thunk capturing the function calls initiated by `torch`.
     It's the base class for both `TorchFunctionFn` and `TorchDispatchFn`
