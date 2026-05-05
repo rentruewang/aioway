@@ -1,12 +1,14 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+"Render the class hierarchies."
+
 import typing
 from collections import abc as cabc
 
 import rich
 from rich import syntax, tree
 
-__all__ = ["subclass_tree"]
+__all__ = ["subclass_tree", "print_subclass_tree", "render_class_syntax"]
 
 
 def render_class_syntax(cls: type):
