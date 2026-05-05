@@ -11,18 +11,17 @@ from collections import abc as cabc
 import torch
 from torch import _ops, overrides
 from torch.utils import _python_dispatch as pyd
-
-from aioway._common import render_fcall
-from aioway._common.torch import find_nested_tensors
+from aioway._common import find_nested_tensors, render_fcall, replace_tensors
+from aioway.schemas import attr
 
 from .fn import Fn
 from .guards import TensorFilter, all_tensors
 
 __all__ = [
-    "TorchFunctionMode",
-    "TorchDispatchMode",
-    "TorchFunctionFn",
-    "TorchDispatchFn",
+    "TFunctionMode",
+    "TDispatchMode",
+    "TFunctionFn",
+    "TDispatchFn",
     "HasParam",
 ]
 
@@ -55,7 +54,7 @@ class HasParam(abc.ABC):
 
 
 @dcls.dataclass(match_args=False)
-class _TorchThunkBaseFn[T: _TorchCallable](HasParam, Fn, abc.ABC):
+class _TThunkBaseFn[T: _TorchCallable](HasParam, Fn, abc.ABC):
     """
     `TorchThunkFn` is the thunk capturing the function calls initiated by `torch`.
     It's the base class for both `TorchFunctionFn` and `TorchDispatchFn`
@@ -103,7 +102,7 @@ class _TorchThunkBaseFn[T: _TorchCallable](HasParam, Fn, abc.ABC):
 
 
 @dcls.dataclass(match_args=False)
-class TorchFunctionFn(_TorchThunkBaseFn[cabc.Callable[..., typing.Any]], Fn):
+class TFunctionFn(_TThunkBaseFn[cabc.Callable[..., typing.Any]]):
     """
     `TorchFunctionT` is the thunk capturing the function calls initiated by `torch`.
 
@@ -114,23 +113,12 @@ class TorchFunctionFn(_TorchThunkBaseFn[cabc.Callable[..., typing.Any]], Fn):
         return id(self)
 
     def __repr__(self) -> str:
-        name = self.func.__name__
-
-        # If it's `torch.*`
-        if getattr(torch, name, None) is self.func:
-            func_name = f"torch.{name}"
-        # If it's `torch.Tensor.*`
-        elif getattr(torch.Tensor, name, None) is self.func:
-            func_name = f"torch.Tensor.{name}"
-        # Don't know what this is. Use `repr`.
-        else:
-            func_name = repr(self.func)
-
-        return render_fcall(func_name, *self.args, **self.kwargs)
+        func_name = _render_func_name(self.func)
+        return _render_tensor_as_attr("function::" + func_name, self.args, self.kwargs)
 
 
 @dcls.dataclass(match_args=False)
-class TorchDispatchFn(_TorchThunkBaseFn[_ops.OpOverload]):
+class TDispatchFn(_TThunkBaseFn[_ops.OpOverload]):
     """
     `TorchDispatchT` is the thunk capturing the function calls initiated by `torch`.
     This is by default what a null-op `__torch_dispatch__` would call.
@@ -148,41 +136,74 @@ class TorchDispatchFn(_TorchThunkBaseFn[_ops.OpOverload]):
         return id(self)
 
     def __repr__(self) -> str:
-        return render_fcall(self.func.name(), *self.args, **self.kwargs)
+        func_name = _render_func_name(self.func)
+        return _render_tensor_as_attr("dispatch::" + func_name, self.args, self.kwargs)
 
 
-class TorchMode[T](typing.Protocol):
+def _render_func_name(func: cabc.Callable[..., typing.Any]) -> str:
+    name = func.__name__
+
+    # It seems that there isn't an attribute that expose the name of the `OpOverload`,
+    # so here we combine `namespace` (aten, prim, ...) and `__name__` (packet.type).
+    if isinstance(func, _ops.OpOverload):
+        return f"torch.ops.{func.namespace}.{name}"
+
+    # Just converting to `str` works.
+    if isinstance(func, _ops.OpOverloadPacket):
+        return f"torch.ops.{func!s}"
+
+    # If it's `torch.*`.
+    if getattr(torch, name, None) is func:
+        return f"torch.{name}"
+
+    # If it's `torch.Tensor.*`.
+    if getattr(torch.Tensor, name, None) is func:
+        return f"torch.Tensor.{name}"
+
+    # Don't know what this is. Use `repr`.
+    return repr(func)
+
+
+@typing.no_type_check
+def _render_tensor_as_attr(
+    func: str, args: tuple[typing.Any, ...], kwargs: dict[str, typing.Any]
+):
+    # `Attr`s are better for display than `torch.Tensor`s.
+    args = replace_tensors(args, attr)
+    kwargs = replace_tensors(kwargs, attr)
+    return render_fcall(func, *args, **kwargs)
+
+
+class TMode[T](typing.Protocol):
     @abc.abstractmethod
     def __call__(self, thunk: T, /) -> torch.Tensor:
         raise NotImplementedError
 
 
-class TorchFunctionMode(
-    overrides.TorchFunctionMode, TorchMode[TorchFunctionFn], abc.ABC
-):
+class TFunctionMode(overrides.TorchFunctionMode, TMode[TFunctionFn], abc.ABC):
     """
     `TorchFunctionMode` is the adaptor for `torch.overrides.TorchFunctionMode`.
     """
 
     @abc.abstractmethod
-    def __call__(self, thunk: TorchFunctionFn, /) -> torch.Tensor:
+    def __call__(self, thunk: TFunctionFn, /) -> torch.Tensor:
         raise NotImplementedError
 
     @typing.final
     @typing.override
     def __torch_function__(self, func, types, args=(), kwargs=None):
         kwargs = kwargs or {}
-        thunk = TorchFunctionFn(func, types, args, kwargs)
+        thunk = TFunctionFn(func, types, args, kwargs)
         return self(thunk)
 
     @staticmethod
     def register(
-        f: TorchMode[TorchFunctionFn],
+        f: TMode[TFunctionFn],
     ) -> cabc.Callable[[], typing.ContextManager[None]]:
 
-        class _FuncTorchFunctionMode(TorchFunctionMode):
+        class _FuncTorchFunctionMode(TFunctionMode):
             @typing.override
-            def __call__(self, t: TorchFunctionFn) -> typing.Any:
+            def __call__(self, t: TFunctionFn) -> typing.Any:
                 return f(t)
 
         @ctxl.contextmanager
@@ -193,29 +214,29 @@ class TorchFunctionMode(
         return ctx_man
 
 
-class TorchDispatchMode(pyd.TorchDispatchMode, TorchMode[TorchDispatchFn], abc.ABC):
+class TDispatchMode(pyd.TorchDispatchMode, TMode[TDispatchFn], abc.ABC):
     """
     `TorchDispatchMode` is the adaptor for `torch.data._python_dispatch.TorchDispatchMode`.
     """
 
     @abc.abstractmethod
-    def __call__(self, thunk: TorchDispatchFn, /) -> torch.Tensor:
+    def __call__(self, thunk: TDispatchFn, /) -> torch.Tensor:
         raise NotImplementedError
 
     @typing.final
     @typing.override
     def __torch_dispatch__(self, func, types, args=(), kwargs=None) -> typing.Any:
         kwargs = kwargs or {}
-        thunk = TorchDispatchFn(func, types, args, kwargs)
+        thunk = TDispatchFn(func, types, args, kwargs)
         return self(thunk)
 
     @staticmethod
     def register(
-        f: TorchMode[TorchDispatchFn],
+        f: TMode[TDispatchFn],
     ) -> cabc.Callable[[], typing.ContextManager[None]]:
-        class _FuncTorchDispatchMode(TorchDispatchMode):
+        class _FuncTorchDispatchMode(TDispatchMode):
             @typing.override
-            def __call__(self, t: TorchDispatchFn, /) -> torch.Tensor:
+            def __call__(self, t: TDispatchFn, /) -> torch.Tensor:
                 return f(t)
 
         @ctxl.contextmanager

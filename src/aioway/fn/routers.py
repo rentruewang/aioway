@@ -9,10 +9,10 @@ from collections import abc as cabc
 from .fake import enabled_fake_mode, fake_mode
 from .guards import is_aten_op, is_prim_op
 from .modes import (
-    TorchDispatchFn,
-    TorchDispatchMode,
-    TorchFunctionFn,
-    TorchFunctionMode,
+    TDispatchFn,
+    TDispatchMode,
+    TFunctionFn,
+    TFunctionMode,
 )
 from .previews import PreviewFn, find_preview
 from .tracking import DispatchHistory, FnHistory
@@ -27,10 +27,10 @@ __all__ = [
 LOGGER = logging.getLogger(__name__)
 
 
-PreviewRouter = cabc.Callable[[TorchDispatchFn], PreviewFn]
+PreviewRouter = cabc.Callable[[TDispatchFn], PreviewFn]
 
 
-def only_route_aten_in_fake(thunk: TorchDispatchFn):
+def only_route_aten_in_fake(thunk: TDispatchFn):
     if not enabled_fake_mode():
         raise RuntimeError("Only running in fake mode!")
 
@@ -41,44 +41,44 @@ def only_route_aten_in_fake(thunk: TorchDispatchFn):
     return NotImplemented
 
 
-def no_route(thunk: TorchDispatchFn):
+def no_route(thunk: TDispatchFn):
     return NotImplemented
 
 
 @dcls.dataclass
-class SaveFunctionHistory(TorchFunctionMode):
+class SaveFunctionHistory(TFunctionMode):
     """
     Saves the intermediate graph into a `FnHistory` object.
     """
 
-    history: FnHistory[TorchFunctionFn] = dcls.field(default_factory=FnHistory)
+    history: FnHistory[TFunctionFn] = dcls.field(default_factory=FnHistory)
     """
     The `FnHistory` instance that would be responsible for tracking history,
     and which provides a graph API to interact with saved tensors.
     """
 
     @typing.override
-    def __call__(self, thunk: TorchFunctionFn) -> typing.Any:
+    def __call__(self, thunk: TFunctionFn) -> typing.Any:
         result = thunk.do()
         self.history.append(thunk, result)
         return result
 
 
 @dcls.dataclass
-class RouteDispatchOp(TorchDispatchMode):
+class RouteDispatchOp(TDispatchMode):
     router: PreviewRouter
     history: DispatchHistory = dcls.field(default_factory=DispatchHistory)
 
-    def __call__(self, thunk: TorchDispatchFn):
+    def __call__(self, thunk: TDispatchFn):
         # Create a `_ThunkType` and route implemented methods.
 
-        fn: TorchDispatchFn | PreviewFn
+        fn: TDispatchFn | PreviewFn
 
         if (fn := self.router(thunk)) is NotImplemented:
             # Fn initialization failed, set it to the input `thunk`.
             fn = thunk
 
-        assert isinstance(fn, TorchDispatchFn | PreviewFn), type(fn)
+        assert isinstance(fn, TDispatchFn | PreviewFn), type(fn)
 
         # Here, we overwrite `fn`'s `__call__` inside `PreviewFn` if it's a special function.
         with capture_do_error(fn):
@@ -89,7 +89,7 @@ class RouteDispatchOp(TorchDispatchMode):
 
 
 @ctxl.contextmanager
-def capture_do_error(fn: TorchDispatchFn | PreviewFn):
+def capture_do_error(fn: TDispatchFn | PreviewFn):
     try:
         yield
     except RuntimeError as err:

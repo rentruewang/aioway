@@ -9,7 +9,7 @@ import functools
 import typing
 from collections import abc as cabc
 
-from aioway._common import render_fcall, render_fcall_done
+from aioway._common import render_fcall
 
 __all__ = ["Fn", "Thunk", "FnStack"]
 
@@ -124,10 +124,12 @@ class Thunk(Fn):
     def __string(self) -> str:
         args, kwargs = self.args, self.kwargs
 
+        fcall = render_fcall(self.func, *args, **kwargs)
+
         if self.done:
-            return render_fcall_done(self.func, self.__result, *args, **kwargs)
-        else:
-            return render_fcall(self.func, *args, **kwargs)
+            fcall += f" -> {self.__result}"
+
+        return fcall
 
     def result(self) -> object:
         "Get the result. If not done, an error is raised."

@@ -8,23 +8,25 @@ import logging
 import typing
 
 import networkx as nx
+import rich
 import torch
 
-from aioway.fn.modes import TorchDispatchFn
 from aioway.schemas import attr
 
-from .fn import Fn, FnStack
+from .fn import FnStack
 from .guards import TensorFilter, all_tensors, is_leaf_has_grad
 from .modes import (
-    TorchDispatchFn,
-    TorchDispatchMode,
-    TorchFunctionFn,
-    TorchFunctionMode,
+    TDispatchFn,
+    TDispatchMode,
+    TFunctionFn,
+    TFunctionMode,
 )
 from .previews import PreviewFn
 
 __all__ = [
+    "print_torch_function",
     "print_torch_dispatch",
+    "LogTorchFunction",
     "LogTorchDispatch",
     "TorchFunctionStack",
     "TorchDispatchStack",
@@ -35,19 +37,49 @@ __all__ = [
 LOGGER = logging.getLogger(__name__)
 
 
-@TorchDispatchMode.register
-def print_torch_dispatch(thunk: TorchDispatchFn) -> torch.Tensor:
+@TFunctionMode.register
+def print_torch_function(thunk: TFunctionFn) -> torch.Tensor:
+    """
+    Print the function calls.
+    """
+
+    result = thunk.do()
+    rich.print(thunk)
+    return result
+
+
+@TDispatchMode.register
+def print_torch_dispatch(thunk: TDispatchFn) -> torch.Tensor:
     """
     Print the dispatcher.
     """
 
     result = thunk.do()
-    print(thunk)
+    rich.print(thunk)
     return result
 
 
 @dcls.dataclass
-class LogTorchDispatch(TorchDispatchMode):
+class LogTorchFunction(TFunctionMode):
+    """
+    Log every call to function mode.
+    """
+
+    level: int
+    "The level to log to."
+
+    logger: logging.Logger = LOGGER
+    "The logger to log to. Default to the one in the current module."
+
+    @typing.override
+    def __call__(self, thunk: TFunctionFn) -> torch.Tensor:
+        result = thunk.do()
+        self.logger.log(self.level, "%s", thunk)
+        return result
+
+
+@dcls.dataclass
+class LogTorchDispatch(TDispatchMode):
     """
     Log every call to dispatch mode.
     """
@@ -59,46 +91,50 @@ class LogTorchDispatch(TorchDispatchMode):
     "The logger to log to. Default to the one in the current module."
 
     @typing.override
-    def __call__(self, thunk: TorchDispatchFn) -> torch.Tensor:
+    def __call__(self, thunk: TDispatchFn) -> torch.Tensor:
         result = thunk.do()
         self.logger.log(self.level, "%s", thunk)
         return result
 
 
 @dcls.dataclass
-class TorchFunctionStack(TorchFunctionMode):
-    stack: FnStack[TorchFunctionFn] = dcls.field(default_factory=FnStack)
+class TorchFunctionStack(TFunctionMode):
+    stack: FnStack[TFunctionFn] = dcls.field(default_factory=FnStack)
 
     @typing.override
-    def __call__(self, thunk: TorchFunctionFn) -> typing.Any:
+    def __call__(self, thunk: TFunctionFn) -> typing.Any:
         with self.stack.track(thunk):
             return thunk.do()
 
 
 @dcls.dataclass
-class TorchDispatchStack(TorchDispatchMode):
-    stack: FnStack[TorchDispatchFn] = dcls.field(default_factory=FnStack)
+class TorchDispatchStack(TDispatchMode):
+    stack: FnStack[TDispatchFn] = dcls.field(default_factory=FnStack)
 
     @typing.override
-    def __call__(self, thunk: TorchDispatchFn) -> torch.Tensor:
+    def __call__(self, thunk: TDispatchFn) -> torch.Tensor:
         with self.stack.track(thunk):
             return thunk.do()
 
     def __len__(self) -> int:
         return len(self.stack)
 
-    def top(self) -> TorchDispatchFn:
+    def top(self) -> TDispatchFn:
         return self.stack.top()
 
 
 @dcls.dataclass(frozen=True)
-class FnResult[F: Fn]:
+class FnResult[F: PreviewFn | TFunctionFn | TDispatchFn]:
     fn: F
     result: torch.Tensor
 
+    @typing.override
+    def __repr__(self) -> str:
+        return f"{self.fn!r} -> {self.result}"
+
 
 @dcls.dataclass(frozen=True)
-class FnHistory[T: PreviewFn | TorchFunctionFn | TorchDispatchFn]:
+class FnHistory[T: PreviewFn | TFunctionFn | TDispatchFn]:
     """
     The list of `Fn` that tracks the current history.
     """
@@ -157,9 +193,9 @@ class FnHistory[T: PreviewFn | TorchFunctionFn | TorchDispatchFn]:
         return graph
 
 
-class DispatchHistory(FnHistory[PreviewFn | TorchDispatchFn]):
+class DispatchHistory(FnHistory[PreviewFn | TDispatchFn]):
     @typing.override
-    def _update_ref(self, item: PreviewFn | TorchDispatchFn, output: torch.Tensor):
+    def _update_ref(self, item: PreviewFn | TDispatchFn, output: torch.Tensor):
         # Here, in dispatch mode, we may deal with non tensor outputs.
         if isinstance(output, torch.Tensor):
             super()._update_ref(item, output)

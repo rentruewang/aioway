@@ -13,7 +13,7 @@ from torch import _ops
 from aioway._common import dcls_frozen_no_repr, render_fcall
 
 from .fn import Fn
-from .modes import HasParam, TorchDispatchFn
+from .modes import HasParam, TDispatchFn
 
 __all__ = ["find_preview", "all_previews", "PreviewFn", "Preview"]
 
@@ -108,6 +108,12 @@ class PreviewFn(HasParam, Fn):
     The preview object that ends up being selected.
     """
 
+    original: TDispatchFn
+    "The original `TorchDispatchFn` from which the `Preview` is translated."
+
+    def __repr__(self) -> str:
+        return repr(self.preview)
+
     @typing.override
     def do(self) -> torch.Tensor:
         return self.preview.do()
@@ -116,8 +122,24 @@ class PreviewFn(HasParam, Fn):
     def tensors(self) -> cabc.Iterator[torch.Tensor]:
         yield from self.preview.tensors()
 
+    @property
+    def func(self):
+        return self.original.func
 
-def find_preview(thunk: TorchDispatchFn) -> PreviewFn:
+    @property
+    def types(self):
+        return self.original.types
+
+    @property
+    def args(self):
+        return self.original.args
+
+    @property
+    def kwargs(self):
+        return self.original.kwargs
+
+
+def find_preview(thunk: TDispatchFn) -> PreviewFn:
     """
     Try finding a preview with the given `op` and its arguments.
     """
@@ -129,7 +151,7 @@ def find_preview(thunk: TorchDispatchFn) -> PreviewFn:
         if not (preview := candidate(*thunk.args, **thunk.kwargs)).ok():
             continue
 
-        return PreviewFn(preview)
+        return PreviewFn(preview, original=thunk)
 
     return NotImplemented
 
