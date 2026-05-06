@@ -139,8 +139,11 @@ class TFunctionFn(_TThunkBaseFn[cabc.Callable[..., typing.Any]]):
 
     @typing.override
     def dispatch(self) -> TDispatchFn:
-        if isinstance(self.func, _ops.OpOverload):
-            return TDispatchFn(self.func, self.types, self.args, self.kwargs)
+        # Sometimes, when `torch.ops.*` is passed in function mode,
+        # they would pass an `torch._ops.OpOverloadPacket`,
+        # whose `default` would be called in dispatch mode directly.
+        if isinstance(self.func, _ops.OpOverloadPacket):
+            return TDispatchFn(self.func.default, self.types, self.args, self.kwargs)
 
         else:
             return NotImplemented

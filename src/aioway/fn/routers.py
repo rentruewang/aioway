@@ -9,13 +9,8 @@ from collections import abc as cabc
 import torch
 
 from .fake import enabled_fake_mode, torch_fake_mode
-from .guards import is_aten_op, is_prim_op
-from .modes import (
-    TDispatchFn,
-    TDispatchMode,
-    TFunctionFn,
-    TFunctionMode,
-)
+from .guards import is_aten_op, is_prim_op, is_torchcodec_op, is_torchvision_op
+from .modes import TDispatchFn, TDispatchMode, TFunctionFn, TFunctionMode
 from .previews import PreviewFn, find_preview
 from .tracking import DispatchHistory, FnHistory
 
@@ -32,14 +27,16 @@ LOGGER = logging.getLogger(__name__)
 PreviewRouter = cabc.Callable[[TDispatchFn], PreviewFn]
 
 
-def only_route_aten_in_fake(thunk: TDispatchFn):
+def only_route_in_fake(thunk: TDispatchFn):
     if not enabled_fake_mode():
         raise RuntimeError("Only running in fake mode!")
 
-    if is_aten_op(thunk.func):
+    if any(is_op(thunk.func) for is_op in [is_aten_op, is_torchvision_op]):
         return find_preview(thunk)
 
-    assert is_prim_op(thunk.func), thunk.func
+    if not any(is_op(thunk.func) for is_op in [is_prim_op, is_torchcodec_op]):
+        raise AssertionError(f"Unknown kind of op: {thunk}")
+
     return NotImplemented
 
 
@@ -92,14 +89,14 @@ class RouteFunctionOp(TFunctionMode):
     @typing.override
     def __call__(self, thunk: TFunctionFn, /) -> torch.Tensor:
         with self.dispatch_router:
-            result = self._maybe_convert_dispatch(thunk)
+            result = self._execute_maybe_dispatch(thunk)
 
         self.history.append(thunk, result)
         return result
 
-    def _maybe_convert_dispatch(self, thunk: TFunctionFn) -> torch.Tensor:
+    def _execute_maybe_dispatch(self, thunk: TFunctionFn) -> torch.Tensor:
         """
-        This function is run in dispatch mode.
+        This function is run in dispatch mode if convertible.
 
         If `thunk` is convertible to `TDispatchFn`, convert it and run it.
         This happens sometimes with `torch.library` extension ops, which, if not handled,
@@ -141,7 +138,7 @@ def fake_fn():
     when fake mode is active.
     """
 
-    dispatcher = RouteDispatchOp(only_route_aten_in_fake)
+    dispatcher = RouteDispatchOp(only_route_in_fake)
     tracker = RouteFunctionOp(dispatcher)
 
     with torch_fake_mode(), tracker:

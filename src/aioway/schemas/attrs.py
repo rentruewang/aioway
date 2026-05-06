@@ -67,7 +67,7 @@ class Attr:
         """
 
         return (
-            torch.empty(self.shape.concrete())
+            torch.zeros(self.shape.concrete())
             .to(self.device.torch())
             .to(self.dtype.torch())
         )
