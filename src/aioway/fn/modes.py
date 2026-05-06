@@ -13,7 +13,7 @@ from torch import _ops, overrides
 from torch.utils import _python_dispatch as pyd
 from aioway._common import find_nested_tensors, render_fcall, replace_tensors
 from aioway.schemas import attr
-
+import types
 from .fn import Fn
 from .guards import TensorFilter, all_tensors
 
@@ -113,8 +113,7 @@ class TFunctionFn(_TThunkBaseFn[cabc.Callable[..., typing.Any]]):
         return id(self)
 
     def __repr__(self) -> str:
-        func_name = _render_func_name(self.func)
-        return _render_tensor_as_attr("function::" + func_name, self.args, self.kwargs)
+        return _render_function_body("function", self.func, self.args, self.kwargs)
 
 
 @dcls.dataclass(match_args=False)
@@ -136,8 +135,17 @@ class TDispatchFn(_TThunkBaseFn[_ops.OpOverload]):
         return id(self)
 
     def __repr__(self) -> str:
-        func_name = _render_func_name(self.func)
-        return _render_tensor_as_attr("dispatch::" + func_name, self.args, self.kwargs)
+        return _render_function_body("dispatch", self.func, self.args, self.kwargs)
+
+
+def _render_function_body(
+    prefix: str,
+    func: cabc.Callable[..., typing.Any],
+    args: tuple[typing.Any, ...],
+    kwargs: dict[str, typing.Any],
+) -> str:
+    func_name = _render_func_name(func)
+    return _render_tensor_as_attr(prefix + "::" + func_name, args, kwargs)
 
 
 def _render_func_name(func: cabc.Callable[..., typing.Any]) -> str:
@@ -160,8 +168,8 @@ def _render_func_name(func: cabc.Callable[..., typing.Any]) -> str:
     if getattr(torch.Tensor, name, None) is func:
         return f"torch.Tensor.{name}"
 
-    # Don't know what this is. Use `repr`.
-    return repr(func)
+    # Don't know what this is. Just use `__qualname__`.
+    return func.__qualname__
 
 
 @typing.no_type_check
