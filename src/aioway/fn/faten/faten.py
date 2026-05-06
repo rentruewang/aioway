@@ -12,20 +12,26 @@ from torch import _ops
 
 from aioway._common import dcls_frozen_no_repr, render_fcall
 
-from .fn import Fn
-from .modes import HasParam, TDispatchFn
+from ..fn import Fn
+from ..modes import HasParam, TDispatchFn
 
-__all__ = ["find_preview", "all_previews", "PreviewFn", "Preview"]
+__all__ = ["find_preview", "all_previews", "FatenFn", "Faten"]
 
 
-_PREVIEW_CANDIDATES: dict[_ops.OpOverload, list[type[Preview]]] = {}
+_PREVIEW_CANDIDATES: dict[_ops.OpOverload, list[type[Faten]]] = {}
 
 
 @dcls_frozen_no_repr
-class Preview(HasParam, abc.ABC):
+class Faten(HasParam, abc.ABC):
+    """
+    `Fatan` stands for fake aten. It overrides aten ops in fake mode and compute extra properties,
+    such as storage costs and compute costs, as well as patching some operations with worst case.
+    For example, boolean masking is data dependent, and is thus not supported by fake mode.
+    """
+
     IR: typing.ClassVar[_ops.OpOverload]
     """
-    The torch IR that this `Preview` would be implementing.
+    The torch IR that this `Faten` would be implementing.
     """
 
     def __init_subclass__(cls) -> None:
@@ -96,21 +102,21 @@ class Preview(HasParam, abc.ABC):
 
 @typing.final
 @dcls.dataclass(frozen=True)
-class PreviewFn(HasParam, Fn):
+class FatenFn(HasParam, Fn):
     """
-    `PreviewFn` wraps a `Preview` object, which is split out so as to declutter subclasses for `Fn`.
+    `FatenFn` wraps a `Faten` object, which is split out so as to declutter subclasses for `Fn`.
 
-    Each `Preview` is an implementation of an IR, and each IR can have multiple `Preview`s,
-    each handling a subset of parameters (if `Preview.ok` is `False`, it's discarded.)
+    Each `Faten` is an implementation of an IR, and each IR can have multiple `Faten`s,
+    each handling a subset of parameters (if `Faten.ok` is `False`, it's discarded.)
     """
 
-    preview: Preview
+    preview: Faten
     """
     The preview object that ends up being selected.
     """
 
     original: TDispatchFn
-    "The original `TorchDispatchFn` from which the `Preview` is translated."
+    "The original `TorchDispatchFn` from which the `Faten` is translated."
 
     def __repr__(self) -> str:
         return repr(self.preview)
@@ -140,7 +146,7 @@ class PreviewFn(HasParam, Fn):
         return self.original.kwargs
 
 
-def find_preview(thunk: TDispatchFn) -> PreviewFn:
+def find_preview(thunk: TDispatchFn) -> FatenFn:
     """
     Try finding a preview with the given `op` and its arguments.
     """
@@ -152,7 +158,7 @@ def find_preview(thunk: TDispatchFn) -> PreviewFn:
         if not (preview := candidate(*thunk.args, **thunk.kwargs)).ok():
             continue
 
-        return PreviewFn(preview, original=thunk)
+        return FatenFn(preview, original=thunk)
 
     return NotImplemented
 

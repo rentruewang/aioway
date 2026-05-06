@@ -13,10 +13,10 @@ import torch
 
 from aioway.schemas import attr
 
+from .faten import FatenFn
 from .fn import FnStack
 from .guards import TensorFilter, all_tensors, is_leaf_has_grad
 from .modes import TDispatchFn, TDispatchMode, TFunctionFn, TFunctionMode
-from .previews import PreviewFn
 
 __all__ = [
     "print_torch_function",
@@ -118,7 +118,7 @@ class TorchDispatchStack(TDispatchMode):
 
 
 @dcls.dataclass(frozen=True)
-class FnResult[F: PreviewFn | TFunctionFn | TDispatchFn]:
+class FnResult[F: FatenFn | TFunctionFn | TDispatchFn]:
     fn: F
     result: typing.Any
 
@@ -128,7 +128,7 @@ class FnResult[F: PreviewFn | TFunctionFn | TDispatchFn]:
 
 
 @dcls.dataclass(frozen=True)
-class FnHistory[T: PreviewFn | TFunctionFn | TDispatchFn]:
+class FnHistory[T: FatenFn | TFunctionFn | TDispatchFn]:
     """
     The list of `Fn` that tracks the current history.
     """

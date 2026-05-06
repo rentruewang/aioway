@@ -9,9 +9,9 @@ from collections import abc as cabc
 import torch
 
 from .fake import enabled_fake_mode, torch_fake_mode
+from .faten import FatenFn, find_preview
 from .guards import is_aten_op, is_prim_op, is_torchcodec_op, is_torchvision_op
 from .modes import TDispatchFn, TDispatchMode, TFunctionFn, TFunctionMode
-from .previews import PreviewFn, find_preview
 from .tracking import FnHistory
 
 __all__ = [
@@ -24,7 +24,7 @@ __all__ = [
 LOGGER = logging.getLogger(__name__)
 
 
-PreviewRouter = cabc.Callable[[TDispatchFn], PreviewFn]
+FatenRouter = cabc.Callable[[TDispatchFn], FatenFn]
 
 
 def only_route_in_fake(thunk: TDispatchFn):
@@ -32,8 +32,8 @@ def only_route_in_fake(thunk: TDispatchFn):
     if not enabled_fake_mode():
         return NotImplemented
 
-    # For now, `Preview` supports aten, because `torchvision`, `torchcodec` rely on real data,
-    # they do not have a good `Preview` to implement for now.
+    # For now, `Faten` supports aten, because `torchvision`, `torchcodec` rely on real data,
+    # they do not have a good `Faten` to implement for now.
     # In those operations, real mode is force enabled right now.
     # See aioway#204 issue.
     if is_aten_op(thunk.func):
@@ -53,21 +53,21 @@ def no_route(thunk: TDispatchFn):
 
 @dcls.dataclass
 class RouteDispatchOp(TDispatchMode):
-    router: PreviewRouter
-    history: FnHistory[TDispatchFn | PreviewFn] = dcls.field(default_factory=FnHistory)
+    router: FatenRouter
+    history: FnHistory[TDispatchFn | FatenFn] = dcls.field(default_factory=FnHistory)
 
     def __call__(self, thunk: TDispatchFn) -> torch.Tensor:
         # Create a `_ThunkType` and route implemented methods.
 
-        fn: TDispatchFn | PreviewFn
+        fn: TDispatchFn | FatenFn
 
         if (fn := self.router(thunk)) is NotImplemented:
             # Fn initialization failed, set it to the input `thunk`.
             fn = thunk
 
-        assert isinstance(fn, TDispatchFn | PreviewFn), type(fn)
+        assert isinstance(fn, TDispatchFn | FatenFn), type(fn)
 
-        # Here, we overwrite `fn`'s `__call__` inside `PreviewFn` if it's a special function.
+        # Here, we overwrite `fn`'s `__call__` inside `FatenFn` if it's a special function.
         with capture_do_error(fn):
             result = fn.do()
 
@@ -79,7 +79,7 @@ class RouteDispatchOp(TDispatchMode):
 class RouteFunctionOp(TFunctionMode):
     """
     Saves the intermediate graph into a `FnHistory` object,
-    and route the function to using `PreviewFn` if it's a `torch.ops.*` and in fake mode.
+    and route the function to using `FatenFn` if it's a `torch.ops.*` and in fake mode.
     """
 
     dispatch_router: RouteDispatchOp
@@ -118,7 +118,7 @@ class RouteFunctionOp(TFunctionMode):
 
 
 @ctxl.contextmanager
-def capture_do_error(fn: TDispatchFn | PreviewFn):
+def capture_do_error(fn: TDispatchFn | FatenFn):
     try:
         yield
     except RuntimeError as err:
