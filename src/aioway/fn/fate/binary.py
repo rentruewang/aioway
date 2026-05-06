@@ -12,7 +12,7 @@ from torch import ops
 from aioway._common import dcls_frozen_no_repr
 
 from ..guards import is_float
-from .fakaten import Fakaten
+from .fate import Fate
 
 __all__ = [
     "AddTensor",
@@ -41,7 +41,7 @@ Scalar = int | float | bool
 
 
 @dcls_frozen_no_repr
-class _BinaryTensorUFunc(Fakaten, abc.ABC):
+class _BinaryTensorUFunc(Fate, abc.ABC):
     BINARY: typing.ClassVar[cabc.Callable[..., typing.Any]]
 
     self: torch.Tensor
@@ -84,7 +84,7 @@ class _BinaryTensorUFunc(Fakaten, abc.ABC):
 
 
 @dcls_frozen_no_repr
-class _BinaryScalarUFunc(Fakaten, abc.ABC):
+class _BinaryScalarUFunc(Fate, abc.ABC):
     BINARY: typing.ClassVar[cabc.Callable[..., typing.Any]]
 
     self: torch.Tensor
