@@ -15,10 +15,14 @@ __all__ = [
     "is_bool",
     "is_aten_op",
     "is_prim_op",
+    "is_torchvision_op",
+    "is_torchcodec_op",
 ]
 
 _ATEN_OPS = re.compile("aten::.+")
 _PRIM_OPS = re.compile("prim::.+")
+_TORCHVISION_OPS = re.compile("image::.+")
+_TORCHCODEC_OPS = re.compile("torchcodec_ns::.+")
 
 
 class TensorFilter(typing.Protocol):
@@ -55,6 +59,14 @@ def is_aten_op(op: _ops.OpOverload) -> bool:
 
 def is_prim_op(op: _ops.OpOverload) -> bool:
     return _dispatch_name(op, _PRIM_OPS)
+
+
+def is_torchvision_op(op: _ops.OpOverload) -> bool:
+    return _dispatch_name(op, _TORCHVISION_OPS)
+
+
+def is_torchcodec_op(op: _ops.OpOverload) -> bool:
+    return _dispatch_name(op, _TORCHCODEC_OPS)
 
 
 def _dispatch_name(op: _ops.OpOverload, regex: re.Pattern[str]) -> bool:

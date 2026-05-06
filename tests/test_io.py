@@ -5,12 +5,19 @@ import pathlib
 import pytest
 import torch
 
+from aioway.fn.routers import fake_fn, track_fn
 from aioway.io import read_audio_from_path, read_image_from_path, read_video_from_path
 
 
 @pytest.fixture(scope="session")
 def media():
     return pathlib.Path(__file__).parent.parent / "media"
+
+
+@pytest.fixture(params=[fake_fn, track_fn], autouse=True)
+def maybe_fake_mode(request: pytest.FixtureRequest):
+    with request.param() as hists:
+        yield hists
 
 
 @pytest.fixture

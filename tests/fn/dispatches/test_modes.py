@@ -4,11 +4,10 @@ import pytest
 import torch
 
 from aioway.fn import (
-    fake_dispatch_fn,
-    fake_mode,
-    track_dispatch_fn,
+    fake_fn,
+    torch_fake_mode,
+    track_fn,
 )
-from aioway.fn.routers import track_function_fn
 from aioway.fn.tracking import TorchDispatchStack, TorchFunctionStack
 
 
@@ -24,20 +23,19 @@ def b():
 
 @pytest.fixture
 def fake_a():
-    with fake_mode():
+    with torch_fake_mode():
         return torch.randn(3)
 
 
 @pytest.fixture
 def fake_b():
-    with fake_mode():
+    with torch_fake_mode():
         return torch.randn(5)
 
 
 def test_einsum(a: torch.Tensor, b: torch.Tensor):
     with (
-        track_function_fn() as func_calls,
-        track_dispatch_fn() as dis_calls,
+        track_fn() as [func_calls, dis_calls],
         TorchFunctionStack() as funcs,
         TorchDispatchStack() as ops,
     ):
@@ -64,7 +62,7 @@ def test_boolean_masking_should_fail(fake_a: torch.Tensor):
 def test_boolean_masking_patched(fake_a: torch.Tensor):
     idx = torch.randn_like(fake_a) > 0
 
-    with fake_dispatch_fn():
+    with fake_fn():
         res = fake_a[idx]
 
     assert res.shape == fake_a.shape

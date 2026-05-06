@@ -5,12 +5,14 @@
 import abc
 import contextlib as ctxl
 import dataclasses as dcls
+import types
 import typing
 from collections import abc as cabc
 
 import torch
 from torch import _ops, overrides
 from torch.utils import _python_dispatch as pyd
+
 from aioway._common import find_nested_tensors, render_fcall, replace_tensors
 from aioway.schemas import attr
 
@@ -100,6 +102,22 @@ class _TThunkBaseFn[T: _TorchCallable](HasParam, Fn, abc.ABC):
         yield from find_nested_tensors(self.args)
         yield from find_nested_tensors(self.kwargs)
 
+    @abc.abstractmethod
+    def function(self) -> TFunctionFn:
+        """
+        Convert to `TFunctionFn`. Return `NotImplemented` if convertion failed.
+        """
+
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def dispatch(self) -> TDispatchFn:
+        """
+        Convert to `TDispatchFn`. Return `NotImplemented` if convertion failed.
+        """
+
+        raise NotImplementedError
+
 
 @dcls.dataclass(match_args=False)
 class TFunctionFn(_TThunkBaseFn[cabc.Callable[..., typing.Any]]):
@@ -113,8 +131,22 @@ class TFunctionFn(_TThunkBaseFn[cabc.Callable[..., typing.Any]]):
         return id(self)
 
     def __repr__(self) -> str:
-        func_name = _render_func_name(self.func)
-        return _render_tensor_as_attr("function::" + func_name, self.args, self.kwargs)
+        return _render_function_body("function", self.func, self.args, self.kwargs)
+
+    @typing.override
+    def function(self) -> typing.Self:
+        return self
+
+    @typing.override
+    def dispatch(self) -> TDispatchFn:
+        # Sometimes, when `torch.ops.*` is passed in function mode,
+        # they would pass an `torch._ops.OpOverloadPacket`,
+        # whose `default` would be called in dispatch mode directly.
+        if isinstance(self.func, _ops.OpOverloadPacket):
+            return TDispatchFn(self.func.default, self.types, self.args, self.kwargs)
+
+        else:
+            return NotImplemented
 
 
 @dcls.dataclass(match_args=False)
@@ -136,12 +168,38 @@ class TDispatchFn(_TThunkBaseFn[_ops.OpOverload]):
         return id(self)
 
     def __repr__(self) -> str:
-        func_name = _render_func_name(self.func)
-        return _render_tensor_as_attr("dispatch::" + func_name, self.args, self.kwargs)
+        return _render_function_body("dispatch", self.func, self.args, self.kwargs)
+
+    @typing.override
+    def dispatch(self) -> typing.Self:
+        return self
+
+    @typing.override
+    def function(self) -> TFunctionFn:
+        if isinstance(self.func, _ops.OpOverload):
+            return TFunctionFn(self.func, self.types, self.args, self.kwargs)
+
+        else:
+            return NotImplemented
+
+
+def _render_function_body(
+    prefix: str,
+    func: cabc.Callable[..., typing.Any],
+    args: tuple[typing.Any, ...],
+    kwargs: dict[str, typing.Any],
+) -> str:
+    func_name = _render_func_name(func)
+    return _render_tensor_as_attr(prefix + "::" + func_name, args, kwargs)
 
 
 def _render_func_name(func: cabc.Callable[..., typing.Any]) -> str:
     name = func.__name__
+
+    # Only descriptors use `__get__`, and we render the descriptor itself.
+    if name == "__get__":
+        assert isinstance(func, types.MethodType | types.MethodWrapperType), type(func)
+        return repr(func.__self__)
 
     # It seems that there isn't an attribute that expose the name of the `OpOverload`,
     # so here we combine `namespace` (aten, prim, ...) and `__name__` (packet.type).
@@ -160,8 +218,8 @@ def _render_func_name(func: cabc.Callable[..., typing.Any]) -> str:
     if getattr(torch.Tensor, name, None) is func:
         return f"torch.Tensor.{name}"
 
-    # Don't know what this is. Use `repr`.
-    return repr(func)
+    # Don't know what this is. Just use `__qualname__`.
+    return func.__qualname__
 
 
 @typing.no_type_check

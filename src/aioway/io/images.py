@@ -5,9 +5,12 @@ import pathlib
 
 from torchvision import io as vio
 
+from aioway.fn.fake import torch_enable_fake_mode_func
+
 __all__ = ["read_image_from_path", "read_image_normalized"]
 
 
+@torch_enable_fake_mode_func(False)
 def read_image_from_path(fname: os.PathLike[str]):
     fname_path = pathlib.Path(fname)
     fname_str = str(fname_path)

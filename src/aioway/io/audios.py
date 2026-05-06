@@ -6,6 +6,8 @@ import typing
 import torch
 from torchcodec import decoders as dec
 
+from aioway.fn import torch_enable_fake_mode_func
+
 __all__ = ["AudioData", "read_audio_from_path"]
 
 
@@ -17,6 +19,7 @@ class AudioData(typing.Protocol):
     "The sample rate in Hz."
 
 
+@torch_enable_fake_mode_func(False)
 def read_audio_from_path(
     fname: os.PathLike[str], sample_rate: int | None = None
 ) -> AudioData:

@@ -4,8 +4,7 @@
 import pytest
 import torch
 
-from aioway.fn import TorchDispatchStack, TorchFunctionStack, track_dispatch_fn
-from aioway.fn.routers import track_function_fn
+from aioway.fn import TorchDispatchStack, TorchFunctionStack, track_fn
 
 
 @pytest.fixture
@@ -20,8 +19,7 @@ def b():
 
 def test_call(a: torch.Tensor, b: torch.Tensor):
     with (
-        track_function_fn() as func_hist,
-        track_dispatch_fn() as dis_hist,
+        track_fn() as [func_hist, dis_hist],
         TorchFunctionStack() as funcs,
         TorchDispatchStack() as ops,
     ):
