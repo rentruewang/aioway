@@ -12,7 +12,7 @@ from .fake import enabled_fake_mode, torch_fake_mode
 from .guards import is_aten_op, is_prim_op, is_torchcodec_op, is_torchvision_op
 from .modes import TDispatchFn, TDispatchMode, TFunctionFn, TFunctionMode
 from .previews import PreviewFn, find_preview
-from .tracking import DispatchHistory, FnHistory
+from .tracking import FnHistory
 
 __all__ = [
     "track_fn",
@@ -54,7 +54,7 @@ def no_route(thunk: TDispatchFn):
 @dcls.dataclass
 class RouteDispatchOp(TDispatchMode):
     router: PreviewRouter
-    history: DispatchHistory = dcls.field(default_factory=DispatchHistory)
+    history: FnHistory[TDispatchFn | PreviewFn] = dcls.field(default_factory=FnHistory)
 
     def __call__(self, thunk: TDispatchFn) -> torch.Tensor:
         # Create a `_ThunkType` and route implemented methods.

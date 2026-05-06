@@ -15,12 +15,7 @@ from aioway.schemas import attr
 
 from .fn import FnStack
 from .guards import TensorFilter, all_tensors, is_leaf_has_grad
-from .modes import (
-    TDispatchFn,
-    TDispatchMode,
-    TFunctionFn,
-    TFunctionMode,
-)
+from .modes import TDispatchFn, TDispatchMode, TFunctionFn, TFunctionMode
 from .previews import PreviewFn
 
 __all__ = [
@@ -31,7 +26,6 @@ __all__ = [
     "TorchFunctionStack",
     "TorchDispatchStack",
     "FnHistory",
-    "DispatchHistory",
 ]
 
 LOGGER = logging.getLogger(__name__)
@@ -126,7 +120,7 @@ class TorchDispatchStack(TDispatchMode):
 @dcls.dataclass(frozen=True)
 class FnResult[F: PreviewFn | TFunctionFn | TDispatchFn]:
     fn: F
-    result: torch.Tensor
+    result: typing.Any
 
     @typing.override
     def __repr__(self) -> str:
@@ -161,17 +155,19 @@ class FnHistory[T: PreviewFn | TFunctionFn | TDispatchFn]:
     def __iter__(self):
         yield from self.history
 
-    def append(self, item: T, result: torch.Tensor, /):
+    def append(self, item: T, result: typing.Any, /):
         self.history.append(FnResult(item, result))
         self._update_ref(item, result)
 
     def pop(self):
         return self.history.pop()
 
-    def _update_ref(self, item: T, output: torch.Tensor):
-        # Update output.
-        assert output not in self.output_to_thunk
-        self.output_to_thunk[output] = item
+    def _update_ref(self, item: T, output: typing.Any) -> None:
+        # `__torch_function__` doesn't always return `torch.Tensor` actually!
+        if isinstance(output, torch.Tensor):
+            # Update output.
+            assert output not in self.output_to_thunk
+            self.output_to_thunk[output] = item
 
         # Update input.
         for input_tensor in item.tensors():
@@ -191,14 +187,6 @@ class FnHistory[T: PreviewFn | TFunctionFn | TDispatchFn]:
                 _ = graph.add_edge(self.output_to_thunk[tensor], target_thunk)
 
         return graph
-
-
-class DispatchHistory(FnHistory[PreviewFn | TDispatchFn]):
-    @typing.override
-    def _update_ref(self, item: PreviewFn | TDispatchFn, output: torch.Tensor):
-        # Here, in dispatch mode, we may deal with non tensor outputs.
-        if isinstance(output, torch.Tensor):
-            super()._update_ref(item, output)
 
     def parameters(self, select: TensorFilter = is_leaf_has_grad, unique: bool = True):
         def data_params():
