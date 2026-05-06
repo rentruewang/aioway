@@ -5,7 +5,7 @@ import pathlib
 
 from torchvision import io as vio
 
-from aioway.fn.fake import torch_enable_fake_mode_func
+from aioway.fn import torch_enable_fake_mode_func
 
 __all__ = ["read_image_from_path", "read_image_normalized"]
 

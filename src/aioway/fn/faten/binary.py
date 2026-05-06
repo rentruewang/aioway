@@ -9,9 +9,9 @@ from collections import abc as cabc
 import torch
 from torch import ops
 
-from aioway._common.dcls import dcls_frozen_no_repr
-from aioway.fn.guards import is_float
+from aioway._common import dcls_frozen_no_repr
 
+from ..guards import is_float
 from .faten import Faten
 
 __all__ = [
