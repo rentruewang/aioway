@@ -9,7 +9,7 @@ from collections import abc as cabc
 import torch
 
 from .fake import enabled_fake_mode, torch_fake_mode
-from .faten import FatenFn, find_preview
+from .faten import FatenFn, find_faten
 from .guards import is_aten_op, is_prim_op, is_torchcodec_op, is_torchvision_op
 from .modes import TDispatchFn, TDispatchMode, TFunctionFn, TFunctionMode
 from .tracking import FnHistory
@@ -37,7 +37,7 @@ def only_route_in_fake(thunk: TDispatchFn):
     # In those operations, real mode is force enabled right now.
     # See aioway#204 issue.
     if is_aten_op(thunk.func):
-        return find_preview(thunk)
+        return find_faten(thunk)
 
     if not any(
         is_op(thunk.func) for is_op in [is_prim_op, is_torchvision_op, is_torchcodec_op]

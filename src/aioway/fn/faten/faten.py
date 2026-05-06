@@ -15,10 +15,11 @@ from aioway._common import dcls_frozen_no_repr, render_fcall
 from ..fn import Fn
 from ..modes import HasParam, TDispatchFn
 
-__all__ = ["find_preview", "all_previews", "FatenFn", "Faten"]
+__all__ = ["find_faten", "all_faten_ops", "FatenFn", "Faten"]
 
 
-_PREVIEW_CANDIDATES: dict[_ops.OpOverload, list[type[Faten]]] = {}
+_ATEN_TO_FATEN_LIST: dict[_ops.OpOverload, list[type[Faten]]] = {}
+"The registry to store `Faten` operators."
 
 
 @dcls_frozen_no_repr
@@ -94,10 +95,10 @@ class Faten(HasParam, abc.ABC):
 
         # Mimick defaultdict behavior.
         # Using dict over defaultdict s.t. we don't need special handling in `repr`.
-        if op not in _PREVIEW_CANDIDATES:
-            _PREVIEW_CANDIDATES[op] = []
+        if op not in _ATEN_TO_FATEN_LIST:
+            _ATEN_TO_FATEN_LIST[op] = []
 
-        _PREVIEW_CANDIDATES[op].append(cls)
+        _ATEN_TO_FATEN_LIST[op].append(cls)
 
 
 @typing.final
@@ -146,15 +147,15 @@ class FatenFn(HasParam, Fn):
         return self.original.kwargs
 
 
-def find_preview(thunk: TDispatchFn) -> FatenFn:
+def find_faten(thunk: TDispatchFn) -> FatenFn:
     """
     Try finding a preview with the given `op` and its arguments.
     """
 
-    if thunk.func not in _PREVIEW_CANDIDATES:
+    if thunk.func not in _ATEN_TO_FATEN_LIST:
         return NotImplemented
 
-    for candidate in _PREVIEW_CANDIDATES[thunk.func]:
+    for candidate in _ATEN_TO_FATEN_LIST[thunk.func]:
         if not (preview := candidate(*thunk.args, **thunk.kwargs)).ok():
             continue
 
@@ -163,8 +164,8 @@ def find_preview(thunk: TDispatchFn) -> FatenFn:
     return NotImplemented
 
 
-def all_previews():
-    return _PREVIEW_CANDIDATES
+def all_faten_ops():
+    return _ATEN_TO_FATEN_LIST
 
 
 _CAMEL_CASE_REGEX = re.compile(r"(?<!^)(?=[A-Z])")
