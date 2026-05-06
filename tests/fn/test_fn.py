@@ -6,6 +6,7 @@ import torch
 
 from aioway.fn import (
     Fate,
+    FateFn,
     Fn,
     TDispatchFn,
     TFunctionFn,
@@ -31,6 +32,7 @@ def _fn_types():
     yield TFunctionFn
     yield TDispatchFn
     yield Fate
+    yield FateFn
 
 
 @pytest.fixture(params=_fn_types())
