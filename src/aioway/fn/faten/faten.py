@@ -149,7 +149,7 @@ class FatenFn(HasParam, Fn):
 
 def find_faten(thunk: TDispatchFn) -> FatenFn:
     """
-    Try finding a preview with the given `op` and its arguments.
+    Try finding a `Faten` operator with the thunk, and then wrap into `FatenFn`.
     """
 
     if thunk.func not in _ATEN_TO_FATEN_LIST:
