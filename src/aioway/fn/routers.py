@@ -93,10 +93,19 @@ class RouteFunctionOp(TFunctionMode):
     def __call__(self, thunk: TFunctionFn, /) -> torch.Tensor:
         with self.dispatch_router:
             result = self._maybe_convert_dispatch(thunk)
-            self.history.append(thunk, result)
-            return result
 
-    def _maybe_convert_dispatch(self, thunk: TFunctionFn):
+        self.history.append(thunk, result)
+        return result
+
+    def _maybe_convert_dispatch(self, thunk: TFunctionFn) -> torch.Tensor:
+        """
+        This function is run in dispatch mode.
+
+        If `thunk` is convertible to `TDispatchFn`, convert it and run it.
+        This happens sometimes with `torch.library` extension ops, which, if not handled,
+        would just passed to dispatch mode anyways.
+        """
+
         if (dispatch := thunk.dispatch()) is not NotImplemented:
             return dispatch.do()
 
