@@ -3,21 +3,20 @@
 "Metadata for torch operators / functions."
 
 import abc
-import contextlib as ctxl
-import dataclasses as dcls
 import functools
 import typing
 from collections import abc as cabc
 
 from aioway._common import render_fcall
 
-__all__ = ["Fn", "Thunk", "FnStack"]
+__all__ = ["Fn", "Thunk"]
 
 _PENDING = object()
 "The object signifying a status of pending. This is a `object()` s.t. `FnCache` can store `None`."
 
 
-class Fn(abc.ABC):
+@typing.runtime_checkable
+class Fn(typing.Protocol):
     """
     `Fn` is the base class for delayed computation.
 
@@ -30,25 +29,23 @@ class Fn(abc.ABC):
         Execute the computation.
         """
 
-        raise NotImplementedError
 
-
-class Thunk(Fn):
+class Thunk:
     """
     The thunk for any function, handles both pretty printing and storing the result.
 
-    `Fn` has advantage over `functools.cache`, `functools.cached_property`,
+    `Thunk` has advantage over `functools.cache`, `functools.cached_property`,
     and having a saved `.__result` member for instance, by being the least assuming.
 
     `functools.cache` assumes that `self` is hashable.
     `functools.cached_property` cannot inspect whether we have evaluated it or not.
     `.__result` member assumes subclass calls `__init__` properly.
 
-    Storing a `Fn` in a `functools.cached_property` means `self` can be unhashable,
+    Storing a `Thunk` in a `functools.cached_property` means `self` can be unhashable,
     the item can be inspected, and subclasses do not need to call `__init__`.
 
     Like Haskell's thunks, once evaluated,
-    the value is stored in the `Fn` itself and never re-evaluated.
+    the value is stored in the `Thunk` itself and never re-evaluated.
     The value shall be gone during GC.
 
     I was going to go for `Op` but it's used a lot in `torch`.
@@ -144,56 +141,3 @@ class Thunk(Fn):
         "Returns if the cache is previously called."
 
         return self.__result is not _PENDING
-
-
-@dcls.dataclass
-class FnStack[F: Fn]:
-    """
-    `FnStack` is the tracker for `Fn`, storing `Fn`s that are currengly `do()`-ing.
-    """
-
-    stack: list[F] = dcls.field(default_factory=list)
-    """
-    The stack that is currently in scope.
-    """
-
-    def __bool__(self) -> bool:
-        return bool(len(self))
-
-    def __len__(self) -> int:
-        return len(self.stack)
-
-    @typing.overload
-    def __getitem__(self, idx: int) -> F: ...
-
-    @typing.overload
-    def __getitem__(self, idx: slice[int]) -> typing.Self: ...
-
-    def __getitem__(self, idx: int | slice[int]):
-        match idx:
-            case int():
-                return self.stack[idx]
-            case slice():
-                return type(self)(self.stack[idx])
-
-        raise TypeError(type(idx))
-
-    def __iter__(self) -> cabc.Generator[F]:
-        yield from self.stack
-
-    def top(self) -> F:
-        return self.stack[-1]
-
-    def append(self, fn: F) -> None:
-        self.stack.append(fn)
-
-    def pop(self) -> F:
-        return self.stack.pop()
-
-    @ctxl.contextmanager
-    def track(self, fn: F):
-        self.append(fn)
-        try:
-            yield
-        finally:
-            _ = self.pop()

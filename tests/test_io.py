@@ -5,7 +5,7 @@ import pathlib
 import pytest
 import torch
 
-from aioway.fn.routers import fake_fn, track_fn
+from aioway.fn import fake_fn, track_fn
 from aioway.io import read_audio_from_path, read_image_from_path, read_video_from_path
 
 

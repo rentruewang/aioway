@@ -12,20 +12,28 @@ from torch import _ops
 
 from aioway._common import dcls_frozen_no_repr, render_fcall
 
-from .fn import Fn
-from .modes import HasParam, TDispatchFn
+from ..modes import HasParam, TDispatchFn
 
-__all__ = ["find_preview", "all_previews", "PreviewFn", "Preview"]
+__all__ = ["find_fate", "aten_to_fate", "FateFn", "Fate"]
 
 
-_PREVIEW_CANDIDATES: dict[_ops.OpOverload, list[type[Preview]]] = {}
+_ATEN_TO_FATE_LIST: dict[_ops.OpOverload, list[type[Fate]]] = {}
+"The registry to store `Fate` operators."
 
 
 @dcls_frozen_no_repr
-class Preview(HasParam, abc.ABC):
+class Fate(HasParam, abc.ABC):
+    """
+    `Fate` stands for [f]ake [ate]n. Or [fa]ke [te]nsor. Or a tensor's [fate] (how it behaves).
+
+    It overrides aten ops in fake mode and compute extra properties,
+    such as storage costs and compute costs, as well as patching some operations with worst case.
+    For example, boolean masking is data dependent, and is thus not supported by fake mode.
+    """
+
     IR: typing.ClassVar[_ops.OpOverload]
     """
-    The torch IR that this `Preview` would be implementing.
+    The torch IR that this `Fate` would be implementing.
     """
 
     def __init_subclass__(cls) -> None:
@@ -88,34 +96,33 @@ class Preview(HasParam, abc.ABC):
 
         # Mimick defaultdict behavior.
         # Using dict over defaultdict s.t. we don't need special handling in `repr`.
-        if op not in _PREVIEW_CANDIDATES:
-            _PREVIEW_CANDIDATES[op] = []
+        if op not in _ATEN_TO_FATE_LIST:
+            _ATEN_TO_FATE_LIST[op] = []
 
-        _PREVIEW_CANDIDATES[op].append(cls)
+        _ATEN_TO_FATE_LIST[op].append(cls)
 
 
 @typing.final
 @dcls.dataclass(frozen=True)
-class PreviewFn(HasParam, Fn):
+class FateFn(HasParam):
     """
-    `PreviewFn` wraps a `Preview` object, which is split out so as to declutter subclasses for `Fn`.
+    `FateFn` wraps a `Fate` object, which is split out so as to declutter subclasses for `Fn`.
 
-    Each `Preview` is an implementation of an IR, and each IR can have multiple `Preview`s,
-    each handling a subset of parameters (if `Preview.ok` is `False`, it's discarded.)
+    Each `Fate` is an implementation of an IR, and each IR can have multiple `Fate`s,
+    each handling a subset of parameters (if `Fate.ok` is `False`, it's discarded.)
     """
 
-    preview: Preview
+    preview: Fate
     """
     The preview object that ends up being selected.
     """
 
     original: TDispatchFn
-    "The original `TorchDispatchFn` from which the `Preview` is translated."
+    "The original `TorchDispatchFn` from which the `Fate` is translated."
 
     def __repr__(self) -> str:
         return repr(self.preview)
 
-    @typing.override
     def do(self) -> torch.Tensor:
         return self.preview.do()
 
@@ -140,25 +147,29 @@ class PreviewFn(HasParam, Fn):
         return self.original.kwargs
 
 
-def find_preview(thunk: TDispatchFn) -> PreviewFn:
+def find_fate(thunk: TDispatchFn) -> FateFn:
     """
-    Try finding a preview with the given `op` and its arguments.
+    Try finding a `Fate` operator with the thunk, and then wrap into `FateFn`.
     """
 
-    if thunk.func not in _PREVIEW_CANDIDATES:
+    if thunk.func not in _ATEN_TO_FATE_LIST:
         return NotImplemented
 
-    for candidate in _PREVIEW_CANDIDATES[thunk.func]:
+    for candidate in _ATEN_TO_FATE_LIST[thunk.func]:
         if not (preview := candidate(*thunk.args, **thunk.kwargs)).ok():
             continue
 
-        return PreviewFn(preview, original=thunk)
+        return FateFn(preview, original=thunk)
 
     return NotImplemented
 
 
-def all_previews():
-    return _PREVIEW_CANDIDATES
+def aten_to_fate():
+    """
+    A mapping of `aten` ops to their `Fate` counterparts.
+    """
+
+    return _ATEN_TO_FATE_LIST
 
 
 _CAMEL_CASE_REGEX = re.compile(r"(?<!^)(?=[A-Z])")

@@ -11,12 +11,12 @@ import networkx as nx
 import rich
 import torch
 
+from aioway._common import Stack
 from aioway.schemas import attr
 
-from .fn import FnStack
+from .fate import FateFn
 from .guards import TensorFilter, all_tensors, is_leaf_has_grad
 from .modes import TDispatchFn, TDispatchMode, TFunctionFn, TFunctionMode
-from .previews import PreviewFn
 
 __all__ = [
     "print_torch_function",
@@ -93,21 +93,21 @@ class LogTorchDispatch(TDispatchMode):
 
 @dcls.dataclass
 class TorchFunctionStack(TFunctionMode):
-    stack: FnStack[TFunctionFn] = dcls.field(default_factory=FnStack)
+    stack: Stack[TFunctionFn] = dcls.field(default_factory=Stack)
 
     @typing.override
     def __call__(self, thunk: TFunctionFn) -> typing.Any:
-        with self.stack.track(thunk):
+        with self.stack.enter(thunk):
             return thunk.do()
 
 
 @dcls.dataclass
 class TorchDispatchStack(TDispatchMode):
-    stack: FnStack[TDispatchFn] = dcls.field(default_factory=FnStack)
+    stack: Stack[TDispatchFn] = dcls.field(default_factory=Stack)
 
     @typing.override
     def __call__(self, thunk: TDispatchFn) -> torch.Tensor:
-        with self.stack.track(thunk):
+        with self.stack.enter(thunk):
             return thunk.do()
 
     def __len__(self) -> int:
@@ -118,7 +118,7 @@ class TorchDispatchStack(TDispatchMode):
 
 
 @dcls.dataclass(frozen=True)
-class FnResult[F: PreviewFn | TFunctionFn | TDispatchFn]:
+class FnResult[F: FateFn | TFunctionFn | TDispatchFn]:
     fn: F
     result: typing.Any
 
@@ -128,7 +128,7 @@ class FnResult[F: PreviewFn | TFunctionFn | TDispatchFn]:
 
 
 @dcls.dataclass(frozen=True)
-class FnHistory[T: PreviewFn | TFunctionFn | TDispatchFn]:
+class FnHistory[T: FateFn | TFunctionFn | TDispatchFn]:
     """
     The list of `Fn` that tracks the current history.
     """

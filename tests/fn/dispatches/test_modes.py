@@ -4,11 +4,12 @@ import pytest
 import torch
 
 from aioway.fn import (
+    TorchDispatchStack,
+    TorchFunctionStack,
     fake_fn,
     torch_fake_mode,
     track_fn,
 )
-from aioway.fn.tracking import TorchDispatchStack, TorchFunctionStack
 
 
 @pytest.fixture
