@@ -15,24 +15,24 @@ from aioway._common import dcls_frozen_no_repr, render_fcall
 from ..fn import Fn
 from ..modes import HasParam, TDispatchFn
 
-__all__ = ["find_faten", "all_faten_ops", "FatenFn", "Faten"]
+__all__ = ["find_fakaten", "all_fakaten_ops", "FakatenFn", "Fakaten"]
 
 
-_ATEN_TO_FATEN_LIST: dict[_ops.OpOverload, list[type[Faten]]] = {}
-"The registry to store `Faten` operators."
+_ATEN_TO_FAKATEN_LIST: dict[_ops.OpOverload, list[type[Fakaten]]] = {}
+"The registry to store `Fakaten` operators."
 
 
 @dcls_frozen_no_repr
-class Faten(HasParam, abc.ABC):
+class Fakaten(HasParam, abc.ABC):
     """
-    `Fatan` stands for fake aten. It overrides aten ops in fake mode and compute extra properties,
+    `Fakaten` stands for fake aten. It overrides aten ops in fake mode and compute extra properties,
     such as storage costs and compute costs, as well as patching some operations with worst case.
     For example, boolean masking is data dependent, and is thus not supported by fake mode.
     """
 
     IR: typing.ClassVar[_ops.OpOverload]
     """
-    The torch IR that this `Faten` would be implementing.
+    The torch IR that this `Fakaten` would be implementing.
     """
 
     def __init_subclass__(cls) -> None:
@@ -95,29 +95,29 @@ class Faten(HasParam, abc.ABC):
 
         # Mimick defaultdict behavior.
         # Using dict over defaultdict s.t. we don't need special handling in `repr`.
-        if op not in _ATEN_TO_FATEN_LIST:
-            _ATEN_TO_FATEN_LIST[op] = []
+        if op not in _ATEN_TO_FAKATEN_LIST:
+            _ATEN_TO_FAKATEN_LIST[op] = []
 
-        _ATEN_TO_FATEN_LIST[op].append(cls)
+        _ATEN_TO_FAKATEN_LIST[op].append(cls)
 
 
 @typing.final
 @dcls.dataclass(frozen=True)
-class FatenFn(HasParam, Fn):
+class FakatenFn(HasParam, Fn):
     """
-    `FatenFn` wraps a `Faten` object, which is split out so as to declutter subclasses for `Fn`.
+    `FakatenFn` wraps a `Fakaten` object, which is split out so as to declutter subclasses for `Fn`.
 
-    Each `Faten` is an implementation of an IR, and each IR can have multiple `Faten`s,
-    each handling a subset of parameters (if `Faten.ok` is `False`, it's discarded.)
+    Each `Fakaten` is an implementation of an IR, and each IR can have multiple `Fakaten`s,
+    each handling a subset of parameters (if `Fakaten.ok` is `False`, it's discarded.)
     """
 
-    preview: Faten
+    preview: Fakaten
     """
     The preview object that ends up being selected.
     """
 
     original: TDispatchFn
-    "The original `TorchDispatchFn` from which the `Faten` is translated."
+    "The original `TorchDispatchFn` from which the `Fakaten` is translated."
 
     def __repr__(self) -> str:
         return repr(self.preview)
@@ -147,25 +147,25 @@ class FatenFn(HasParam, Fn):
         return self.original.kwargs
 
 
-def find_faten(thunk: TDispatchFn) -> FatenFn:
+def find_fakaten(thunk: TDispatchFn) -> FakatenFn:
     """
-    Try finding a `Faten` operator with the thunk, and then wrap into `FatenFn`.
+    Try finding a `Fakaten` operator with the thunk, and then wrap into `FakatenFn`.
     """
 
-    if thunk.func not in _ATEN_TO_FATEN_LIST:
+    if thunk.func not in _ATEN_TO_FAKATEN_LIST:
         return NotImplemented
 
-    for candidate in _ATEN_TO_FATEN_LIST[thunk.func]:
+    for candidate in _ATEN_TO_FAKATEN_LIST[thunk.func]:
         if not (preview := candidate(*thunk.args, **thunk.kwargs)).ok():
             continue
 
-        return FatenFn(preview, original=thunk)
+        return FakatenFn(preview, original=thunk)
 
     return NotImplemented
 
 
-def all_faten_ops():
-    return _ATEN_TO_FATEN_LIST
+def all_fakaten_ops():
+    return _ATEN_TO_FAKATEN_LIST
 
 
 _CAMEL_CASE_REGEX = re.compile(r"(?<!^)(?=[A-Z])")

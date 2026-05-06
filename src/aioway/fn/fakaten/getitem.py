@@ -9,13 +9,13 @@ from torch import ops
 
 from aioway._common import dcls_frozen_no_repr
 
-from .faten import Faten
+from .fakaten import Fakaten
 
 __all__ = ["BooleanMasking", "IntSelect"]
 
 
 @dcls_frozen_no_repr
-class _GetItem(Faten, abc.ABC):
+class _GetItem(Fakaten, abc.ABC):
     IR = ops.aten.index.Tensor
 
     self: torch.Tensor

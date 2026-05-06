@@ -8,8 +8,8 @@ from collections import abc as cabc
 
 import torch
 
+from .fakaten import FakatenFn, find_fakaten
 from .fake import enabled_fake_mode, torch_fake_mode
-from .faten import FatenFn, find_faten
 from .guards import is_aten_op, is_prim_op, is_torchcodec_op, is_torchvision_op
 from .modes import TDispatchFn, TDispatchMode, TFunctionFn, TFunctionMode
 from .tracking import FnHistory
@@ -24,7 +24,7 @@ __all__ = [
 LOGGER = logging.getLogger(__name__)
 
 
-FatenRouter = cabc.Callable[[TDispatchFn], FatenFn]
+FakatenRouter = cabc.Callable[[TDispatchFn], FakatenFn]
 
 
 def only_route_in_fake(thunk: TDispatchFn):
@@ -32,12 +32,12 @@ def only_route_in_fake(thunk: TDispatchFn):
     if not enabled_fake_mode():
         return NotImplemented
 
-    # For now, `Faten` supports aten, because `torchvision`, `torchcodec` rely on real data,
-    # they do not have a good `Faten` to implement for now.
+    # For now, `Fakaten` supports aten, because `torchvision`, `torchcodec` rely on real data,
+    # they do not have a good `Fakaten` to implement for now.
     # In those operations, real mode is force enabled right now.
     # See aioway#204 issue.
     if is_aten_op(thunk.func):
-        return find_faten(thunk)
+        return find_fakaten(thunk)
 
     if not any(
         is_op(thunk.func) for is_op in [is_prim_op, is_torchvision_op, is_torchcodec_op]
@@ -53,21 +53,21 @@ def no_route(thunk: TDispatchFn):
 
 @dcls.dataclass
 class RouteDispatchOp(TDispatchMode):
-    router: FatenRouter
-    history: FnHistory[TDispatchFn | FatenFn] = dcls.field(default_factory=FnHistory)
+    router: FakatenRouter
+    history: FnHistory[TDispatchFn | FakatenFn] = dcls.field(default_factory=FnHistory)
 
     def __call__(self, thunk: TDispatchFn) -> torch.Tensor:
         # Create a `_ThunkType` and route implemented methods.
 
-        fn: TDispatchFn | FatenFn
+        fn: TDispatchFn | FakatenFn
 
         if (fn := self.router(thunk)) is NotImplemented:
             # Fn initialization failed, set it to the input `thunk`.
             fn = thunk
 
-        assert isinstance(fn, TDispatchFn | FatenFn), type(fn)
+        assert isinstance(fn, TDispatchFn | FakatenFn), type(fn)
 
-        # Here, we overwrite `fn`'s `__call__` inside `FatenFn` if it's a special function.
+        # Here, we overwrite `fn`'s `__call__` inside `FakatenFn` if it's a special function.
         with capture_do_error(fn):
             result = fn.do()
 
@@ -79,7 +79,7 @@ class RouteDispatchOp(TDispatchMode):
 class RouteFunctionOp(TFunctionMode):
     """
     Saves the intermediate graph into a `FnHistory` object,
-    and route the function to using `FatenFn` if it's a `torch.ops.*` and in fake mode.
+    and route the function to using `FakatenFn` if it's a `torch.ops.*` and in fake mode.
     """
 
     dispatch_router: RouteDispatchOp
@@ -118,7 +118,7 @@ class RouteFunctionOp(TFunctionMode):
 
 
 @ctxl.contextmanager
-def capture_do_error(fn: TDispatchFn | FatenFn):
+def capture_do_error(fn: TDispatchFn | FakatenFn):
     try:
         yield
     except RuntimeError as err:
