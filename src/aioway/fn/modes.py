@@ -151,6 +151,11 @@ def _render_function_body(
 def _render_func_name(func: cabc.Callable[..., typing.Any]) -> str:
     name = func.__name__
 
+    # Only descriptors use `__get__`, and we render the descriptor itself.
+    if name == "__get__":
+        assert isinstance(func, types.MethodType | types.MethodWrapperType), type(func)
+        return repr(func.__self__)
+
     # It seems that there isn't an attribute that expose the name of the `OpOverload`,
     # so here we combine `namespace` (aten, prim, ...) and `__name__` (packet.type).
     if isinstance(func, _ops.OpOverload):
