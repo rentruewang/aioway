@@ -12,7 +12,6 @@ from torch import _ops
 
 from aioway._common import dcls_frozen_no_repr, render_fcall
 
-from ..fn import Fn
 from ..modes import HasParam, TDispatchFn
 
 __all__ = ["find_fate", "aten_to_fate", "FateFn", "Fate"]
@@ -105,7 +104,7 @@ class Fate(HasParam, abc.ABC):
 
 @typing.final
 @dcls.dataclass(frozen=True)
-class FateFn(HasParam, Fn):
+class FateFn(HasParam):
     """
     `FateFn` wraps a `Fate` object, which is split out so as to declutter subclasses for `Fn`.
 
@@ -124,7 +123,6 @@ class FateFn(HasParam, Fn):
     def __repr__(self) -> str:
         return repr(self.preview)
 
-    @typing.override
     def do(self) -> torch.Tensor:
         return self.preview.do()
 

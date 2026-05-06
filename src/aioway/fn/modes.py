@@ -16,7 +16,6 @@ from torch.utils import _python_dispatch as pyd
 from aioway._common import find_nested_tensors, render_fcall, replace_tensors
 from aioway.schemas import attr
 
-from .fn import Fn
 from .guards import TensorFilter, all_tensors
 
 __all__ = [
@@ -49,14 +48,14 @@ class HasParam(abc.ABC):
     @abc.abstractmethod
     def tensors(self) -> cabc.Iterator[torch.Tensor]:
         """
-        All the tensors that this `Fn` uses.
+        All the tensors that this `HasParam` uses.
         """
 
         raise NotImplementedError
 
 
 @dcls.dataclass(match_args=False)
-class _TThunkBaseFn[T: _TorchCallable](HasParam, Fn, abc.ABC):
+class _TThunkBaseFn[T: _TorchCallable](HasParam, abc.ABC):
     """
     `TorchThunkFn` is the thunk capturing the function calls initiated by `torch`.
     It's the base class for both `TorchFunctionFn` and `TorchDispatchFn`

@@ -11,10 +11,10 @@ import networkx as nx
 import rich
 import torch
 
+from aioway._common import Stack
 from aioway.schemas import attr
 
 from .fate import FateFn
-from .fn import FnStack
 from .guards import TensorFilter, all_tensors, is_leaf_has_grad
 from .modes import TDispatchFn, TDispatchMode, TFunctionFn, TFunctionMode
 
@@ -93,21 +93,21 @@ class LogTorchDispatch(TDispatchMode):
 
 @dcls.dataclass
 class TorchFunctionStack(TFunctionMode):
-    stack: FnStack[TFunctionFn] = dcls.field(default_factory=FnStack)
+    stack: Stack[TFunctionFn] = dcls.field(default_factory=Stack)
 
     @typing.override
     def __call__(self, thunk: TFunctionFn) -> typing.Any:
-        with self.stack.track(thunk):
+        with self.stack.enter(thunk):
             return thunk.do()
 
 
 @dcls.dataclass
 class TorchDispatchStack(TDispatchMode):
-    stack: FnStack[TDispatchFn] = dcls.field(default_factory=FnStack)
+    stack: Stack[TDispatchFn] = dcls.field(default_factory=Stack)
 
     @typing.override
     def __call__(self, thunk: TDispatchFn) -> torch.Tensor:
-        with self.stack.track(thunk):
+        with self.stack.enter(thunk):
             return thunk.do()
 
     def __len__(self) -> int:

@@ -8,8 +8,8 @@ from collections import abc as cabc
 
 import torch
 
-from .fate import FateFn, find_fate
 from .fake import enabled_fake_mode, torch_fake_mode
+from .fate import FateFn, find_fate
 from .guards import is_aten_op, is_prim_op, is_torchcodec_op, is_torchvision_op
 from .modes import TDispatchFn, TDispatchMode, TFunctionFn, TFunctionMode
 from .tracking import FnHistory
@@ -62,7 +62,7 @@ class RouteDispatchOp(TDispatchMode):
         fn: TDispatchFn | FateFn
 
         if (fn := self.router(thunk)) is NotImplemented:
-            # Fn initialization failed, set it to the input `thunk`.
+            # Cannot find corresponding operator, set it to the input `thunk`.
             fn = thunk
 
         assert isinstance(fn, TDispatchFn | FateFn), type(fn)

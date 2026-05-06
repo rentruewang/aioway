@@ -7,7 +7,7 @@ from collections import abc as cabc
 import torch
 from torch import ops
 
-from aioway._common.dcls import dcls_frozen_no_repr
+from aioway._common.types import dcls_frozen_no_repr
 
 from ..fate import Fate
 
