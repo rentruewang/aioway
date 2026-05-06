@@ -28,13 +28,20 @@ PreviewRouter = cabc.Callable[[TDispatchFn], PreviewFn]
 
 
 def only_route_in_fake(thunk: TDispatchFn):
+    # Do not do anything in real mode, or in case the fake mode is temporarily disabled.
     if not enabled_fake_mode():
         return NotImplemented
 
-    if any(is_op(thunk.func) for is_op in [is_aten_op, is_torchvision_op]):
+    # For now, `Preview` supports aten, because `torchvision`, `torchcodec` rely on real data,
+    # they do not have a good `Preview` to implement for now.
+    # In those operations, real mode is force enabled right now.
+    # See aioway#204 issue.
+    if is_aten_op(thunk.func):
         return find_preview(thunk)
 
-    if not any(is_op(thunk.func) for is_op in [is_prim_op, is_torchcodec_op]):
+    if not any(
+        is_op(thunk.func) for is_op in [is_prim_op, is_torchvision_op, is_torchcodec_op]
+    ):
         raise AssertionError(f"Unknown kind of op: {thunk}")
 
     return NotImplemented
