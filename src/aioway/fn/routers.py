@@ -29,7 +29,7 @@ PreviewRouter = cabc.Callable[[TDispatchFn], PreviewFn]
 
 def only_route_in_fake(thunk: TDispatchFn):
     if not enabled_fake_mode():
-        raise RuntimeError("Only running in fake mode!")
+        return NotImplemented
 
     if any(is_op(thunk.func) for is_op in [is_aten_op, is_torchvision_op]):
         return find_preview(thunk)

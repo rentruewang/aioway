@@ -3,7 +3,6 @@
 "A bunch of context managers controlling the fake mode."
 
 import contextlib as ctxl
-import dataclasses as dcls
 import logging
 import typing
 from collections import abc as cabc
@@ -14,7 +13,8 @@ from torch._subclasses import fake_tensor as ft
 
 __all__ = [
     "torch_fake_mode",
-    "torch_fake_mode_func",
+    "torch_enable_fake_mode",
+    "torch_enable_fake_mode_func",
     "is_fake_tensor",
     "is_real_tensor",
     "to_fake_tensor",
@@ -43,11 +43,9 @@ def to_fake_tensor(tensor: torch.Tensor) -> ft.FakeTensor:
         return converter.from_real_tensor(mode, tensor)
 
 
-def to_fake_tensordict(tensordict: td.TensorDict) -> td.TensorDict:
-    result = td.TensorDict(
-        {key: to_fake_tensor(val) for key, val in tensordict.items()}
-    )
-    result.shape = tensordict.shape
+def to_fake_tensordict(tdict: td.TensorDict) -> td.TensorDict:
+    result = td.TensorDict({key: to_fake_tensor(val) for key, val in tdict.items()})
+    result.shape = tdict.shape
     return result
 
 
@@ -88,7 +86,7 @@ def torch_fake_mode():
     Since fake mode doesn't nest (it seems), if fake mode is already on, yield that.
     """
 
-    with _FAKE_MODE, _set_active_fake_mode(True):
+    with _FAKE_MODE, _set_fake_mode_flag(True):
         yield _FAKE_MODE
 
 
@@ -100,12 +98,23 @@ def torch_real_mode():
     Yields the context manager that is pushed to torch's dispatch stack.
     """
 
-    with ft.unset_fake_temporarily() as mode, _set_active_fake_mode(False):
+    with ft.unset_fake_temporarily() as mode, _set_fake_mode_flag(False):
         yield mode
 
 
+def torch_enable_fake_mode(yes: bool, /):
+    """
+    Context manager to set the fake mode if `True` or `False` to set to the real mode.
+    """
+
+    if yes:
+        return torch_fake_mode()
+    else:
+        return torch_real_mode()
+
+
 @ctxl.contextmanager
-def _set_active_fake_mode(to: bool):
+def _set_fake_mode_flag(to: bool):
     global _fake_mode_is_active
     before = _fake_mode_is_active
 
@@ -117,16 +126,21 @@ def _set_active_fake_mode(to: bool):
         _fake_mode_is_active = before
 
 
-def torch_fake_mode_func[**P, T](func: cabc.Callable[P, T]) -> cabc.Callable[P, T]:
-    """
-    Decorator on a function, s.t. when the function is being called, fake mode is enabled.
-    """
+def torch_enable_fake_mode_func(to: bool, /):
+    def decorator[**P, T](func: cabc.Callable[P, T]) -> cabc.Callable[P, T]:
+        """
+        Decorator on a function, s.t. when the function is being called, fake mode is enabled.
+        """
 
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-        with torch_fake_mode():
-            return func(*args, **kwargs)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            with torch_enable_fake_mode(to):
+                return func(*args, **kwargs)
 
-    wrapper.__qualname__ = func.__qualname__
-    wrapper.__doc__ = func.__doc__
+        wrapper.__qualname__ = func.__qualname__
+        wrapper.__name__ = func.__name__
+        wrapper.__module__ = func.__module__
+        wrapper.__doc__ = func.__doc__
 
-    return wrapper
+        return wrapper
+
+    return decorator
