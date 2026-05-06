@@ -35,6 +35,7 @@ class Preview(HasParam, abc.ABC):
     def __repr__(self) -> str:
         return render_fcall(f"preview::{self.name()}", **dcls.asdict(self))
 
+    @typing.override
     def __hash__(self) -> int:
         return id(self)
 

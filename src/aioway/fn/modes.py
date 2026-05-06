@@ -5,15 +5,17 @@
 import abc
 import contextlib as ctxl
 import dataclasses as dcls
+import types
 import typing
 from collections import abc as cabc
 
 import torch
 from torch import _ops, overrides
 from torch.utils import _python_dispatch as pyd
+
 from aioway._common import find_nested_tensors, render_fcall, replace_tensors
 from aioway.schemas import attr
-import types
+
 from .fn import Fn
 from .guards import TensorFilter, all_tensors
 
@@ -100,6 +102,22 @@ class _TThunkBaseFn[T: _TorchCallable](HasParam, Fn, abc.ABC):
         yield from find_nested_tensors(self.args)
         yield from find_nested_tensors(self.kwargs)
 
+    @abc.abstractmethod
+    def function(self) -> TFunctionFn:
+        """
+        Convert to `TFunctionFn`. Return `NotImplemented` if convertion failed.
+        """
+
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def dispatch(self) -> TDispatchFn:
+        """
+        Convert to `TDispatchFn`. Return `NotImplemented` if convertion failed.
+        """
+
+        raise NotImplementedError
+
 
 @dcls.dataclass(match_args=False)
 class TFunctionFn(_TThunkBaseFn[cabc.Callable[..., typing.Any]]):
@@ -114,6 +132,18 @@ class TFunctionFn(_TThunkBaseFn[cabc.Callable[..., typing.Any]]):
 
     def __repr__(self) -> str:
         return _render_function_body("function", self.func, self.args, self.kwargs)
+
+    @typing.override
+    def function(self) -> typing.Self:
+        return self
+
+    @typing.override
+    def dispatch(self) -> TDispatchFn:
+        if isinstance(self.func, _ops.OpOverload):
+            return TDispatchFn(self.func, self.types, self.args, self.kwargs)
+
+        else:
+            return NotImplemented
 
 
 @dcls.dataclass(match_args=False)
@@ -136,6 +166,18 @@ class TDispatchFn(_TThunkBaseFn[_ops.OpOverload]):
 
     def __repr__(self) -> str:
         return _render_function_body("dispatch", self.func, self.args, self.kwargs)
+
+    @typing.override
+    def dispatch(self) -> typing.Self:
+        return self
+
+    @typing.override
+    def function(self) -> TFunctionFn:
+        if isinstance(self.func, _ops.OpOverload):
+            return TFunctionFn(self.func, self.types, self.args, self.kwargs)
+
+        else:
+            return NotImplemented
 
 
 def _render_function_body(

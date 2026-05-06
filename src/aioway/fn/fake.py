@@ -13,8 +13,8 @@ import torch
 from torch import _subclasses as tsc
 
 __all__ = [
-    "fake_mode",
-    "fake_mode_func",
+    "torch_fake_mode",
+    "torch_fake_mode_func",
     "is_fake_tensor",
     "is_real_tensor",
     "to_fake_tensor",
@@ -69,7 +69,7 @@ def to_fake_tensor(tensor: torch.Tensor) -> tsc.FakeTensor:
     if is_fake_tensor(tensor):
         return tensor
 
-    with fake_mode() as mode:
+    with torch_fake_mode() as mode:
         converter = mode.fake_tensor_converter
         return converter.from_real_tensor(mode, tensor)
 
@@ -112,7 +112,7 @@ def enabled_fake_mode() -> tsc.FakeTensorMode | None:
 
 
 @ctxl.contextmanager
-def fake_mode():
+def torch_fake_mode():
     """
     Enable `torch`'s fake mode s.t. we can do symbolic processing easily.
 
@@ -123,13 +123,13 @@ def fake_mode():
         yield _FAKE_MODE_RC.mode
 
 
-def fake_mode_func[**P, T](func: cabc.Callable[P, T]) -> cabc.Callable[P, T]:
+def torch_fake_mode_func[**P, T](func: cabc.Callable[P, T]) -> cabc.Callable[P, T]:
     """
     Decorator on a function, s.t. when the function is being called, fake mode is enabled.
     """
 
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-        with fake_mode():
+        with torch_fake_mode():
             return func(*args, **kwargs)
 
     wrapper.__qualname__ = func.__qualname__

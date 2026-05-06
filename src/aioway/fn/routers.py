@@ -6,7 +6,9 @@ import logging
 import typing
 from collections import abc as cabc
 
-from .fake import enabled_fake_mode, fake_mode
+import torch
+
+from .fake import enabled_fake_mode, torch_fake_mode
 from .guards import is_aten_op, is_prim_op
 from .modes import (
     TDispatchFn,
@@ -18,10 +20,10 @@ from .previews import PreviewFn, find_preview
 from .tracking import DispatchHistory, FnHistory
 
 __all__ = [
-    "track_function_fn",
-    "track_dispatch_fn",
-    "fake_dispatch_fn",
+    "track_fn",
+    "fake_fn",
     "RouteDispatchOp",
+    "RouteFunctionOp",
 ]
 
 LOGGER = logging.getLogger(__name__)
@@ -46,30 +48,11 @@ def no_route(thunk: TDispatchFn):
 
 
 @dcls.dataclass
-class SaveFunctionHistory(TFunctionMode):
-    """
-    Saves the intermediate graph into a `FnHistory` object.
-    """
-
-    history: FnHistory[TFunctionFn] = dcls.field(default_factory=FnHistory)
-    """
-    The `FnHistory` instance that would be responsible for tracking history,
-    and which provides a graph API to interact with saved tensors.
-    """
-
-    @typing.override
-    def __call__(self, thunk: TFunctionFn) -> typing.Any:
-        result = thunk.do()
-        self.history.append(thunk, result)
-        return result
-
-
-@dcls.dataclass
 class RouteDispatchOp(TDispatchMode):
     router: PreviewRouter
     history: DispatchHistory = dcls.field(default_factory=DispatchHistory)
 
-    def __call__(self, thunk: TDispatchFn):
+    def __call__(self, thunk: TDispatchFn) -> torch.Tensor:
         # Create a `_ThunkType` and route implemented methods.
 
         fn: TDispatchFn | PreviewFn
@@ -88,6 +71,39 @@ class RouteDispatchOp(TDispatchMode):
         return result
 
 
+@dcls.dataclass
+class RouteFunctionOp(TFunctionMode):
+    """
+    Saves the intermediate graph into a `FnHistory` object,
+    and route the function to using `PreviewFn` if it's a `torch.ops.*` and in fake mode.
+    """
+
+    dispatch_router: RouteDispatchOp
+    """
+    The router for which to route the `torch.ops.*` operations.
+    """
+
+    history: FnHistory[TFunctionFn] = dcls.field(default_factory=FnHistory)
+    """
+    The `FnHistory` instance that would be responsible for tracking history,
+    and which provides a graph API to interact with saved tensors.
+    """
+
+    @typing.override
+    def __call__(self, thunk: TFunctionFn, /) -> torch.Tensor:
+        with self.dispatch_router:
+            result = self._maybe_convert_dispatch(thunk)
+            self.history.append(thunk, result)
+            return result
+
+    def _maybe_convert_dispatch(self, thunk: TFunctionFn):
+        if (dispatch := thunk.dispatch()) is not NotImplemented:
+            return dispatch.do()
+
+        else:
+            return thunk.do()
+
+
 @ctxl.contextmanager
 def capture_do_error(fn: TDispatchFn | PreviewFn):
     try:
@@ -97,31 +113,27 @@ def capture_do_error(fn: TDispatchFn | PreviewFn):
 
 
 @ctxl.contextmanager
-def track_function_fn():
-    """
-    Track all `torch.*` and `Tensor.*` function calls.
-    """
-
-    with SaveFunctionHistory() as sfh:
-        yield sfh.history
-
-
-@ctxl.contextmanager
-def track_dispatch_fn(router: PreviewRouter = no_route):
+def track_fn():
     """
     Track all calls into the torch dispatch mode as `TorchIrFn`.
     """
 
-    with RouteDispatchOp(router=router) as sdm:
-        yield sdm.history
+    dispatcher = RouteDispatchOp(no_route)
+    tracker = RouteFunctionOp(dispatcher)
+
+    with tracker:
+        yield tracker.history, dispatcher.history
 
 
 @ctxl.contextmanager
-def fake_dispatch_fn():
+def fake_fn():
     """
     Track all calls into the torch dispatch mode as `TorchIrFn`,
     when fake mode is active.
     """
 
-    with fake_mode(), track_dispatch_fn(only_route_aten_in_fake) as history:
-        yield history
+    dispatcher = RouteDispatchOp(only_route_aten_in_fake)
+    tracker = RouteFunctionOp(dispatcher)
+
+    with torch_fake_mode(), tracker:
+        yield tracker.history, dispatcher.history
