@@ -206,7 +206,6 @@ class _Commands:
 
     def mypy(self):
         "`mypy` command."
-
         self.env.pdm_run("mypy", "--install-types", "--non-interactive", "src")
 
     @property

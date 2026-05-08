@@ -13,6 +13,7 @@ from aioway._common import get_tracker
 
 from .devices import Device, DeviceLike
 from .dtypes import DType, DTypeLike
+from .infos import Info
 from .shapes import Shape, ShapeLike
 
 __all__ = ["Attr", "attr"]
@@ -43,6 +44,11 @@ class Attr:
     The shape of individual items in the column.
     """
 
+    infos: frozenset[Info] = dcls.field(default_factory=frozenset)
+    """
+    Extra information about the attribute.
+    """
+
     def __post_init__(self) -> None:
         if not isinstance(self.device, Device):
             raise TypeError(type(self.device))
@@ -52,6 +58,9 @@ class Attr:
 
         if not isinstance(self.shape, Shape):
             raise TypeError(type(self.shape))
+
+        if not all(isinstance(info, Info) for info in self.infos):
+            raise TypeError(f"Not all info in {self.infos=} is a `Info`.")
 
     @typing.override
     def __repr__(self) -> str:
@@ -78,6 +87,7 @@ class Attr:
         device: DeviceLike,
         dtype: DTypeLike,
         shape: ShapeLike,
+        infos: cabc.Iterable[Info] = (),
     ) -> typing.Self:
         """
         The convenient constructor for `Attr`.
@@ -95,16 +105,18 @@ class Attr:
             device=Device.parse(device),
             dtype=DType.parse(dtype),
             shape=Shape.parse(shape),
+            infos=frozenset(infos),
         )
 
     @classmethod
-    def from_tensor(cls, tensor: torch.Tensor, /) -> typing.Self:
+    def from_tensor(cls, tensor: torch.Tensor, /, *infos: Info) -> typing.Self:
         "Parse the `torch.Tensor`'s `Attr` representation"
 
         return cls.parse(
             device=tensor.device,
             shape=tensor.shape,
             dtype=tensor.dtype,
+            infos=infos,
         )
 
 
@@ -112,13 +124,7 @@ class AttrDict(typing.TypedDict):
     device: DeviceLike
     dtype: DTypeLike
     shape: ShapeLike
-
-
-@typing.runtime_checkable
-class AttrProto(typing.Protocol):
-    device: DeviceLike
-    dtype: DTypeLike
-    shape: ShapeLike
+    infos: typing.NotRequired[cabc.Iterable[Info]]
 
 
 type AttrLike = Attr | AttrDict | torch.Tensor
@@ -138,13 +144,7 @@ def attr(item: AttrLike, /) -> Attr:
             device=item["device"],
             shape=item["shape"],
             dtype=item["dtype"],
-        )
-
-    if isinstance(item, AttrProto):
-        return Attr.parse(
-            device=item.device,
-            dtype=item.dtype,
-            shape=item.shape,
+            infos=item.get("infos", ()),
         )
 
     raise TypeError(
@@ -163,6 +163,7 @@ def _is_attr_dict(item: object) -> typing.TypeGuard[AttrDict]:
             device=item["device"],
             dtype=item["dtype"],
             shape=item["shape"],
+            infos=item.get("infos", ()),
         )
     except Exception:
         return False
