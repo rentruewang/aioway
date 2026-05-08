@@ -49,9 +49,9 @@ def print_torch_dispatch(thunk: TDispatchFn) -> torch.Tensor:
 
 
 def _print_torch_thunk(thunk: TFunctionFn | TDispatchFn) -> torch.Tensor:
-    rich.print(thunk, end=" ", flush=True)
+    print("invoke", thunk)
     result = thunk.do()
-    rich.print(f"-> {result}")
+    print("return", thunk, "->", result)
     return result
 
 

@@ -6,6 +6,8 @@ import numpy as np
 import tensordict as td
 import torch
 
+from aioway.fn.ctx import torch_disable_torch_func
+
 __all__ = ["tdict_rename", "tdict_all_equal", "replace_tensors", "find_nested_tensors"]
 
 
@@ -21,11 +23,17 @@ def tdict_all_equal(left: td.TensorDict, right: td.TensorDict, /):
     return eq.all()
 
 
+@torch_disable_torch_func
 def replace_tensors(
     obj: object, replace: cabc.Callable[[torch.Tensor], object]
 ) -> object:
     """
     Replace tensors whenever encountered with the given function.
+
+    This function has the `__torch_function__` disabled in the scope of the rendering,
+    because it can mess with attribute access, which oftentimes means that
+    this function fails also during debugging if `__torch_function__` is not disabled.
+    Caused by `.device` / `.shape` / `.dtype` calls, which is used in `replace_tensors`.
     """
 
     if isinstance(obj, torch.Tensor):

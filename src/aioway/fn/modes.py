@@ -183,8 +183,10 @@ def _render_tensor_as_attr(
     func: str, args: tuple[typing.Any, ...], kwargs: dict[str, typing.Any]
 ):
     # `Attr`s are better for display than `torch.Tensor`s.
+
     args = replace_tensors(args, attr)
     kwargs = replace_tensors(kwargs, attr)
+
     return render_fcall(func, *args, **kwargs)
 
 

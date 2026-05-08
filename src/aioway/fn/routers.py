@@ -8,7 +8,7 @@ from collections import abc as cabc
 
 import torch
 
-from .fake import enabled_fake_mode, torch_fake_mode
+from .ctx import enabled_fake_mode, torch_fake_mode
 from .fate import FateFn, find_fate
 from .guards import is_aten_op, is_prim_op, is_torchcodec_op, is_torchvision_op
 from .modes import TDispatchFn, TDispatchMode, TFunctionFn, TFunctionMode
@@ -49,6 +49,12 @@ def only_route_in_fake(thunk: TDispatchFn):
 
 def no_route(thunk: TDispatchFn):
     return NotImplemented
+
+
+@dcls.dataclass
+class EnsureOnce(TDispatchMode):
+    def __call__(self, thunk: TDispatchFn) -> torch.Tensor:
+        return thunk.do()
 
 
 @dcls.dataclass
