@@ -36,9 +36,7 @@ def print_torch_function(thunk: TFunctionFn) -> torch.Tensor:
     Print the function calls.
     """
 
-    result = thunk.do()
-    rich.print(thunk)
-    return result
+    return _print_torch_thunk(thunk)
 
 
 @TDispatchMode.register
@@ -47,8 +45,13 @@ def print_torch_dispatch(thunk: TDispatchFn) -> torch.Tensor:
     Print the dispatcher.
     """
 
+    return _print_torch_thunk(thunk)
+
+
+def _print_torch_thunk(thunk: TFunctionFn | TDispatchFn) -> torch.Tensor:
+    rich.print(thunk, end=" ", flush=True)
     result = thunk.do()
-    rich.print(thunk)
+    rich.print(f"-> {result}")
     return result
 
 
