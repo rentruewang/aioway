@@ -6,8 +6,6 @@ import numpy as np
 import tensordict as td
 import torch
 
-from aioway.fn.ctx import torch_disable_torch_func
-
 __all__ = ["tdict_rename", "tdict_all_equal", "replace_tensors", "find_nested_tensors"]
 
 
@@ -23,8 +21,16 @@ def tdict_all_equal(left: td.TensorDict, right: td.TensorDict, /):
     return eq.all()
 
 
-@torch_disable_torch_func
 def replace_tensors(
+    obj: object, replace: cabc.Callable[[torch.Tensor], object]
+) -> object:
+    from aioway.fn import disable_torch_function
+
+    with disable_torch_function():
+        return _replace_tensors(obj, replace)
+
+
+def _replace_tensors(
     obj: object, replace: cabc.Callable[[torch.Tensor], object]
 ) -> object:
     """
@@ -43,10 +49,10 @@ def replace_tensors(
         return obj
 
     if isinstance(obj, cabc.Sequence):
-        return [replace_tensors(elem, replace) for elem in obj]
+        return [_replace_tensors(elem, replace) for elem in obj]
 
     if isinstance(obj, cabc.Mapping):
-        return {key: replace_tensors(elem, replace) for key, elem in obj.items()}
+        return {key: _replace_tensors(elem, replace) for key, elem in obj.items()}
 
     return obj
 

@@ -63,11 +63,10 @@ class _TThunkBaseFn[T: _TorchCallable](HasParam, abc.ABC):
 
     __match_args__ = "func", "types", "args", "kwargs"
 
+    _: dcls.KW_ONLY
+
     func: T
     "The `torch.*`, `Tensor.*` functions."
-
-    types: tuple[type, ...]
-    "The types of the arguments."
 
     args: tuple[typing.Any, ...]
     "The positional args."
@@ -84,12 +83,6 @@ class _TThunkBaseFn[T: _TorchCallable](HasParam, abc.ABC):
 
         if not isinstance(self.kwargs, dict):
             raise TypeError(f"{self.kwargs=} is not a dict.")
-
-    def __iter__(self) -> cabc.Iterator[typing.Any]:
-        yield self.func
-        yield self.types
-        yield self.args
-        yield self.kwargs
 
     @typing.override
     @typing.no_type_check
@@ -109,6 +102,9 @@ class TFunctionFn(_TThunkBaseFn[cabc.Callable[..., typing.Any]]):
 
     The `func` here are `torch.*` or `torch.Tensor` operators.
     """
+
+    types: tuple[type, ...]
+    "The types of the arguments."
 
     def __hash__(self) -> int:
         return id(self)
@@ -209,7 +205,7 @@ class TFunctionMode(overrides.TorchFunctionMode, TMode[TFunctionFn], abc.ABC):
     @typing.override
     def __torch_function__(self, func, types, args=(), kwargs=None):
         kwargs = kwargs or {}
-        thunk = TFunctionFn(func, types, args, kwargs)
+        thunk = TFunctionFn(func=func, types=types, args=args, kwargs=kwargs)
         return self(thunk)
 
     @staticmethod
@@ -243,7 +239,11 @@ class TDispatchMode(pyd.TorchDispatchMode, TMode[TDispatchFn], abc.ABC):
     @typing.override
     def __torch_dispatch__(self, func, types, args=(), kwargs=None) -> typing.Any:
         kwargs = kwargs or {}
-        thunk = TDispatchFn(func, types, args, kwargs)
+
+        if not all(issubclass(t, torch.Tensor) for t in types):
+            raise AssertionError(f"Not all {types=} are subclasses of `torch.Tensor`.")
+
+        thunk = TDispatchFn(func=func, args=args, kwargs=kwargs)
         return self(thunk)
 
     @staticmethod

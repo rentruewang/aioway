@@ -7,7 +7,6 @@ import dataclasses as dcls
 import logging
 import typing
 
-import rich
 import torch
 
 from aioway._common import Stack
