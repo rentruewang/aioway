@@ -10,12 +10,9 @@ import typing
 import numpy as np
 import torch
 
-from aioway._common import get_tracker
-
 __all__ = ["DType", "DTypeLike"]
 
 LOGGER = logging.getLogger(__name__)
-TRACKER = get_tracker(lambda: DType)
 
 type DTypeFamily = typing.Literal["int", "float", "bool"]
 """

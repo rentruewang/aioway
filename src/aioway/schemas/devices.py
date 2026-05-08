@@ -5,12 +5,9 @@ import typing
 
 import torch
 
-from aioway._common import get_tracker
-
 __all__ = ["Device", "DeviceLike"]
 
 LOGGER = logging.getLogger(__name__)
-TRACKER = get_tracker(lambda: Device)
 
 
 type DeviceLike = str | torch.device | Device

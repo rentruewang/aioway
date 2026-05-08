@@ -12,8 +12,7 @@ import numpy as np
 import tensordict as td
 import torch
 
-from aioway._common import get_tracker, is_dict_of_str_to, is_list_of
-from aioway._signs import Signature
+from aioway._common import is_dict_of_str_to, is_list_of
 
 from .attrs import Attr, attr
 from .devices import Device, DeviceLike
@@ -24,7 +23,6 @@ __all__ = ["AttrSet", "DTypeSet", "DeviceSet", "ShapeSet", "AttrSetLike", "attr_
 
 
 LOGGER = logging.getLogger(__name__)
-TRACKER = get_tracker(lambda: AttrSet)
 
 type AttrSetLike = AttrSet | td.TensorDict | dict[str, Attr]
 
@@ -178,20 +176,13 @@ class AttrSet(_AttrSetBase[Attr]):
         return self.__getitem_batch(idx)
 
     def __getitem_str(self, idx: str):
-        signature = Signature(AttrSet, str, Attr)
-        with TRACKER(name="__getitem__", signature=signature):
-            return super().__getitem__(idx)
+        return super().__getitem__(idx)
 
     def __getitem_list_str(self, idx: list[str]):
-        signature = Signature(AttrSet, list[str], AttrSet)
-        with TRACKER(name="__getitem__", signature=signature):
-            return super().__getitem__(idx)
+        return super().__getitem__(idx)
 
     def __getitem_batch(self, idx):
-        with TRACKER(
-            name="__getitem__", signature=Signature(AttrSet, type(idx), AttrSet)
-        ):
-            return self.__getitem_batch_impl(idx)
+        return self.__getitem_batch_impl(idx)
 
     def __getitem_batch_impl(self, idx):
 
