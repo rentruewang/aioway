@@ -44,6 +44,18 @@ class InfoList:
                 f"But got {self._info_by_type}."
             )
 
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, InfoList):
+            return self._info_by_type == other._info_by_type
+
+        if isinstance(other, dict):
+            return self._info_by_type == other
+
+        if isinstance(other, list):
+            return list(self) == other
+
+        return NotImplemented
+
     def __repr__(self):
         return ",".join(map(str, self))
 
