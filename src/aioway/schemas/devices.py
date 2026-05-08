@@ -36,6 +36,10 @@ class Device:
         LOGGER.debug("Device %s instance created", self)
 
     @typing.override
+    def __getstate__(self) -> object:
+        return self.device.__getstate__()
+
+    @typing.override
     def __hash__(self) -> int:
         return hash(self.device)
 

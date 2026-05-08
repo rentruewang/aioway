@@ -75,6 +75,15 @@ class Attr:
                 f"But got {self.infos}."
             )
 
+    @typing.override
+    def __getstate__(self):
+        return {
+            "device": self.device,
+            "dtype": self.dtype,
+            "shape": self.shape,
+            "infos": tuple(_flatten_infos(self.infos)),
+        }
+
     def __hash__(self) -> int:
         return hash(json.dumps(self.__getstate__(), sort_keys=True))
 
