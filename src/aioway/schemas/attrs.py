@@ -2,6 +2,7 @@
 
 "Schema is a collection of metadata describing the 'type' of data."
 
+import collections
 import dataclasses as dcls
 import logging
 import typing
@@ -10,13 +11,14 @@ from collections import abc as cabc
 import torch
 
 from aioway._common import get_tracker
+from aioway.schemas.infos import Info
 
 from .devices import Device, DeviceLike
 from .dtypes import DType, DTypeLike
 from .infos import Info
 from .shapes import Shape, ShapeLike
 
-__all__ = ["Attr", "attr"]
+__all__ = ["Attr", "attr", "AttrTensor"]
 
 
 LOGGER = logging.getLogger(__name__)
@@ -44,7 +46,7 @@ class Attr:
     The shape of individual items in the column.
     """
 
-    infos: frozenset[Info] = dcls.field(default_factory=frozenset)
+    infos: dict[type[Info], list[Info]] = dcls.field(default_factory=dict)
     """
     Extra information about the attribute.
     """
@@ -59,8 +61,18 @@ class Attr:
         if not isinstance(self.shape, Shape):
             raise TypeError(type(self.shape))
 
-        if not all(isinstance(info, Info) for info in self.infos):
+        if not all(issubclass(info, Info) for info in self.infos):
             raise TypeError(f"Not all info in {self.infos=} is a `Info`.")
+
+        if not all(
+            isinstance(info_inst, info_type)
+            for (info_type, info_list) in self.infos.items()
+            for info_inst in info_list
+        ):
+            raise TypeError(
+                "Invalid info passed in. Infos should be a mapping of type to list of instances. "
+                f"But got {self.infos}."
+            )
 
     @typing.override
     def __repr__(self) -> str:
@@ -105,7 +117,7 @@ class Attr:
             device=Device.parse(device),
             dtype=DType.parse(dtype),
             shape=Shape.parse(shape),
-            infos=frozenset(infos),
+            infos=_categorize_info(infos),
         )
 
     @classmethod
@@ -118,6 +130,23 @@ class Attr:
             dtype=tensor.dtype,
             infos=infos,
         )
+
+
+@dcls.dataclass(frozen=True)
+class AttrTensor:
+    """
+    `AttrTensor` stores a `torch.Tensor` and a precomputed `Attr`.
+    """
+
+    tensor: torch.Tensor
+    """
+    The tensor that needs info attached.
+    """
+
+    attr: Attr
+    """
+    The attached info (most of the info can be derived from the tensor, but some cannot).
+    """
 
 
 class AttrDict(typing.TypedDict):
@@ -169,3 +198,18 @@ def _is_attr_dict(item: object) -> typing.TypeGuard[AttrDict]:
         return False
 
     return True
+
+
+def _categorize_info(
+    infos: cabc.Iterable[Info],
+) -> dict[type[Info], list[Info]]:
+    """
+    Organize sequence of `Info` by `type(info)`, into a `dict[type, list]`.
+    """
+
+    result: dict[type[Info], list[Info]] = collections.defaultdict(list)
+
+    for info in infos:
+        result[type(info)].append(info)
+
+    return result
