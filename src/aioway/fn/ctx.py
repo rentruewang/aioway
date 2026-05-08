@@ -21,6 +21,8 @@ __all__ = [
     "to_fake_tensordict",
     "enabled_fake_mode",
     "torch_real_mode",
+    "disable_torch_function",
+    "disable_torch_func_decorator",
 ]
 
 LOGGER = logging.getLogger(__name__)
@@ -126,6 +128,31 @@ def _set_fake_mode_flag(to: bool):
         _fake_mode_is_active = before
 
 
+@ctxl.contextmanager
+def disable_torch_function():
+    """
+    Disable `__torch_function__` mode, for the given scope.
+    """
+
+    with torch.DisableTorchFunction():
+        yield
+
+
+def disable_torch_func_decorator[**P, T](
+    func: cabc.Callable[P, T],
+) -> cabc.Callable[P, T]:
+    """
+    Disable `__torch_function__` mode, for the wrapped function.
+    """
+
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+        with disable_torch_function():
+            return func(*args, **kwargs)
+
+    _set_wrapper_func(wrapper, func)
+    return wrapper
+
+
 def torch_enable_fake_mode_func(to: bool, /):
     def decorator[**P, T](func: cabc.Callable[P, T]) -> cabc.Callable[P, T]:
         """
@@ -136,11 +163,16 @@ def torch_enable_fake_mode_func(to: bool, /):
             with torch_enable_fake_mode(to):
                 return func(*args, **kwargs)
 
-        wrapper.__qualname__ = func.__qualname__
-        wrapper.__name__ = func.__name__
-        wrapper.__module__ = func.__module__
-        wrapper.__doc__ = func.__doc__
-
+        _set_wrapper_func(wrapper, func)
         return wrapper
 
     return decorator
+
+
+def _set_wrapper_func[**P, T](
+    wrapper: cabc.Callable[P, T], func: cabc.Callable[P, T]
+) -> None:
+    wrapper.__qualname__ = func.__qualname__
+    wrapper.__name__ = func.__name__
+    wrapper.__module__ = func.__module__
+    wrapper.__doc__ = func.__doc__

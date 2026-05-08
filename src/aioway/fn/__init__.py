@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from .fake import *
+from .ctx import *
 from .fate import *
 from .fn import *
 from .guards import *

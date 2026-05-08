@@ -135,10 +135,6 @@ class FateFn(HasParam):
         return self.original.func
 
     @property
-    def types(self):
-        return self.original.types
-
-    @property
     def args(self):
         return self.original.args
 

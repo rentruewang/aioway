@@ -144,6 +144,15 @@ class AttrTensor:
     The attached info (most of the info can be derived from the tensor, but some cannot).
     """
 
+    @classmethod
+    def from_tensor_info(cls, tensor: torch.Tensor, *infos: Info) -> typing.Self:
+        """
+        Auto determine some fields in `Attr` and create an `AttrTensor`.
+        """
+
+        attr = Attr.from_tensor(tensor, *infos)
+        return cls(tensor=tensor, attr=attr)
+
 
 class AttrDict(typing.TypedDict):
     device: DeviceLike

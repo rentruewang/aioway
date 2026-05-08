@@ -7,7 +7,6 @@ import dataclasses as dcls
 import logging
 import typing
 
-import rich
 import torch
 
 from aioway._common import Stack
@@ -36,9 +35,7 @@ def print_torch_function(thunk: TFunctionFn) -> torch.Tensor:
     Print the function calls.
     """
 
-    result = thunk.do()
-    rich.print(thunk)
-    return result
+    return _print_torch_thunk(thunk)
 
 
 @TDispatchMode.register
@@ -47,8 +44,13 @@ def print_torch_dispatch(thunk: TDispatchFn) -> torch.Tensor:
     Print the dispatcher.
     """
 
+    return _print_torch_thunk(thunk)
+
+
+def _print_torch_thunk(thunk: TFunctionFn | TDispatchFn) -> torch.Tensor:
+    print("invoke", thunk)
     result = thunk.do()
-    rich.print(thunk)
+    print("return", thunk, "->", result)
     return result
 
 

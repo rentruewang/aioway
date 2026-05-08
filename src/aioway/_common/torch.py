@@ -24,8 +24,22 @@ def tdict_all_equal(left: td.TensorDict, right: td.TensorDict, /):
 def replace_tensors(
     obj: object, replace: cabc.Callable[[torch.Tensor], object]
 ) -> object:
+    from aioway.fn import disable_torch_function
+
+    with disable_torch_function():
+        return _replace_tensors(obj, replace)
+
+
+def _replace_tensors(
+    obj: object, replace: cabc.Callable[[torch.Tensor], object]
+) -> object:
     """
     Replace tensors whenever encountered with the given function.
+
+    This function has the `__torch_function__` disabled in the scope of the rendering,
+    because it can mess with attribute access, which oftentimes means that
+    this function fails also during debugging if `__torch_function__` is not disabled.
+    Caused by `.device` / `.shape` / `.dtype` calls, which is used in `replace_tensors`.
     """
 
     if isinstance(obj, torch.Tensor):
@@ -35,10 +49,10 @@ def replace_tensors(
         return obj
 
     if isinstance(obj, cabc.Sequence):
-        return [replace_tensors(elem, replace) for elem in obj]
+        return [_replace_tensors(elem, replace) for elem in obj]
 
     if isinstance(obj, cabc.Mapping):
-        return {key: replace_tensors(elem, replace) for key, elem in obj.items()}
+        return {key: _replace_tensors(elem, replace) for key, elem in obj.items()}
 
     return obj
 
