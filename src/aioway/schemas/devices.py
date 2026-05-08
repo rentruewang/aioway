@@ -37,7 +37,7 @@ class Device:
 
     @typing.override
     def __getstate__(self) -> object:
-        return self.device.__getstate__()
+        return str(self._device)
 
     @typing.override
     def __hash__(self) -> int:

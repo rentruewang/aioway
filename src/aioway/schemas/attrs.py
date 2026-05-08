@@ -2,7 +2,6 @@
 
 "Schema is a collection of metadata describing the 'type' of data."
 
-import collections
 import dataclasses as dcls
 import json
 import logging
@@ -12,11 +11,10 @@ from collections import abc as cabc
 import torch
 
 from aioway._common import get_tracker
-from aioway.schemas.infos import Info
 
 from .devices import Device, DeviceLike
 from .dtypes import DType, DTypeLike
-from .infos import Info
+from .infos import Info, InfoList
 from .shapes import Shape, ShapeLike
 
 __all__ = ["Attr", "attr", "AttrTensor"]
@@ -47,7 +45,7 @@ class Attr:
     The shape of individual items in the column.
     """
 
-    infos: dict[type[Info], list[Info]] = dcls.field(default_factory=dict)
+    infos: InfoList = dcls.field(default_factory=InfoList)
     """
     Extra information about the attribute.
     """
@@ -62,35 +60,22 @@ class Attr:
         if not isinstance(self.shape, Shape):
             raise TypeError(type(self.shape))
 
-        if not all(issubclass(info, Info) for info in self.infos):
-            raise TypeError(f"Not all info in {self.infos=} is a `Info`.")
-
-        if not all(
-            isinstance(info_inst, info_type)
-            for (info_type, info_list) in self.infos.items()
-            for info_inst in info_list
-        ):
-            raise TypeError(
-                "Invalid info passed in. Infos should be a mapping of type to list of instances. "
-                f"But got {self.infos}."
-            )
-
     @typing.override
     def __getstate__(self):
-        return {
+        mapping = {
             "device": self.device,
             "dtype": self.dtype,
             "shape": self.shape,
-            "infos": tuple(_flatten_infos(self.infos)),
+            "infos": self.infos,
         }
+        return {key: val.__getstate__() for key, val in mapping.items()}
 
     def __hash__(self) -> int:
         return hash(json.dumps(self.__getstate__(), sort_keys=True))
 
     @typing.override
     def __repr__(self) -> str:
-        infos = ",".join(map(str, _flatten_infos(self.infos)))
-        return f"[shape={self.shape},dtype={self.dtype},device={self.device},infos={infos}]"
+        return f"[shape={self.shape},dtype={self.dtype},device={self.device},infos={self.infos!r}]"
 
     def memory(self):
         return self.dtype.bits * self.shape.numel()
@@ -131,7 +116,7 @@ class Attr:
             device=Device.parse(device),
             dtype=DType.parse(dtype),
             shape=Shape.parse(shape),
-            infos=_categorize_infos(infos),
+            infos=InfoList(*infos),
         )
 
     @classmethod
@@ -212,23 +197,3 @@ def _is_attr_dict(item: object) -> typing.TypeGuard[AttrDict]:
         return False
 
     return True
-
-
-def _categorize_infos(
-    infos: cabc.Iterable[Info],
-) -> dict[type[Info], list[Info]]:
-    """
-    Organize sequence of `Info` by `type(info)`, into a `dict[type, list]`.
-    """
-
-    result: dict[type[Info], list[Info]] = collections.defaultdict(list)
-
-    for info in infos:
-        result[type(info)].append(info)
-
-    return result
-
-
-def _flatten_infos(infos: dict[type[Info], list[Info]]) -> cabc.Iterator[Info]:
-    for info_list in infos.values():
-        yield from info_list

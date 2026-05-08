@@ -58,6 +58,10 @@ class DType:
             case _:
                 raise NotImplementedError(self._family)
 
+    @typing.override
+    def __getstate__(self) -> object:
+        return self.family, self.bits
+
     def __hash__(self) -> int:
         return hash(str(self))
 
