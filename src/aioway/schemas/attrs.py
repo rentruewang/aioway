@@ -4,6 +4,7 @@
 
 import collections
 import dataclasses as dcls
+import json
 import logging
 import typing
 from collections import abc as cabc
@@ -74,9 +75,13 @@ class Attr:
                 f"But got {self.infos}."
             )
 
+    def __hash__(self) -> int:
+        return hash(json.dumps(self.__getstate__(), sort_keys=True))
+
     @typing.override
     def __repr__(self) -> str:
-        return f"[shape={self.shape},dtype={self.dtype},device={self.device}]"
+        infos = ",".join(map(str, _flatten_infos(self.infos)))
+        return f"[shape={self.shape},dtype={self.dtype},device={self.device},infos={infos}]"
 
     def memory(self):
         return self.dtype.bits * self.shape.numel()
@@ -117,7 +122,7 @@ class Attr:
             device=Device.parse(device),
             dtype=DType.parse(dtype),
             shape=Shape.parse(shape),
-            infos=_categorize_info(infos),
+            infos=_categorize_infos(infos),
         )
 
     @classmethod
@@ -200,7 +205,7 @@ def _is_attr_dict(item: object) -> typing.TypeGuard[AttrDict]:
     return True
 
 
-def _categorize_info(
+def _categorize_infos(
     infos: cabc.Iterable[Info],
 ) -> dict[type[Info], list[Info]]:
     """
@@ -213,3 +218,8 @@ def _categorize_info(
         result[type(info)].append(info)
 
     return result
+
+
+def _flatten_infos(infos: dict[type[Info], list[Info]]) -> cabc.Iterator[Info]:
+    for info_list in infos.values():
+        yield from info_list

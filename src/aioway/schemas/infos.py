@@ -4,7 +4,7 @@
 
 import dataclasses as dcls
 
-__all__ = ["Info", "IsImage", "IsVideo"]
+__all__ = ["Info", "IsImage", "IsVideo", "ProbDim", "TimeDim", "SpaceDim"]
 
 
 @dcls.dataclass(frozen=True)
@@ -64,12 +64,12 @@ class ProbDim(_SingleDimMixin, Info):
 @dcls.dataclass(frozen=True)
 class TimeDim(_SingleDimMixin, Info):
     """
-    Marks a dimension as time contiuous. This can be used on transformers / RNN etc.
+    Marks a dimension as contiuous in time. This can be used on transformers / RNN etc.
     """
 
 
 @dcls.dataclass(frozen=True)
 class SpaceDim(_SingleDimMixin, Info):
     """
-    Marks a dimension as space contiuous. This can be used on transformers / RNN etc.
+    Marks a dimension as contiuous in space. This can be used on CNN etc.
     """
