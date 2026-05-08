@@ -7,7 +7,6 @@ import dataclasses as dcls
 import logging
 import typing
 
-import networkx as nx
 import rich
 import torch
 
@@ -173,7 +172,9 @@ class FnHistory[T: FateFn | TFunctionFn | TDispatchFn]:
         for input_tensor in item.tensors():
             self.input_to_thunk_list[input_tensor].append(item)
 
-    def networkx(self) -> nx.DiGraph[T]:
+    def networkx(self):
+        import networkx as nx
+
         graph: nx.DiGraph[T] = nx.DiGraph()
         graph.add_nodes_from(hist.fn for hist in self.history)
 

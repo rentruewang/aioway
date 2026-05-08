@@ -2,10 +2,10 @@
 # It is not intended for manual editing.
 
 [metadata]
-groups = ["default", "build", "debugging", "faiss", "ibis", "pre-commit", "tests"]
+groups = ["default", "build", "debugging", "faiss", "ibis", "networkx", "pre-commit", "tests"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:a8ef088280a2b864c54b7d80fa1b56912ed2693804b2cdca04cbd554cdd43982"
+content_hash = "sha256:2bcc3c3bf91eaaf054ee951c02d78305a4c74d337cce750213e90550119bda36"
 
 [[metadata.targets]]
 requires_python = ">=3.14,<3.15"
@@ -1707,7 +1707,7 @@ name = "networkx"
 version = "3.6"
 requires_python = ">=3.11"
 summary = "Python package for creating and manipulating graphs and networks"
-groups = ["default"]
+groups = ["default", "networkx"]
 files = [
     {file = "networkx-3.6-py3-none-any.whl", hash = "sha256:cdb395b105806062473d3be36458d8f1459a4e4b98e236a66c3a48996e07684f"},
     {file = "networkx-3.6.tar.gz", hash = "sha256:285276002ad1f7f7da0f7b42f004bcba70d381e936559166363707fdad3d72ad"},
