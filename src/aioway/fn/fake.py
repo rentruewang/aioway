@@ -41,6 +41,7 @@ def to_fake_tensor(tensor: torch.Tensor) -> ft.FakeTensor:
     with torch_fake_mode() as mode:
         converter = mode.fake_tensor_converter
         return converter.from_real_tensor(mode, tensor)
+        converter.from_meta_and_device
 
 
 def to_fake_tensordict(tdict: td.TensorDict) -> td.TensorDict:
