@@ -10,8 +10,6 @@ from collections import abc as cabc
 
 import torch
 
-from aioway._common import get_tracker
-
 from .devices import Device, DeviceLike
 from .dtypes import DType, DTypeLike
 from .infos import Info, InfoList
@@ -21,7 +19,6 @@ __all__ = ["Attr", "attr", "AttrTensor"]
 
 
 LOGGER = logging.getLogger(__name__)
-TRACKER = get_tracker(lambda: Attr)
 
 
 @dcls.dataclass(frozen=True)
