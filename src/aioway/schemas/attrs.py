@@ -3,6 +3,7 @@
 "Schema is a collection of metadata describing the 'type' of data."
 
 import dataclasses as dcls
+import json
 import logging
 import typing
 from collections import abc as cabc
@@ -13,9 +14,10 @@ from aioway._common import get_tracker
 
 from .devices import Device, DeviceLike
 from .dtypes import DType, DTypeLike
+from .infos import Info, InfoList
 from .shapes import Shape, ShapeLike
 
-__all__ = ["Attr", "attr"]
+__all__ = ["Attr", "attr", "AttrTensor"]
 
 
 LOGGER = logging.getLogger(__name__)
@@ -43,6 +45,11 @@ class Attr:
     The shape of individual items in the column.
     """
 
+    infos: InfoList = dcls.field(default_factory=InfoList)
+    """
+    Extra information about the attribute.
+    """
+
     def __post_init__(self) -> None:
         if not isinstance(self.device, Device):
             raise TypeError(type(self.device))
@@ -54,8 +61,21 @@ class Attr:
             raise TypeError(type(self.shape))
 
     @typing.override
+    def __getstate__(self):
+        mapping = {
+            "device": self.device,
+            "dtype": self.dtype,
+            "shape": self.shape,
+            "infos": self.infos,
+        }
+        return {key: val.__getstate__() for key, val in mapping.items()}
+
+    def __hash__(self) -> int:
+        return hash(json.dumps(self.__getstate__(), sort_keys=True))
+
+    @typing.override
     def __repr__(self) -> str:
-        return f"[shape={self.shape},dtype={self.dtype},device={self.device}]"
+        return f"[shape={self.shape},dtype={self.dtype},device={self.device},infos={self.infos!r}]"
 
     def memory(self):
         return self.dtype.bits * self.shape.numel()
@@ -78,6 +98,7 @@ class Attr:
         device: DeviceLike,
         dtype: DTypeLike,
         shape: ShapeLike,
+        infos: cabc.Iterable[Info] = (),
     ) -> typing.Self:
         """
         The convenient constructor for `Attr`.
@@ -95,30 +116,43 @@ class Attr:
             device=Device.parse(device),
             dtype=DType.parse(dtype),
             shape=Shape.parse(shape),
+            infos=InfoList(*infos),
         )
 
     @classmethod
-    def from_tensor(cls, tensor: torch.Tensor, /) -> typing.Self:
+    def from_tensor(cls, tensor: torch.Tensor, /, *infos: Info) -> typing.Self:
         "Parse the `torch.Tensor`'s `Attr` representation"
 
         return cls.parse(
             device=tensor.device,
             shape=tensor.shape,
             dtype=tensor.dtype,
+            infos=infos,
         )
+
+
+@dcls.dataclass(frozen=True)
+class AttrTensor:
+    """
+    `AttrTensor` stores a `torch.Tensor` and a precomputed `Attr`.
+    """
+
+    tensor: torch.Tensor
+    """
+    The tensor that needs info attached.
+    """
+
+    attr: Attr
+    """
+    The attached info (most of the info can be derived from the tensor, but some cannot).
+    """
 
 
 class AttrDict(typing.TypedDict):
     device: DeviceLike
     dtype: DTypeLike
     shape: ShapeLike
-
-
-@typing.runtime_checkable
-class AttrProto(typing.Protocol):
-    device: DeviceLike
-    dtype: DTypeLike
-    shape: ShapeLike
+    infos: typing.NotRequired[cabc.Iterable[Info]]
 
 
 type AttrLike = Attr | AttrDict | torch.Tensor
@@ -138,13 +172,7 @@ def attr(item: AttrLike, /) -> Attr:
             device=item["device"],
             shape=item["shape"],
             dtype=item["dtype"],
-        )
-
-    if isinstance(item, AttrProto):
-        return Attr.parse(
-            device=item.device,
-            dtype=item.dtype,
-            shape=item.shape,
+            infos=item.get("infos", ()),
         )
 
     raise TypeError(
@@ -163,6 +191,7 @@ def _is_attr_dict(item: object) -> typing.TypeGuard[AttrDict]:
             device=item["device"],
             dtype=item["dtype"],
             shape=item["shape"],
+            infos=item.get("infos", ()),
         )
     except Exception:
         return False

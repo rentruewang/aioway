@@ -51,6 +51,10 @@ class Shape(cabc.Sequence[int]):
 
         LOGGER.debug("Shape created: %s", self)
 
+    @typing.override
+    def __getstate__(self) -> object:
+        return self.dims.tolist()
+
     def __hash__(self):
         return hash(self.dims.tobytes())
 
