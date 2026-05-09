@@ -9,9 +9,8 @@ from collections import abc as cabc
 import torch
 from torch import ops
 
-from aioway._common import dcls_frozen_no_repr
+from aioway._common import dcls_frozen_no_repr, is_float_tensor
 
-from ..guards import is_float
 from .fate import Fate
 
 __all__ = [
@@ -69,12 +68,6 @@ class _BinaryTensorUFunc(Fate, abc.ABC):
 
     @typing.final
     @typing.override
-    def tensors(self) -> cabc.Iterator[torch.Tensor]:
-        yield self.self
-        yield self.other
-
-    @typing.final
-    @typing.override
     def cost(self) -> int:
         return self._shape.numel()
 
@@ -101,11 +94,6 @@ class _BinaryScalarUFunc(Fate, abc.ABC):
     @typing.override
     def do(self) -> torch.Tensor:
         return self.BINARY(self.self, self.other)
-
-    @typing.final
-    @typing.override
-    def tensors(self) -> cabc.Iterator[torch.Tensor]:
-        yield self.self
 
     @typing.final
     @typing.override
@@ -144,7 +132,7 @@ class MulScalar(_BinaryScalarUFunc):
 
 
 def _tensor_div(self: torch.Tensor, other: torch.Tensor):
-    if is_float(other):
+    if is_float_tensor(other):
         return self / other
 
     else:

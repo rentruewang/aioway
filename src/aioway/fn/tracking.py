@@ -9,11 +9,10 @@ import typing
 
 import torch
 
-from aioway._common import Stack
+from aioway._common import Stack, TensorFilter, filter_tensor_off, is_leaf_has_grad
 from aioway.schemas import attr
 
 from .fate import FateFn
-from .guards import TensorFilter, all_tensors, is_leaf_has_grad
 from .modes import TDispatchFn, TDispatchMode, TFunctionFn, TFunctionMode
 
 __all__ = [
@@ -204,10 +203,10 @@ class FnHistory[T: FateFn | TFunctionFn | TDispatchFn]:
         yield from params
 
     def numel(self) -> int:
-        return sum(param.numel() for param in self.parameters(all_tensors))
+        return sum(param.numel() for param in self.parameters(filter_tensor_off))
 
     def memory(self) -> int:
-        return sum(attr(param).memory() for param in self.parameters(all_tensors))
+        return sum(attr(param).memory() for param in self.parameters(filter_tensor_off))
 
     def find_fn(self, tensor: torch.Tensor):
         return self.output_to_thunk[tensor]
