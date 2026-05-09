@@ -15,6 +15,11 @@ __all__ = [
     "replace_tensors",
     "find_nested_tensors",
     "Decomposer",
+    "DecomposeCheck",
+    "DecompStep",
+    "DecompSeq",
+    "DecompMap",
+    "DecompDcls",
     "DECOMP_BLOCK_ITEMS",
     "DECOMP_BLOCK_TYPES",
 ]
