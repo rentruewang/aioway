@@ -98,7 +98,7 @@ class TvioImageLoader:
     But, it doesn't work in fake mode, so calling it always loads the tensor into memory.
     """
 
-    norm: bool = True
+    norm: bool = False
     "If `True`, normalize the `uint8` tensor to 0-1 `float` tensor."
 
     def __call__(self, fname: str | pathlib.Path):
