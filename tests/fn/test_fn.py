@@ -4,8 +4,8 @@
 import pytest
 import torch
 
+from aioway.fate import Fate
 from aioway.fn import (
-    Fate,
     FateFn,
     Fn,
     TDispatchFn,

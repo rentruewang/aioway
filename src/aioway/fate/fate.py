@@ -5,16 +5,13 @@ import dataclasses as dcls
 import inspect
 import re
 import typing
-from collections import abc as cabc
 
 import torch
 from torch import _ops
 
 from aioway._common import dcls_frozen_no_repr, render_fcall
 
-from ..modes import HasParam, TDispatchFn
-
-__all__ = ["find_fate", "aten_to_fate", "FateFn", "Fate"]
+__all__ = ["find_fate", "aten_to_fate", "Fate"]
 
 
 _ATEN_TO_FATE_LIST: dict[_ops.OpOverload, list[type[Fate]]] = {}
@@ -22,7 +19,7 @@ _ATEN_TO_FATE_LIST: dict[_ops.OpOverload, list[type[Fate]]] = {}
 
 
 @dcls_frozen_no_repr
-class Fate(HasParam, abc.ABC):
+class Fate(abc.ABC):
     """
     `Fate` stands for [f]ake [ate]n. Or [fa]ke [te]nsor. Or a tensor's [fate] (how it behaves).
 
@@ -102,60 +99,21 @@ class Fate(HasParam, abc.ABC):
         _ATEN_TO_FATE_LIST[op].append(cls)
 
 
-@typing.final
-@dcls.dataclass(frozen=True)
-class FateFn(HasParam):
-    """
-    `FateFn` wraps a `Fate` object, which is split out so as to declutter subclasses for `Fn`.
-
-    Each `Fate` is an implementation of an IR, and each IR can have multiple `Fate`s,
-    each handling a subset of parameters (if `Fate.ok` is `False`, it's discarded.)
-    """
-
-    preview: Fate
-    """
-    The preview object that ends up being selected.
-    """
-
-    original: TDispatchFn
-    "The original `TorchDispatchFn` from which the `Fate` is translated."
-
-    def __repr__(self) -> str:
-        return repr(self.preview)
-
-    def do(self) -> torch.Tensor:
-        return self.preview.do()
-
-    @typing.override
-    def tensors(self) -> cabc.Iterator[torch.Tensor]:
-        yield from self.preview.tensors()
-
-    @property
-    def func(self):
-        return self.original.func
-
-    @property
-    def args(self):
-        return self.original.args
-
-    @property
-    def kwargs(self):
-        return self.original.kwargs
-
-
-def find_fate(thunk: TDispatchFn) -> FateFn:
+def find_fate(op: _ops.OpOverload, *args: typing.Any, **kwargs: typing.Any) -> Fate:
     """
     Try finding a `Fate` operator with the thunk, and then wrap into `FateFn`.
+
+    Returns `NotImplemented` if a candidate is not found.
     """
 
-    if thunk.func not in _ATEN_TO_FATE_LIST:
+    if op not in _ATEN_TO_FATE_LIST:
         return NotImplemented
 
-    for candidate in _ATEN_TO_FATE_LIST[thunk.func]:
-        if not (preview := candidate(*thunk.args, **thunk.kwargs)).ok():
+    for candidate in _ATEN_TO_FATE_LIST[op]:
+        if not (preview := candidate(*args, **kwargs)).ok():
             continue
 
-        return FateFn(preview, original=thunk)
+        return preview
 
     return NotImplemented
 

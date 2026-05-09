@@ -8,9 +8,10 @@ from collections import abc as cabc
 
 import torch
 
+from aioway._common import is_aten_op, is_prim_op, is_torchcodec_op, is_torchvision_op
+
 from .ctx import enabled_fake_mode, torch_fake_mode
-from .fate import FateFn, find_fate
-from .guards import is_aten_op, is_prim_op, is_torchcodec_op, is_torchvision_op
+from .fate import FateFn
 from .modes import TDispatchFn, TDispatchMode, TFunctionFn, TFunctionMode
 from .tracking import FnHistory
 
@@ -28,6 +29,13 @@ FateRouter = cabc.Callable[[TDispatchFn], FateFn]
 
 
 def only_route_in_fake(thunk: TDispatchFn):
+    """
+    Route in fake mode.
+
+    `NotImplemented` is returned when this function cannot handle the input,
+    e.g. it's not in fake mode, or if there is no `Fate` equivalent.
+    """
+
     # Do not do anything in real mode, or in case the fake mode is temporarily disabled.
     if not enabled_fake_mode():
         return NotImplemented
@@ -37,7 +45,7 @@ def only_route_in_fake(thunk: TDispatchFn):
     # In those operations, real mode is force enabled right now.
     # See aioway#204 issue.
     if is_aten_op(thunk.func):
-        return find_fate(thunk)
+        return FateFn.find_fate(thunk)
 
     if not any(
         is_op(thunk.func) for is_op in [is_prim_op, is_torchvision_op, is_torchcodec_op]

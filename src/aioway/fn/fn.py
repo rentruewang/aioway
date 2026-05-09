@@ -18,7 +18,9 @@ _PENDING = object()
 @typing.runtime_checkable
 class Fn(typing.Protocol):
     """
-    `Fn` is the base class for delayed computation.
+    `Fn` is the base class for delayed computation, in a single batch (a single pass).
+
+    It stands for [f]unction [n]ode, or short for function.
 
     `Fn.do` executes the computation, `Fn` base class itself does not make any more assumption.
     """
