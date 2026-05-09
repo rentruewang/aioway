@@ -6,7 +6,11 @@ import pytest
 import torch
 
 from aioway.fn import fake_fn, track_fn
-from aioway.io import read_audio_from_path, read_image_from_path, read_video_from_path
+from aioway.io import (
+    read_audio_from_path,
+    read_image_from_path_torch,
+    read_video_from_path,
+)
 
 
 @pytest.fixture(scope="session")
@@ -73,7 +77,7 @@ def test_example_file_exists(example_file: pathlib.Path):
 
 
 def test_read_img(example_image: pathlib.Path):
-    img = read_image_from_path(example_image)
+    img = read_image_from_path_torch(example_image)
     assert isinstance(img, torch.Tensor)
 
 

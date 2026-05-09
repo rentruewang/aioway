@@ -13,7 +13,14 @@ import torch
 from aioway._common import Stack, TensorFilter, filter_tensor_off, is_leaf_has_grad
 from aioway.schemas import attr
 
-from .modes import FateFn, TDispatchFn, TDispatchMode, TFunctionFn, TFunctionMode
+from .modes import (
+    FateFn,
+    TDispatchFn,
+    TDispatchMode,
+    TFunctionFn,
+    TFunctionMode,
+    replace_tensors_with_attr,
+)
 
 __all__ = [
     "PrintTorchFunction",
@@ -52,7 +59,7 @@ class _ThunkPrinter:
     def __call__(self, thunk: TFunctionFn | TDispatchFn) -> torch.Tensor:
         self.print("invoke", thunk)
         result = thunk.do()
-        self.print("return", thunk, "->", result)
+        self.print("return", thunk, "->", replace_tensors_with_attr(result))
         return result
 
     @property

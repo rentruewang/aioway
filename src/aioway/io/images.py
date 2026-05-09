@@ -7,11 +7,11 @@ from torchvision import io as vio
 
 from aioway.fn import torch_enable_fake_mode_func
 
-__all__ = ["read_image_from_path", "read_image_normalized"]
+__all__ = ["read_image_from_path_torch", "read_image_torch_normalized"]
 
 
 @torch_enable_fake_mode_func(False)
-def read_image_from_path(fname: os.PathLike[str]):
+def read_image_from_path_torch(fname: os.PathLike[str]):
     fname_path = pathlib.Path(fname)
     fname_str = str(fname_path)
 
@@ -32,5 +32,5 @@ def read_image_from_path(fname: os.PathLike[str]):
             raise ValueError(f"Does not support {fname_path.suffix} files.")
 
 
-def read_image_normalized(fname: os.PathLike[str]):
-    return read_image_from_path(fname).float() / 255
+def read_image_torch_normalized(fname: os.PathLike[str]):
+    return read_image_from_path_torch(fname).float() / 255
