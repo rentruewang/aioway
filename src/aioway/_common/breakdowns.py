@@ -9,9 +9,28 @@ from collections import abc as cabc
 
 import numpy as np
 import pandas as pd
+import tensordict as td
 import torch
 
-__all__ = ["replace_tensors", "find_nested_tensors", "NestedFinder"]
+__all__ = [
+    "replace_tensors",
+    "find_nested_tensors",
+    "NestedFinder",
+    "NESTED_FINDER_BLOCK_ITEMS_DEFAULT",
+    "NESTED_FINDER_BLOCK_TYPES_DEFAULT",
+]
+
+NESTED_FINDER_BLOCK_ITEMS_DEFAULT = None, NotImplemented, ..., True, False
+NESTED_FINDER_BLOCK_TYPES_DEFAULT = (
+    int,
+    float,
+    bool,
+    str,
+    np.ndarray,
+    pd.DataFrame,
+    torch.Tensor,
+    td.TensorDict,
+)
 
 
 def replace_tensors(
@@ -64,21 +83,16 @@ class NestedFinder:
     The target type to search for.
     """
 
-    block_items: cabc.Sequence[object] = ()
+    block_items: cabc.Sequence[object] = NESTED_FINDER_BLOCK_ITEMS_DEFAULT
     """
     Do not recurse into these objects.
     """
 
-    block_types: cabc.Sequence[type] = ()
+    block_types: cabc.Sequence[type] = NESTED_FINDER_BLOCK_TYPES_DEFAULT
     """
     Do not recurse into objects of these types.
+    By default do not recurse into `numpy` and `torch` types.
     """
-
-    def __post_init__(self):
-        if self.target in self.block_types:
-            raise ValueError(
-                f"You specified the target type {self.target} in the block list {self.block_types}."
-            )
 
     def __call__(self, obj: object):
         if isinstance(obj, self.target):
