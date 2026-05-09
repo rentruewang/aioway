@@ -12,8 +12,7 @@ import torch
 from aioway._common import Stack, TensorFilter, filter_tensor_off, is_leaf_has_grad
 from aioway.schemas import attr
 
-from .fate import FateFn
-from .modes import TDispatchFn, TDispatchMode, TFunctionFn, TFunctionMode
+from .modes import FateFn, TDispatchFn, TDispatchMode, TFunctionFn, TFunctionMode
 
 __all__ = [
     "print_torch_function",

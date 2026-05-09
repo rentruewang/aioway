@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from .breakdowns import *
+from .decomps import *
 from .logging import *
 from .renders import *
 from .torch import *

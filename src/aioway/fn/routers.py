@@ -11,8 +11,7 @@ import torch
 from aioway._common import is_aten_op, is_prim_op, is_torchcodec_op, is_torchvision_op
 
 from .ctx import enabled_fake_mode, torch_fake_mode
-from .fate import FateFn
-from .modes import TDispatchFn, TDispatchMode, TFunctionFn, TFunctionMode
+from .modes import FateFn, TDispatchFn, TDispatchMode, TFunctionFn, TFunctionMode
 from .tracking import FnHistory
 
 __all__ = [
