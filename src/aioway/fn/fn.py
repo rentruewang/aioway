@@ -8,6 +8,7 @@ import typing
 from collections import abc as cabc
 
 from aioway._common import render_fcall
+from aioway._common.breakdowns import NestedFinder
 
 __all__ = ["Fn", "Thunk"]
 
@@ -15,8 +16,7 @@ _PENDING = object()
 "The object signifying a status of pending. This is a `object()` s.t. `FnCache` can store `None`."
 
 
-@typing.runtime_checkable
-class Fn(typing.Protocol):
+class Fn(abc.ABC):
     """
     `Fn` is the base class for delayed computation, in a single batch (a single pass).
 
@@ -31,8 +31,18 @@ class Fn(typing.Protocol):
         Execute the computation.
         """
 
+        raise NotImplementedError
 
-class Thunk:
+    @abc.abstractmethod
+    def inputs(self) -> cabc.Iterator[Fn]:
+        """
+        Iterate over the inputs of the object.
+        """
+
+        raise NotImplementedError
+
+
+class Thunk(Fn):
     """
     The thunk for any function, handles both pretty printing and storing the result.
 
@@ -94,6 +104,11 @@ class Thunk:
                 raise RuntimeError(f"Thunk: {self!r} evaluation failed.") from e
 
         return self.__result
+
+    @typing.override
+    def inputs(self) -> cabc.Iterator[Fn]:
+        finder = NestedFinder(target=Fn)
+        return finder(self)
 
     @typing.override
     def __repr__(self) -> str:

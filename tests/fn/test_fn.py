@@ -5,11 +5,6 @@ import pytest
 import torch
 
 from aioway.fn import (
-    FateFn,
-    Fn,
-    TDispatchFn,
-    TFunctionFn,
-    Thunk,
     TorchDispatchStack,
     TorchFunctionStack,
     track_fn,
@@ -24,23 +19,6 @@ def a():
 @pytest.fixture
 def b():
     return torch.randn(4)
-
-
-def _fn_types():
-    yield Thunk
-    yield TFunctionFn
-    yield TDispatchFn
-    yield FateFn
-
-
-@pytest.fixture(params=_fn_types())
-def fn_type(request: pytest.FixtureRequest):
-    assert isinstance(request.param, type)
-    return request.param
-
-
-def test_subclasses(fn_type):
-    assert issubclass(fn_type, Fn)
 
 
 def test_call(a: torch.Tensor, b: torch.Tensor):

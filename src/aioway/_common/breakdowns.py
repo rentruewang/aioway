@@ -4,6 +4,7 @@
 
 import dataclasses as dcls
 import functools
+import types
 from collections import abc as cabc
 
 import numpy as np
@@ -53,12 +54,12 @@ def _replace_tensors(
 
 
 @dcls.dataclass(frozen=True)
-class NestedFinder[T]:
+class NestedFinder:
     """
     Find the desired objects that is possibly nested.
     """
 
-    target: type[T]
+    target: type | tuple[type, ...] | types.UnionType
     """
     The target type to search for.
     """
@@ -79,7 +80,7 @@ class NestedFinder[T]:
                 f"You specified the target type {self.target} in the block list {self.block_types}."
             )
 
-    def __call__(self, obj: object) -> cabc.Iterator[T]:
+    def __call__(self, obj: object):
         if isinstance(obj, self.target):
             yield obj
             return
