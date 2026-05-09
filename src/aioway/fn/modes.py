@@ -3,7 +3,6 @@
 "Torch function/dispatch modes, corresponding to `__torch_function__`/`__torch_dispatch__`."
 
 import abc
-import contextlib as ctxl
 import dataclasses as dcls
 import types
 import typing
@@ -189,13 +188,7 @@ def _render_tensor_short(
     return render_fcall(func, *args, **kwargs)
 
 
-class TMode[T](typing.Protocol):
-    @abc.abstractmethod
-    def __call__(self, thunk: T, /) -> torch.Tensor:
-        raise NotImplementedError
-
-
-class TFunctionMode(overrides.TorchFunctionMode, TMode[TFunctionFn], abc.ABC):
+class TFunctionMode(overrides.TorchFunctionMode, abc.ABC):
     """
     `TorchFunctionMode` is the adaptor for `torch.overrides.TorchFunctionMode`.
     """
@@ -211,25 +204,8 @@ class TFunctionMode(overrides.TorchFunctionMode, TMode[TFunctionFn], abc.ABC):
         thunk = TFunctionFn(func=func, types=types, args=args, kwargs=kwargs)
         return self(thunk)
 
-    @staticmethod
-    def register(
-        f: TMode[TFunctionFn],
-    ) -> cabc.Callable[[], typing.ContextManager[None]]:
 
-        class _FuncTorchFunctionMode(TFunctionMode):
-            @typing.override
-            def __call__(self, t: TFunctionFn) -> typing.Any:
-                return f(t)
-
-        @ctxl.contextmanager
-        def ctx_man():
-            with _FuncTorchFunctionMode():
-                yield
-
-        return ctx_man
-
-
-class TDispatchMode(pyd.TorchDispatchMode, TMode[TDispatchFn], abc.ABC):
+class TDispatchMode(pyd.TorchDispatchMode, abc.ABC):
     """
     `TorchDispatchMode` is the adaptor for `torch.data._python_dispatch.TorchDispatchMode`.
     """
@@ -248,22 +224,6 @@ class TDispatchMode(pyd.TorchDispatchMode, TMode[TDispatchFn], abc.ABC):
 
         thunk = TDispatchFn(func=func, args=args, kwargs=kwargs)
         return self(thunk)
-
-    @staticmethod
-    def register(
-        f: TMode[TDispatchFn],
-    ) -> cabc.Callable[[], typing.ContextManager[None]]:
-        class _FuncTorchDispatchMode(TDispatchMode):
-            @typing.override
-            def __call__(self, t: TDispatchFn, /) -> torch.Tensor:
-                return f(t)
-
-        @ctxl.contextmanager
-        def ctx_man():
-            with _FuncTorchDispatchMode():
-                yield
-
-        return ctx_man
 
 
 @typing.final

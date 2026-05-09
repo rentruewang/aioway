@@ -7,6 +7,7 @@ import dataclasses as dcls
 import logging
 import typing
 
+import rich
 import torch
 
 from aioway._common import Stack, TensorFilter, filter_tensor_off, is_leaf_has_grad
@@ -15,8 +16,8 @@ from aioway.schemas import attr
 from .modes import FateFn, TDispatchFn, TDispatchMode, TFunctionFn, TFunctionMode
 
 __all__ = [
-    "print_torch_function",
-    "print_torch_dispatch",
+    "PrintTorchFunction",
+    "PrintTorchDispatch",
     "LogTorchFunction",
     "LogTorchDispatch",
     "TorchFunctionStack",
@@ -27,29 +28,36 @@ __all__ = [
 LOGGER = logging.getLogger(__name__)
 
 
-@TFunctionMode.register
-def print_torch_function(thunk: TFunctionFn) -> torch.Tensor:
-    """
-    Print the function calls.
-    """
+class PrintTorchFunction(TFunctionMode):
+    rich: bool = False
 
-    return _print_torch_thunk(thunk)
-
-
-@TDispatchMode.register
-def print_torch_dispatch(thunk: TDispatchFn) -> torch.Tensor:
-    """
-    Print the dispatcher.
-    """
-
-    return _print_torch_thunk(thunk)
+    @typing.override
+    def __call__(self, thunk: TFunctionFn, /) -> torch.Tensor:
+        return _ThunkPrinter(rich=self.rich)(thunk)
 
 
-def _print_torch_thunk(thunk: TFunctionFn | TDispatchFn) -> torch.Tensor:
-    print("invoke", thunk)
-    result = thunk.do()
-    print("return", thunk, "->", result)
-    return result
+class PrintTorchDispatch(TDispatchMode):
+    rich: bool = False
+
+    @typing.override
+    def __call__(self, thunk: TDispatchFn, /) -> torch.Tensor:
+        return _ThunkPrinter(rich=self.rich)(thunk)
+
+
+@dcls.dataclass(frozen=True)
+class _ThunkPrinter:
+    rich: bool
+    "Use rich for printing."
+
+    def __call__(self, thunk: TFunctionFn | TDispatchFn) -> torch.Tensor:
+        self.print("invoke", thunk)
+        result = thunk.do()
+        self.print("return", thunk, "->", result)
+        return result
+
+    @property
+    def print(self):
+        return rich.print if self.rich else print
 
 
 @dcls.dataclass
