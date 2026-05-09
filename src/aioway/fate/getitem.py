@@ -2,7 +2,6 @@
 
 import abc
 import typing
-from collections import abc as cabc
 
 import torch
 from torch import ops
@@ -23,11 +22,6 @@ class _GetItem(Fate, abc.ABC):
 
     def __hash__(self) -> int:
         return id(self)
-
-    @typing.final
-    def tensors(self) -> cabc.Iterator[torch.Tensor]:
-        yield self.self
-        yield from self.indices
 
     @typing.override
     def cost(self) -> int:

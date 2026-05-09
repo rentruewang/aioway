@@ -13,45 +13,18 @@ import torch
 from torch import _ops, overrides
 from torch.utils import _python_dispatch as pyd
 
-from aioway._common import find_nested_tensors, render_fcall, replace_tensors
-from aioway.schemas import attr
+from aioway._common import (
+    HasParam,
+    find_nested_tensors,
+    is_aten_op,
+    is_prim_op,
+    render_fcall,
+)
 
-from .guards import TensorFilter, all_tensors
-
-__all__ = [
-    "TFunctionMode",
-    "TDispatchMode",
-    "TFunctionFn",
-    "TDispatchFn",
-    "HasParam",
-]
+__all__ = ["TFunctionMode", "TDispatchMode", "TFunctionFn", "TDispatchFn"]
 
 
 type _TorchCallable = cabc.Callable[..., typing.Any] | _ops.OpOverload
-
-
-class HasParam(abc.ABC):
-    """
-    `HasParam` is a mixin that requires you to implement `tensors`,
-    providing `parameters(select)` which iterates over the tensors and filter them.
-    """
-
-    def parameters(self, select: TensorFilter = all_tensors, /):
-        """
-        Calls `.tensors()` and then use `select` to iterate over the tensors.
-        """
-
-        for tensor in self.tensors():
-            if select(tensor):
-                yield tensor
-
-    @abc.abstractmethod
-    def tensors(self) -> cabc.Iterator[torch.Tensor]:
-        """
-        All the tensors that this `HasParam` uses.
-        """
-
-        raise NotImplementedError
 
 
 @dcls.dataclass(match_args=False)
@@ -134,6 +107,14 @@ class TDispatchFn(_TThunkBaseFn[_ops.OpOverload]):
     def __repr__(self) -> str:
         return _render_function_body("dispatch", self.func, self.args, self.kwargs)
 
+    @property
+    def is_aten(self) -> bool:
+        return is_aten_op(self.func)
+
+    @property
+    def is_prim(self) -> bool:
+        return is_prim_op(self.func)
+
 
 def _render_function_body(
     prefix: str,
@@ -142,7 +123,7 @@ def _render_function_body(
     kwargs: dict[str, typing.Any],
 ) -> str:
     func_name = _render_func_name(func)
-    return _render_tensor_as_attr(prefix + "::" + func_name, args, kwargs)
+    return _render_tensor_short(prefix + "::" + func_name, args, kwargs)
 
 
 def _render_func_name(func: cabc.Callable[..., typing.Any]) -> str:
@@ -175,13 +156,13 @@ def _render_func_name(func: cabc.Callable[..., typing.Any]) -> str:
 
 
 @typing.no_type_check
-def _render_tensor_as_attr(
+def _render_tensor_short(
     func: str, args: tuple[typing.Any, ...], kwargs: dict[str, typing.Any]
 ):
     # `Attr`s are better for display than `torch.Tensor`s.
 
-    args = replace_tensors(args, attr)
-    kwargs = replace_tensors(kwargs, attr)
+    # args = replace_tensors(args, attr)
+    # kwargs = replace_tensors(kwargs, attr)
 
     return render_fcall(func, *args, **kwargs)
 

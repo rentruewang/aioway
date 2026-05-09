@@ -1,12 +1,34 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import abc
+import re
+import typing
 from collections import abc as cabc
 
-import numpy as np
 import tensordict as td
 import torch
+from torch import _ops
 
-__all__ = ["tdict_rename", "tdict_all_equal", "replace_tensors", "find_nested_tensors"]
+__all__ = [
+    "tdict_rename",
+    "tdict_all_equal",
+    "HasParam",
+    "TensorFilter",
+    "is_leaf_has_grad",
+    "filter_tensor_off",
+    "is_float_tensor",
+    "is_int_tensor",
+    "is_bool_tensor",
+    "is_aten_op",
+    "is_prim_op",
+    "is_torchvision_op",
+    "is_torchcodec_op",
+]
+
+_ATEN_OPS = re.compile("aten::.+")
+_PRIM_OPS = re.compile("prim::.+")
+_TORCHVISION_OPS = re.compile("image::.+")
+_TORCHCODEC_OPS = re.compile("torchcodec_ns::.+")
 
 
 def tdict_rename(tdict: td.TensorDict, **renames: str):
@@ -21,70 +43,73 @@ def tdict_all_equal(left: td.TensorDict, right: td.TensorDict, /):
     return eq.all()
 
 
-def replace_tensors(
-    obj: object, replace: cabc.Callable[[torch.Tensor], object]
-) -> object:
-    from aioway.fn import disable_torch_function
-
-    with disable_torch_function():
-        return _replace_tensors(obj, replace)
+class TensorFilter(typing.Protocol):
+    def __call__(self, tensor: torch.Tensor, /) -> bool: ...
 
 
-def _replace_tensors(
-    obj: object, replace: cabc.Callable[[torch.Tensor], object]
-) -> object:
+def is_leaf_has_grad(t: torch.Tensor) -> bool:
+    return t.is_leaf and t.requires_grad
+
+
+def filter_tensor_off(_: torch.Tensor):
+    return True
+
+
+def is_float_tensor(t: torch.Tensor) -> bool:
+    return t.dtype.is_floating_point
+
+
+def is_int_tensor(t: torch.Tensor) -> bool:
+    return not is_float_tensor(t) and not is_bool_tensor(t)
+
+
+def is_bool_tensor(t: torch.Tensor) -> bool:
+    return t.dtype == torch.bool
+
+
+def is_sparse_tensor(t: torch.Tensor) -> bool:
+    return t.is_sparse
+
+
+def is_aten_op(op: _ops.OpOverload) -> bool:
+    return _dispatch_name(op, _ATEN_OPS)
+
+
+def is_prim_op(op: _ops.OpOverload) -> bool:
+    return _dispatch_name(op, _PRIM_OPS)
+
+
+def is_torchvision_op(op: _ops.OpOverload) -> bool:
+    return _dispatch_name(op, _TORCHVISION_OPS)
+
+
+def is_torchcodec_op(op: _ops.OpOverload) -> bool:
+    return _dispatch_name(op, _TORCHCODEC_OPS)
+
+
+def _dispatch_name(op: _ops.OpOverload, regex: re.Pattern[str]) -> bool:
+    return bool(regex.fullmatch(op.name()))
+
+
+class HasParam(abc.ABC):
     """
-    Replace tensors whenever encountered with the given function.
-
-    This function has the `__torch_function__` disabled in the scope of the rendering,
-    because it can mess with attribute access, which oftentimes means that
-    this function fails also during debugging if `__torch_function__` is not disabled.
-    Caused by `.device` / `.shape` / `.dtype` calls, which is used in `replace_tensors`.
+    `HasParam` is a mixin that requires you to implement `tensors`,
+    providing `parameters(select)` which iterates over the tensors and filter them.
     """
 
-    if isinstance(obj, torch.Tensor):
-        return replace(obj)
+    def parameters(self, select: TensorFilter = filter_tensor_off, /):
+        """
+        Calls `.tensors()` and then use `select` to iterate over the tensors.
+        """
 
-    if _is_primitive(obj):
-        return obj
+        for tensor in self.tensors():
+            if select(tensor):
+                yield tensor
 
-    if isinstance(obj, cabc.Sequence):
-        return [_replace_tensors(elem, replace) for elem in obj]
+    @abc.abstractmethod
+    def tensors(self) -> cabc.Iterator[torch.Tensor]:
+        """
+        All the tensors that this `HasParam` uses.
+        """
 
-    if isinstance(obj, cabc.Mapping):
-        return {key: _replace_tensors(elem, replace) for key, elem in obj.items()}
-
-    return obj
-
-
-def find_nested_tensors(obj: object) -> cabc.Iterator[torch.Tensor]:
-    """
-    Find and unpack tensors from containers.
-    """
-
-    if isinstance(obj, torch.Tensor):
-        yield obj
-        return
-
-    if _is_primitive(obj):
-        return
-
-    if isinstance(obj, cabc.Sequence):
-        for elem in obj:
-            yield from find_nested_tensors(elem)
-        return
-
-    if isinstance(obj, cabc.Mapping):
-        for elem in obj.values():
-            yield from find_nested_tensors(elem)
-        return
-
-
-def _is_primitive(obj: object) -> bool:
-    if obj in [None, NotImplemented, ...]:
-        return True
-
-    if isinstance(obj, int | float | bool | str | np.ndarray):
-        return True
-
-    return False
+        raise NotImplementedError
