@@ -22,7 +22,8 @@ class Fn(abc.ABC):
 
     It stands for [f]unction [n]ode, or short for function.
 
-    `Fn.do` executes the computation, `Fn` base class itself does not make any more assumption.
+    `Fn.do()` executes the computation, `Fn` base class itself does not make any more assumption.
+    `Fn.inputs()` traces back to the entire graph.
     """
 
     @abc.abstractmethod
