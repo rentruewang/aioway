@@ -5,7 +5,7 @@
 import collections
 import dataclasses as dcls
 import logging
-import typing
+import typing, itertools
 
 import rich
 import torch
@@ -157,7 +157,9 @@ class FnHistory[T: FateFn | TFunctionFn | TDispatchFn]:
     )
     "The mapping from input to the thunk containing that input."
 
-    output_to_thunk: dict[torch.Tensor, T] = dcls.field(default_factory=dict)
+    output_to_thunk_list: dict[torch.Tensor, list[T]] = dcls.field(
+        default_factory=lambda: collections.defaultdict(list)
+    )
     "The mapping from output to thunk that generates it."
 
     def __len__(self) -> int:
@@ -180,8 +182,7 @@ class FnHistory[T: FateFn | TFunctionFn | TDispatchFn]:
         # `__torch_function__` doesn't always return `torch.Tensor` actually!
         if isinstance(output, torch.Tensor):
             # Update output.
-            assert output not in self.output_to_thunk
-            self.output_to_thunk[output] = item
+            self.output_to_thunk_list[output].append(item)
 
         # Update input.
         for input_tensor in item.tensors():
@@ -193,14 +194,14 @@ class FnHistory[T: FateFn | TFunctionFn | TDispatchFn]:
         graph: nx.DiGraph[T] = nx.DiGraph()
         graph.add_nodes_from(hist.fn for hist in self.history)
 
-        input_thunks = self.input_to_thunk_list
-        output_thunks = self.output_to_thunk
+        ins = self.input_to_thunk_list
+        outs = self.output_to_thunk_list
 
-        tensors = set(input_thunks.keys()).intersection(output_thunks.keys())
+        tensors = set(ins.keys()).intersection(outs.keys())
 
         for tensor in tensors:
-            for target_thunk in input_thunks[tensor]:
-                _ = graph.add_edge(self.output_to_thunk[tensor], target_thunk)
+            for out_thunk, in_thunk in itertools.product(outs[tensor], ins[tensor]):
+                _ = graph.add_edge(out_thunk, in_thunk)
 
         return graph
 
@@ -223,4 +224,4 @@ class FnHistory[T: FateFn | TFunctionFn | TDispatchFn]:
         return sum(attr(param).memory() for param in self.parameters(filter_tensor_off))
 
     def find_fn(self, tensor: torch.Tensor):
-        return self.output_to_thunk[tensor]
+        return self.output_to_thunk_list[tensor]

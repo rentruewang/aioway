@@ -10,6 +10,7 @@ from aioway.fn import (
     torch_fake_mode,
     track_fn,
 )
+from aioway.fn.ctx import enabled_fake_mode
 
 
 @pytest.fixture
@@ -20,6 +21,14 @@ def a():
 @pytest.fixture
 def b():
     return torch.randn(5)
+
+
+def test_fake_mode(fake_mode):
+    assert enabled_fake_mode()
+
+
+def test_real_mode(real_mode):
+    assert not enabled_fake_mode()
 
 
 @pytest.fixture

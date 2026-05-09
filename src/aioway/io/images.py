@@ -72,22 +72,26 @@ class PillowImageLoader(ImageLoader):
 
 @dcls.dataclass
 class FakePillowImageLoader(ImageLoader):
-    def __post_init__(self):
-        if not enabled_fake_mode():
-            raise RuntimeError(f"{type(self)} only works in fake mode!")
-
     @typing.override
     @torch_enable_fake_mode_func(True)
     def __call__(self, fname: str | pathlib.Path, /) -> torch.Tensor:
+        if not enabled_fake_mode():
+            raise RuntimeError(f"{type(self)} only works in fake mode!")
+
         img = image.open(fname)
 
-        return attr(
-            {
-                "shape": [len(img.mode), img.width, img.height],
-                "device": "cpu",
-                "dtype": "float32",
-            }
-        ).to_tensor()
+        # Convert to `uint8` as a hack, because we don't support it in our dtypes.
+        return (
+            attr(
+                {
+                    "shape": [len(img.mode), img.width, img.height],
+                    "device": "cpu",
+                    "dtype": "int",
+                }
+            )
+            .to_tensor()
+            .to(torch.uint8)
+        )
 
 
 @dcls.dataclass

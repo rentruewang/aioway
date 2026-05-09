@@ -4,8 +4,6 @@ import pathlib
 
 import pytest
 
-from aioway.fn import fake_fn, track_fn
-
 
 @pytest.fixture
 def example_jpg(media: pathlib.Path):
@@ -47,9 +45,3 @@ def example_audio(request: pytest.FixtureRequest):
 @pytest.fixture(params=[example_mp4.name])
 def example_video(request: pytest.FixtureRequest):
     return request.getfixturevalue(request.param)
-
-
-@pytest.fixture(params=[fake_fn, track_fn])
-def maybe_fake_mode(request: pytest.FixtureRequest):
-    with request.param() as hists:
-        yield hists
