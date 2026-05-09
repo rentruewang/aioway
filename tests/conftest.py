@@ -1,5 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import pathlib
 import random
 
 import pytest
@@ -8,6 +9,11 @@ from numpy import random as npr
 from rich import traceback
 
 from .fake import batch_sizes, cpu_and_maybe_cuda
+
+
+@pytest.fixture(scope="module")
+def media():
+    return (pathlib.Path(__file__).parent.parent / "media").resolve()
 
 
 @pytest.fixture(autouse=True, scope="session")

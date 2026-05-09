@@ -61,7 +61,7 @@ def _replace_tensors(
     if isinstance(obj, torch.Tensor):
         return replace(obj)
 
-    if isinstance(obj, np.ndarray | pd.DataFrame):
+    if isinstance(obj, DECOMP_BLOCK_TYPES):
         return obj
 
     if isinstance(obj, cabc.Sequence):

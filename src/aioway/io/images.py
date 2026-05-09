@@ -13,7 +13,13 @@ from torchvision.transforms import v2 as tt
 from aioway.fn import enabled_fake_mode, torch_enable_fake_mode_func
 from aioway.schemas import attr
 
-__all__ = ["read_image_from_path"]
+__all__ = [
+    "ImageLoader",
+    "ComposedImageLoader",
+    "PillowImageLoader",
+    "FakePillowImageLoader",
+    "TvioImageLoader",
+]
 
 
 @dcls.dataclass
@@ -37,8 +43,11 @@ class ComposedImageLoader(ImageLoader):
     loader: ImageLoader
     "The image loader."
 
-    transform: tt.Transform = tt.Compose([])
-    "This is a series of `torchvision` `Transform`."
+    transform: tt.Transform = tt.Lambda(lambda t: t)
+    """
+    This is a series of `torchvision` `Transform`.
+    Default to null op (a lambda because compose cannot be empty).
+    """
 
     @typing.override
     def __call__(self, fname: str | pathlib.Path, /) -> torch.Tensor:
