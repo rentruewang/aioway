@@ -3,12 +3,14 @@
 "Decomposing objects for inspection and debugging."
 
 import dataclasses as dcls
+import functools
 from collections import abc as cabc
 
 import numpy as np
+import pandas as pd
 import torch
 
-__all__ = ["replace_tensors", "find_nested_tensors"]
+__all__ = ["replace_tensors", "find_nested_tensors", "NestedFinder"]
 
 
 def replace_tensors(
@@ -35,7 +37,7 @@ def _replace_tensors(
     if isinstance(obj, torch.Tensor):
         return replace(obj)
 
-    if _is_primitive(obj):
+    if isinstance(obj, np.ndarray | pd.DataFrame):
         return obj
 
     if isinstance(obj, cabc.Sequence):
@@ -44,7 +46,67 @@ def _replace_tensors(
     if isinstance(obj, cabc.Mapping):
         return {key: _replace_tensors(elem, replace) for key, elem in obj.items()}
 
+    if dcls.is_dataclass(obj):
+        return _replace_tensors(_dataclass_as_dict(obj), replace)
+
     return obj
+
+
+@dcls.dataclass(frozen=True)
+class NestedFinder[T]:
+    """
+    Find the desired objects that is possibly nested.
+    """
+
+    target: type[T]
+    """
+    The target type to search for.
+    """
+
+    block_items: cabc.Sequence[object] = ()
+    """
+    Do not recurse into these objects.
+    """
+
+    block_types: cabc.Sequence[type] = ()
+    """
+    Do not recurse into objects of these types.
+    """
+
+    def __post_init__(self):
+        if self.target in self.block_types:
+            raise ValueError(
+                f"You specified the target type {self.target} in the block list {self.block_types}."
+            )
+
+    def __call__(self, obj: object) -> cabc.Iterator[T]:
+        if isinstance(obj, self.target):
+            yield obj
+            return
+
+        if obj in self.block_items:
+            return
+
+        if isinstance(obj, self._block_types_list):
+            return
+
+        if isinstance(obj, cabc.Sequence):
+            for elem in obj:
+                yield from self(elem)
+
+        if isinstance(obj, cabc.Mapping):
+            for elem in obj.values():
+                yield from self(elem)
+            return
+
+        # If it's a dataclass, decompose.
+        if dcls.is_dataclass(obj):
+            yield from self(_dataclass_as_dict(obj))
+            return
+
+    @functools.cached_property
+    def _block_types_list(self) -> tuple[type, ...]:
+        return tuple(self.block_types)
 
 
 def find_nested_tensors(obj: object) -> cabc.Iterator[torch.Tensor]:
@@ -52,36 +114,15 @@ def find_nested_tensors(obj: object) -> cabc.Iterator[torch.Tensor]:
     Find and unpack tensors from containers.
     """
 
-    if isinstance(obj, torch.Tensor):
-        yield obj
-        return
+    finder = NestedFinder(
+        target=torch.Tensor,
+        block_types=[int, float, bool, str, np.ndarray, pd.DataFrame],
+    )
 
-    if _is_primitive(obj):
-        return
-
-    if isinstance(obj, cabc.Sequence):
-        for elem in obj:
-            yield from find_nested_tensors(elem)
-        return
-
-    if isinstance(obj, cabc.Mapping):
-        for elem in obj.values():
-            yield from find_nested_tensors(elem)
-        return
-
-    # If it's a dataclass, decompose.
-    if dcls.is_dataclass(obj):
-        fields = dcls.fields(obj)
-        yield from find_nested_tensors(
-            {field.name: getattr(obj, field.name) for field in fields}
-        )
+    yield from finder(obj)
 
 
-def _is_primitive(obj: object) -> bool:
-    if obj in [None, NotImplemented, ...]:
-        return True
-
-    if isinstance(obj, int | float | bool | str | np.ndarray):
-        return True
-
-    return False
+def _dataclass_as_dict(obj: object):
+    assert dcls.is_dataclass(obj), "Only handles dataclass objects."
+    fields = dcls.fields(obj)
+    return {field.name: getattr(obj, field.name) for field in fields}
