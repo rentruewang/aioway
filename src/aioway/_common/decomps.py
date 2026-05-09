@@ -3,6 +3,7 @@
 "Decomposing objects for inspection and debugging."
 
 import dataclasses as dcls
+import functools
 import typing
 from collections import abc as cabc
 
@@ -61,7 +62,7 @@ def _replace_tensors(
     if isinstance(obj, torch.Tensor):
         return replace(obj)
 
-    if isinstance(obj, np.ndarray | pd.DataFrame):
+    if isinstance(obj, DECOMP_BLOCK_TYPES):
         return obj
 
     if isinstance(obj, cabc.Sequence):
@@ -85,10 +86,13 @@ class DecomposeCheck(typing.Protocol):
 class DecompStep(typing.Protocol):
     def handles(self, obj, /) -> bool: ...
     def decompose(self, obj, /) -> cabc.Iterable[typing.Any]: ...
+@functools.cache
+def _ids_of(seq: cabc.Sequence[typing.Any]) -> list[int]:
+    return [id(item) for item in seq]
 
 
 def default_stop_decompose(obj: object) -> bool:
-    return obj in DECOMP_BLOCK_ITEMS or isinstance(obj, DECOMP_BLOCK_TYPES)
+    return id(obj) in _ids_of(DECOMP_BLOCK_ITEMS) or isinstance(obj, DECOMP_BLOCK_TYPES)
 
 
 class DecompSeq:

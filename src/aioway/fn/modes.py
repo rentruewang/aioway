@@ -3,9 +3,7 @@
 "Torch function/dispatch modes, corresponding to `__torch_function__`/`__torch_dispatch__`."
 
 import abc
-import contextlib as ctxl
 import dataclasses as dcls
-import types
 import typing
 from collections import abc as cabc
 
@@ -20,8 +18,11 @@ from aioway._common import (
     is_aten_op,
     is_prim_op,
     render_fcall,
+    render_func_name,
+    replace_tensors,
 )
 from aioway.fate import Fate, find_fate
+from aioway.schemas import attr
 
 from .fn import Fn
 
@@ -144,58 +145,25 @@ def _render_function_body(
     args: tuple[typing.Any, ...],
     kwargs: dict[str, typing.Any],
 ) -> str:
-    func_name = _render_func_name(func)
-    return _render_tensor_short(prefix + "::" + func_name, args, kwargs)
-
-
-def _render_func_name(func: cabc.Callable[..., typing.Any]) -> str:
-    name = func.__name__
-
-    # Only descriptors use `__get__`, and we render the descriptor itself.
-    if name == "__get__":
-        assert isinstance(func, types.MethodType | types.MethodWrapperType), type(func)
-        return repr(func.__self__)
-
-    # It seems that there isn't an attribute that expose the name of the `OpOverload`,
-    # so here we combine `namespace` (aten, prim, ...) and `__name__` (packet.type).
-    if isinstance(func, _ops.OpOverload):
-        return f"torch.ops.{func.namespace}.{name}"
-
-    # Just converting to `str` works.
-    if isinstance(func, _ops.OpOverloadPacket):
-        return f"torch.ops.{func!s}"
-
-    # If it's `torch.*`.
-    if getattr(torch, name, None) is func:
-        return f"torch.{name}"
-
-    # If it's `torch.Tensor.*`.
-    if getattr(torch.Tensor, name, None) is func:
-        return f"torch.Tensor.{name}"
-
-    # Don't know what this is. Just use `__qualname__`.
-    return func.__qualname__
+    func_name = render_func_name(func)
+    return render_tensor_func_short(prefix + "::" + func_name, args, kwargs)
 
 
 @typing.no_type_check
-def _render_tensor_short(
-    func: str, args: tuple[typing.Any, ...], kwargs: dict[str, typing.Any]
-):
+def replace_tensors_with_attr[T](obj: T) -> T:
+    return replace_tensors(obj, attr)
+
+
+def render_tensor_func_short(func: str, args, kwargs) -> str:
     # `Attr`s are better for display than `torch.Tensor`s.
 
-    # args = replace_tensors(args, attr)
-    # kwargs = replace_tensors(kwargs, attr)
+    args = replace_tensors_with_attr(args)
+    kwargs = replace_tensors_with_attr(kwargs)
 
     return render_fcall(func, *args, **kwargs)
 
 
-class TMode[T](typing.Protocol):
-    @abc.abstractmethod
-    def __call__(self, thunk: T, /) -> torch.Tensor:
-        raise NotImplementedError
-
-
-class TFunctionMode(overrides.TorchFunctionMode, TMode[TFunctionFn], abc.ABC):
+class TFunctionMode(overrides.TorchFunctionMode, abc.ABC):
     """
     `TorchFunctionMode` is the adaptor for `torch.overrides.TorchFunctionMode`.
     """
@@ -211,25 +179,8 @@ class TFunctionMode(overrides.TorchFunctionMode, TMode[TFunctionFn], abc.ABC):
         thunk = TFunctionFn(func=func, types=types, args=args, kwargs=kwargs)
         return self(thunk)
 
-    @staticmethod
-    def register(
-        f: TMode[TFunctionFn],
-    ) -> cabc.Callable[[], typing.ContextManager[None]]:
 
-        class _FuncTorchFunctionMode(TFunctionMode):
-            @typing.override
-            def __call__(self, t: TFunctionFn) -> typing.Any:
-                return f(t)
-
-        @ctxl.contextmanager
-        def ctx_man():
-            with _FuncTorchFunctionMode():
-                yield
-
-        return ctx_man
-
-
-class TDispatchMode(pyd.TorchDispatchMode, TMode[TDispatchFn], abc.ABC):
+class TDispatchMode(pyd.TorchDispatchMode, abc.ABC):
     """
     `TorchDispatchMode` is the adaptor for `torch.data._python_dispatch.TorchDispatchMode`.
     """
@@ -248,22 +199,6 @@ class TDispatchMode(pyd.TorchDispatchMode, TMode[TDispatchFn], abc.ABC):
 
         thunk = TDispatchFn(func=func, args=args, kwargs=kwargs)
         return self(thunk)
-
-    @staticmethod
-    def register(
-        f: TMode[TDispatchFn],
-    ) -> cabc.Callable[[], typing.ContextManager[None]]:
-        class _FuncTorchDispatchMode(TDispatchMode):
-            @typing.override
-            def __call__(self, t: TDispatchFn, /) -> torch.Tensor:
-                return f(t)
-
-        @ctxl.contextmanager
-        def ctx_man():
-            with _FuncTorchDispatchMode():
-                yield
-
-        return ctx_man
 
 
 @typing.final

@@ -1,5 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import pathlib
 import random
 
 import pytest
@@ -7,7 +8,14 @@ import torch
 from numpy import random as npr
 from rich import traceback
 
+from aioway.fn import fake_fn, track_fn
+
 from .fake import batch_sizes, cpu_and_maybe_cuda
+
+
+@pytest.fixture(scope="module")
+def media():
+    return (pathlib.Path(__file__).parent.parent / "media").resolve()
 
 
 @pytest.fixture(autouse=True, scope="session")
@@ -40,3 +48,20 @@ def data_size() -> int:
 @pytest.fixture(params=batch_sizes())
 def batch_size(request: pytest.FixtureRequest) -> int:
     return request.param
+
+
+@pytest.fixture
+def fake_mode():
+    with fake_fn():
+        yield
+
+
+@pytest.fixture
+def real_mode():
+    with track_fn():
+        yield
+
+
+@pytest.fixture(params=[fake_mode.name, real_mode.name])
+def maybe_fake_mode(request: pytest.FixtureRequest):
+    yield request.getfixturevalue(request.param)
