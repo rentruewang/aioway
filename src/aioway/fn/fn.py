@@ -8,7 +8,7 @@ import typing
 from collections import abc as cabc
 
 from aioway._common import render_fcall
-from aioway._common.breakdowns import NestedFinder
+from aioway._common.decomps import Decomposer
 
 __all__ = ["Fn", "Thunk"]
 
@@ -108,7 +108,7 @@ class Thunk(Fn):
 
     @typing.override
     def inputs(self) -> cabc.Iterator[Fn]:
-        finder = NestedFinder(target=Fn)
+        finder = Decomposer(target=lambda f: isinstance(f, Fn))
         return finder(self)
 
     @typing.override

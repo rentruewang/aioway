@@ -14,13 +14,13 @@ from torch import _ops, overrides
 from torch.utils import _python_dispatch as pyd
 
 from aioway._common import (
+    Decomposer,
     HasParam,
     find_nested_tensors,
     is_aten_op,
     is_prim_op,
     render_fcall,
 )
-from aioway._common.breakdowns import NestedFinder
 from aioway.fate import Fate, find_fate
 
 from .fn import Fn
@@ -77,7 +77,7 @@ class TFunctionFnMixin(Fn, abc.ABC):
 
     @typing.override
     def inputs(self) -> cabc.Iterator[TFunctionFn]:
-        finder = NestedFinder(target=TFunctionFn)
+        finder = Decomposer(target=lambda t: isinstance(t, TFunctionFn))
         return finder(self)
 
 
@@ -104,7 +104,7 @@ class TDispatchFnMixin(Fn, abc.ABC):
 
     @typing.override
     def inputs(self) -> cabc.Iterator[TDispatchFn | FateFn]:
-        finder = NestedFinder(target=TDispatchFn | FateFn)
+        finder = Decomposer(target=lambda t: isinstance(t, FateFn | TDispatchFn))
         return finder(self)
 
 
