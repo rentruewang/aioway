@@ -13,57 +13,62 @@ from aioway.schemas import DType
 @dcls.dataclass(frozen=True)
 class _CaseChecker:
     original: typing.Any
-    family: str
-    bits: int
+    torch_dtype: torch.dtype
 
     @property
     def dtype(self):
         return DType.parse(self.original)
 
-    def check(self):
+    @property
+    def rhs(self):
+        return DType(self.torch_dtype)
+
+    def check_parse(self):
         assert isinstance(self.dtype, DType)
-        assert self.dtype.family == self.family
-        assert self.dtype.bits == self.bits
-        assert self.dtype == self.original
+        assert self.dtype == self.rhs
+
+    def check_eq(self):
+        assert self.dtype == self.torch_dtype
+        assert self.original == self.rhs
 
 
 def _golden():
-    for dtype, family, bits in _dtypes():
-        yield _CaseChecker(original=dtype, family=family, bits=bits)
+    for dtype, torch_dtype in _dtypes():
+        yield _CaseChecker(original=dtype, torch_dtype=torch_dtype)
 
 
 def _dtypes():
-    yield "float16", "float", 16
-    yield np.dtype("float16"), "float", 16
-    yield torch.float16, "float", 16
+    yield "float16", torch.float16
+    yield np.dtype("float16"), torch.float16
+    yield torch.float16, torch.float16
 
-    yield "float32", "float", 32
-    yield np.dtype("float32"), "float", 32
-    yield torch.float32, "float", 32
+    yield "float32", torch.float32
+    yield np.dtype("float32"), torch.float32
+    yield torch.float32, torch.float32
 
-    yield "float64", "float", 64
-    yield np.dtype("float64"), "float", 64
-    yield torch.float64, "float", 64
+    yield "float64", torch.float64
+    yield np.dtype("float64"), torch.float64
+    yield torch.float64, torch.float64
 
-    yield "int8", "int", 8
-    yield np.dtype("int8"), "int", 8
-    yield torch.int8, "int", 8
+    yield "int8", torch.int8
+    yield np.dtype("int8"), torch.int8
+    yield torch.int8, torch.int8
 
-    yield "int16", "int", 16
-    yield np.dtype("int16"), "int", 16
-    yield torch.int16, "int", 16
+    yield "int16", torch.int16
+    yield np.dtype("int16"), torch.int16
+    yield torch.int16, torch.int16
 
-    yield "int32", "int", 32
-    yield np.dtype("int32"), "int", 32
-    yield torch.int32, "int", 32
+    yield "int32", torch.int32
+    yield np.dtype("int32"), torch.int32
+    yield torch.int32, torch.int32
 
-    yield "int64", "int", 64
-    yield np.dtype("int64"), "int", 64
-    yield torch.int64, "int", 64
+    yield "int64", torch.int64
+    yield np.dtype("int64"), torch.int64
+    yield torch.int64, torch.int64
 
-    yield "bool", "bool", 8
-    yield np.dtype("bool"), "bool", 8
-    yield torch.bool, "bool", 8
+    yield "bool", torch.bool
+    yield np.dtype("bool"), torch.bool
+    yield torch.bool, torch.bool
 
 
 @pytest.fixture(params=_golden())
@@ -71,5 +76,9 @@ def golden(request: pytest.FixtureRequest) -> _CaseChecker:
     return request.param
 
 
-def test_dtype_cases(golden: _CaseChecker):
-    golden.check()
+def test_dtype_parse(golden: _CaseChecker):
+    golden.check_parse()
+
+
+def test_dtype_eq(golden: _CaseChecker):
+    golden.check_eq()

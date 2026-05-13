@@ -4,8 +4,9 @@
 
 import collections
 import dataclasses as dcls
+import itertools
 import logging
-import typing, itertools
+import typing
 
 import rich
 import torch
