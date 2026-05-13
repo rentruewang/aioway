@@ -6,8 +6,6 @@ import logging
 import typing
 from collections import abc as cabc
 
-import torch
-
 from aioway._common import is_aten_op, is_prim_op, is_torchcodec_op, is_torchvision_op
 
 from .ctx import enabled_fake_mode, torch_fake_mode
@@ -59,17 +57,11 @@ def no_route(thunk: TDispatchFn):
 
 
 @dcls.dataclass
-class EnsureOnce(TDispatchMode):
-    def __call__(self, thunk: TDispatchFn) -> torch.Tensor:
-        return thunk.do()
-
-
-@dcls.dataclass
 class RouteDispatchOp(TDispatchMode):
     router: FateRouter
     history: FnHistory[TDispatchFn | FateFn] = dcls.field(default_factory=FnHistory)
 
-    def __call__(self, thunk: TDispatchFn) -> torch.Tensor:
+    def __call__(self, thunk: TDispatchFn) -> object:
         # Create a `_ThunkType` and route implemented methods.
 
         fn: TDispatchFn | FateFn
@@ -107,7 +99,7 @@ class RouteFunctionOp(TFunctionMode):
     """
 
     @typing.override
-    def __call__(self, thunk: TFunctionFn, /) -> torch.Tensor:
+    def __call__(self, thunk: TFunctionFn, /) -> object:
         with self.dispatch_router:
             result = thunk.do()
 

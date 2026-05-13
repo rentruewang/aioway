@@ -27,7 +27,7 @@ class Fn(abc.ABC):
     """
 
     @abc.abstractmethod
-    def do(self) -> typing.Any:
+    def do(self) -> object:
         """
         Execute the computation.
         """
@@ -93,7 +93,7 @@ class Thunk(Fn):
 
         return NotImplemented
 
-    def do(self) -> typing.Any:
+    def do(self) -> object:
         """
         Call and cache the function.
         """
