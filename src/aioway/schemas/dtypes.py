@@ -8,7 +8,7 @@ import typing
 import numpy as np
 import torch
 
-__all__ = ["DType", "DTypeLike"]
+__all__ = ["DType", "DTypeLike", "DTypeFamily"]
 
 LOGGER = logging.getLogger(__name__)
 
@@ -87,10 +87,10 @@ class DType:
             return "float"
 
         elif self.is_signed:
-            return "uint"
+            return "int"
 
         else:
-            return "int"
+            return "uint"
 
     def numpy(self) -> np.dtype:
         "Convert this to a numpy dtype."

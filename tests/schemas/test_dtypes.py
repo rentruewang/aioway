@@ -8,6 +8,7 @@ import pytest
 import torch
 
 from aioway.schemas import DType
+from aioway.schemas import DTypeFamily
 
 
 @dcls.dataclass(frozen=True)
@@ -24,12 +25,38 @@ class _CaseChecker:
         return DType(self.torch_dtype)
 
     def check_parse(self):
-        assert isinstance(self.dtype, DType), f"{self.original=}, {self.rhs=}"
-        assert self.dtype == self.rhs, f"{self.original=}, {self.rhs=}"
+        assert isinstance(self.dtype, DType), self.__test_case
+        assert self.dtype == self.rhs, self.__test_case
 
     def check_eq(self):
-        assert self.dtype == self.torch_dtype, f"{self.original=}, {self.rhs=}"
-        assert self.original == self.rhs, f"{self.original=}, {self.rhs=}"
+        assert self.dtype == self.torch_dtype, self.__test_case
+        assert self.original == self.rhs, self.__test_case
+
+    def check_family(self):
+        assert self.rhs.family == self.family, self.__test_case
+
+    @property
+    def family(self) -> DTypeFamily:
+        if self.torch_dtype == torch.bool:
+            return "bool"
+
+        if self.torch_dtype in [torch.complex32, torch.complex64, torch.complex128]:
+            return "complex"
+
+        if self.torch_dtype in [torch.uint8, torch.uint16, torch.uint32, torch.uint64]:
+            return "uint"
+
+        if self.torch_dtype in [torch.int8, torch.int16, torch.int32, torch.int64]:
+            return "int"
+
+        if self.torch_dtype in [torch.float16, torch.float32, torch.float64]:
+            return "float"
+
+        raise ValueError(f"Unknown type: {self.torch_dtype}")
+
+    @property
+    def __test_case(self):
+        return f"{self.original=}, {self.rhs=}, {self.family=}"
 
 
 def _golden():
@@ -110,8 +137,15 @@ def golden(request: pytest.FixtureRequest) -> _CaseChecker:
 
 
 def test_dtype_parse(golden: _CaseChecker):
+    "Check the `DType.parse` different objects."
     golden.check_parse()
 
 
 def test_dtype_eq(golden: _CaseChecker):
+    "Check the `==` operator of `DType`."
     golden.check_eq()
+
+
+def test_dtype_family(golden: _CaseChecker):
+    "Check the family of the case."
+    golden.check_family()
