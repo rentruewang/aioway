@@ -190,6 +190,8 @@ class FnHistory[T: FateFn | TFunctionFn | TDispatchFn]:
             self.input_to_thunk_list[input_tensor].append(item)
 
     def networkx(self):
+        "Convert the graph to `nx.DiGraph`, using data dependencies as link."
+
         import networkx as nx
 
         graph: nx.DiGraph[T] = nx.DiGraph()

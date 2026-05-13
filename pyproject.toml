@@ -19,6 +19,7 @@ faiss = [
 ]
 networkx = [
     "networkx>=3.6",
+    "matplotlib>=3.10.9",
 ]
 
 [build-system]

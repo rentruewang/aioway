@@ -5,7 +5,7 @@
 groups = ["default", "build", "debugging", "faiss", "ibis", "networkx", "pre-commit", "tests"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:4e47d2b26888b033e753feafa474a1656d3851c8ae786d315538ca51214e96ec"
+content_hash = "sha256:258b534ac0cdc578e8ff9488ecbb45c24e1d9c9505a7b245899a20a52a9c6d12"
 
 [[metadata.targets]]
 requires_python = ">=3.14,<3.15"
@@ -448,7 +448,7 @@ name = "contourpy"
 version = "1.3.3"
 requires_python = ">=3.11"
 summary = "Python library for calculating contours of 2D quadrilateral grids"
-groups = ["debugging"]
+groups = ["debugging", "networkx"]
 dependencies = [
     "numpy>=1.25",
 ]
@@ -599,7 +599,7 @@ name = "cycler"
 version = "0.12.1"
 requires_python = ">=3.8"
 summary = "Composable style cycles"
-groups = ["debugging"]
+groups = ["debugging", "networkx"]
 files = [
     {file = "cycler-0.12.1-py3-none-any.whl", hash = "sha256:85cef7cff222d8644161529808465972e51340599459b8ac3ccbac5a854e0d30"},
     {file = "cycler-0.12.1.tar.gz", hash = "sha256:88bb128f02ba341da8ef447245a9e138fae777f6a23943da4540077d3601eb1c"},
@@ -736,7 +736,7 @@ name = "fonttools"
 version = "4.62.1"
 requires_python = ">=3.10"
 summary = "Tools to manipulate font files"
-groups = ["debugging"]
+groups = ["debugging", "networkx"]
 files = [
     {file = "fonttools-4.62.1-cp314-cp314-macosx_10_15_universal2.whl", hash = "sha256:fa1d16210b6b10a826d71bed68dd9ec24a9e218d5a5e2797f37c573e7ec215ca"},
     {file = "fonttools-4.62.1-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:aa69d10ed420d8121118e628ad47d86e4caa79ba37f968597b958f6cceab7eca"},
@@ -1358,7 +1358,7 @@ name = "kiwisolver"
 version = "1.5.0"
 requires_python = ">=3.10"
 summary = "A fast implementation of the Cassowary constraint solver"
-groups = ["debugging"]
+groups = ["debugging", "networkx"]
 files = [
     {file = "kiwisolver-1.5.0-cp314-cp314-macosx_10_15_universal2.whl", hash = "sha256:8df31fe574b8b3993cc61764f40941111b25c2d9fea13d3ce24a49907cd2d615"},
     {file = "kiwisolver-1.5.0-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:1d49a49ac4cbfb7c1375301cd1ec90169dfeae55ff84710d782260ce77a75a02"},
@@ -1492,7 +1492,7 @@ name = "matplotlib"
 version = "3.10.9"
 requires_python = ">=3.10"
 summary = "Python plotting package"
-groups = ["debugging"]
+groups = ["debugging", "networkx"]
 dependencies = [
     "contourpy>=1.0.1",
     "cycler>=0.10",
@@ -1827,7 +1827,7 @@ name = "numpy"
 version = "2.4.4"
 requires_python = ">=3.11"
 summary = "Fundamental package for array computing in Python"
-groups = ["default", "debugging", "faiss"]
+groups = ["default", "debugging", "faiss", "networkx"]
 files = [
     {file = "numpy-2.4.4-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:f169b9a863d34f5d11b8698ead99febeaa17a13ca044961aa8e2662a6c7766a0"},
     {file = "numpy-2.4.4-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:2483e4584a1cb3092da4470b38866634bafb223cbcd551ee047633fd2584599a"},
@@ -2063,7 +2063,7 @@ name = "packaging"
 version = "26.2"
 requires_python = ">=3.8"
 summary = "Core utilities for Python packages"
-groups = ["default", "build", "debugging", "faiss", "pre-commit", "tests"]
+groups = ["default", "build", "debugging", "faiss", "networkx", "pre-commit", "tests"]
 files = [
     {file = "packaging-26.2-py3-none-any.whl", hash = "sha256:5fc45236b9446107ff2415ce77c807cee2862cb6fac22b8a73826d0693b0980e"},
     {file = "packaging-26.2.tar.gz", hash = "sha256:ff452ff5a3e828ce110190feff1178bb1f2ea2281fa2075aadb987c2fb221661"},
@@ -2198,7 +2198,7 @@ name = "pillow"
 version = "12.2.0"
 requires_python = ">=3.10"
 summary = "Python Imaging Library (fork)"
-groups = ["default", "debugging"]
+groups = ["default", "debugging", "networkx"]
 files = [
     {file = "pillow-12.2.0-cp314-cp314-ios_13_0_arm64_iphoneos.whl", hash = "sha256:3adc9215e8be0448ed6e814966ecf3d9952f0ea40eb14e89a102b87f450660d8"},
     {file = "pillow-12.2.0-cp314-cp314-ios_13_0_arm64_iphonesimulator.whl", hash = "sha256:6a9adfc6d24b10f89588096364cc726174118c62130c817c2837c60cf08a392b"},
@@ -2414,7 +2414,7 @@ name = "pyparsing"
 version = "3.3.2"
 requires_python = ">=3.9"
 summary = "pyparsing - Classes and methods to define and execute parsing grammars"
-groups = ["debugging"]
+groups = ["debugging", "networkx"]
 files = [
     {file = "pyparsing-3.3.2-py3-none-any.whl", hash = "sha256:850ba148bd908d7e2411587e247a1e4f0327839c40e2e5e6d05a007ecc69911d"},
     {file = "pyparsing-3.3.2.tar.gz", hash = "sha256:c777f4d763f140633dcb6d8a3eda953bf7a214dc4eff598413c070bcdc117cbc"},
@@ -2530,7 +2530,7 @@ name = "python-dateutil"
 version = "2.9.0.post0"
 requires_python = "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7"
 summary = "Extensions to the standard Python datetime module"
-groups = ["default", "debugging"]
+groups = ["default", "debugging", "networkx"]
 dependencies = [
     "six>=1.5",
 ]
@@ -2844,7 +2844,7 @@ name = "six"
 version = "1.17.0"
 requires_python = "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7"
 summary = "Python 2 and 3 compatibility utilities"
-groups = ["default", "debugging"]
+groups = ["default", "debugging", "networkx"]
 files = [
     {file = "six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274"},
     {file = "six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81"},
