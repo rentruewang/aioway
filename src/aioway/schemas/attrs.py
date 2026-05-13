@@ -75,7 +75,7 @@ class Attr:
         return f"[shape={self.shape},dtype={self.dtype},device={self.device},infos={self.infos!r}]"
 
     def memory(self):
-        return self.dtype.bits * self.shape.numel()
+        return self.dtype.itemsize * self.shape.numel()
 
     def to_tensor(self):
         """
