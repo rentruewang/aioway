@@ -32,32 +32,19 @@ class DType:
     comparison and conversion between different frameworks.
     """
 
-    def __init__(self, family: DTypeFamily, bits: int):
-        if bits % 8 != 0:
-            raise ValueError(f"Bits should be multiple of 8. Got bits={self._bits}.")
-
-        self._family: DTypeFamily = family
-        self._bits: int = bits
+    def __init__(self, dtype: torch.dtype):
+        self._dtype = dtype
 
     def __str__(self):
         """
         Get the representation of the type, must be the most specialized.
-
-        For example, the output should not be "float" due to ambiguity,
-        but rather "float32" or "float64" etc.
         """
 
-        match f := self._family:
-            case "bool":
-                return "bool"
-            case "int" | "float":
-                return f"{f}{self._bits}"
-            case _:
-                raise NotImplementedError(self._family)
+        return str(self._dtype).removeprefix("torch.")
 
     @typing.override
     def __getstate__(self) -> object:
-        return self.family, self.bits
+        return str(self)
 
     def __hash__(self) -> int:
         return hash(str(self))
