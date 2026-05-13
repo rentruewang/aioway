@@ -92,6 +92,17 @@ def _dtypes():
     yield np.dtype("uint64"), torch.uint64
     yield torch.uint64, torch.uint64
 
+    yield "complex32", torch.complex32
+    yield torch.complex32, torch.complex32
+
+    yield "complex64", torch.complex64
+    yield np.dtype("complex64"), torch.complex64
+    yield torch.complex64, torch.complex64
+
+    yield "complex128", torch.complex128
+    yield np.dtype("complex128"), torch.complex128
+    yield torch.complex128, torch.complex128
+
 
 @pytest.fixture(params=_golden())
 def golden(request: pytest.FixtureRequest) -> _CaseChecker:
