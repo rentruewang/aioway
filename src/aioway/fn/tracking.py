@@ -12,6 +12,7 @@ import rich
 import torch
 
 from aioway._common import Stack, TensorFilter, filter_tensor_off, is_leaf_has_grad
+from aioway._common.decomps import find_nested_tensors
 from aioway.schemas import attr
 
 from .modes import (
@@ -181,9 +182,11 @@ class FnHistory[T: FateFn | TFunctionFn | TDispatchFn]:
 
     def _update_ref(self, item: T, output: typing.Any) -> None:
         # `__torch_function__` doesn't always return `torch.Tensor` actually!
-        if isinstance(output, torch.Tensor):
-            # Update output.
-            self.output_to_thunk_list[output].append(item)
+
+        # Update output if tensors are found in the output.
+        if out_tensors := list(find_nested_tensors(output)):
+            for out in out_tensors:
+                self.output_to_thunk_list[out].append(item)
 
         # Update input.
         for input_tensor in item.tensors():
