@@ -36,20 +36,22 @@ __all__ = [
 LOGGER = logging.getLogger(__name__)
 
 
-class PrintTorchFunction(TFunctionMode):
-    rich: bool = False
+class _HasRichFlagMixin:
+    def __init__(self, rich: bool = False) -> None:
+        super().__init__()
+        self._rich = rich
 
+
+class PrintTorchFunction(_HasRichFlagMixin, TFunctionMode):
     @typing.override
     def __call__(self, thunk: TFunctionFn, /) -> torch.Tensor:
-        return _ThunkPrinter(rich=self.rich)(thunk)
+        return _ThunkPrinter(rich=self._rich)(thunk)
 
 
-class PrintTorchDispatch(TDispatchMode):
-    rich: bool = False
-
+class PrintTorchDispatch(_HasRichFlagMixin, TDispatchMode):
     @typing.override
     def __call__(self, thunk: TDispatchFn, /) -> torch.Tensor:
-        return _ThunkPrinter(rich=self.rich)(thunk)
+        return _ThunkPrinter(rich=self._rich)(thunk)
 
 
 @dcls.dataclass(frozen=True)
