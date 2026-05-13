@@ -14,8 +14,7 @@ LOGGER = logging.getLogger(__name__)
 
 type DTypeFamily = typing.Literal["int", "float", "bool", "uint", "complex"]
 
-type _PrimitiveType = type[int] | type[float] | type[bool]
-type DTypeLike = str | DType | _PrimitiveType | torch.dtype | np.dtype
+type DTypeLike = str | DType | torch.dtype | np.dtype
 "Types that can be converted to `Dtype` with the public `dtype` function (or `DType.parse`)."
 
 
