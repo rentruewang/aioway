@@ -169,12 +169,12 @@ class TFunctionMode(overrides.TorchFunctionMode, abc.ABC):
     """
 
     @abc.abstractmethod
-    def __call__(self, thunk: TFunctionFn, /) -> torch.Tensor:
+    def __call__(self, thunk: TFunctionFn, /) -> object:
         raise NotImplementedError
 
     @typing.final
     @typing.override
-    def __torch_function__(self, func, types, args=(), kwargs=None):
+    def __torch_function__(self, func, types, args=(), kwargs=None) -> object:
         kwargs = kwargs or {}
         thunk = TFunctionFn(func=func, types=types, args=args, kwargs=kwargs)
         return self(thunk)
@@ -186,12 +186,12 @@ class TDispatchMode(pyd.TorchDispatchMode, abc.ABC):
     """
 
     @abc.abstractmethod
-    def __call__(self, thunk: TDispatchFn, /) -> torch.Tensor:
+    def __call__(self, thunk: TDispatchFn, /) -> object:
         raise NotImplementedError
 
     @typing.final
     @typing.override
-    def __torch_dispatch__(self, func, types, args=(), kwargs=None) -> typing.Any:
+    def __torch_dispatch__(self, func, types, args=(), kwargs=None) -> object:
         kwargs = kwargs or {}
 
         if not all(issubclass(t, torch.Tensor) for t in types):

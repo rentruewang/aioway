@@ -112,7 +112,7 @@ class TorchFunctionStack(TFunctionMode):
     stack: Stack[TFunctionFn] = dcls.field(default_factory=Stack)
 
     @typing.override
-    def __call__(self, thunk: TFunctionFn) -> typing.Any:
+    def __call__(self, thunk: TFunctionFn) -> object:
         with self.stack.enter(thunk):
             return thunk.do()
 
@@ -122,7 +122,7 @@ class TorchDispatchStack(TDispatchMode):
     stack: Stack[TDispatchFn] = dcls.field(default_factory=Stack)
 
     @typing.override
-    def __call__(self, thunk: TDispatchFn) -> torch.Tensor:
+    def __call__(self, thunk: TDispatchFn) -> object:
         with self.stack.enter(thunk):
             return thunk.do()
 
