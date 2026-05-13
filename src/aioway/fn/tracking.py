@@ -152,39 +152,6 @@ class FnResult[F: TorchCall]:
 
 
 @dcls.dataclass(frozen=True)
-class FnInputOutput[T: TorchCall]:
-    "The class that stored the inputs and outputs of a graph (discrad intermediate)."
-
-    inputs: set[torch.Tensor]
-    "The unique inputs produced."
-
-    outputs: set[torch.Tensor]
-    "The unique outputs produced."
-
-    def __iter__(self):
-        yield self.inputs
-        yield self.outputs
-
-    @classmethod
-    def from_history(cls, history: list[FnResult[T]]) -> typing.Self:
-        def all_inputs():
-            for hist in history:
-                yield from hist.fn.tensors()
-
-        def all_outputs():
-            for hist in history:
-                yield from find_nested_tensors(hist.result)
-
-        inputs = set(all_inputs())
-        outputs = set(all_outputs())
-
-        dangling_inputs = inputs - outputs
-        produced_outputs = outputs - inputs
-
-        return cls(dangling_inputs, produced_outputs)
-
-
-@dcls.dataclass(frozen=True)
 class FnHistory[T: TorchCall]:
     """
     The list of `Fn` that tracks the current history.
@@ -267,18 +234,28 @@ class FnHistory[T: TorchCall]:
 
         yield from params
 
-    def io(self) -> FnInputOutput[T]:
+    def inputs(self) -> set[torch.Tensor]:
         """
-        All the inputs and outputs of `FnHistory` in 2 sets.
+        All the inputs of `FnHistory` in a `set`.
 
-        Inputs are defined as tensors not created by operations tracked by `self`,
-        outputs are defined as tensors created by operations tracked by `self`.
+        Inputs are defined as tensors not created by operations tracked by `self`.
 
         Returns:
-            A `FnInputOutput` instance that is just a tuple of `set[torch.Tensor]`s.
+            A `set` that stores all the `inputs` that are not created by `self`.
         """
 
-        return FnInputOutput[T].from_history(self.history)
+        def all_inputs():
+            for hist in self.history:
+                yield from hist.fn.tensors()
+
+        def all_outputs():
+            for hist in self.history:
+                yield from find_nested_tensors(hist.result)
+
+        inputs = set(all_inputs())
+        outputs = set(all_outputs())
+
+        return inputs - outputs
 
     def numel(self) -> int:
         "The total number of elements of the tensors."
