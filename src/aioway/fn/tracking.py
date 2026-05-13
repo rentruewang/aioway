@@ -36,6 +36,9 @@ __all__ = [
 
 LOGGER = logging.getLogger(__name__)
 
+type TorchCall = FateFn | TFunctionFn | TDispatchFn
+"The calls to `torch.*` APIs."
+
 
 class PrintTorchFunction(TFunctionMode):
     rich: bool = False
@@ -134,9 +137,14 @@ class TorchDispatchStack(TDispatchMode):
 
 
 @dcls.dataclass(frozen=True)
-class FnResult[F: FateFn | TFunctionFn | TDispatchFn]:
+class FnResult[F: TorchCall]:
+    "The storage class per item for `FnHistory`."
+
     fn: F
+    "The `Fn` that has been called."
+
     result: typing.Any
+    "The output that `fn` has produced."
 
     @typing.override
     def __repr__(self) -> str:
@@ -144,9 +152,46 @@ class FnResult[F: FateFn | TFunctionFn | TDispatchFn]:
 
 
 @dcls.dataclass(frozen=True)
-class FnHistory[T: FateFn | TFunctionFn | TDispatchFn]:
+class FnInputOutput[T: TorchCall]:
+    "The class that stored the inputs and outputs of a graph (discrad intermediate)."
+
+    inputs: set[torch.Tensor]
+    "The unique inputs produced."
+
+    outputs: set[torch.Tensor]
+    "The unique outputs produced."
+
+    def __iter__(self):
+        yield self.inputs
+        yield self.outputs
+
+    @classmethod
+    def from_history(cls, history: list[FnResult[T]]) -> typing.Self:
+        def all_inputs():
+            for hist in history:
+                yield from hist.fn.tensors()
+
+        def all_outputs():
+            for hist in history:
+                yield from find_nested_tensors(hist.result)
+
+        inputs = set(all_inputs())
+        outputs = set(all_outputs())
+
+        dangling_inputs = inputs - outputs
+        produced_outputs = outputs - inputs
+
+        return cls(dangling_inputs, produced_outputs)
+
+
+@dcls.dataclass(frozen=True)
+class FnHistory[T: TorchCall]:
     """
     The list of `Fn` that tracks the current history.
+
+    This stores `torch.Tensor` as `dict` keys, which is fine
+    because `torch.Tensor` uses `id` as `hash`,
+    and we only care about objects allocated not data equality.
     """
 
     history: list[FnResult[T]] = dcls.field(default_factory=list)
@@ -222,11 +267,23 @@ class FnHistory[T: FateFn | TFunctionFn | TDispatchFn]:
 
         yield from params
 
+    def io(self) -> FnInputOutput[T]:
+        """
+        All the inputs and outputs of `FnHistory` in 2 sets.
+
+        Inputs are defined as tensors not created by operations tracked by `self`,
+        outputs are defined as tensors created by operations tracked by `self`.
+
+        Returns:
+            A `FnInputOutput` instance that is just a tuple of `set[torch.Tensor]`s.
+        """
+
+        return FnInputOutput[T].from_history(self.history)
+
     def numel(self) -> int:
+        "The total number of elements of the tensors."
         return sum(param.numel() for param in self.parameters(filter_tensor_off))
 
     def memory(self) -> int:
+        "The total memory consumed by the tensors."
         return sum(attr(param).memory() for param in self.parameters(filter_tensor_off))
-
-    def find_fn(self, tensor: torch.Tensor):
-        return self.output_to_thunk_list[tensor]
