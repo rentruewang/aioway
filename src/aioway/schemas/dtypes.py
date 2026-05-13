@@ -128,10 +128,6 @@ class DType:
         if isinstance(dtype, cls):
             return dtype
 
-        # Handling the basic types.
-        if isinstance(dtype, type):
-            return cls._parse_primitive_type(dtype)
-
         # Convert with regex.
         if isinstance(dtype, str):
             return cls._parse_str(dtype)
@@ -143,11 +139,6 @@ class DType:
             return cls._parse_numpy(dtype)
 
         raise ValueError(f"Not sure how to handle {dtype=}.")
-
-    @classmethod
-    def _parse_primitive_type(cls, dtype: type) -> typing.Self:
-        # Directly delegate to the string parser.
-        return cls._parse_str(dtype.__name__)
 
     @classmethod
     def _parse_str(cls, dtype: str, /) -> typing.Self:
