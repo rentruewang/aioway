@@ -11,7 +11,6 @@ import numpy as np
 import pandas as pd
 import tensordict as td
 import torch
-from torch.utils import _mode_utils
 
 __all__ = [
     "replace_tensors",

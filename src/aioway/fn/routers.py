@@ -6,9 +6,8 @@ import logging
 import typing
 from collections import abc as cabc
 
-from torch import ops
-
 from aioway._common import is_aten_op, is_prim_op, is_torchcodec_op, is_torchvision_op
+from aioway._common.decomps import replace_tensors
 
 from .fake import enabled_fake_mode, torch_fake_mode
 from .modes import FateFn, TDispatchFn, TDispatchMode, TFunctionFn, TFunctionMode
@@ -58,26 +57,16 @@ def no_route(thunk: TDispatchFn):
     return NotImplemented
 
 
-class NoInplaceOp(TDispatchMode):
-    """
-    `NoInplaceOp` replaces the inplace `torch.ops.*` ops with their functional counterpart.
-
-    Since all pytorch inplace ops has a suffix "_", I'm using that as identifier.
-
-    This must be applied before any other thunk routing.
-    """
-
+class CloneDispatchOp(TDispatchMode):
     @typing.override
     def __call__(self, thunk: TDispatchFn, /) -> object:
-        if not isinstance(thunk, TDispatchFn):
-            raise TypeError(f"Thunk is already rerouted as {thunk}.")
+        result = thunk.do()
 
-        # Replace with non in place version, in fake mode.
-        if (func_name := str(thunk.func)).endswith("_") and enabled_fake_mode():
-            func = getattr(ops, func_name.removesuffix("_"))
-            thunk = TDispatchFn(func=func, args=thunk.args, kwargs=thunk.kwargs)
+        # In fake mode, clone the tensor to prevent `FakeTensor` reuse. Should be cheap.
+        if enabled_fake_mode():
+            result = replace_tensors(result, lambda tensor: tensor.clone())
 
-        return thunk.do()
+        return result
 
 
 @dcls.dataclass
@@ -162,5 +151,5 @@ def fake_fn():
     dispatcher = RouteDispatchOp(only_route_in_fake)
     tracker = RouteFunctionOp(dispatcher)
 
-    with torch_fake_mode(), tracker:
+    with torch_fake_mode(), tracker, CloneDispatchOp():
         yield tracker.history, dispatcher.history

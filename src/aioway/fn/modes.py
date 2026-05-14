@@ -10,7 +10,8 @@ from collections import abc as cabc
 
 import torch
 from torch import _ops, overrides
-from torch.utils import _python_dispatch as pyd, _mode_utils as mu
+from torch.utils import _mode_utils as mu
+from torch.utils import _python_dispatch as pyd
 
 from aioway._common import (
     Decomposer,
@@ -23,7 +24,6 @@ from aioway._common import (
     replace_tensors,
 )
 from aioway.fate import Fate, find_fate
-from aioway.fn import enabled_fake_mode
 from aioway.schemas import attr
 
 from .fn import Fn
@@ -150,25 +150,6 @@ class TFunctionFn(TFunctionFnMixin, _TThunkBase[cabc.Callable[..., typing.Any]])
 class TDispatchFnMixin(Fn, abc.ABC):
     "The mixin to define what types `Fn` graph would capture during dispatch mode."
 
-    @typing.final
-    @typing.override
-    def do(self) -> object:
-        result = self._do()
-
-        # In fake mode, clone the tensor s.t. each `Fn` has a unique `torch.Tensor`.
-        # Otherwise sometimes `torch` reuses `FakeTensor` due to performance.
-        if enabled_fake_mode():
-            return replace_tensors(result, lambda tensor: tensor.clone())
-
-        else:
-            return result
-
-    @abc.abstractmethod
-    def _do(self) -> object:
-        "This is the implementation of `do`, whose result would be cloned in fake mode in `do`."
-
-        raise NotImplementedError
-
     @typing.override
     def inputs(self) -> cabc.Iterator[TDispatchFn | FateFn]:
         finder = Decomposer(target=lambda t: isinstance(t, FateFn | TDispatchFn))
@@ -195,10 +176,6 @@ class TDispatchFn(TDispatchFnMixin, _TThunkBase[_ops.OpOverload]):
 
     def __repr__(self) -> str:
         return _render_function_body("dispatch", self.func, self.args, self.kwargs)
-
-    @typing.override
-    def _do(self) -> object:
-        return _TThunkBase.do(self)
 
     @property
     def is_aten(self) -> bool:
@@ -300,7 +277,7 @@ class FateFn(HasParam, TDispatchFnMixin):
         return repr(self.fate)
 
     @typing.override
-    def _do(self) -> torch.Tensor:
+    def do(self) -> torch.Tensor:
         return self.fate.do()
 
     @typing.override
