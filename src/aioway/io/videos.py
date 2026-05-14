@@ -5,7 +5,7 @@ import os
 import torch
 from torchcodec import decoders as dec
 
-from aioway.fn import torch_enable_fake_mode_func
+from aioway.fake import torch_enable_fake_mode_func
 
 __all__ = ["read_video_from_path"]
 

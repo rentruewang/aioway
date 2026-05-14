@@ -10,7 +10,7 @@ from PIL import Image as image
 from torchvision import io as vio
 from torchvision.transforms import v2 as tt
 
-from aioway.fn import enabled_fake_mode, torch_enable_fake_mode_func
+from aioway.fake import enabled_fake_mode, torch_enable_fake_mode_func
 from aioway.schemas import attr
 
 __all__ = [
@@ -89,7 +89,7 @@ class FakePillowImageLoader(ImageLoader):
                     "dtype": "int",
                 }
             )
-            .to_tensor()
+            .to_fake_tensor()
             .to(torch.uint8)
         )
 
