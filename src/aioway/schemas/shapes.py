@@ -1,6 +1,5 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import dataclasses as dcls
 import logging
 import typing
 from collections import abc as cabc
@@ -27,7 +26,6 @@ _is_tuple_of_int = is_tuple_of(int)
 _is_list_of_int = is_list_of(int)
 
 
-@dcls.dataclass(frozen=True, eq=False)
 class Shape(cabc.Sequence[int]):
     """
     `Shape` represents a regular (non-jagged) array's dimensions,
@@ -36,50 +34,41 @@ class Shape(cabc.Sequence[int]):
     Right now, it represents the shape of a `Tensor` **outside** the batch dimension.
     """
 
-    dims: npt.NDArray[np.uint]
-    """
-    The dimensions
-    """
+    def __init__(self, dims: torch.Size) -> None:
+        self._dims: torch.Size = dims
+        """
+        The `torch.Size` that backs the `Shape`.
+        """
 
-    def __post_init__(self):
-
-        if not self.valid():
-            raise ValueError(self)
-
-        self.dims.flags.writeable = False
-
-        LOGGER.debug("Shape created: %s", self)
-
-    @typing.override
     def __getstate__(self) -> object:
-        return self.dims.tolist()
+        return tuple(self._dims)
 
     def __hash__(self):
-        return hash(self.dims.tobytes())
+        return hash(tuple(self._dims))
 
-    @typing.override
     def __repr__(self) -> str:
-        return "(" + "x".join(map(str, self.dims)) + ")"
+        return "(" + "x".join(map(str, self._dims)) + ")"
 
+    @typing.no_type_check
     def __eq__(self, other: object) -> bool:
-        if (rhs := _as_int_arr(other)) is None:
-            return NotImplemented
+        if isinstance(other, Shape):
+            return self._dims == other._dims
 
-        lhs = np.asarray(self)
-        return lhs.ndim == rhs.ndim and (lhs == rhs).all().item()
+        if isinstance(other, np.ndarray):
+            return other.ndim == 1 and self == other.tolist()
 
-    def exceeds(self, other: typing.Self):
-        if self.ndim != other.ndim:
-            raise ValueError
+        if (
+            False
+            or isinstance(other, torch.Size)
+            or _is_tuple_of_int(other)
+            or _is_list_of_int(other)
+        ):
+            return self._dims == tuple(other)
 
-        lhs = np.asarray(self)
-        rhs = np.asarray(other)
+        return NotImplemented
 
-        return (lhs > rhs).any().item()
-
-    @typing.override
-    def __len__(self):
-        return len(self.dims)
+    def __len__(self) -> int:
+        return len(self._dims)
 
     @typing.overload
     def __getitem__(self, idx: int) -> int: ...
@@ -91,21 +80,30 @@ class Shape(cabc.Sequence[int]):
     def __getitem__(self, idx):
         match idx:
             case int():
-                return self.dims[idx]
+                return self._dims[idx]
             case slice():
-                return type(self)(self.dims[idx])
+                return type(self)(self._dims[idx])
             case _:
                 raise TypeError(type(idx))
 
     @typing.override
     def __iter__(self) -> cabc.Iterator[int]:
-        return iter(self.dims)
+        return iter(self._dims)
 
     def __array__(self):
-        return self.dims
+        return np.array(self._dims)
+
+    def exceeds(self, other: typing.Self):
+        if self.ndim != other.ndim:
+            raise ValueError
+
+        lhs = np.asarray(self)
+        rhs = np.asarray(other)
+
+        return (lhs > rhs).any().item()
 
     def unsqueeze(self, dim: int):
-        dims = list(self.dims)
+        dims = list(self._dims)
         dims.insert(dim, 1)
         return self.parse(dims)
 
@@ -122,32 +120,6 @@ class Shape(cabc.Sequence[int]):
             else:
                 yield i
 
-    def valid(self) -> bool:
-        """
-        Check if the shape is a valid `Shape`.
-        """
-
-        LOGGER.debug("Checking if %s is a `Shape`", self)
-
-        return np.isdtype(self.dims.dtype, "unsigned integer")
-
-    def valid_dims(self, dims: list[int]) -> bool:
-        """
-        Validate the dimensions amongst the shapes.
-        """
-
-        is_list_of_int = is_list_of(int)
-        length = len(self)
-
-        return is_list_of_int(dims) and (max(dims) >= length or min(dims) < -length)
-
-    def wrap_index(self, dims: list[int]) -> list[int]:
-        # Make the dims positive.
-        return [d % len(self) for d in dims]
-
-    def numel(self) -> int:
-        return np.prod(self.dims).item()
-
     def broadcastable(self, other: ShapeLike):
         try:
             _ = self.broadcast(other)
@@ -159,7 +131,7 @@ class Shape(cabc.Sequence[int]):
         other = Shape.parse(other)
 
         try:
-            result = np.broadcast_shapes(self.dims, other.dims)
+            result = np.broadcast_shapes(self._dims, other._dims)
         except ValueError as ve:
             raise ValueError(f"{self=} and {other=} cannot be broadcasted together.")
 
@@ -172,18 +144,19 @@ class Shape(cabc.Sequence[int]):
         """
         return len(self)
 
-    @property
-    def size(self) -> int:
+    def numel(self) -> int:
         """
         Number of elements in a shape.
         """
 
-        total = 1
+        return self._dims.numel()
 
-        for s in self:
-            total *= s
+    def torch(self) -> torch.Size:
+        """
+        Convert to `torch` equivalent.
+        """
 
-        return total
+        return self._dims
 
     @typing.overload
     @classmethod
@@ -225,23 +198,13 @@ class Shape(cabc.Sequence[int]):
         if isinstance(dims, cls):
             return dims
 
+        if isinstance(dims, tuple | torch.Size):
+            return cls(torch.Size(dims))
+
         if isinstance(dims, cabc.Iterable):
             dims_array = tuple(dims)
 
             if _is_tuple_of_int(dims_array):
-                return cls(np.array(dims_array).astype("uint"))
+                return cls(torch.Size(dims_array))
 
         raise ValueError
-
-
-def _as_int_arr(obj: object) -> npt.NDArray[np.uint] | None:
-    """
-    Convert the object into a numpy array. Return `None` if it's not doable / not integral array.
-    """
-
-    array = np.asarray(obj)
-
-    if not np.isdtype(array.dtype, "integral"):
-        return None
-
-    return array.astype("uint")

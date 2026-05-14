@@ -10,6 +10,8 @@ from collections import abc as cabc
 
 import torch
 
+from aioway.fake import torch_fake_mode
+
 from .devices import Device, DeviceLike
 from .dtypes import DType, DTypeLike
 from .infos import Info, InfoList
@@ -77,17 +79,18 @@ class Attr:
     def memory(self):
         return self.dtype.itemsize * self.shape.numel()
 
-    def to_tensor(self):
+    def to_fake_tensor(self):
         """
         Generate a random tensor.
         This should be used under fake mode.
         """
 
-        return (
-            torch.zeros(self.shape.concrete())
-            .to(self.device.torch())
-            .to(self.dtype.torch())
-        )
+        with torch_fake_mode():
+            return (
+                torch.zeros(self.shape.torch())
+                .to(self.device.torch())
+                .to(self.dtype.torch())
+            )
 
     @classmethod
     def parse(

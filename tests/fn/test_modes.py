@@ -3,12 +3,11 @@
 import pytest
 import torch
 
+from aioway.fake import enabled_fake_mode, torch_fake_mode
 from aioway.fn import (
     TorchDispatchStack,
     TorchFunctionStack,
-    enabled_fake_mode,
     fake_fn,
-    torch_fake_mode,
     track_fn,
 )
 
