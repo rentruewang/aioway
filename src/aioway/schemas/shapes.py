@@ -192,8 +192,8 @@ class Shape(cabc.Sequence[int]):
         if isinstance(dims, cls):
             return dims
 
-        if isinstance(dims, torch.Size):
-            return cls(dims)
+        if isinstance(dims, tuple | torch.Size):
+            return cls(torch.Size(dims))
 
         if isinstance(dims, cabc.Iterable):
             dims_array = tuple(dims)
