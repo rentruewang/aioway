@@ -36,37 +36,39 @@ class Shape(cabc.Sequence[int]):
     Right now, it represents the shape of a `Tensor` **outside** the batch dimension.
     """
 
-    dims: npt.NDArray[np.uint]
+    dims: torch.Size
     """
     The dimensions
     """
 
-    def __post_init__(self):
-
-        if not self.valid():
-            raise ValueError(self)
-
-        self.dims.flags.writeable = False
-
-        LOGGER.debug("Shape created: %s", self)
-
     @typing.override
     def __getstate__(self) -> object:
-        return self.dims.tolist()
+        return tuple(self.dims)
 
     def __hash__(self):
-        return hash(self.dims.tobytes())
+        return hash(tuple(self.dims))
 
     @typing.override
     def __repr__(self) -> str:
         return "(" + "x".join(map(str, self.dims)) + ")"
 
+    @typing.no_type_check
     def __eq__(self, other: object) -> bool:
-        if (rhs := _as_int_arr(other)) is None:
-            return NotImplemented
+        if isinstance(other, Shape):
+            return self.dims == other.dims
 
-        lhs = np.asarray(self)
-        return lhs.ndim == rhs.ndim and (lhs == rhs).all().item()
+        if isinstance(other, np.ndarray):
+            return other.ndim == 1 and self == other.tolist()
+
+        if (
+            False
+            or isinstance(other, torch.Size)
+            or _is_tuple_of_int(other)
+            or _is_list_of_int(other)
+        ):
+            return self.dims == tuple(other)
+
+        return NotImplemented
 
     def exceeds(self, other: typing.Self):
         if self.ndim != other.ndim:
@@ -78,7 +80,7 @@ class Shape(cabc.Sequence[int]):
         return (lhs > rhs).any().item()
 
     @typing.override
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.dims)
 
     @typing.overload
@@ -122,32 +124,6 @@ class Shape(cabc.Sequence[int]):
             else:
                 yield i
 
-    def valid(self) -> bool:
-        """
-        Check if the shape is a valid `Shape`.
-        """
-
-        LOGGER.debug("Checking if %s is a `Shape`", self)
-
-        return np.isdtype(self.dims.dtype, "unsigned integer")
-
-    def valid_dims(self, dims: list[int]) -> bool:
-        """
-        Validate the dimensions amongst the shapes.
-        """
-
-        is_list_of_int = is_list_of(int)
-        length = len(self)
-
-        return is_list_of_int(dims) and (max(dims) >= length or min(dims) < -length)
-
-    def wrap_index(self, dims: list[int]) -> list[int]:
-        # Make the dims positive.
-        return [d % len(self) for d in dims]
-
-    def numel(self) -> int:
-        return np.prod(self.dims).item()
-
     def broadcastable(self, other: ShapeLike):
         try:
             _ = self.broadcast(other)
@@ -172,18 +148,12 @@ class Shape(cabc.Sequence[int]):
         """
         return len(self)
 
-    @property
-    def size(self) -> int:
+    def numel(self) -> int:
         """
         Number of elements in a shape.
         """
 
-        total = 1
-
-        for s in self:
-            total *= s
-
-        return total
+        return self.dims.numel()
 
     @typing.overload
     @classmethod
@@ -229,19 +199,6 @@ class Shape(cabc.Sequence[int]):
             dims_array = tuple(dims)
 
             if _is_tuple_of_int(dims_array):
-                return cls(np.array(dims_array).astype("uint"))
+                return cls(torch.Size(dims_array))
 
         raise ValueError
-
-
-def _as_int_arr(obj: object) -> npt.NDArray[np.uint] | None:
-    """
-    Convert the object into a numpy array. Return `None` if it's not doable / not integral array.
-    """
-
-    array = np.asarray(obj)
-
-    if not np.isdtype(array.dtype, "integral"):
-        return None
-
-    return array.astype("uint")

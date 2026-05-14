@@ -23,7 +23,7 @@ def test_shape_getitem(shape: Shape):
 
 
 def test_shape_size(shape: Shape):
-    assert shape.size == 3 * 5 * 7
+    assert shape.numel() == 3 * 5 * 7
 
 
 def test_shape_ndim(shape: Shape):
