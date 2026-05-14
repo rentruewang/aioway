@@ -48,7 +48,7 @@ def _notebooks():
     yield from gitignore_glob(_NOTEBOOKS_DIR, "*.py")
 
 
-@pytest.fixture(scope="module", params=_notebooks())
+@pytest.fixture(scope="module", params=_notebooks(), ids=lambda path: path.name)
 def notebook(request: pytest.FixtureRequest):
     return request.param
 
