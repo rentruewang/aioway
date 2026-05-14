@@ -12,20 +12,34 @@ from aioway.fn import fake_fn, track_fn
 
 from .fake import batch_sizes, cpu_and_maybe_cuda
 
+PROJECT_ROOT = pathlib.Path(__file__).parent.parent.resolve()
+MEDIA_DIR = PROJECT_ROOT / "media"
+NOTEBOOKS_DIR = PROJECT_ROOT / "notebooks"
 
-@pytest.fixture
+
+@pytest.fixture(scope="module")
 def project_root():
-    return pathlib.Path(__file__).parent.parent.resolve()
+    assert PROJECT_ROOT.exists()
+    assert PROJECT_ROOT.is_dir()
+    return PROJECT_ROOT
 
 
 @pytest.fixture(scope="module")
-def media(project_root: pathlib.Path):
-    return project_root / "media"
+def media():
+    assert MEDIA_DIR.exists()
+    assert MEDIA_DIR.is_dir()
+    return MEDIA_DIR
 
 
-@pytest.fixture(scope="module")
-def notebooks(project_root: pathlib.Path):
-    return project_root / "notebooks"
+def _notebooks():
+    assert NOTEBOOKS_DIR.exists()
+    assert NOTEBOOKS_DIR.is_dir()
+    yield from NOTEBOOKS_DIR.rglob("*.py")
+
+
+@pytest.fixture(scope="module", params=_notebooks())
+def notebook(request: pytest.FixtureRequest):
+    return request.param
 
 
 @pytest.fixture(autouse=True, scope="session")
