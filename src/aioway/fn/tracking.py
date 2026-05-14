@@ -44,13 +44,13 @@ class _HasRichFlagMixin:
 
 class PrintTorchFunction(_HasRichFlagMixin, TFunctionMode):
     @typing.override
-    def __call__(self, thunk: TFunctionFn, /) -> torch.Tensor:
+    def __call__(self, thunk: TFunctionFn, /) -> object:
         return _ThunkPrinter(rich=self._rich)(thunk)
 
 
 class PrintTorchDispatch(_HasRichFlagMixin, TDispatchMode):
     @typing.override
-    def __call__(self, thunk: TDispatchFn, /) -> torch.Tensor:
+    def __call__(self, thunk: TDispatchFn, /) -> object:
         return _ThunkPrinter(rich=self._rich)(thunk)
 
 
@@ -59,7 +59,7 @@ class _ThunkPrinter:
     rich: bool
     "Use rich for printing."
 
-    def __call__(self, thunk: TFunctionFn | TDispatchFn) -> torch.Tensor:
+    def __call__(self, thunk: TFunctionFn | TDispatchFn) -> object:
         self.print("invoke", thunk)
         result = thunk.do()
         self.print("return", thunk, "->", replace_tensors_with_attr(result))
@@ -83,7 +83,7 @@ class LogTorchFunction(TFunctionMode):
     "The logger to log to. Default to the one in the current module."
 
     @typing.override
-    def __call__(self, thunk: TFunctionFn) -> torch.Tensor:
+    def __call__(self, thunk: TFunctionFn) -> object:
         result = thunk.do()
         self.logger.log(self.level, "%s", thunk)
         return result
@@ -102,7 +102,7 @@ class LogTorchDispatch(TDispatchMode):
     "The logger to log to. Default to the one in the current module."
 
     @typing.override
-    def __call__(self, thunk: TDispatchFn) -> torch.Tensor:
+    def __call__(self, thunk: TDispatchFn) -> object:
         result = thunk.do()
         self.logger.log(self.level, "%s", thunk)
         return result
@@ -123,7 +123,7 @@ class TorchDispatchStack(TDispatchMode):
     stack: Stack[TDispatchFn] = dcls.field(default_factory=Stack)
 
     @typing.override
-    def __call__(self, thunk: TDispatchFn) -> torch.Tensor:
+    def __call__(self, thunk: TDispatchFn) -> object:
         with self.stack.enter(thunk):
             return thunk.do()
 
@@ -174,14 +174,14 @@ class FnHistory[T: FateFn | TFunctionFn | TDispatchFn]:
     def __iter__(self):
         yield from self.history
 
-    def append(self, item: T, result: typing.Any, /):
+    def append(self, item: T, result: object, /):
         self.history.append(FnResult(item, result))
         self._update_ref(item, result)
 
     def pop(self):
         return self.history.pop()
 
-    def _update_ref(self, item: T, output: typing.Any) -> None:
+    def _update_ref(self, item: T, output: object) -> None:
         # `__torch_function__` doesn't always return `torch.Tensor` actually!
         if isinstance(output, torch.Tensor):
             # Update output.

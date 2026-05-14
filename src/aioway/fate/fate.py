@@ -1,10 +1,13 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+"The module containing `Fate` interface, the implementation for fake aten operations."
+
 import abc
 import dataclasses as dcls
 import inspect
 import re
 import typing
+from collections import abc as cabc
 
 import torch
 from torch import _ops
@@ -28,7 +31,7 @@ class Fate(abc.ABC):
     For example, boolean masking is data dependent, and is thus not supported by fake mode.
     """
 
-    IR: typing.ClassVar[_ops.OpOverload]
+    IR: typing.ClassVar[_ops.OpOverload | tuple[_ops.OpOverload, ...]]
     """
     The torch IR that this `Fate` would be implementing.
     """
@@ -87,16 +90,30 @@ class Fate(abc.ABC):
 
         # Abstract `ClassVar`.
         try:
-            op = cls.IR
+            ir = cls.IR
         except AttributeError:
             return
 
-        # Mimick defaultdict behavior.
-        # Using dict over defaultdict s.t. we don't need special handling in `repr`.
-        if op not in _ATEN_TO_FATE_LIST:
-            _ATEN_TO_FATE_LIST[op] = []
+        for op in _get_overloads(ir):
+            # Mimick defaultdict behavior.
+            # Using dict over defaultdict s.t. we don't need special handling in `repr`.
+            if op not in _ATEN_TO_FATE_LIST:
+                _ATEN_TO_FATE_LIST[op] = []
 
-        _ATEN_TO_FATE_LIST[op].append(cls)
+            _ATEN_TO_FATE_LIST[op].append(cls)
+
+
+def _get_overloads(obj: _ops.OpOverload | cabc.Sequence[_ops.OpOverload], /):
+    "Convert the input cls.IR into iterable of `torch._ops.OpOverload`."
+
+    if isinstance(obj, _ops.OpOverload):
+        yield obj
+        return
+
+    assert isinstance(obj, cabc.Sequence)
+    for op in obj:
+        assert isinstance(op, _ops.OpOverload), type(op)
+        yield op
 
 
 def find_fate(op: _ops.OpOverload, *args: typing.Any, **kwargs: typing.Any) -> Fate:
