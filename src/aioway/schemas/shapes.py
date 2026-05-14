@@ -27,7 +27,6 @@ _is_tuple_of_int = is_tuple_of(int)
 _is_list_of_int = is_list_of(int)
 
 
-@dcls.dataclass(frozen=True, eq=False)
 class Shape(cabc.Sequence[int]):
     """
     `Shape` represents a regular (non-jagged) array's dimensions,
@@ -36,26 +35,25 @@ class Shape(cabc.Sequence[int]):
     Right now, it represents the shape of a `Tensor` **outside** the batch dimension.
     """
 
-    dims: torch.Size
-    """
-    The dimensions
-    """
+    def __init__(self, dims: torch.Size) -> None:
+        self._dims: torch.Size = dims
+        """
+        The `torch.Size` that backs the `Shape`.
+        """
 
-    @typing.override
     def __getstate__(self) -> object:
-        return tuple(self.dims)
+        return tuple(self._dims)
 
     def __hash__(self):
-        return hash(tuple(self.dims))
+        return hash(tuple(self._dims))
 
-    @typing.override
     def __repr__(self) -> str:
-        return "(" + "x".join(map(str, self.dims)) + ")"
+        return "(" + "x".join(map(str, self._dims)) + ")"
 
     @typing.no_type_check
     def __eq__(self, other: object) -> bool:
         if isinstance(other, Shape):
-            return self.dims == other.dims
+            return self._dims == other._dims
 
         if isinstance(other, np.ndarray):
             return other.ndim == 1 and self == other.tolist()
@@ -66,22 +64,12 @@ class Shape(cabc.Sequence[int]):
             or _is_tuple_of_int(other)
             or _is_list_of_int(other)
         ):
-            return self.dims == tuple(other)
+            return self._dims == tuple(other)
 
         return NotImplemented
 
-    def exceeds(self, other: typing.Self):
-        if self.ndim != other.ndim:
-            raise ValueError
-
-        lhs = np.asarray(self)
-        rhs = np.asarray(other)
-
-        return (lhs > rhs).any().item()
-
-    @typing.override
     def __len__(self) -> int:
-        return len(self.dims)
+        return len(self._dims)
 
     @typing.overload
     def __getitem__(self, idx: int) -> int: ...
@@ -93,21 +81,30 @@ class Shape(cabc.Sequence[int]):
     def __getitem__(self, idx):
         match idx:
             case int():
-                return self.dims[idx]
+                return self._dims[idx]
             case slice():
-                return type(self)(self.dims[idx])
+                return type(self)(self._dims[idx])
             case _:
                 raise TypeError(type(idx))
 
     @typing.override
     def __iter__(self) -> cabc.Iterator[int]:
-        return iter(self.dims)
+        return iter(self._dims)
 
     def __array__(self):
-        return self.dims
+        return np.array(self._dims)
+
+    def exceeds(self, other: typing.Self):
+        if self.ndim != other.ndim:
+            raise ValueError
+
+        lhs = np.asarray(self)
+        rhs = np.asarray(other)
+
+        return (lhs > rhs).any().item()
 
     def unsqueeze(self, dim: int):
-        dims = list(self.dims)
+        dims = list(self._dims)
         dims.insert(dim, 1)
         return self.parse(dims)
 
@@ -135,7 +132,7 @@ class Shape(cabc.Sequence[int]):
         other = Shape.parse(other)
 
         try:
-            result = np.broadcast_shapes(self.dims, other.dims)
+            result = np.broadcast_shapes(self._dims, other._dims)
         except ValueError as ve:
             raise ValueError(f"{self=} and {other=} cannot be broadcasted together.")
 
@@ -153,7 +150,7 @@ class Shape(cabc.Sequence[int]):
         Number of elements in a shape.
         """
 
-        return self.dims.numel()
+        return self._dims.numel()
 
     @typing.overload
     @classmethod
