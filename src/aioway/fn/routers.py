@@ -6,9 +6,11 @@ import logging
 import typing
 from collections import abc as cabc
 
+from torch import ops
+
 from aioway._common import is_aten_op, is_prim_op, is_torchcodec_op, is_torchvision_op
 
-from .ctx import enabled_fake_mode, torch_fake_mode
+from .fake import enabled_fake_mode, torch_fake_mode
 from .modes import FateFn, TDispatchFn, TDispatchMode, TFunctionFn, TFunctionMode
 from .tracking import FnHistory
 
@@ -54,6 +56,28 @@ def only_route_in_fake(thunk: TDispatchFn):
 
 def no_route(thunk: TDispatchFn):
     return NotImplemented
+
+
+class NoInplaceOp(TDispatchMode):
+    """
+    `NoInplaceOp` replaces the inplace `torch.ops.*` ops with their functional counterpart.
+
+    Since all pytorch inplace ops has a suffix "_", I'm using that as identifier.
+
+    This must be applied before any other thunk routing.
+    """
+
+    @typing.override
+    def __call__(self, thunk: TDispatchFn, /) -> object:
+        if not isinstance(thunk, TDispatchFn):
+            raise TypeError(f"Thunk is already rerouted as {thunk}.")
+
+        # Replace with non in place version, in fake mode.
+        if (func_name := str(thunk.func)).endswith("_") and enabled_fake_mode():
+            func = getattr(ops, func_name.removesuffix("_"))
+            thunk = TDispatchFn(func=func, args=thunk.args, kwargs=thunk.kwargs)
+
+        return thunk.do()
 
 
 @dcls.dataclass

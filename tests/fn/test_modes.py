@@ -6,11 +6,11 @@ import torch
 from aioway.fn import (
     TorchDispatchStack,
     TorchFunctionStack,
+    enabled_fake_mode,
     fake_fn,
     torch_fake_mode,
     track_fn,
 )
-from aioway.fn.ctx import enabled_fake_mode
 
 
 @pytest.fixture
