@@ -1,1 +1,8 @@
+# Git LFS files in the media folder.
 media/* filter=lfs diff=lfs merge=lfs -text
+
+# Mark the jupytext text as notebooks.
+notebooks/**/*.py linguist-language=Jupyter Notebook
+
+# Allow jupytext notebooks to double as tests.
+tests/**/*.py linguist-language=Jupyter Notebook
