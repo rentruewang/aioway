@@ -45,6 +45,7 @@ tests = [
     "pytest-testmon>=2.2.0",
     "better-exceptions>=0.3.3",
     "coverage>=7.13.4",
+    "pathspec>=1.1.1",
 ]
 debugging = [
     "ipython>=9.11.0",

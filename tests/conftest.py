@@ -3,6 +3,7 @@
 import pathlib
 import random
 
+import pathspec
 import pytest
 import torch
 from numpy import random as npr
@@ -15,6 +16,16 @@ from .fake import batch_sizes, cpu_and_maybe_cuda
 PROJECT_ROOT = pathlib.Path(__file__).parent.parent.resolve()
 MEDIA_DIR = PROJECT_ROOT / "media"
 NOTEBOOKS_DIR = PROJECT_ROOT / "notebooks"
+GITIGNORE = PROJECT_ROOT / ".gitignore"
+
+
+def gitignore_glob(path: pathlib.Path, pattern: str):
+    assert GITIGNORE.exists()
+    spec = pathspec.PathSpec.from_lines("gitwildmatch", GITIGNORE.open("r"))
+
+    for f in path.rglob(pattern):
+        if not spec.match_file(f):
+            yield f
 
 
 @pytest.fixture(scope="module")
@@ -34,7 +45,7 @@ def media():
 def _notebooks():
     assert NOTEBOOKS_DIR.exists()
     assert NOTEBOOKS_DIR.is_dir()
-    yield from NOTEBOOKS_DIR.rglob("*.py")
+    yield from gitignore_glob(NOTEBOOKS_DIR, "*.py")
 
 
 @pytest.fixture(scope="module", params=_notebooks())
