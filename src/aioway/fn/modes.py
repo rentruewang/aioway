@@ -3,12 +3,14 @@
 "Torch function/dispatch modes, corresponding to `__torch_function__`/`__torch_dispatch__`."
 
 import abc
+import contextlib as ctxl
 import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
 import torch
 from torch import _ops, overrides
+from torch.utils import _mode_utils as mu
 from torch.utils import _python_dispatch as pyd
 
 from aioway._common import (
@@ -22,19 +24,64 @@ from aioway._common import (
     replace_tensors,
 )
 from aioway.fate import Fate, find_fate
-from aioway.fn.ctx import enabled_fake_mode
 from aioway.schemas import attr
 
 from .fn import Fn
 
-__all__ = ["TFunctionMode", "TDispatchMode", "TFunctionFn", "TDispatchFn", "FateFn"]
+__all__ = [
+    "TFunctionMode",
+    "TDispatchMode",
+    "TFunctionFn",
+    "TDispatchFn",
+    "FateFn",
+    "set_torch_mode",
+    "torch_mode_off",
+]
 
 
 type _TorchCallable = cabc.Callable[..., typing.Any] | _ops.OpOverload
 
+_do_aioway_function: bool = True
+"If `False`, `TFunctionMode` won't do anything."
+
+_do_aioway_dispatch: bool = True
+"If `False`, `TDispatchMode` won't do anything."
+
+
+@ctxl.contextmanager
+def set_torch_mode(function: bool, dispatch: bool):
+    """
+    Turn on or off `__torch_function__` / `__torch_dispatch__` mode for the given scope,
+    for those defined in `aioway`, depending on the flags.
+
+    Args:
+        function: Disable the `__torch_function__` mode if `True`.
+        dispatch: Disable the `__torch_dispatch__` mode if `True`.
+
+    Note:
+        We are implementing this flag instead of using `no_dispatch` utility from `torch`,
+        is because thier version causes segmentation fault in some cases.
+    """
+
+    global _do_aioway_function, _do_aioway_dispatch
+    before = _do_aioway_function, _do_aioway_dispatch
+
+    try:
+        _do_aioway_function = function
+        _do_aioway_dispatch = dispatch
+        yield
+    finally:
+        _do_aioway_function, _do_aioway_dispatch = before
+
+
+@ctxl.contextmanager
+def torch_mode_off():
+    with torch.DisableTorchFunction(), mu.no_dispatch():
+        yield
+
 
 @dcls.dataclass(match_args=False)
-class _TThunkBase[T: _TorchCallable](HasParam, abc.ABC):
+class _TThunkBase[T: _TorchCallable](HasParam, Fn, abc.ABC):
     """
     `TorchThunkFn` is the thunk capturing the function calls initiated by `torch`.
     It's the base class for both `TorchFunctionFn` and `TorchDispatchFn`
@@ -64,8 +111,7 @@ class _TThunkBase[T: _TorchCallable](HasParam, abc.ABC):
             raise TypeError(f"{self.kwargs=} is not a dict.")
 
     @typing.override
-    @typing.no_type_check
-    def do(self) -> torch.Tensor:
+    def do(self) -> object:
         return self.func(*self.args, **self.kwargs)
 
     @typing.override
@@ -84,7 +130,7 @@ class TFunctionFnMixin(Fn, abc.ABC):
 
 
 @dcls.dataclass(match_args=False)
-class TFunctionFn(_TThunkBase[cabc.Callable[..., typing.Any]], TFunctionFnMixin):
+class TFunctionFn(TFunctionFnMixin, _TThunkBase[cabc.Callable[..., typing.Any]]):
     """
     `TorchFunctionT` is the thunk capturing the function calls initiated by `torch`.
 
@@ -104,25 +150,6 @@ class TFunctionFn(_TThunkBase[cabc.Callable[..., typing.Any]], TFunctionFnMixin)
 class TDispatchFnMixin(Fn, abc.ABC):
     "The mixin to define what types `Fn` graph would capture during dispatch mode."
 
-    @typing.final
-    @typing.override
-    def do(self) -> object:
-        result = self._do()
-
-        # In fake mode, clone the tensor s.t. each `Fn` has a unique `torch.Tensor`.
-        # Otherwise sometimes `torch` reuses `FakeTensor` due to performance.
-        if enabled_fake_mode():
-            return replace_tensors(result, lambda tensor: tensor.clone())
-
-        else:
-            return result
-
-    @abc.abstractmethod
-    def _do(self) -> object:
-        "This is the implementation of `do`, whose result would be cloned in fake mode in `do`."
-
-        raise NotImplementedError
-
     @typing.override
     def inputs(self) -> cabc.Iterator[TDispatchFn | FateFn]:
         finder = Decomposer(target=lambda t: isinstance(t, FateFn | TDispatchFn))
@@ -130,7 +157,7 @@ class TDispatchFnMixin(Fn, abc.ABC):
 
 
 @dcls.dataclass(match_args=False)
-class TDispatchFn(_TThunkBase[_ops.OpOverload], TDispatchFnMixin):
+class TDispatchFn(TDispatchFnMixin, _TThunkBase[_ops.OpOverload]):
     """
     `TorchDispatchT` is the thunk capturing the function calls initiated by `torch`.
     This is by default what a null-op `__torch_dispatch__` would call.
@@ -149,10 +176,6 @@ class TDispatchFn(_TThunkBase[_ops.OpOverload], TDispatchFnMixin):
 
     def __repr__(self) -> str:
         return _render_function_body("dispatch", self.func, self.args, self.kwargs)
-
-    @typing.override
-    def _do(self) -> object:
-        return _TThunkBase.do(self)
 
     @property
     def is_aten(self) -> bool:
@@ -200,6 +223,10 @@ class TFunctionMode(overrides.TorchFunctionMode, abc.ABC):
     @typing.override
     def __torch_function__(self, func, types, args=(), kwargs=None) -> object:
         kwargs = kwargs or {}
+
+        if not _do_aioway_function:
+            return func(*args, **kwargs)
+
         thunk = TFunctionFn(func=func, types=types, args=args, kwargs=kwargs)
         return self(thunk)
 
@@ -220,6 +247,9 @@ class TDispatchMode(pyd.TorchDispatchMode, abc.ABC):
 
         if not all(issubclass(t, torch.Tensor) for t in types):
             raise AssertionError(f"Not all {types=} are subclasses of `torch.Tensor`.")
+
+        if not _do_aioway_dispatch:
+            return func(*args, **kwargs)
 
         thunk = TDispatchFn(func=func, args=args, kwargs=kwargs)
         return self(thunk)
@@ -247,7 +277,7 @@ class FateFn(HasParam, TDispatchFnMixin):
         return repr(self.fate)
 
     @typing.override
-    def _do(self) -> torch.Tensor:
+    def do(self) -> torch.Tensor:
         return self.fate.do()
 
     @typing.override
