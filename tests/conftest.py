@@ -13,9 +13,19 @@ from aioway.fn import fake_fn, track_fn
 from .fake import batch_sizes, cpu_and_maybe_cuda
 
 
+@pytest.fixture
+def project_root():
+    return pathlib.Path(__file__).parent.parent.resolve()
+
+
 @pytest.fixture(scope="module")
-def media():
-    return (pathlib.Path(__file__).parent.parent / "media").resolve()
+def media(project_root: pathlib.Path):
+    return project_root / "media"
+
+
+@pytest.fixture(scope="module")
+def notebooks(project_root: pathlib.Path):
+    return project_root / "notebooks"
 
 
 @pytest.fixture(autouse=True, scope="session")

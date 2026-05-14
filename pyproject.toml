@@ -49,9 +49,9 @@ tests = [
 debugging = [
     "ipython>=9.11.0",
     "jupyter>=1.1.1",
-    "jupyterlab>=4.4.3",
-    "pyinstrument>=5.1.2",
+    "jupyterlab>=4.5.7",
     "jupytext>=1.19.1",
+    "pyinstrument>=5.1.2",
     "matplotlib>=3.10.9",
 ]
 build = [
