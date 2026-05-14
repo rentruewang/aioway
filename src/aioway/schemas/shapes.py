@@ -151,6 +151,13 @@ class Shape(cabc.Sequence[int]):
 
         return self._dims.numel()
 
+    def torch(self) -> torch.Size:
+        """
+        Convert to `torch` equivalent.
+        """
+
+        return self._dims
+
     @typing.overload
     @classmethod
     def parse(cls, *dims: int) -> typing.Self: ...

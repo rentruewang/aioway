@@ -87,7 +87,9 @@ class Attr:
 
         with torch_fake_mode():
             return (
-                torch.zeros(self.shape).to(self.device.torch()).to(self.dtype.torch())
+                torch.zeros(self.shape.torch())
+                .to(self.device.torch())
+                .to(self.dtype.torch())
             )
 
     @classmethod
