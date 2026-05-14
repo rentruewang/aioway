@@ -13,15 +13,15 @@ from aioway.fn import fake_fn, track_fn
 
 from .fake import batch_sizes, cpu_and_maybe_cuda
 
-PROJECT_ROOT = pathlib.Path(__file__).parent.parent.resolve()
-MEDIA_DIR = PROJECT_ROOT / "media"
-NOTEBOOKS_DIR = PROJECT_ROOT / "notebooks"
-GITIGNORE = PROJECT_ROOT / ".gitignore"
+_PROJECT_ROOT = pathlib.Path(__file__).parent.parent.resolve()
+_MEDIA_DIR = _PROJECT_ROOT / "media"
+_NOTEBOOKS_DIR = _PROJECT_ROOT / "notebooks"
+_GITIGNORE = _PROJECT_ROOT / ".gitignore"
 
 
 def gitignore_glob(path: pathlib.Path, pattern: str):
-    assert GITIGNORE.exists()
-    spec = pathspec.PathSpec.from_lines("gitwildmatch", GITIGNORE.open("r"))
+    assert _GITIGNORE.exists()
+    spec = pathspec.PathSpec.from_lines("gitwildmatch", _GITIGNORE.open("r"))
 
     for f in path.rglob(pattern):
         if not spec.match_file(f):
@@ -30,22 +30,22 @@ def gitignore_glob(path: pathlib.Path, pattern: str):
 
 @pytest.fixture(scope="module")
 def project_root():
-    assert PROJECT_ROOT.exists()
-    assert PROJECT_ROOT.is_dir()
-    return PROJECT_ROOT
+    assert _PROJECT_ROOT.exists()
+    assert _PROJECT_ROOT.is_dir()
+    return _PROJECT_ROOT
 
 
 @pytest.fixture(scope="module")
 def media():
-    assert MEDIA_DIR.exists()
-    assert MEDIA_DIR.is_dir()
-    return MEDIA_DIR
+    assert _MEDIA_DIR.exists()
+    assert _MEDIA_DIR.is_dir()
+    return _MEDIA_DIR
 
 
 def _notebooks():
-    assert NOTEBOOKS_DIR.exists()
-    assert NOTEBOOKS_DIR.is_dir()
-    yield from gitignore_glob(NOTEBOOKS_DIR, "*.py")
+    assert _NOTEBOOKS_DIR.exists()
+    assert _NOTEBOOKS_DIR.is_dir()
+    yield from gitignore_glob(_NOTEBOOKS_DIR, "*.py")
 
 
 @pytest.fixture(scope="module", params=_notebooks())
