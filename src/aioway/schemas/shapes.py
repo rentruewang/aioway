@@ -151,7 +151,7 @@ class Shape(cabc.Sequence[int]):
 
         return self._dims.numel()
 
-    def torch(self) -> torch.Size:
+    def unwrap(self) -> torch.Size:
         """
         Convert to `torch` equivalent.
         """

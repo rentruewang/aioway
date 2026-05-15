@@ -23,17 +23,9 @@ def build(session: nox.Session):
 
 
 @nox.session
-def pre_commit(session: nox.Session):
-    "Runs the pre-commit commands."
-
-    formatting(session)
-    typing(session)
-
-
-@nox.session
 def testing(session: nox.Session):
     "Nox `testing` command. Calls `pytest` command. Runs in multiple python versions (if supported)."
-    commands(session).test()
+    commands(session).test(*session.posargs)
 
 
 @nox.session
@@ -146,11 +138,11 @@ class _Environment:
                 raise RuntimeError(f"Platform {sys.platform} is not supported yet.")
 
     def pdm_build(self):
-        self.pdm_install()
+        self.pdm_update_deps()
         self._run("pdm", "build")
 
     def pdm_publish(self):
-        self.pdm_install()
+        self.pdm_update_deps("install")
 
         # Remove all uncommitted changes s.t. it doesn't mess with builds.
         if in_github():
@@ -159,15 +151,15 @@ class _Environment:
         self._run("pdm", "publish")
 
     def pdm_run(self, *args: str):
-        self.pdm_install()
+        self.pdm_update_deps()
         self._run("pdm", "run", *args)
 
-    def pdm_install(self) -> None:
+    def pdm_update_deps(self, command: str = "sync") -> None:
         # Don't repeatedly reinstall locally.
         if not in_github():
             return
 
-        self.session.run_install("pdm", "install", "-G:all")
+        self.session.run_install("pdm", command, "-G:all")
 
     def _run(self, *args: str):
         _ = self.session.run_install(*args, external=True)
@@ -188,9 +180,9 @@ class _Commands:
         "`pdm publish` command."
         self.env.pdm_publish()
 
-    def test(self):
+    def test(self, *args: str):
         "`pytest` command."
-        self.env.pdm_run("pytest")
+        self.env.pdm_run("pytest", *args)
 
     def autoflake(self):
         "`autoflake` command."

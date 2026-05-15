@@ -15,6 +15,7 @@ from aioway.fake import torch_fake_mode
 from .devices import Device, DeviceLike
 from .dtypes import DType, DTypeLike
 from .infos import Info, InfoList
+from .layouts import Layout, LayoutLike
 from .shapes import Shape, ShapeLike
 
 __all__ = ["Attr", "attr", "AttrTensor"]
@@ -42,6 +43,11 @@ class Attr:
     shape: Shape
     """
     The shape of individual items in the column.
+    """
+
+    layout: Layout
+    """
+    The layout of the tensor.
     """
 
     infos: InfoList = dcls.field(default_factory=InfoList)
@@ -87,7 +93,7 @@ class Attr:
 
         with torch_fake_mode():
             return (
-                torch.zeros(self.shape.torch())
+                torch.zeros(self.shape.unwrap())
                 .to(self.device.torch())
                 .to(self.dtype.torch())
             )
@@ -98,6 +104,7 @@ class Attr:
         device: DeviceLike,
         dtype: DTypeLike,
         shape: ShapeLike,
+        layout: LayoutLike,
         infos: cabc.Iterable[Info] = (),
     ) -> typing.Self:
         """
@@ -107,6 +114,7 @@ class Attr:
             device: Things that can be converted to `Device`.
             dtype: Things that can be converted to `DType`.
             shape: Things that can be converted to `Shape`.
+            layout: Things that can be converted to `Layout`.
 
         Returns:
             An attribute instance.
@@ -116,6 +124,7 @@ class Attr:
             device=Device.parse(device),
             dtype=DType.parse(dtype),
             shape=Shape.parse(shape),
+            layout=Layout.parse(layout),
             infos=InfoList(*infos),
         )
 
@@ -127,6 +136,7 @@ class Attr:
             device=tensor.device,
             shape=tensor.shape,
             dtype=tensor.dtype,
+            layout=tensor.layout,
             infos=infos,
         )
 
@@ -161,6 +171,7 @@ class AttrDict(typing.TypedDict):
     device: DeviceLike
     dtype: DTypeLike
     shape: ShapeLike
+    layout: LayoutLike
     infos: typing.NotRequired[cabc.Iterable[Info]]
 
 
@@ -181,6 +192,7 @@ def attr(item: AttrLike, /) -> Attr:
             device=item["device"],
             shape=item["shape"],
             dtype=item["dtype"],
+            layout=item["layout"],
             infos=item.get("infos", ()),
         )
 
@@ -200,6 +212,7 @@ def _is_attr_dict(item: object) -> typing.TypeGuard[AttrDict]:
             device=item["device"],
             dtype=item["dtype"],
             shape=item["shape"],
+            layout=item["layout"],
             infos=item.get("infos", ()),
         )
     except Exception:
