@@ -14,9 +14,6 @@ dependencies = ["numpy>=2.4.3", "pandas>=3.0.1", "rich>=14.3.3", "tensordict>=0.
 ibis = [
     "ibis>=3.3.0",
 ]
-faiss = [
-    "faiss-cpu>=1.13.2",
-]
 networkx = [
     "networkx>=3.6",
     "matplotlib>=3.10.9",

@@ -4,5 +4,4 @@
 
 from .datasets import *
 from .frames import *
-from .indices import *
 from .streams import *

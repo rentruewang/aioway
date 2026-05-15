@@ -2,10 +2,10 @@
 # It is not intended for manual editing.
 
 [metadata]
-groups = ["default", "build", "debugging", "faiss", "ibis", "networkx", "pre-commit", "tests"]
+groups = ["default", "build", "debugging", "ibis", "networkx", "pre-commit", "tests"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:8da4b935bdaaae4b550a3e512af44e8f65ba690adea16b11be4aba4fb25280b8"
+content_hash = "sha256:0f667dc04979c04e48d6dd33f80b5f70f104873e39237a031321caac40c4323f"
 
 [[metadata.targets]]
 requires_python = ">=3.14,<3.15"
@@ -687,27 +687,6 @@ groups = ["debugging"]
 files = [
     {file = "executing-2.2.1-py2.py3-none-any.whl", hash = "sha256:760643d3452b4d777d295bb167ccc74c64a81df23fb5e08eff250c425a4b2017"},
     {file = "executing-2.2.1.tar.gz", hash = "sha256:3632cc370565f6648cc328b32435bd120a1e4ebb20c77e3fdde9a13cd1e533c4"},
-]
-
-[[package]]
-name = "faiss-cpu"
-version = "1.13.2"
-requires_python = "<3.15,>=3.10"
-summary = "A library for efficient similarity search and clustering of dense vectors."
-groups = ["faiss"]
-dependencies = [
-    "numpy<3.0,>=1.25.0",
-    "packaging",
-]
-files = [
-    {file = "faiss_cpu-1.13.2-cp310-abi3-macosx_14_0_arm64.whl", hash = "sha256:a9064eb34f8f64438dd5b95c8f03a780b1a3f0b99c46eeacb1f0b5d15fc02dc1"},
-    {file = "faiss_cpu-1.13.2-cp310-abi3-macosx_14_0_x86_64.whl", hash = "sha256:c8d097884521e1ecaea6467aeebbf1aa56ee4a36350b48b2ca6b39366565c317"},
-    {file = "faiss_cpu-1.13.2-cp310-abi3-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:0ee330a284042c2480f2e90450a10378fd95655d62220159b1408f59ee83ebf1"},
-    {file = "faiss_cpu-1.13.2-cp310-abi3-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:ab88ee287c25a119213153d033f7dd64c3ccec466ace267395872f554b648cd7"},
-    {file = "faiss_cpu-1.13.2-cp310-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:85511129b34f890d19c98b82a0cd5ffb27d89d1cec2ee41d2621ee9f9ef8cf3f"},
-    {file = "faiss_cpu-1.13.2-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:8b32eb4065bac352b52a9f5ae07223567fab0a976c7d05017c01c45a1c24264f"},
-    {file = "faiss_cpu-1.13.2-cp314-cp314-win_amd64.whl", hash = "sha256:c8b645e7d56591aa35dc75415bb53a62e4a494dba010e16f4b67daeffd830bd7"},
-    {file = "faiss_cpu-1.13.2-cp314-cp314-win_arm64.whl", hash = "sha256:8113a2a80b59fe5653cf66f5c0f18be0a691825601a52a614c30beb1fca9bc7c"},
 ]
 
 [[package]]
@@ -1827,7 +1806,7 @@ name = "numpy"
 version = "2.4.4"
 requires_python = ">=3.11"
 summary = "Fundamental package for array computing in Python"
-groups = ["default", "debugging", "faiss", "networkx"]
+groups = ["default", "debugging", "networkx"]
 files = [
     {file = "numpy-2.4.4-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:f169b9a863d34f5d11b8698ead99febeaa17a13ca044961aa8e2662a6c7766a0"},
     {file = "numpy-2.4.4-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:2483e4584a1cb3092da4470b38866634bafb223cbcd551ee047633fd2584599a"},
@@ -2063,7 +2042,7 @@ name = "packaging"
 version = "26.2"
 requires_python = ">=3.8"
 summary = "Core utilities for Python packages"
-groups = ["default", "build", "debugging", "faiss", "networkx", "pre-commit", "tests"]
+groups = ["default", "build", "debugging", "networkx", "pre-commit", "tests"]
 files = [
     {file = "packaging-26.2-py3-none-any.whl", hash = "sha256:5fc45236b9446107ff2415ce77c807cee2862cb6fac22b8a73826d0693b0980e"},
     {file = "packaging-26.2.tar.gz", hash = "sha256:ff452ff5a3e828ce110190feff1178bb1f2ea2281fa2075aadb987c2fb221661"},
