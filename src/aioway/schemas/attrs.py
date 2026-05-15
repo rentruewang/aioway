@@ -208,7 +208,7 @@ def attr(item: AttrLike, /) -> Attr:
 def _is_attr_dict(item: object) -> Attr | None:
 
     if not isinstance(item, cabc.Mapping):
-        return False
+        return None
 
     try:
         attr = Attr.parse(
