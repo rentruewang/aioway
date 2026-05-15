@@ -2,9 +2,8 @@
 
 import pytest
 from torch import nn
-from aioway.previews import Linear, Bilinear
-from aioway.previews import Preview
-from aioway.previews import find_preview
+
+from aioway.previews import Preview, find_preview
 
 
 def _cases():
