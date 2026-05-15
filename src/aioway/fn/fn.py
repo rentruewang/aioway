@@ -18,7 +18,8 @@ _PENDING = object()
 "The object signifying a status of pending. This is a `object()` s.t. `FnCache` can store `None`."
 
 
-class Fn(abc.ABC):
+@typing.runtime_checkable
+class Fn(typing.Protocol):
     """
     `Fn` is the base class for delayed computation, in a single batch (a single pass).
 
@@ -36,7 +37,7 @@ class Fn(abc.ABC):
         raise NotImplementedError
 
 
-class Thunk(Fn):
+class Thunk:
     """
     The thunk for any function, handles both pretty printing and storing the result.
 
@@ -150,7 +151,7 @@ class Thunk(Fn):
 
 
 @dcls.dataclass(match_args=False)
-class TorchThunk[T: cabc.Callable[..., typing.Any]](HasParam, Fn, abc.ABC):
+class TorchThunk[T: cabc.Callable[..., typing.Any]](HasParam, abc.ABC):
     """
     `BaseFn` is a really basic `Fn` that acts as a base class,
     with some `torch` utilities.
@@ -177,7 +178,6 @@ class TorchThunk[T: cabc.Callable[..., typing.Any]](HasParam, Fn, abc.ABC):
         if not isinstance(self.kwargs, dict):
             raise TypeError(f"{self.kwargs=} is not a dict.")
 
-    @typing.override
     def do(self) -> object:
         return self.func(*self.args, **self.kwargs)
 

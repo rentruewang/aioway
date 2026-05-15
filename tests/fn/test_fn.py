@@ -4,11 +4,37 @@
 import pytest
 import torch
 
+from aioway.fate import Fate
 from aioway.fn import (
+    FateFn,
+    Fn,
+    NnForwardFn,
+    NnInitFn,
+    PreviewFn,
+    TDispatchFn,
+    TFunctionFn,
     TorchDispatchStack,
     TorchFunctionStack,
     track_fn,
 )
+from aioway.previews import Preview
+
+
+def _fn_cls():
+    yield FateFn
+    yield TDispatchFn
+    yield TFunctionFn
+    yield PreviewFn
+    yield NnInitFn
+    yield NnForwardFn
+
+    yield Fate
+    yield Preview
+
+
+@pytest.fixture(params=_fn_cls())
+def fn_cls(request):
+    return request.param
 
 
 @pytest.fixture
@@ -19,6 +45,11 @@ def a():
 @pytest.fixture
 def b():
     return torch.randn(4)
+
+
+def test_fn_subclass(fn_cls):
+    assert isinstance(fn_cls, type)
+    assert issubclass(fn_cls, Fn)
 
 
 def test_call(a: torch.Tensor, b: torch.Tensor):

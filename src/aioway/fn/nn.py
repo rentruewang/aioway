@@ -2,18 +2,17 @@
 
 "The `Fn`s corresponding to module's."
 
-import abc
 import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
 import torch
 from torch import nn
-from aioway.previews
-from aioway._common import find_nested_tensors
-from aioway._common import HasParam
 
-from .fn import Fn, TorchThunk
+from aioway._common import find_nested_tensors
+from aioway.previews import Preview, find_preview
+
+from .fn import TorchThunk
 
 __all__ = ["NnForwardFn", "NnInitFn", "PreviewFn"]
 
@@ -47,21 +46,24 @@ class NnInitFn(TorchThunk[type[nn.Module]]):
             raise TypeError(f"{self.func} should be a subclass of `nn.Module`.")
 
 
-class PreviewFn(HasParam, Fn):
+@dcls.dataclass
+class PreviewFn:
     """
     `PreviewFn` are `Fn` that wrap `Preview`s, which are supported `nn.Module` ops.
     """
 
     preview: Preview
+    "The preview instance."
 
-    @typing.override
     def do(self) -> object:
-        raise NotImplementedError
-
-    @typing.override
-    def tensors(self) -> cabc.Iterator[torch.Tensor]:
-        raise NotImplementedError
+        return self.preview.do()
 
     @classmethod
     def find_preview(cls, thunk: NnInitFn) -> typing.Self:
-        raise NotImplementedError
+        preview = find_preview(thunk.func, *thunk.args, **thunk.kwargs)
+
+        if preview is NotImplemented:
+            return NotImplemented
+
+        else:
+            return cls(preview)

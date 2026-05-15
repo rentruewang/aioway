@@ -41,7 +41,7 @@ class Fate(abc.ABC):
 
     @typing.override
     def __repr__(self) -> str:
-        return render_fcall(f"preview::{self.name()}", **dcls.asdict(self))
+        return render_fcall(f"fate::{self.name()}", **dcls.asdict(self))
 
     @typing.override
     def __hash__(self) -> int:
@@ -127,10 +127,10 @@ def find_fate(op: _ops.OpOverload, *args: typing.Any, **kwargs: typing.Any) -> F
         return NotImplemented
 
     for candidate in _ATEN_TO_FATE_LIST[op]:
-        if not (preview := candidate(*args, **kwargs)).ok():
+        if not (fate := candidate(*args, **kwargs)).ok():
             continue
 
-        return preview
+        return fate
 
     return NotImplemented
 
