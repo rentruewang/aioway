@@ -25,7 +25,7 @@ from aioway._common import (
 from aioway.fate import Fate, find_fate
 from aioway.schemas import attr
 
-from .fn import Fn, TorchThunk
+from .fn import TorchThunk
 
 __all__ = [
     "TFunctionMode",
@@ -196,7 +196,7 @@ class TDispatchMode(pyd.TorchDispatchMode, abc.ABC):
 
 @typing.final
 @dcls.dataclass(frozen=True)
-class FateFn(HasParam, Fn):
+class FateFn(HasParam):
     """
     `FateFn` wraps a `Fate` object, which is split out so as to declutter subclasses for `Fn`.
 
@@ -215,7 +215,6 @@ class FateFn(HasParam, Fn):
     def __repr__(self) -> str:
         return repr(self.fate)
 
-    @typing.override
     def do(self) -> torch.Tensor:
         return self.fate.do()
 
@@ -237,10 +236,9 @@ class FateFn(HasParam, Fn):
 
     @classmethod
     def find_fate(cls, thunk: TDispatchFn) -> typing.Self:
-        fate = find_fate(thunk.func, *thunk.args, **thunk.kwargs)
-
-        if fate is NotImplemented:
+        if (
+            fate := find_fate(thunk.func, *thunk.args, **thunk.kwargs)
+        ) is NotImplemented:
             return NotImplemented
 
-        else:
-            return cls(fate=fate, original=thunk)
+        return cls(fate=fate, original=thunk)

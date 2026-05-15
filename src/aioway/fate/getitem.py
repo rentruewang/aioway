@@ -42,7 +42,3 @@ class BooleanMasking(_GetItem):
 class IntSelect(_GetItem):
     def ok(self):
         return len(self.indices) == 1 and self.indices[0].dtype == torch.int
-
-    @typing.override
-    def do(self):
-        return self.self[self.indices]
