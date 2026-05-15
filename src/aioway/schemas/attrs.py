@@ -85,7 +85,15 @@ class Attr:
 
     @typing.override
     def __repr__(self) -> str:
-        return f"[shape={self.shape},dtype={self.dtype},device={self.device},infos={self.infos!r}]"
+        display: list[typing.Any] = [self.shape, self.dtype, self.device]
+
+        if self.requires_grad:
+            display.append("grad")
+
+        if self.layout != torch.strided:
+            display.append(self.layout)
+
+        return "[" + ",".join(map(str, display)) + "]"
 
     def memory(self):
         return self.dtype.itemsize * self.shape.numel()
