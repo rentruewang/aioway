@@ -76,12 +76,15 @@ class CloneDispatchOp(TDispatchMode):
 
 @dcls.dataclass
 class RouteDispatchOp(TDispatchMode):
+    "The router at the torch dispatch level."
+
     router: FateRouter
+    "The router that is responsible for finding `Fate` when implemented."
+
     history: FnHistory[TDispatchFn | FateFn] = dcls.field(default_factory=FnHistory)
+    "The history used for tracking."
 
     def __call__(self, thunk: TDispatchFn) -> object:
-        # Create a `_ThunkType` and route implemented methods.
-
         fn: TDispatchFn | FateFn
 
         if (fn := self.router(thunk)) is NotImplemented:
@@ -90,7 +93,7 @@ class RouteDispatchOp(TDispatchMode):
 
         assert isinstance(fn, TDispatchFn | FateFn), type(fn)
 
-        # Here, we overwrite `fn`'s `__call__` inside `FateFn` if it's a special function.
+        # Here, `FateFn` would do its magic and overwrite functions.
         with capture_do_error(fn):
             result = fn.do()
 
