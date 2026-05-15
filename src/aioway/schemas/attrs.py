@@ -45,14 +45,14 @@ class Attr:
     The shape of individual items in the column.
     """
 
-    layout: Layout
-    """
-    The layout of the tensor.
-    """
-
-    requires_grad: bool
+    requires_grad: bool = False
     """
     Whether the tensor requires grad.
+    """
+
+    layout: Layout = Layout(torch.strided)
+    """
+    The layout of the tensor.
     """
 
     infos: InfoList = dcls.field(default_factory=InfoList)
@@ -109,8 +109,8 @@ class Attr:
         device: DeviceLike,
         dtype: DTypeLike,
         shape: ShapeLike,
-        layout: LayoutLike,
-        requires_grad: bool,
+        requires_grad: bool = False,
+        layout: LayoutLike = "strided",
         infos: cabc.Iterable[Info] = (),
     ) -> typing.Self:
         """
@@ -179,8 +179,8 @@ class AttrDict(typing.TypedDict):
     device: DeviceLike
     dtype: DTypeLike
     shape: ShapeLike
-    layout: LayoutLike
-    requires_grad: bool
+    requires_grad: typing.NotRequired[bool]
+    layout: typing.NotRequired[LayoutLike]
     infos: typing.NotRequired[cabc.Iterable[Info]]
 
 
@@ -196,15 +196,8 @@ def attr(item: AttrLike, /) -> Attr:
     if isinstance(item, torch.Tensor):
         return Attr.from_tensor(item)
 
-    if _is_attr_dict(item):
-        return Attr.parse(
-            device=item["device"],
-            shape=item["shape"],
-            dtype=item["dtype"],
-            layout=item["layout"],
-            requires_grad=item["requires_grad"],
-            infos=item.get("infos", ()),
-        )
+    if (attr := _is_attr_dict(item)) is not None:
+        return attr
 
     raise TypeError(
         f"Do not know how to handle {item=}, {type(item)=}, because it is malformed."
@@ -212,21 +205,21 @@ def attr(item: AttrLike, /) -> Attr:
 
 
 @typing.no_type_check
-def _is_attr_dict(item: object) -> typing.TypeGuard[AttrDict]:
+def _is_attr_dict(item: object) -> Attr | None:
 
     if not isinstance(item, cabc.Mapping):
         return False
 
     try:
-        _ = Attr.parse(
+        attr = Attr.parse(
             device=item["device"],
             dtype=item["dtype"],
             shape=item["shape"],
-            layout=item["layout"],
-            requires_grad=item["requires_grad"],
+            layout=item.get("layout", torch.strided),
+            requires_grad=item.get("requires_grad", False),
             infos=item.get("infos", ()),
         )
     except Exception:
-        return False
-
-    return True
+        return None
+    else:
+        return attr
