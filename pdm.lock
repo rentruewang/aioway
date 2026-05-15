@@ -2,10 +2,10 @@
 # It is not intended for manual editing.
 
 [metadata]
-groups = ["default", "build", "debugging", "ibis", "networkx", "pre-commit", "tests"]
+groups = ["default", "build", "debugging", "networkx", "pre-commit", "tests"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:0f667dc04979c04e48d6dd33f80b5f70f104873e39237a031321caac40c4323f"
+content_hash = "sha256:178471560ff9d7f0540362d99013a2c707605311c560c2f8cf9d85b94b54061a"
 
 [[metadata.targets]]
 requires_python = ">=3.14,<3.15"
@@ -814,17 +814,6 @@ groups = ["build"]
 files = [
     {file = "humanize-4.15.0-py3-none-any.whl", hash = "sha256:b1186eb9f5a9749cd9cb8565aee77919dd7c8d076161cf44d70e59e3301e1769"},
     {file = "humanize-4.15.0.tar.gz", hash = "sha256:1dd098483eb1c7ee8e32eb2e99ad1910baefa4b75c3aff3a82f4d78688993b10"},
-]
-
-[[package]]
-name = "ibis"
-version = "3.3.0"
-requires_python = ">=3.8"
-summary = "A template engine for people who enjoy the simpler things in life."
-groups = ["ibis"]
-files = [
-    {file = "ibis-3.3.0-py3-none-any.whl", hash = "sha256:9e93aa77c28dc797b03805c794964be341eab859552a016ae8a5deafb5160d75"},
-    {file = "ibis-3.3.0.tar.gz", hash = "sha256:bb6d74a46c101aaeee0a98ee4da2bac78d6d5abd96a9a2954fb25c1ce6762ec2"},
 ]
 
 [[package]]
