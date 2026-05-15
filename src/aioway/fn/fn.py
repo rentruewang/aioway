@@ -10,7 +10,7 @@ from collections import abc as cabc
 
 import torch
 
-from aioway._common import Decomposer, HasParam, find_nested_tensors, render_fcall
+from aioway._common import HasParam, find_nested_tensors, render_fcall
 
 __all__ = ["Fn", "Thunk", "TorchThunk"]
 
@@ -25,21 +25,12 @@ class Fn(abc.ABC):
     It stands for [f]unction [n]ode, or short for function.
 
     `Fn.do()` executes the computation, `Fn` base class itself does not make any more assumption.
-    `Fn.inputs()` traces back to the entire graph.
     """
 
     @abc.abstractmethod
     def do(self) -> object:
         """
         Execute the computation.
-        """
-
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def inputs(self) -> cabc.Iterator[Fn]:
-        """
-        Iterate over the inputs of the object.
         """
 
         raise NotImplementedError
@@ -107,11 +98,6 @@ class Thunk(Fn):
                 raise RuntimeError(f"Thunk: {self!r} evaluation failed.") from e
 
         return self.__result
-
-    @typing.override
-    def inputs(self) -> cabc.Iterator[Fn]:
-        finder = Decomposer(target=lambda f: isinstance(f, Fn))
-        return finder(self)
 
     @typing.override
     def __repr__(self) -> str:

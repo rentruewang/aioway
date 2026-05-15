@@ -14,7 +14,6 @@ from torch.utils import _mode_utils as mu
 from torch.utils import _python_dispatch as pyd
 
 from aioway._common import (
-    Decomposer,
     HasParam,
     find_nested_tensors,
     is_aten_op,
@@ -78,17 +77,8 @@ def torch_mode_off():
         yield
 
 
-class TFunctionFnMixin(Fn, abc.ABC):
-    "The mixin to define what types `Fn` graph would capture during function mode."
-
-    @typing.override
-    def inputs(self) -> cabc.Iterator[TFunctionFn]:
-        finder = Decomposer(target=lambda t: isinstance(t, TFunctionFn))
-        return finder(self)
-
-
 @dcls.dataclass(match_args=False)
-class TFunctionFn(TFunctionFnMixin, TorchThunk[cabc.Callable[..., typing.Any]]):
+class TFunctionFn(TorchThunk[cabc.Callable[..., typing.Any]]):
     """
     `TorchFunctionT` is the thunk capturing the function calls initiated by `torch`.
 
@@ -105,17 +95,8 @@ class TFunctionFn(TFunctionFnMixin, TorchThunk[cabc.Callable[..., typing.Any]]):
         return _render_function_body("function", self.func, self.args, self.kwargs)
 
 
-class TDispatchFnMixin(Fn, abc.ABC):
-    "The mixin to define what types `Fn` graph would capture during dispatch mode."
-
-    @typing.override
-    def inputs(self) -> cabc.Iterator[TDispatchFn | FateFn]:
-        finder = Decomposer(target=lambda t: isinstance(t, FateFn | TDispatchFn))
-        return finder(self)
-
-
 @dcls.dataclass(match_args=False)
-class TDispatchFn(TDispatchFnMixin, TorchThunk[_ops.OpOverload]):
+class TDispatchFn(TorchThunk[_ops.OpOverload]):
     """
     `TorchDispatchT` is the thunk capturing the function calls initiated by `torch`.
     This is by default what a null-op `__torch_dispatch__` would call.
@@ -215,7 +196,7 @@ class TDispatchMode(pyd.TorchDispatchMode, abc.ABC):
 
 @typing.final
 @dcls.dataclass(frozen=True)
-class FateFn(HasParam, TDispatchFnMixin):
+class FateFn(HasParam, Fn):
     """
     `FateFn` wraps a `Fate` object, which is split out so as to declutter subclasses for `Fn`.
 

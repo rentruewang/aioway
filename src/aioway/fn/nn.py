@@ -5,35 +5,63 @@
 import abc
 import dataclasses as dcls
 import typing
+from collections import abc as cabc
 
+import torch
 from torch import nn
+from aioway.previews
+from aioway._common import find_nested_tensors
+from aioway._common import HasParam
 
-from .fn import Fn
+from .fn import Fn, TorchThunk
 
 __all__ = ["NnForwardFn", "NnInitFn", "PreviewFn"]
 
 
-@dcls.dataclass(frozen=True)
-class NnForwardFn:
+@dcls.dataclass
+class NnForwardFn(TorchThunk[nn.Module]):
     "`NnForwardFn` represents the module calls."
 
-    module: nn.Module
+    func: nn.Module
     "The module for the `Fn`."
 
-    args: typing.Any
-    "The arguments of the module."
+    @typing.override
+    def tensors(self) -> cabc.Iterator[torch.Tensor]:
+        yield from find_nested_tensors(self.args)
+        yield from find_nested_tensors(self.kwargs)
+        yield from self.func.parameters()
 
 
-@dcls.dataclass(frozen=True)
-class _ModInitBase(Fn, abc.ABC):
+class NnInitFn(TorchThunk[type[nn.Module]]):
     """
-    The thunk that stores modules
+    `NnInitFn` is the "leftover" `nn.Module`s that are not covered by the `Preview` API.
     """
 
+    func: type[nn.Module]
+    "The type of `nn.Module`."
 
-class NnInitFn(_ModInitBase):
-    pass
+    def __post_init__(self):
+        super().__post_init__()
+
+        if not isinstance(self.func, type) or not issubclass(self.func, nn.Module):
+            raise TypeError(f"{self.func} should be a subclass of `nn.Module`.")
 
 
-class PreviewFn(_ModInitBase):
-    pass
+class PreviewFn(HasParam, Fn):
+    """
+    `PreviewFn` are `Fn` that wrap `Preview`s, which are supported `nn.Module` ops.
+    """
+
+    preview: Preview
+
+    @typing.override
+    def do(self) -> object:
+        raise NotImplementedError
+
+    @typing.override
+    def tensors(self) -> cabc.Iterator[torch.Tensor]:
+        raise NotImplementedError
+
+    @classmethod
+    def find_preview(cls, thunk: NnInitFn) -> typing.Self:
+        raise NotImplementedError
