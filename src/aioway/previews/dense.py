@@ -44,5 +44,5 @@ class Bilinear(Preview):
     out_features: int
     "The size of each output sample, must be > 0."
 
-    bias: bool
+    bias: bool = True
     "If set to `False`, the layer will not learn an additive bias. Default: `True`."
