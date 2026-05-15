@@ -55,8 +55,8 @@ def test_fn_subclass(fn_cls):
 def test_call(a: torch.Tensor, b: torch.Tensor):
     with (
         track_fn() as [func_hist, dis_hist],
-        TorchFunctionStack() as funcs,
-        TorchDispatchStack() as ops,
+        TorchFunctionStack().ctx() as funcs,
+        TorchDispatchStack().ctx() as ops,
     ):
         result = a + b
 

@@ -118,7 +118,7 @@ class RouteFunctionOp(TFunctionMode):
 
     @typing.override
     def __call__(self, thunk: TFunctionFn, /) -> object:
-        with self.dispatcher:
+        with self.dispatcher.ctx():
             result = thunk.do()
 
         self.history.append(thunk, result)
@@ -142,7 +142,7 @@ def track_fn():
     dispatcher = RouteDispatchOp(no_route)
     tracker = RouteFunctionOp(dispatcher)
 
-    with tracker:
+    with tracker.ctx():
         yield tracker.history, dispatcher.history
 
 
@@ -156,5 +156,5 @@ def fake_fn():
     dispatcher = RouteDispatchOp(only_route_in_fake)
     tracker = RouteFunctionOp(dispatcher)
 
-    with torch_fake_mode(), tracker, CloneDispatchOp():
+    with torch_fake_mode(), tracker.ctx(), CloneDispatchOp().ctx():
         yield tracker.history, dispatcher.history

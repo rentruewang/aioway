@@ -25,7 +25,7 @@ a = torch.randn(3, 4)
 b = torch.randn(1, 1)
 
 # %%
-with PrintTorchDispatch(), PrintTorchFunction():
+with PrintTorchDispatch().ctx(), PrintTorchFunction().ctx():
     c = a + b
 
 # %%
@@ -37,7 +37,7 @@ with torch_fake_mode():
     b = torch.randn(1, 1)
 
 # %%
-with PrintTorchDispatch(), PrintTorchFunction():
+with PrintTorchDispatch().ctx(), PrintTorchFunction().ctx():
     c = a + b
 
 # %%
