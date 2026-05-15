@@ -42,4 +42,7 @@ pickle.dumps(a)
 dcls.is_dataclass(a)
 
 # %%
-a == {'shape': [5, 7, 9],  'dtype': 'float16', 'requires_grad': True}
+a == {'shape': [5, 7, 9], 'dtype': 'float16', 'requires_grad': True}
+
+# %%
+dcls.asdict(a)
