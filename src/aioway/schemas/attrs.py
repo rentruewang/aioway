@@ -87,9 +87,11 @@ class Attr:
     def __repr__(self) -> str:
         display: list[typing.Any] = [self.shape, self.dtype, self.device]
 
+        # The name "require_grad" is too long.
         if self.requires_grad:
             display.append("grad")
 
+        # You pretty much only see and only use `strided`, so omit it if strided.
         if self.layout != torch.strided:
             display.append(self.layout)
 
