@@ -187,6 +187,12 @@ class _ModeContextMixin:
     STACK: typing.ClassVar[list[typing.Self]]
     "The stack. One of `_FUNCTIONS`, `_DISPATCHES`."
 
+    _TORCH_MODE: typing.ClassVar[cabc.Callable[..., _Mode]]
+    """
+    The actual context passed to `torch`.
+    These are specific modes that honor the `on` switch (hence private function).
+    """
+
     _: dcls.KW_ONLY
 
     on: bool = True
@@ -201,7 +207,7 @@ class _ModeContextMixin:
 
         self.STACK.append(self)
         try:
-            with self._torch_mode():
+            with self._TORCH_MODE(self):
                 yield self
         finally:
             _ = self.STACK.pop()
@@ -216,35 +222,6 @@ class _ModeContextMixin:
             yield
         finally:
             self.on = before
-
-    @abc.abstractmethod
-    def _torch_mode(self) -> _Mode:
-        """
-        The actual context passed to `torch`.
-        These are specific modes that honor the `on` switch (hence private function).
-        """
-
-        raise NotImplementedError
-
-
-@dcls.dataclass
-class TFunctionMode(_ModeContextMixin, abc.ABC):
-    """
-    `TFunctionMode` is the adaptor for `torch.overrides.TorchFunctionMode`.
-
-    It provides a `context` context manager that is responsible for
-    entering and exiting the torch mode context, as well as an `on` switch.
-    """
-
-    STACK = _FUNCTIONS
-
-    @abc.abstractmethod
-    def __call__(self, thunk: TFunctionFn, /) -> object:
-        raise NotImplementedError
-
-    @typing.override
-    def _torch_mode(self):
-        return _TorchFunctionModeCtx(self)
 
 
 @typing.final
@@ -269,20 +246,20 @@ class _TorchFunctionModeCtx(overrides.TorchFunctionMode):
 
 
 @dcls.dataclass
-class TDispatchMode(_ModeContextMixin, abc.ABC):
+class TFunctionMode(_ModeContextMixin, abc.ABC):
     """
-    `TorchDispatchMode` is the adaptor for `torch.data._python_dispatch.TorchDispatchMode`.
+    `TFunctionMode` is the adaptor for `torch.overrides.TorchFunctionMode`.
+
+    It provides a `context` context manager that is responsible for
+    entering and exiting the torch mode context, as well as an `on` switch.
     """
 
-    STACK = _DISPATCHES
+    STACK: typing.ClassVar = _FUNCTIONS
+    _TORCH_MODE: typing.ClassVar = _TorchFunctionModeCtx
 
     @abc.abstractmethod
-    def __call__(self, thunk: TDispatchFn, /) -> object:
+    def __call__(self, thunk: TFunctionFn, /) -> object:
         raise NotImplementedError
-
-    @typing.override
-    def _torch_mode(self) -> _Mode:
-        return _TorchDispatchModeCtx(self)
 
 
 @typing.final
@@ -307,6 +284,20 @@ class _TorchDispatchModeCtx(pyd.TorchDispatchMode):
 
         thunk = TDispatchFn(func=func, args=args, kwargs=kwargs)
         return self.mode(thunk)
+
+
+@dcls.dataclass
+class TDispatchMode(_ModeContextMixin, abc.ABC):
+    """
+    `TorchDispatchMode` is the adaptor for `torch.data._python_dispatch.TorchDispatchMode`.
+    """
+
+    STACK: typing.ClassVar = _DISPATCHES
+    _TORCH_MODE: typing.ClassVar = _TorchDispatchModeCtx
+
+    @abc.abstractmethod
+    def __call__(self, thunk: TDispatchFn, /) -> object:
+        raise NotImplementedError
 
 
 @typing.final
