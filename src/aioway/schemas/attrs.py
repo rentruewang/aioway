@@ -8,7 +8,6 @@ import logging
 import typing
 from collections import abc as cabc
 
-from sympy import is_strictly_increasing
 import torch
 
 from aioway.fake import torch_fake_mode

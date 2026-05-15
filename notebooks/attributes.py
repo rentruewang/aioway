@@ -20,10 +20,10 @@ import pickle
 import torch
 
 # %%
-import dataclasses as dcls
+from aioway.schemas import attr
 
 # %%
-from aioway.schemas import attr
+
 
 # %%
 t = torch.randn(5, 7, 9).to(torch.float16).requires_grad_()
@@ -39,10 +39,4 @@ a.__getstate__()
 pickle.dumps(a)
 
 # %%
-dcls.is_dataclass(a)
-
-# %%
-a == {'shape': [5, 7, 9], 'dtype': 'float16', 'requires_grad': True}
-
-# %%
-dcls.asdict(a)
+a == {"shape": [5, 7, 9], "dtype": "float16", "requires_grad": True}
