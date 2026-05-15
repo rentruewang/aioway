@@ -3,14 +3,16 @@
 "Metadata for torch operators / functions."
 
 import abc
+import dataclasses as dcls
 import functools
 import typing
 from collections import abc as cabc
 
-from aioway._common import render_fcall
-from aioway._common.decomps import Decomposer
+import torch
 
-__all__ = ["Fn", "Thunk"]
+from aioway._common import Decomposer, HasParam, find_nested_tensors, render_fcall
+
+__all__ = ["Fn", "Thunk", "TorchThunk"]
 
 _PENDING = object()
 "The object signifying a status of pending. This is a `object()` s.t. `FnCache` can store `None`."
@@ -159,3 +161,41 @@ class Thunk(Fn):
         "Returns if the cache is previously called."
 
         return self.__result is not _PENDING
+
+
+@dcls.dataclass(match_args=False)
+class TorchThunk[T: cabc.Callable[..., typing.Any]](HasParam, Fn, abc.ABC):
+    """
+    `BaseFn` is a really basic `Fn` that acts as a base class,
+    with some `torch` utilities.
+    """
+
+    _: dcls.KW_ONLY
+
+    func: T
+    "The function to call. Must be callable.."
+
+    args: tuple[typing.Any, ...]
+    "The positional args."
+
+    kwargs: dict[str, typing.Any]
+    "The keyword arguments."
+
+    def __post_init__(self):
+        if not callable(self.func):
+            raise TypeError(f"{self.func=} is not callable.")
+
+        if not isinstance(self.args, tuple):
+            raise TypeError(f"{self.args=} is not a tuple.")
+
+        if not isinstance(self.kwargs, dict):
+            raise TypeError(f"{self.kwargs=} is not a dict.")
+
+    @typing.override
+    def do(self) -> object:
+        return self.func(*self.args, **self.kwargs)
+
+    @typing.override
+    def tensors(self) -> cabc.Iterator[torch.Tensor]:
+        yield from find_nested_tensors(self.args)
+        yield from find_nested_tensors(self.kwargs)

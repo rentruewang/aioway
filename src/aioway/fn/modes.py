@@ -26,7 +26,7 @@ from aioway._common import (
 from aioway.fate import Fate, find_fate
 from aioway.schemas import attr
 
-from .fn import Fn
+from .fn import Fn, TorchThunk
 
 __all__ = [
     "TFunctionMode",
@@ -38,8 +38,6 @@ __all__ = [
     "torch_mode_off",
 ]
 
-
-type _TorchCallable = cabc.Callable[..., typing.Any] | _ops.OpOverload
 
 _do_aioway_function: bool = True
 "If `False`, `TFunctionMode` won't do anything."
@@ -80,46 +78,6 @@ def torch_mode_off():
         yield
 
 
-@dcls.dataclass(match_args=False)
-class _TThunkBase[T: _TorchCallable](HasParam, Fn, abc.ABC):
-    """
-    `TorchThunkFn` is the thunk capturing the function calls initiated by `torch`.
-    It's the base class for both `TorchFunctionFn` and `TorchDispatchFn`
-    """
-
-    __match_args__ = "func", "types", "args", "kwargs"
-
-    _: dcls.KW_ONLY
-
-    func: T
-    "The `torch.*`, `Tensor.*` functions."
-
-    args: tuple[typing.Any, ...]
-    "The positional args."
-
-    kwargs: dict[str, typing.Any]
-    "The keyword arguments."
-
-    def __post_init__(self):
-        if not callable(self.func):
-            raise TypeError(f"{self.func=} is not callable.")
-
-        if not isinstance(self.args, tuple):
-            raise TypeError(f"{self.args=} is not a tuple.")
-
-        if not isinstance(self.kwargs, dict):
-            raise TypeError(f"{self.kwargs=} is not a dict.")
-
-    @typing.override
-    def do(self) -> object:
-        return self.func(*self.args, **self.kwargs)
-
-    @typing.override
-    def tensors(self) -> cabc.Iterator[torch.Tensor]:
-        yield from find_nested_tensors(self.args)
-        yield from find_nested_tensors(self.kwargs)
-
-
 class TFunctionFnMixin(Fn, abc.ABC):
     "The mixin to define what types `Fn` graph would capture during function mode."
 
@@ -130,7 +88,7 @@ class TFunctionFnMixin(Fn, abc.ABC):
 
 
 @dcls.dataclass(match_args=False)
-class TFunctionFn(TFunctionFnMixin, _TThunkBase[cabc.Callable[..., typing.Any]]):
+class TFunctionFn(TFunctionFnMixin, TorchThunk[cabc.Callable[..., typing.Any]]):
     """
     `TorchFunctionT` is the thunk capturing the function calls initiated by `torch`.
 
@@ -157,7 +115,7 @@ class TDispatchFnMixin(Fn, abc.ABC):
 
 
 @dcls.dataclass(match_args=False)
-class TDispatchFn(TDispatchFnMixin, _TThunkBase[_ops.OpOverload]):
+class TDispatchFn(TDispatchFnMixin, TorchThunk[_ops.OpOverload]):
     """
     `TorchDispatchT` is the thunk capturing the function calls initiated by `torch`.
     This is by default what a null-op `__torch_dispatch__` would call.
