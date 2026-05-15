@@ -8,6 +8,8 @@ import typing
 import numpy as np
 import torch
 
+from ._bases import TorchAttrBase
+
 __all__ = ["DType", "DTypeLike", "DTypeFamily"]
 
 LOGGER = logging.getLogger(__name__)
@@ -18,25 +20,22 @@ type DTypeLike = str | DType | torch.dtype | np.dtype
 "Types that can be converted to `Dtype` with the public `dtype` function (or `DType.parse`)."
 
 
-class DType:
+class DType(TorchAttrBase[torch.dtype]):
     r"""
     `DType` is a class supporting converting to and from
     its string representation in `aioway`, effectively supporting
     comparison and conversion between different frameworks.
     """
 
-    def __init__(self, dtype: torch.dtype):
-        self._dtype = dtype
+    TYPE = torch.dtype
 
-    def __repr__(self) -> str:
-        return f"aioway.{self!s}"
-
+    @typing.override
     def __str__(self) -> str:
         """
         Get the representation of the type, must be the most specialized.
         """
 
-        return str(self._dtype).removeprefix("torch.")
+        return str(self._data).removeprefix("torch.")
 
     @typing.override
     def __getstate__(self) -> object:
@@ -45,38 +44,29 @@ class DType:
     def __hash__(self) -> int:
         return hash(str(self))
 
-    def __eq__(self, other: typing.Any) -> bool:
-        try:
-            parsed = self.parse(other)
-        except ValueError:
-            return NotImplemented
-
-        # Parsing sucessful.
-        return self._dtype == parsed._dtype
-
     @property
     def itemsize(self) -> int:
         """
         The width of the dtype in bytes. Greater or equal to 1.
         """
 
-        return self._dtype.itemsize
+        return self._data.itemsize
 
     @property
     def is_complex(self) -> bool:
-        return self._dtype.is_complex
+        return self._data.is_complex
 
     @property
     def is_floating_point(self) -> bool:
-        return self._dtype.is_floating_point
+        return self._data.is_floating_point
 
     @property
     def is_signed(self) -> bool:
-        return self._dtype.is_signed
+        return self._data.is_signed
 
     @property
     def family(self) -> DTypeFamily:
-        if self._dtype == torch.bool:
+        if self._data == torch.bool:
             return "bool"
 
         elif self.is_complex:
@@ -94,10 +84,6 @@ class DType:
     def numpy(self) -> np.dtype:
         "Convert this to a numpy dtype."
         return np.dtype(str(self))
-
-    def torch(self) -> torch.dtype:
-        "Convert this to a torch dtype."
-        return self._dtype
 
     def broadcast(self, other: DTypeLike) -> typing.Self:
         try:
@@ -120,8 +106,8 @@ class DType:
         """
         The convenient wrapper to create a `DType` from compatible types.
 
-        Raises:
-            ValueError: If we don't know how to handle the dtype.
+        Returns:
+            An instance, or `NotImplemented` if we don't know how to parse the type.
         """
 
         if isinstance(dtype, cls):
@@ -137,7 +123,7 @@ class DType:
         if isinstance(dtype, np.dtype):
             return cls._parse_numpy(dtype)
 
-        raise ValueError(f"Not sure how to handle {dtype=}.")
+        raise ValueError(f"Parsing failed for {dtype=}.")
 
     @classmethod
     def _parse_str(cls, dtype: str, /) -> typing.Self:

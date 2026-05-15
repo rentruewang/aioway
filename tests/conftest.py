@@ -3,6 +3,7 @@
 import pathlib
 import random
 
+import pathspec
 import pytest
 import torch
 from numpy import random as npr
@@ -12,10 +13,44 @@ from aioway.fn import fake_fn, track_fn
 
 from .fake import batch_sizes, cpu_and_maybe_cuda
 
+_PROJECT_ROOT = pathlib.Path(__file__).parent.parent.resolve()
+_MEDIA_DIR = _PROJECT_ROOT / "media"
+_NOTEBOOKS_DIR = _PROJECT_ROOT / "notebooks"
+_GITIGNORE = _PROJECT_ROOT / ".gitignore"
+
+
+def gitignore_glob(path: pathlib.Path, pattern: str):
+    assert _GITIGNORE.exists()
+    spec = pathspec.PathSpec.from_lines("gitwildmatch", _GITIGNORE.open("r"))
+
+    for f in path.rglob(pattern):
+        if not spec.match_file(f):
+            yield f
+
+
+@pytest.fixture(scope="module")
+def project_root():
+    assert _PROJECT_ROOT.exists()
+    assert _PROJECT_ROOT.is_dir()
+    return _PROJECT_ROOT
+
 
 @pytest.fixture(scope="module")
 def media():
-    return (pathlib.Path(__file__).parent.parent / "media").resolve()
+    assert _MEDIA_DIR.exists()
+    assert _MEDIA_DIR.is_dir()
+    return _MEDIA_DIR
+
+
+def _notebooks():
+    assert _NOTEBOOKS_DIR.exists()
+    assert _NOTEBOOKS_DIR.is_dir()
+    yield from gitignore_glob(_NOTEBOOKS_DIR, "*.py")
+
+
+@pytest.fixture(scope="module", params=_notebooks(), ids=lambda path: path.name)
+def notebook(request: pytest.FixtureRequest):
+    return request.param
 
 
 @pytest.fixture(autouse=True, scope="session")

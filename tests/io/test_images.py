@@ -5,7 +5,7 @@ import pathlib
 import pytest
 import torch
 
-from aioway.fn import is_fake_tensor
+from aioway.fake import is_fake_tensor
 from aioway.io import (
     ImageLoader,
     PillowImageLoader,
