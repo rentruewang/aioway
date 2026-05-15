@@ -28,7 +28,7 @@ def dcls_no_repr[T: type](cls: T) -> T:
 
 @typing.dataclass_transform(eq_default=True, frozen_default=True)
 def dcls_frozen_no_repr[T: type](cls: T) -> T:
-    result: typing.Any = dcls.dataclass(repr=True, frozen=True)(cls)
+    result: typing.Any = dcls.dataclass(repr=False, frozen=True)(cls)
     return result
 
 
