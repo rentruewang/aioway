@@ -12,7 +12,16 @@ import numpy as np
 
 from aioway._common import IntArray
 
-__all__ = ["Info", "InfoList", "IsImage", "IsVideo", "ProbDim", "TimeDim", "SpaceDim"]
+__all__ = [
+    "Info",
+    "InfoList",
+    "IsImage",
+    "IsVideo",
+    "BatchDim",
+    "ProbDim",
+    "TimeDim",
+    "SpaceDim",
+]
 
 
 @dcls.dataclass(frozen=True)
@@ -155,6 +164,15 @@ class _SingleDimMixin:
 
     def __int__(self) -> int:
         return self.dim
+
+
+@dcls.dataclass(frozen=True)
+class BatchDim(_SingleDimMixin, Info):
+    """
+    Marks a dimension as the batch dimension.
+
+    This dimension is assumed to be decomposbile.
+    """
 
 
 @dcls.dataclass(frozen=True)

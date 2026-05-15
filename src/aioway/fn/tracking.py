@@ -15,7 +15,7 @@ from aioway._common import Stack, TensorFilter, filter_tensor_off, is_leaf_has_g
 from aioway._common.decomps import find_nested_tensors
 from aioway.schemas import attr
 
-from .modes import (
+from .tensors import (
     FateFn,
     TDispatchFn,
     TDispatchMode,
@@ -40,20 +40,22 @@ type TorchCall = FateFn | TFunctionFn | TDispatchFn
 "The calls to `torch.*` APIs."
 
 
-class PrintTorchFunction(TFunctionMode):
-    rich: bool = False
+class _HasRichFlagMixin:
+    def __init__(self, rich: bool = False) -> None:
+        super().__init__()
+        self._rich = rich
 
+
+class PrintTorchFunction(_HasRichFlagMixin, TFunctionMode):
     @typing.override
     def __call__(self, thunk: TFunctionFn, /) -> object:
-        return _ThunkPrinter(rich=self.rich)(thunk)
+        return _ThunkPrinter(rich=self._rich)(thunk)
 
 
-class PrintTorchDispatch(TDispatchMode):
-    rich: bool = False
-
+class PrintTorchDispatch(_HasRichFlagMixin, TDispatchMode):
     @typing.override
     def __call__(self, thunk: TDispatchFn, /) -> object:
-        return _ThunkPrinter(rich=self.rich)(thunk)
+        return _ThunkPrinter(rich=self._rich)(thunk)
 
 
 @dcls.dataclass(frozen=True)

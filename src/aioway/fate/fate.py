@@ -7,7 +7,6 @@ import dataclasses as dcls
 import inspect
 import re
 import typing
-from collections import abc as cabc
 
 import torch
 from torch import _ops
@@ -31,7 +30,7 @@ class Fate(abc.ABC):
     For example, boolean masking is data dependent, and is thus not supported by fake mode.
     """
 
-    IR: typing.ClassVar[_ops.OpOverload | tuple[_ops.OpOverload, ...]]
+    IR: typing.ClassVar[_ops.OpOverload]
     """
     The torch IR that this `Fate` would be implementing.
     """
@@ -41,7 +40,7 @@ class Fate(abc.ABC):
 
     @typing.override
     def __repr__(self) -> str:
-        return render_fcall(f"preview::{self.name()}", **dcls.asdict(self))
+        return render_fcall(f"fate::{self.name()}", **dcls.asdict(self))
 
     @typing.override
     def __hash__(self) -> int:
@@ -55,13 +54,12 @@ class Fate(abc.ABC):
 
         raise NotImplementedError
 
-    @abc.abstractmethod
     def do(self) -> torch.Tensor:
         """
         Generate the fake tensor.
         """
 
-        raise NotImplementedError
+        return self.IR(**dcls.asdict(self))
 
     @classmethod
     def name(cls) -> str:
@@ -94,26 +92,12 @@ class Fate(abc.ABC):
         except AttributeError:
             return
 
-        for op in _get_overloads(ir):
-            # Mimick defaultdict behavior.
-            # Using dict over defaultdict s.t. we don't need special handling in `repr`.
-            if op not in _ATEN_TO_FATE_LIST:
-                _ATEN_TO_FATE_LIST[op] = []
+        # Mimick defaultdict behavior.
+        # Using dict over defaultdict s.t. we don't need special handling in `repr`.
+        if ir not in _ATEN_TO_FATE_LIST:
+            _ATEN_TO_FATE_LIST[ir] = []
 
-            _ATEN_TO_FATE_LIST[op].append(cls)
-
-
-def _get_overloads(obj: _ops.OpOverload | cabc.Sequence[_ops.OpOverload], /):
-    "Convert the input cls.IR into iterable of `torch._ops.OpOverload`."
-
-    if isinstance(obj, _ops.OpOverload):
-        yield obj
-        return
-
-    assert isinstance(obj, cabc.Sequence)
-    for op in obj:
-        assert isinstance(op, _ops.OpOverload), type(op)
-        yield op
+        _ATEN_TO_FATE_LIST[ir].append(cls)
 
 
 def find_fate(op: _ops.OpOverload, *args: typing.Any, **kwargs: typing.Any) -> Fate:
@@ -127,10 +111,10 @@ def find_fate(op: _ops.OpOverload, *args: typing.Any, **kwargs: typing.Any) -> F
         return NotImplemented
 
     for candidate in _ATEN_TO_FATE_LIST[op]:
-        if not (preview := candidate(*args, **kwargs)).ok():
+        if not (fate := candidate(*args, **kwargs)).ok():
             continue
 
-        return preview
+        return fate
 
     return NotImplemented
 

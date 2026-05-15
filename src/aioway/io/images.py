@@ -10,7 +10,7 @@ from PIL import Image as image
 from torchvision import io as vio
 from torchvision.transforms import v2 as tt
 
-from aioway.fn import enabled_fake_mode, torch_enable_fake_mode_func
+from aioway.fake import torch_enable_fake_mode_func
 from aioway.schemas import attr
 
 __all__ = [
@@ -73,25 +73,17 @@ class PillowImageLoader(ImageLoader):
 @dcls.dataclass
 class FakePillowImageLoader(ImageLoader):
     @typing.override
-    @torch_enable_fake_mode_func(True)
     def __call__(self, fname: str | pathlib.Path, /) -> torch.Tensor:
-        if not enabled_fake_mode():
-            raise RuntimeError(f"{type(self)} only works in fake mode!")
-
         img = image.open(fname)
 
         # Convert to `uint8` as a hack, because we don't support it in our dtypes.
-        return (
-            attr(
-                {
-                    "shape": [len(img.mode), img.width, img.height],
-                    "device": "cpu",
-                    "dtype": "int",
-                }
-            )
-            .to_tensor()
-            .to(torch.uint8)
-        )
+        return attr(
+            {
+                "shape": [len(img.mode), img.width, img.height],
+                "device": "cpu",
+                "dtype": "uint8",
+            }
+        ).to_fake_tensor()
 
 
 @dcls.dataclass

@@ -6,11 +6,16 @@ import logging
 import typing
 from collections import abc as cabc
 
-from aioway._common import is_aten_op, is_prim_op, is_torchcodec_op, is_torchvision_op
-from aioway._common.decomps import replace_tensors
+from aioway._common import (
+    is_aten_op,
+    is_prim_op,
+    is_torchcodec_op,
+    is_torchvision_op,
+    replace_tensors,
+)
+from aioway.fake import enabled_fake_mode, torch_fake_mode
 
-from .fake import enabled_fake_mode, torch_fake_mode
-from .modes import FateFn, TDispatchFn, TDispatchMode, TFunctionFn, TFunctionMode
+from .tensors import FateFn, TDispatchFn, TDispatchMode, TFunctionFn, TFunctionMode
 from .tracking import FnHistory
 
 __all__ = [
@@ -100,7 +105,7 @@ class RouteFunctionOp(TFunctionMode):
     and route the function to using `FateFn` if it's a `torch.ops.*` and in fake mode.
     """
 
-    dispatch_router: RouteDispatchOp
+    dispatcher: RouteDispatchOp
     """
     The router for which to route the `torch.ops.*` operations.
     """
@@ -113,7 +118,7 @@ class RouteFunctionOp(TFunctionMode):
 
     @typing.override
     def __call__(self, thunk: TFunctionFn, /) -> object:
-        with self.dispatch_router:
+        with self.dispatcher:
             result = thunk.do()
 
         self.history.append(thunk, result)

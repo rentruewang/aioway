@@ -31,21 +31,29 @@ def schema():
             device="cpu",
             shape=[1],
             dtype="float32",
+            layout="strided",
+            requires_grad=False,
         ),
         f2d=Attr.parse(
             device="cpu",
             shape=[1, 32],
             dtype="float32",
+            layout="strided",
+            requires_grad=False,
         ),
         i1d=Attr.parse(
             device="cpu",
             shape=[1],
             dtype="int64",
+            layout="strided",
+            requires_grad=False,
         ),
         i2d=Attr.parse(
             device="cpu",
             shape=[1, 32],
             dtype="int64",
+            layout="strided",
+            requires_grad=False,
         ),
     )
 

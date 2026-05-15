@@ -14,6 +14,7 @@ import torch
 
 __all__ = [
     "replace_tensors",
+    "find_and_filter",
     "find_nested_tensors",
     "Decomposer",
     "DecomposeCheck",
@@ -173,13 +174,19 @@ class Decomposer:
             return
 
 
+def find_and_filter(obj, types: type | tuple[type, ...], /):
+    "Decompose the object based on the desired type."
+
+    finder = Decomposer(target=lambda t: isinstance(t, types))
+    yield from finder(obj)
+
+
 def find_nested_tensors(obj: object) -> cabc.Iterator[torch.Tensor]:
     """
     Find and unpack tensors from containers.
     """
 
-    finder = Decomposer(target=lambda t: isinstance(t, torch.Tensor))
-    yield from finder(obj)
+    yield from find_and_filter(obj, torch.Tensor)
 
 
 def _dataclass_as_dict(obj: object):

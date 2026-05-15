@@ -3,27 +3,29 @@
 "Metadata for torch operators / functions."
 
 import abc
+import dataclasses as dcls
 import functools
 import typing
 from collections import abc as cabc
 
-from aioway._common import render_fcall
-from aioway._common.decomps import Decomposer
+import torch
 
-__all__ = ["Fn", "Thunk"]
+from aioway._common import HasParam, find_nested_tensors, render_fcall
+
+__all__ = ["Fn", "Thunk", "TorchThunk"]
 
 _PENDING = object()
 "The object signifying a status of pending. This is a `object()` s.t. `FnCache` can store `None`."
 
 
-class Fn(abc.ABC):
+@typing.runtime_checkable
+class Fn(typing.Protocol):
     """
     `Fn` is the base class for delayed computation, in a single batch (a single pass).
 
     It stands for [f]unction [n]ode, or short for function.
 
     `Fn.do()` executes the computation, `Fn` base class itself does not make any more assumption.
-    `Fn.inputs()` traces back to the entire graph.
     """
 
     @abc.abstractmethod
@@ -34,16 +36,8 @@ class Fn(abc.ABC):
 
         raise NotImplementedError
 
-    @abc.abstractmethod
-    def inputs(self) -> cabc.Iterator[Fn]:
-        """
-        Iterate over the inputs of the object.
-        """
 
-        raise NotImplementedError
-
-
-class Thunk(Fn):
+class Thunk:
     """
     The thunk for any function, handles both pretty printing and storing the result.
 
@@ -107,11 +101,6 @@ class Thunk(Fn):
         return self.__result
 
     @typing.override
-    def inputs(self) -> cabc.Iterator[Fn]:
-        finder = Decomposer(target=lambda f: isinstance(f, Fn))
-        return finder(self)
-
-    @typing.override
     def __repr__(self) -> str:
         return self.__string
 
@@ -159,3 +148,40 @@ class Thunk(Fn):
         "Returns if the cache is previously called."
 
         return self.__result is not _PENDING
+
+
+@dcls.dataclass(match_args=False)
+class TorchThunk[T: cabc.Callable[..., typing.Any]](HasParam, abc.ABC):
+    """
+    `BaseFn` is a really basic `Fn` that acts as a base class,
+    with some `torch` utilities.
+    """
+
+    _: dcls.KW_ONLY
+
+    func: T
+    "The function to call. Must be callable.."
+
+    args: tuple[typing.Any, ...]
+    "The positional args."
+
+    kwargs: dict[str, typing.Any]
+    "The keyword arguments."
+
+    def __post_init__(self):
+        if not callable(self.func):
+            raise TypeError(f"{self.func=} is not callable.")
+
+        if not isinstance(self.args, tuple):
+            raise TypeError(f"{self.args=} is not a tuple.")
+
+        if not isinstance(self.kwargs, dict):
+            raise TypeError(f"{self.kwargs=} is not a dict.")
+
+    def do(self) -> object:
+        return self.func(*self.args, **self.kwargs)
+
+    @typing.override
+    def tensors(self) -> cabc.Iterator[torch.Tensor]:
+        yield from find_nested_tensors(self.args)
+        yield from find_nested_tensors(self.kwargs)
