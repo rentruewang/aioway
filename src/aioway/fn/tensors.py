@@ -201,14 +201,28 @@ class _ModeContextMixin:
 
         self.STACK.append(self)
         try:
-            with self.torch_mode():
+            with self._torch_mode():
                 yield self
         finally:
             _ = self.STACK.pop()
 
+    @ctxl.contextmanager
+    def switch(self, on: bool):
+        "Switch to `on` in the scope (can be overwritten)."
+
+        before = self.on
+        self.on = on
+        try:
+            yield
+        finally:
+            self.on = before
+
     @abc.abstractmethod
-    def torch_mode(self) -> _Mode:
-        "The actual context passed to `torch`."
+    def _torch_mode(self) -> _Mode:
+        """
+        The actual context passed to `torch`.
+        These are specific modes that honor the `on` switch (hence private function).
+        """
 
         raise NotImplementedError
 
