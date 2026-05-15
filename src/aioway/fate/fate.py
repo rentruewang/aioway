@@ -7,7 +7,6 @@ import dataclasses as dcls
 import inspect
 import re
 import typing
-from collections import abc as cabc
 
 import torch
 from torch import _ops
@@ -99,19 +98,6 @@ class Fate(abc.ABC):
             _ATEN_TO_FATE_LIST[ir] = []
 
         _ATEN_TO_FATE_LIST[ir].append(cls)
-
-
-def _get_overloads(obj: _ops.OpOverload | cabc.Sequence[_ops.OpOverload], /):
-    "Convert the input cls.IR into iterable of `torch._ops.OpOverload`."
-
-    if isinstance(obj, _ops.OpOverload):
-        yield obj
-        return
-
-    assert isinstance(obj, cabc.Sequence)
-    for op in obj:
-        assert isinstance(op, _ops.OpOverload), type(op)
-        yield op
 
 
 def find_fate(op: _ops.OpOverload, *args: typing.Any, **kwargs: typing.Any) -> Fate:

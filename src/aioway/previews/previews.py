@@ -1,16 +1,21 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import abc
+import dataclasses as dcls
 import inspect
 import typing
 
 from torch import nn
+
+from aioway._common import dcls_frozen_no_repr
+from aioway._common.renders import render_fcall
 
 __all__ = ["Preview", "find_preview", "all_previews"]
 
 _PREVIEWS_REGISTRY: dict[type[nn.Module], type[Preview]] = {}
 
 
+@dcls_frozen_no_repr
 class Preview(abc.ABC):
     """
     `Preview` is a preview of how an `nn.Module` would be initialized.
@@ -27,11 +32,14 @@ class Preview(abc.ABC):
     "The `nn.Module` type that should be implemented."
 
     def __init_subclass__(cls) -> None:
-        return super().__init_subclass__()
+        cls._register()
 
-    @abc.abstractmethod
+    @typing.override
+    def __repr__(self) -> str:
+        return render_fcall(f"preview::{type(self).__name__}", **dcls.asdict(self))
+
     def do(self) -> nn.Module:
-        raise NotImplementedError
+        return self.NN(**dcls.asdict(self))
 
     @classmethod
     def _register(cls) -> None:

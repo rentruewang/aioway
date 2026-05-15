@@ -3,3 +3,4 @@
 from .convs import *
 from .dense import *
 from .previews import *
+from .dense import *
