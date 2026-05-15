@@ -243,7 +243,7 @@ class TFunctionMode(_ModeContextMixin, abc.ABC):
         raise NotImplementedError
 
     @typing.override
-    def torch_mode(self):
+    def _torch_mode(self):
         return _TorchFunctionModeCtx(self)
 
 
@@ -281,7 +281,7 @@ class TDispatchMode(_ModeContextMixin, abc.ABC):
         raise NotImplementedError
 
     @typing.override
-    def torch_mode(self) -> _Mode:
+    def _torch_mode(self) -> _Mode:
         return _TorchDispatchModeCtx(self)
 
 
