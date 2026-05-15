@@ -15,8 +15,6 @@ from aioway._common import IntArray
 __all__ = [
     "Info",
     "InfoList",
-    "IsImage",
-    "IsVideo",
     "BatchDim",
     "ProbDim",
     "TimeDim",
@@ -127,32 +125,6 @@ class InfoList:
 
     def by_type(self):
         return self._info_by_type
-
-
-class IsImage(Info):
-    """
-    Mark a tensor as image.
-
-    This means that the floating tensor values should all be between 0 to 1.
-    """
-
-    ordering: tuple[str, ...] = "c", "w", "h"
-    """
-    The channel ordering.
-    """
-
-
-class IsVideo(Info):
-    """
-    Mark a tensor as video.
-
-    This means that the floating tensor values should all be between 0 to 1.
-    """
-
-    ordering: tuple[str, ...] = "t", "c", "w", "h"
-    """
-    The channel ordering.
-    """
 
 
 @dcls.dataclass(frozen=True)
