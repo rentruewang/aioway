@@ -16,6 +16,7 @@ def schema() -> AttrSet:
                 "dtype": "int32",
                 "shape": [-1, 2, 3],
                 "layout": "strided",
+                "requires_grad": True,
             },
         ),
         b=attr(
@@ -24,6 +25,7 @@ def schema() -> AttrSet:
                 "dtype": "float32",
                 "shape": [-1, 6],
                 "layout": "strided",
+                "requires_grad": True,
             },
         ),
     )

@@ -83,6 +83,7 @@ class FakePillowImageLoader(ImageLoader):
                 "device": "cpu",
                 "dtype": "uint8",
                 "layout": "strided",
+                "requires_grad": False,
             }
         ).to_fake_tensor()
 

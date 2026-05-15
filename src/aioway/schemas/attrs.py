@@ -50,6 +50,11 @@ class Attr:
     The layout of the tensor.
     """
 
+    requires_grad: bool
+    """
+    Whether the tensor requires grad.
+    """
+
     infos: InfoList = dcls.field(default_factory=InfoList)
     """
     Extra information about the attribute.
@@ -105,6 +110,7 @@ class Attr:
         dtype: DTypeLike,
         shape: ShapeLike,
         layout: LayoutLike,
+        requires_grad: bool,
         infos: cabc.Iterable[Info] = (),
     ) -> typing.Self:
         """
@@ -125,6 +131,7 @@ class Attr:
             dtype=DType.parse(dtype),
             shape=Shape.parse(shape),
             layout=Layout.parse(layout),
+            requires_grad=requires_grad,
             infos=InfoList(*infos),
         )
 
@@ -137,6 +144,7 @@ class Attr:
             shape=tensor.shape,
             dtype=tensor.dtype,
             layout=tensor.layout,
+            requires_grad=tensor.requires_grad,
             infos=infos,
         )
 
@@ -172,6 +180,7 @@ class AttrDict(typing.TypedDict):
     dtype: DTypeLike
     shape: ShapeLike
     layout: LayoutLike
+    requires_grad: bool
     infos: typing.NotRequired[cabc.Iterable[Info]]
 
 
@@ -193,6 +202,7 @@ def attr(item: AttrLike, /) -> Attr:
             shape=item["shape"],
             dtype=item["dtype"],
             layout=item["layout"],
+            requires_grad=item["requires_grad"],
             infos=item.get("infos", ()),
         )
 
@@ -213,6 +223,7 @@ def _is_attr_dict(item: object) -> typing.TypeGuard[AttrDict]:
             dtype=item["dtype"],
             shape=item["shape"],
             layout=item["layout"],
+            requires_grad=item["requires_grad"],
             infos=item.get("infos", ()),
         )
     except Exception:
