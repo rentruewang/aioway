@@ -105,7 +105,7 @@ class AttrSet(cabc.Mapping[str, Attr]):
     def keys(self):
         return self._keys_view
 
-    def column(self, key: str, /) -> T:
+    def column(self, key: str, /) -> Attr:
         # Using the `find` function from `AttrSetKeysView`, to be DRY.
         if (idx := self.keys().find(key)) is None:
             raise KeyError(key)
@@ -161,13 +161,15 @@ class AttrSet(cabc.Mapping[str, Attr]):
 
         mapping: dict[str, Attr] = {}
         for i in range(len(names)):
-            attr_dict = {
-                "device": device_list[i],
-                "dtype": dtype_list[i],
-                "shape": shape_list[i],
-                "layout": layout_list[i],
-            }
-            mapping[names[i]] = attr(attr_dict)
+            item = attr(
+                {
+                    "device": device_list[i],
+                    "dtype": dtype_list[i],
+                    "shape": shape_list[i],
+                    "layout": layout_list[i],
+                }
+            )
+            mapping[names[i]] = item
 
         return cls.from_dict(mapping)
 
@@ -176,7 +178,7 @@ class AttrSet(cabc.Mapping[str, Attr]):
         return cls.from_dict({key: attr(val) for key, val in data.items()})
 
     @classmethod
-    def from_dict(cls, mapping: cabc.Mapping[str, T], /) -> typing.Self:
+    def from_dict(cls, mapping: cabc.Mapping[str, Attr], /) -> typing.Self:
         return cls(
             tuple(
                 sorted(
@@ -188,7 +190,7 @@ class AttrSet(cabc.Mapping[str, Attr]):
 
 @dcls.dataclass(frozen=True)
 class _AttrKeysView(cabc.KeysView[str]):
-    attrset: _AttrSetBase
+    attrset: AttrSet
     "The data to view. Its names must be sorted."
 
     @typing.override

@@ -1,6 +1,5 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import numpy as np
 import pytest
 import tensordict as td
 import torch
