@@ -14,11 +14,11 @@ from aioway.fake import torch_fake_mode
 
 from .devices import Device, DeviceLike
 from .dtypes import DType, DTypeLike
-from .infos import Info, InfoList
 from .layouts import Layout, LayoutLike
 from .shapes import Shape, ShapeLike
+from .tags import DimTag, HasDimTag
 
-__all__ = ["Attr", "attr", "AttrTensor"]
+__all__ = ["Attr", "attr"]
 
 
 LOGGER = logging.getLogger(__name__)
@@ -55,9 +55,9 @@ class Attr:
     The layout of the tensor.
     """
 
-    infos: InfoList = dcls.field(default_factory=InfoList)
+    tags: DimTag | None = None
     """
-    Extra information about the attribute.
+    Dimension tags for `torch.Tensor`.
     """
 
     def __post_init__(self) -> None:
@@ -76,7 +76,7 @@ class Attr:
             "device": self.device,
             "dtype": self.dtype,
             "shape": self.shape,
-            "infos": self.infos,
+            "tags": self.tags,
         }
         return {key: val.__getstate__() for key, val in mapping.items()}
 
@@ -121,7 +121,7 @@ class Attr:
         shape: ShapeLike,
         requires_grad: bool = False,
         layout: LayoutLike = "strided",
-        infos: cabc.Iterable[Info] = (),
+        tags: DimTag | None = None,
     ) -> typing.Self:
         """
         The convenient constructor for `Attr`.
@@ -130,7 +130,8 @@ class Attr:
             device: Things that can be converted to `Device`.
             dtype: Things that can be converted to `DType`.
             shape: Things that can be converted to `Shape`.
-            layout: Things that can be converted to `Layout`.
+            requires_grad: Boolean value. Default to `False`.
+            layout: Things that can be converted to `Layout`. Default to "strided".
 
         Returns:
             An attribute instance.
@@ -142,12 +143,14 @@ class Attr:
             shape=Shape.parse(shape),
             layout=Layout.parse(layout),
             requires_grad=requires_grad,
-            infos=InfoList(*infos),
+            tags=tags,
         )
 
     @classmethod
-    def from_tensor(cls, tensor: torch.Tensor, /, *infos: Info) -> typing.Self:
+    def from_tensor(cls, tensor: torch.Tensor, /) -> typing.Self:
         "Parse the `torch.Tensor`'s `Attr` representation"
+
+        tags = tensor.__aioway_dim_tag__ if isinstance(tensor, HasDimTag) else None
 
         return cls.parse(
             device=tensor.device,
@@ -155,34 +158,8 @@ class Attr:
             dtype=tensor.dtype,
             layout=tensor.layout,
             requires_grad=tensor.requires_grad,
-            infos=infos,
+            tags=tags,
         )
-
-
-@dcls.dataclass(frozen=True)
-class AttrTensor:
-    """
-    `AttrTensor` stores a `torch.Tensor` and a precomputed `Attr`.
-    """
-
-    tensor: torch.Tensor
-    """
-    The tensor that needs info attached.
-    """
-
-    attr: Attr
-    """
-    The attached info (most of the info can be derived from the tensor, but some cannot).
-    """
-
-    @classmethod
-    def from_tensor_info(cls, tensor: torch.Tensor, *infos: Info) -> typing.Self:
-        """
-        Auto determine some fields in `Attr` and create an `AttrTensor`.
-        """
-
-        attr = Attr.from_tensor(tensor, *infos)
-        return cls(tensor=tensor, attr=attr)
 
 
 class AttrDict(typing.TypedDict):
@@ -191,7 +168,7 @@ class AttrDict(typing.TypedDict):
     shape: ShapeLike
     requires_grad: typing.NotRequired[bool]
     layout: typing.NotRequired[LayoutLike]
-    infos: typing.NotRequired[cabc.Iterable[Info]]
+    infos: typing.NotRequired[DimTag]
 
 
 type AttrLike = Attr | AttrDict | torch.Tensor
@@ -227,7 +204,7 @@ def _is_attr_dict(item: object) -> Attr | None:
             shape=item["shape"],
             layout=item.get("layout", torch.strided),
             requires_grad=item.get("requires_grad", False),
-            infos=item.get("infos", ()),
+            tags=item.get("tags"),
         )
     except Exception:
         return None
