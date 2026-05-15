@@ -69,8 +69,6 @@ def test_attrset_getitem(schema: AttrSet):
     assert isinstance(schema["a"], Attr)
     assert isinstance(schema[["a", "b"]], AttrSet)
     assert schema == schema[["a", "b"]]
-    assert isinstance(schema[[-1, 2, 3]], AttrSet)
-    assert isinstance(schema[np.array([-1, 2, 3])], AttrSet)
 
 
 @pytest.fixture

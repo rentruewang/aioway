@@ -73,7 +73,7 @@ class AttrSet(cabc.Mapping[str, Attr]):
         if is_list_of(str)(idx):
             return self.__getitem_list_str(idx)
 
-        return self.__getitem_batch(idx)
+        raise KeyError(f"AttrSet cannot handle {idx=}.")
 
     @typing.override
     def __repr__(self) -> str:
@@ -93,40 +93,6 @@ class AttrSet(cabc.Mapping[str, Attr]):
 
     def __getitem_list_str(self, idx: list[str]):
         return self.select(*idx)
-
-    def __getitem_batch(self, idx):
-        return self.__getitem_batch_impl(idx)
-
-    def __getitem_batch_impl(self, idx):
-
-        if isinstance(idx, str) or is_list_of(str)(idx):
-            return self[idx]
-
-        names = self.names
-        device_list = self._get_attr_list(lambda a: a.device)
-        shape_list = self._get_attr_list(lambda a: a.shape)
-        dtype_list = self._get_attr_list(lambda a: a.dtype)
-        layout_list = self._get_attr_list(lambda a: a.layout)
-
-        if isinstance(idx, int):
-            new_shape = [shape[1:] for shape in shape_list]
-
-        elif isinstance(idx, slice | np.ndarray | torch.Tensor):
-            new_shape = shape_list[:]
-
-        elif isinstance(idx, list) and all(isinstance(i, int) for i in idx):
-            new_shape = shape_list[:]
-
-        else:
-            raise TypeError(type(idx))
-
-        return self.from_fields(
-            names=names,
-            device_list=device_list,
-            dtype_list=dtype_list,
-            shape_list=new_shape,
-            layout_list=layout_list,
-        )
 
     def rename(self, **renames: str):
         return self.from_dict(
