@@ -1,0 +1,45 @@
+# ---
+# jupyter:
+#   jupytext:
+#     formats: py:percent
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.19.1
+#   kernelspec:
+#     display_name: Python 3 (ipykernel)
+#     language: python
+#     name: python3
+# ---
+
+# %%
+import pickle
+
+# %%
+import torch
+
+# %%
+import dataclasses as dcls
+
+# %%
+from aioway.schemas import attr
+
+# %%
+t = torch.randn(5, 7, 9).to(torch.float16).requires_grad_()
+
+# %%
+a = attr(t)
+a
+
+# %%
+a.__getstate__()
+
+# %%
+pickle.dumps(a)
+
+# %%
+dcls.is_dataclass(a)
+
+# %%
+a == {'shape': [5, 7, 9],  'dtype': 'float16', 'requires_grad': True}

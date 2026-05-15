@@ -8,6 +8,7 @@ import logging
 import typing
 from collections import abc as cabc
 
+from sympy import is_strictly_increasing
 import torch
 
 from aioway.fake import torch_fake_mode
@@ -16,7 +17,6 @@ from .devices import Device, DeviceLike
 from .dtypes import DType, DTypeLike
 from .layouts import Layout, LayoutLike
 from .shapes import Shape, ShapeLike
-from .tags import DimTag, HasDimTag
 
 __all__ = ["Attr", "attr"]
 
@@ -24,15 +24,10 @@ __all__ = ["Attr", "attr"]
 LOGGER = logging.getLogger(__name__)
 
 
-@dcls.dataclass(frozen=True)
+@dcls.dataclass(frozen=True, eq=False)
 class Attr:
     """
     The "type" for a `torch.Tensor`, describing everything we want to know about it.
-    """
-
-    device: Device
-    """
-    The device for the column.
     """
 
     dtype: DType
@@ -44,20 +39,19 @@ class Attr:
     """
     The shape of individual items in the column.
     """
+    device: Device = Device.parse("cpu")
+    """
+    The device for the column.
+    """
 
     requires_grad: bool = False
     """
     Whether the tensor requires grad.
     """
 
-    layout: Layout = Layout(torch.strided)
+    layout: Layout = Layout.parse(torch.strided)
     """
     The layout of the tensor.
-    """
-
-    tags: DimTag | None = None
-    """
-    Dimension tags for `torch.Tensor`.
     """
 
     def __post_init__(self) -> None:
@@ -70,15 +64,28 @@ class Attr:
         if not isinstance(self.shape, Shape):
             raise TypeError(type(self.shape))
 
+    def __bool__(self):
+        return True
+
+    @typing.override
+    def __eq__(self, other: object, /) -> bool:
+        if isinstance(other, Attr):
+            return self.__getstate__() == other.__getstate__()
+
+        if parsed := _is_attr_dict(other):
+            return self == parsed
+
+        return NotImplemented
+
     @typing.override
     def __getstate__(self):
-        mapping = {
-            "device": self.device,
-            "dtype": self.dtype,
-            "shape": self.shape,
-            "tags": self.tags,
+        return {
+            "dtype": self.dtype.__getstate__(),
+            "shape": self.shape.__getstate__(),
+            "device": self.device.__getstate__(),
+            "requires_grad": self.requires_grad,
+            "layout": self.layout.__getstate__(),
         }
-        return {key: val.__getstate__() for key, val in mapping.items()}
 
     def __hash__(self) -> int:
         return hash(json.dumps(self.__getstate__(), sort_keys=True))
@@ -87,13 +94,13 @@ class Attr:
     def __repr__(self) -> str:
         display: list[typing.Any] = [self.shape, self.dtype, self.device]
 
-        # The name "require_grad" is too long.
-        if self.requires_grad:
-            display.append("grad")
-
         # You pretty much only see and only use `strided`, so omit it if strided.
         if self.layout != torch.strided:
             display.append(self.layout)
+
+        # The name "require_grad" is too long.
+        if self.requires_grad:
+            display.append("grad")
 
         return "[" + ",".join(map(str, display)) + "]"
 
@@ -116,20 +123,19 @@ class Attr:
     @classmethod
     def parse(
         cls,
-        device: DeviceLike,
         dtype: DTypeLike,
         shape: ShapeLike,
+        device: DeviceLike = "cpu",
         requires_grad: bool = False,
         layout: LayoutLike = "strided",
-        tags: DimTag | None = None,
     ) -> typing.Self:
         """
         The convenient constructor for `Attr`.
 
         Args:
-            device: Things that can be converted to `Device`.
             dtype: Things that can be converted to `DType`.
             shape: Things that can be converted to `Shape`.
+            device: Things that can be converted to `Device`. Default to "cpu".
             requires_grad: Boolean value. Default to `False`.
             layout: Things that can be converted to `Layout`. Default to "strided".
 
@@ -143,14 +149,11 @@ class Attr:
             shape=Shape.parse(shape),
             layout=Layout.parse(layout),
             requires_grad=requires_grad,
-            tags=tags,
         )
 
     @classmethod
     def from_tensor(cls, tensor: torch.Tensor, /) -> typing.Self:
         "Parse the `torch.Tensor`'s `Attr` representation"
-
-        tags = tensor.__aioway_dim_tag__ if isinstance(tensor, HasDimTag) else None
 
         return cls.parse(
             device=tensor.device,
@@ -158,17 +161,15 @@ class Attr:
             dtype=tensor.dtype,
             layout=tensor.layout,
             requires_grad=tensor.requires_grad,
-            tags=tags,
         )
 
 
 class AttrDict(typing.TypedDict):
-    device: DeviceLike
-    dtype: DTypeLike
     shape: ShapeLike
+    dtype: DTypeLike
+    device: typing.NotRequired[DeviceLike]
     requires_grad: typing.NotRequired[bool]
     layout: typing.NotRequired[LayoutLike]
-    infos: typing.NotRequired[DimTag]
 
 
 type AttrLike = Attr | AttrDict | torch.Tensor
@@ -199,12 +200,11 @@ def _is_attr_dict(item: object) -> Attr | None:
 
     try:
         attr = Attr.parse(
-            device=item["device"],
             dtype=item["dtype"],
             shape=item["shape"],
+            device=item.get("device", "cpu"),
             layout=item.get("layout", torch.strided),
             requires_grad=item.get("requires_grad", False),
-            tags=item.get("tags"),
         )
     except Exception:
         return None
