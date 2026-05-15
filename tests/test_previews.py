@@ -19,7 +19,7 @@ def preview(request: pytest.FixtureRequest):
 
 def test_preview_init(preview: Preview):
     assert isinstance(preview, Preview)
-    assert repr(preview)
+    assert repr(preview).startswith("preview::")
 
 
 def test_preview_do(preview: Preview):
