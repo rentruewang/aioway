@@ -45,8 +45,8 @@ def fake_b():
 def test_einsum(a: torch.Tensor, b: torch.Tensor):
     with (
         track_fn() as [func_calls, dis_calls],
-        TorchFunctionStack() as funcs,
-        TorchDispatchStack() as ops,
+        TorchFunctionStack().ctx() as funcs,
+        TorchDispatchStack().ctx() as ops,
     ):
         result = torch.einsum("i,j->", a, b)
 
