@@ -15,7 +15,8 @@ def schema() -> AttrSet:
                 "device": "cpu",
                 "dtype": "int32",
                 "shape": [-1, 2, 3],
-                "layout": "strided",
+                "layout": "sparse_coo",
+                "requires_grad": True,
             },
         ),
         b=attr(
@@ -23,7 +24,8 @@ def schema() -> AttrSet:
                 "device": "cpu",
                 "dtype": "float32",
                 "shape": [-1, 6],
-                "layout": "strided",
+                "layout": "sparse_coo",
+                "requires_grad": True,
             },
         ),
     )

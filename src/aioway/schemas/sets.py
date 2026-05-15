@@ -142,6 +142,7 @@ class AttrSet(cabc.Mapping[str, Attr]):
         dtype_list: cabc.Sequence[DTypeLike],
         device_list: cabc.Sequence[DeviceLike],
         layout_list: cabc.Sequence[LayoutLike],
+        requires_grad_list: cabc.Sequence[bool],
     ) -> typing.Self:
         "Create an `AttrSet` from a set of seuqences of attributes of same length."
 
@@ -151,25 +152,28 @@ class AttrSet(cabc.Mapping[str, Attr]):
             len(dtype_list),
             len(device_list),
             len(layout_list),
+            len(requires_grad_list),
         }
 
         if not len(lengths) == 1:
             raise ValueError(
                 "Should all have the same length. "
-                f"Got {len(names)=}, {len(shape_list)=}, {len(dtype_list)=}, {len(device_list)=}, {len(layout_list)=}."
+                f"Got {len(names)=}, {len(shape_list)=}, {len(dtype_list)=}, "
+                f"{len(device_list)=}, {len(layout_list)=}, {len(requires_grad_list)=}."
             )
 
         mapping: dict[str, Attr] = {}
-        for i in range(len(names)):
+        for i, name in enumerate(names):
             item = attr(
                 {
                     "device": device_list[i],
                     "dtype": dtype_list[i],
                     "shape": shape_list[i],
                     "layout": layout_list[i],
+                    "requires_grad": requires_grad_list[i],
                 }
             )
-            mapping[names[i]] = item
+            mapping[name] = item
 
         return cls.from_dict(mapping)
 

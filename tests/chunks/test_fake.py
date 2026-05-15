@@ -27,10 +27,34 @@ def chunk(device: str, batch: int) -> td.TensorDict:
 @pytest.fixture
 def schema():
     return AttrSet.from_values(
-        f1d=Attr.parse(device="cpu", shape=[1], dtype="float32", layout="strided"),
-        f2d=Attr.parse(device="cpu", shape=[1, 32], dtype="float32", layout="strided"),
-        i1d=Attr.parse(device="cpu", shape=[1], dtype="int64", layout="strided"),
-        i2d=Attr.parse(device="cpu", shape=[1, 32], dtype="int64", layout="strided"),
+        f1d=Attr.parse(
+            device="cpu",
+            shape=[1],
+            dtype="float32",
+            layout="strided",
+            requires_grad=False,
+        ),
+        f2d=Attr.parse(
+            device="cpu",
+            shape=[1, 32],
+            dtype="float32",
+            layout="strided",
+            requires_grad=False,
+        ),
+        i1d=Attr.parse(
+            device="cpu",
+            shape=[1],
+            dtype="int64",
+            layout="strided",
+            requires_grad=False,
+        ),
+        i2d=Attr.parse(
+            device="cpu",
+            shape=[1, 32],
+            dtype="int64",
+            layout="strided",
+            requires_grad=False,
+        ),
     )
 
 
