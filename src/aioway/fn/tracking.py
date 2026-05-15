@@ -11,7 +11,13 @@ import typing
 import rich
 import torch
 
-from aioway._common import Stack, TensorFilter, filter_tensor_off, is_leaf_has_grad
+from aioway._common import (
+    Stack,
+    TensorFilter,
+    filter_tensor_off,
+    find_nested_tensors,
+    is_leaf_has_grad,
+)
 from aioway.schemas import attr
 
 from .tensors import (
@@ -34,6 +40,9 @@ __all__ = [
 ]
 
 LOGGER = logging.getLogger(__name__)
+
+type TorchCall = FateFn | TFunctionFn | TDispatchFn
+"The calls to `torch.*` APIs."
 
 
 class _HasRichFlagMixin:
@@ -113,7 +122,7 @@ class TorchFunctionStack(TFunctionMode):
     stack: Stack[TFunctionFn] = dcls.field(default_factory=Stack)
 
     @typing.override
-    def __call__(self, thunk: TFunctionFn) -> typing.Any:
+    def __call__(self, thunk: TFunctionFn) -> object:
         with self.stack.enter(thunk):
             return thunk.do()
 
@@ -135,9 +144,14 @@ class TorchDispatchStack(TDispatchMode):
 
 
 @dcls.dataclass(frozen=True)
-class FnResult[F: FateFn | TFunctionFn | TDispatchFn]:
+class FnResult[F: TorchCall]:
+    "The storage class per item for `FnHistory`."
+
     fn: F
-    result: typing.Any
+    "The `Fn` that has been called."
+
+    result: object
+    "The output that `fn` has produced."
 
     @typing.override
     def __repr__(self) -> str:
@@ -145,9 +159,13 @@ class FnResult[F: FateFn | TFunctionFn | TDispatchFn]:
 
 
 @dcls.dataclass(frozen=True)
-class FnHistory[T: FateFn | TFunctionFn | TDispatchFn]:
+class FnHistory[T: TorchCall]:
     """
     The list of `Fn` that tracks the current history.
+
+    This stores `torch.Tensor` as `dict` keys, which is fine
+    because `torch.Tensor` uses `id` as `hash`,
+    and we only care about objects allocated not data equality.
     """
 
     history: list[FnResult[T]] = dcls.field(default_factory=list)
@@ -183,15 +201,18 @@ class FnHistory[T: FateFn | TFunctionFn | TDispatchFn]:
 
     def _update_ref(self, item: T, output: object) -> None:
         # `__torch_function__` doesn't always return `torch.Tensor` actually!
-        if isinstance(output, torch.Tensor):
-            # Update output.
-            self.output_to_thunk_list[output].append(item)
+
+        # Update output if tensors are found in the output.
+        for output_tensor in find_nested_tensors(output):
+            self.output_to_thunk_list[output_tensor].append(item)
 
         # Update input.
         for input_tensor in item.tensors():
             self.input_to_thunk_list[input_tensor].append(item)
 
     def networkx(self):
+        "Convert the graph to `nx.DiGraph`, using data dependencies as link."
+
         import networkx as nx
 
         graph: nx.DiGraph[T] = nx.DiGraph()
@@ -220,11 +241,33 @@ class FnHistory[T: FateFn | TFunctionFn | TDispatchFn]:
 
         yield from params
 
+    def inputs(self) -> set[torch.Tensor]:
+        """
+        All the inputs of `FnHistory` in a `set`.
+
+        Inputs are defined as tensors not created by operations tracked by `self`.
+
+        Returns:
+            A `set` that stores all the `inputs` that are not created by `self`.
+        """
+
+        def all_inputs():
+            for hist in self.history:
+                yield from hist.fn.tensors()
+
+        def all_outputs():
+            for hist in self.history:
+                yield from find_nested_tensors(hist.result)
+
+        inputs = set(all_inputs())
+        outputs = set(all_outputs())
+
+        return inputs - outputs
+
     def numel(self) -> int:
+        "The total number of elements of the tensors."
         return sum(param.numel() for param in self.parameters(filter_tensor_off))
 
     def memory(self) -> int:
+        "The total memory consumed by the tensors."
         return sum(attr(param).memory() for param in self.parameters(filter_tensor_off))
-
-    def find_fn(self, tensor: torch.Tensor):
-        return self.output_to_thunk_list[tensor]

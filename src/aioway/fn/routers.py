@@ -76,12 +76,15 @@ class CloneDispatchOp(TDispatchMode):
 
 @dcls.dataclass
 class RouteDispatchOp(TDispatchMode):
+    "The router at the torch dispatch level."
+
     router: FateRouter
+    "The router that is responsible for finding `Fate` when implemented."
+
     history: FnHistory[TDispatchFn | FateFn] = dcls.field(default_factory=FnHistory)
+    "The history used for tracking."
 
     def __call__(self, thunk: TDispatchFn) -> object:
-        # Create a `_ThunkType` and route implemented methods.
-
         fn: TDispatchFn | FateFn
 
         if (fn := self.router(thunk)) is NotImplemented:
@@ -90,7 +93,7 @@ class RouteDispatchOp(TDispatchMode):
 
         assert isinstance(fn, TDispatchFn | FateFn), type(fn)
 
-        # Here, we overwrite `fn`'s `__call__` inside `FateFn` if it's a special function.
+        # Here, `FateFn` would do its magic and overwrite functions.
         with capture_do_error(fn):
             result = fn.do()
 
@@ -118,7 +121,7 @@ class RouteFunctionOp(TFunctionMode):
 
     @typing.override
     def __call__(self, thunk: TFunctionFn, /) -> object:
-        with self.dispatcher:
+        with self.dispatcher.ctx():
             result = thunk.do()
 
         self.history.append(thunk, result)
@@ -142,7 +145,7 @@ def track_fn():
     dispatcher = RouteDispatchOp(no_route)
     tracker = RouteFunctionOp(dispatcher)
 
-    with tracker:
+    with tracker.ctx():
         yield tracker.history, dispatcher.history
 
 
@@ -156,5 +159,5 @@ def fake_fn():
     dispatcher = RouteDispatchOp(only_route_in_fake)
     tracker = RouteFunctionOp(dispatcher)
 
-    with torch_fake_mode(), tracker, CloneDispatchOp():
+    with torch_fake_mode(), tracker.ctx(), CloneDispatchOp().ctx():
         yield tracker.history, dispatcher.history
