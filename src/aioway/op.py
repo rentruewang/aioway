@@ -63,7 +63,6 @@ class Op[K: cabc.Callable[..., object]](abc.ABC):
         return self.KEY(**dcls.asdict(self))
 
     @property
-    @abc.abstractmethod
     def __aioway_dim_tag__(self) -> DimTag:
         "Also process `DimTag`s from the input."
         return NotImplemented

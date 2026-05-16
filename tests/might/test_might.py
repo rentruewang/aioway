@@ -17,11 +17,11 @@ def might(request: pytest.FixtureRequest):
     return find_might(cls, **kwargs)
 
 
-def test_preview_init(might: Might):
+def test_might_init(might: Might):
     assert isinstance(might, Might)
     assert repr(might).startswith("might::")
 
 
-def test_preview_do(might: Might):
+def test_might_do(might: Might):
     module = might.do()
     assert isinstance(module, nn.Module)
