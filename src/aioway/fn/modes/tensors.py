@@ -19,14 +19,7 @@ from ..common import render_function_body_prefix
 from ..fn import TorchThunk
 from ._on_off import OnOffCtx, OnOffStack
 
-__all__ = [
-    "TorFuncMode",
-    "TorDisMode",
-    "TorFuncFn",
-    "TorDisFn",
-    "set_torch_mode",
-    "torch_mode_off",
-]
+__all__ = ["TorFuncMode", "TorDisMode", "TorFuncFn", "TorDisFn"]
 
 LOGGER = logging.getLogger(__name__)
 
@@ -35,31 +28,6 @@ FUNCTIONS: OnOffStack[TorFuncMode] = OnOffStack()
 
 DISPATCHES: OnOffStack[TorDisMode] = OnOffStack()
 "`TorDisMode` that is currently entered."
-
-
-@ctxl.contextmanager
-def set_torch_mode(function: bool, dispatch: bool):
-    """
-    Turn on or off `__torch_function__` / `__torch_dispatch__` mode for the given scope,
-    for the modes that are **currently activated**.
-
-    Args:
-        function: Enable the `__torch_function__` mode if `True`.
-        dispatch: Enable the `__torch_dispatch__` mode if `True`.
-
-    Note:
-        We are implementing this flag instead of using `no_dispatch` utility from `torch`,
-        is because thier version causes segmentation fault in some cases.
-    """
-
-    with FUNCTIONS.switch(function), DISPATCHES.switch(dispatch):
-        yield
-
-
-@ctxl.contextmanager
-def torch_mode_off():
-    with set_torch_mode(False, False):
-        yield
 
 
 @dcls.dataclass(match_args=False)

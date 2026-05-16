@@ -20,7 +20,6 @@ __all__ = [
     "NnInitFn",
     "NnFwdMode",
     "NnInitMode",
-    "set_nn_mode",
     "module_fwd",
     "module_init",
 ]
@@ -98,23 +97,6 @@ def _invoke_rec(
 
         else:
             return thunk.do()
-
-
-@ctxl.contextmanager
-def set_nn_mode(fwd: bool, init: bool):
-    """
-    Turn on or off the modes for
-
-    Args:
-        fwd: Disable the `NnFwdMode` mode if `True`.
-        init: Disable the `NnInitMode` mode if `True`.
-
-    Note:
-        This is similar to `set_torch_mode`.
-    """
-
-    with FORWARDS.switch(fwd), INITS.switch(init):
-        yield
 
 
 @dcls.dataclass
