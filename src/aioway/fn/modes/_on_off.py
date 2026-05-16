@@ -35,7 +35,7 @@ class OnOffCtx(abc.ABC):
         The context manager that can be entered, and will be constrained by `self.on`.
 
         I'm using this function as public API because I don't like `__enter__`, `__exit__`,
-        which IMO is much less elegant looking than context managers (of course necessary).
+        which is much less elegant than `ctxl.contextmanager` (I know it's necessary).
         """
 
         raise NotImplementedError
