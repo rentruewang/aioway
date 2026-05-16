@@ -10,11 +10,11 @@ import torch
 from torch import nn
 
 from aioway._common import find_nested_tensors
-from aioway.previews import Preview, find_preview
+from aioway.might import Might, find_might
 
 from .fn import TorchThunk
 
-__all__ = ["NnForwardFn", "NnInitFn", "PreviewFn"]
+__all__ = ["NnForwardFn", "NnInitFn", "MightFn"]
 
 
 @dcls.dataclass
@@ -33,7 +33,7 @@ class NnForwardFn(TorchThunk[nn.Module]):
 
 class NnInitFn(TorchThunk[type[nn.Module]]):
     """
-    `NnInitFn` is the "leftover" `nn.Module`s that are not covered by the `Preview` API.
+    `NnInitFn` is the "leftover" `nn.Module`s that are not covered by the `Might` API.
     """
 
     func: type[nn.Module]
@@ -47,23 +47,23 @@ class NnInitFn(TorchThunk[type[nn.Module]]):
 
 
 @dcls.dataclass
-class PreviewFn:
+class MightFn:
     """
-    `PreviewFn` are `Fn` that wrap `Preview`s, which are supported `nn.Module` ops.
+    `MightFn` are `Fn` that wrap `Might`s, which are supported `nn.Module` ops.
     """
 
-    preview: Preview
-    "The preview instance."
+    might: Might
+    "The `Might` instance."
 
     def do(self) -> object:
-        return self.preview.do()
+        return self.might.do()
 
     @classmethod
     def find_preview(cls, thunk: NnInitFn) -> typing.Self:
-        preview = find_preview(thunk.func, *thunk.args, **thunk.kwargs)
+        might = find_might(thunk.func, *thunk.args, **thunk.kwargs)
 
-        if preview is NotImplemented:
+        if might is NotImplemented:
             return NotImplemented
 
         else:
-            return cls(preview)
+            return cls(might)

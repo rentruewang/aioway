@@ -4,13 +4,13 @@ from torch import nn
 
 from aioway._common import dcls_frozen_no_repr
 
-from .previews import Preview
+from .mint import Might
 
 __all__ = ["Linear", "Bilinear"]
 
 
 @dcls_frozen_no_repr
-class Linear(Preview):
+class Linear(Might):
     """
     Apply the transformation A @ x + b.
     """
@@ -28,7 +28,7 @@ class Linear(Preview):
 
 
 @dcls_frozen_no_repr
-class Bilinear(Preview):
+class Bilinear(Might):
     """
     Apply the transformation x1 @ A @ x2 + b.
     """

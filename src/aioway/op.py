@@ -24,7 +24,7 @@ class Op[K: cabc.Callable[..., object]](abc.ABC):
 
     Right now, there are 2 `Op` kinds:
     1. `Fate` for ATen operations.
-    2. `Preview` for `nn.Module` init.
+    2. `Might` for `nn.Module` init.
     """
 
     KEY: typing.ClassVar[K] = NotImplemented

@@ -9,20 +9,17 @@ from torch import nn
 from aioway._common import dcls_frozen_no_repr
 from aioway.op import Op
 
-__all__ = ["Preview", "find_preview", "all_previews"]
+__all__ = ["Might", "find_might", "all_mights"]
 
 
 @dcls_frozen_no_repr
-class Preview(Op[type[nn.Module]], abc.ABC):
+class Might(Op[type[nn.Module]], abc.ABC):
     """
-    `Preview` is a preview of how an `nn.Module` would be initialized.
+    `Might` is a preview of how an `nn.Module` would be initialized.
+    It stands for [m]odule [in]it of wei[ght]s. Or the modules you [might] want.
 
     It provides metadata as to what `nn.Module` arguments are valid or not,
     much like how `Fate`'s objects mimicks the function signature of `torch.ops.aten.*`.
-
-    Even though the name `Preview` sounds quite generic and perhaps confusing,
-    the term is coined even before `aioway` (I think for a month),
-    so for historical reasons, I won't touch it.
     """
 
     KEY: typing.ClassVar[type[nn.Module]] = NotImplemented
@@ -30,18 +27,18 @@ class Preview(Op[type[nn.Module]], abc.ABC):
     @classmethod
     @typing.override
     def name(cls) -> str:
-        return "preview::" + cls.__name__
+        return "might::" + cls.__name__
 
 
-def find_preview(nn_type: type[nn.Module], *args, **kwargs) -> Preview:
+def find_might(nn_type: type[nn.Module], *args, **kwargs) -> Might:
     """
-    Get a `Preview` from the `nn.Module` type. If not found, return `NotImplemented`.
+    Get a `Might` from the `nn.Module` type. If not found, return `NotImplemented`.
     """
 
-    # Right now, each `Preview` should have distinct key, so just return the 1st.
+    # Right now, each `Might` should have distinct key, so just return the 1st.
     # Just get the type. If an error is raised, construction failed,
     # pass the error back, since upper level signature failed.
-    for preview_type in Preview.find(nn_type):
+    for preview_type in Might.find(nn_type):
         return preview_type(*args, **kwargs)
 
     # No implementation found.
@@ -49,15 +46,15 @@ def find_preview(nn_type: type[nn.Module], *args, **kwargs) -> Preview:
 
 
 @typing.no_type_check
-def all_previews():
+def all_mights():
     """
     Get the registry for previews.
     """
 
-    return list(_iter_previews(Preview))
+    return list(_iter_previews(Might))
 
 
-def _iter_previews(cls: type[Preview]) -> cabc.Generator[type[Preview]]:
+def _iter_previews(cls: type[Might]) -> cabc.Generator[type[Might]]:
     for sub in cls.__subclasses__():
         if sub.is_concrete():
             yield sub

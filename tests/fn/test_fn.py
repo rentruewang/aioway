@@ -8,28 +8,28 @@ from aioway.fate import Fate
 from aioway.fn import (
     FateFn,
     Fn,
+    MightFn,
     NnForwardFn,
     NnInitFn,
-    PreviewFn,
     TDispatchFn,
     TFunctionFn,
     TorchDispatchStack,
     TorchFunctionStack,
     track_fn,
 )
-from aioway.previews import Preview
+from aioway.might import Might
 
 
 def _fn_cls():
     yield FateFn
     yield TDispatchFn
     yield TFunctionFn
-    yield PreviewFn
+    yield MightFn
     yield NnInitFn
     yield NnForwardFn
 
     yield Fate
-    yield Preview
+    yield Might
 
 
 @pytest.fixture(params=_fn_cls())
