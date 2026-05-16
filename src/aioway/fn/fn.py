@@ -6,6 +6,7 @@ import abc
 import contextlib as ctxl
 import dataclasses as dcls
 import functools
+import logging
 import typing
 from collections import abc as cabc
 
@@ -15,6 +16,7 @@ from aioway._common import Stack, find_nested_tensors, render_fcall
 
 __all__ = ["Fn", "TensorInput", "Thunk", "TorchThunk"]
 
+LOGGER = logging.getLogger(__name__)
 _PENDING = object()
 "The object signifying a status of pending. This is a `object()` s.t. `FnCache` can store `None`."
 
@@ -195,8 +197,12 @@ class TorchThunk[T: cabc.Callable[..., typing.Any]](abc.ABC):
 
 
 @dcls.dataclass
-class ContextMixin(abc.ABC):
-    STACK: typing.ClassVar[Stack[typing.Self]]
+class OnOffCtx(abc.ABC):
+    """
+    `OnOffCtx` is a mixin class that gives the subclasses a toggle.
+    """
+
+    STACK: typing.ClassVar[OnOffStack[typing.Self]]
     "The stack."
 
     _: dcls.KW_ONLY
@@ -209,7 +215,7 @@ class ContextMixin(abc.ABC):
         raise NotImplementedError
 
     @ctxl.contextmanager
-    def switch(self, on: bool):
+    def switch(self, on: bool, /):
         "Switch to `on` in the scope (can be overwritten)."
 
         before = self.on
@@ -218,3 +224,45 @@ class ContextMixin(abc.ABC):
             yield
         finally:
             self.on = before
+
+
+class OnOffStack[T: OnOffCtx](Stack[T]):
+    """
+    `OnOffStack` provides additional utilites to decide when to turn on or off.
+    """
+
+    @ctxl.contextmanager
+    def switch(self, on: bool | list[bool], /):
+        """
+        Temporarily set the `on` switch to the value given.
+        """
+
+        before = self.on
+        self.on = on
+
+        try:
+            yield
+        finally:
+            self.on = before
+
+    @property
+    def on(self) -> list[bool]:
+        "Get the on off values."
+
+        return [frame.on for frame in self]
+
+    @on.setter
+    def on(self, to: bool | list[bool]) -> None:
+        LOGGER.debug("Current stack %s", self)
+        LOGGER.debug("Setting to %s", to)
+
+        if isinstance(to, bool):
+            to = [to] * len(self)
+
+        if len(to) != len(self):
+            raise ValueError(f"Value {to=} should have equal length with {self=}.")
+
+        for frame, val in zip(self, to):
+            frame.on = val
+
+        LOGGER.debug("Status after setting %s", self)

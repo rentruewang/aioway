@@ -3,7 +3,6 @@
 import contextlib as ctxl
 import dataclasses as dcls
 import typing
-from collections import abc as cabc
 
 __all__ = [
     "dcls_no_eq",
@@ -52,6 +51,10 @@ class Stack[T]:
     def __bool__(self) -> bool:
         return bool(len(self))
 
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self[i]
+
     def __len__(self) -> int:
         return len(self.stack)
 
@@ -69,9 +72,6 @@ class Stack[T]:
                 return type(self)(self.stack[idx])
 
         raise TypeError(type(idx))
-
-    def __iter__(self) -> cabc.Generator[T]:
-        yield from self.stack
 
     def top(self) -> T:
         return self.stack[-1]

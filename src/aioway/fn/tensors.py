@@ -14,7 +14,6 @@ from torch import _ops, overrides
 from torch.utils import _python_dispatch as pyd
 
 from aioway._common import (
-    Stack,
     is_aten_op,
     is_prim_op,
     render_fcall,
@@ -24,7 +23,7 @@ from aioway._common import (
 from aioway.fate import Fate, find_fate
 from aioway.schemas import attr
 
-from .fn import ContextMixin, Fn, TorchThunk
+from .fn import Fn, OnOffCtx, OnOffStack, TorchThunk
 
 __all__ = [
     "TFunctionMode",
@@ -40,10 +39,10 @@ __all__ = [
 
 LOGGER = logging.getLogger(__name__)
 
-_FUNCTIONS: Stack[TFunctionMode] = Stack()
+_FUNCTIONS: OnOffStack[TFunctionMode] = OnOffStack()
 "`TFunctionFn` that is currently in scope."
 
-_DISPATCHES: Stack[TDispatchMode] = Stack()
+_DISPATCHES: OnOffStack[TDispatchMode] = OnOffStack()
 "`TDispatchFn` that is currently in scope."
 
 
@@ -62,44 +61,14 @@ def set_torch_mode(function: bool, dispatch: bool):
         is because thier version causes segmentation fault in some cases.
     """
 
-    functions_before = _get_stack_on_off(_FUNCTIONS)
-    dispatches_before = _get_stack_on_off(_DISPATCHES)
-
-    _set_stack_on_off(_FUNCTIONS, function)
-    _set_stack_on_off(_DISPATCHES, dispatch)
-
-    try:
+    with _FUNCTIONS.switch(function), _DISPATCHES.switch(dispatch):
         yield
-    finally:
-        _set_stack_on_off(_FUNCTIONS, functions_before)
-        _set_stack_on_off(_DISPATCHES, dispatches_before)
 
 
 @ctxl.contextmanager
 def torch_mode_off():
     with set_torch_mode(False, False):
         yield
-
-
-def _get_stack_on_off[M: TorchModeContextMixin](stack: Stack[M]):
-    return [frame.on for frame in stack]
-
-
-def _set_stack_on_off[M: TorchModeContextMixin](stack: Stack[M], to: bool | list[bool]):
-    LOGGER.debug("Current stack %s", stack)
-    LOGGER.debug("Status before setting %s", _get_stack_on_off(stack))
-    LOGGER.debug("Setting to %s", to)
-
-    if isinstance(to, bool):
-        to = [to] * len(stack)
-
-    if len(to) != len(stack):
-        raise ValueError(f"Value {to=} should have equal length with {stack=}.")
-
-    for frame, val in zip(stack, to):
-        frame.on = val
-
-    LOGGER.debug("Status after setting %s", _get_stack_on_off(stack))
 
 
 @dcls.dataclass(match_args=False)
@@ -178,7 +147,7 @@ type _Mode = overrides.TorchFunctionMode | pyd.TorchDispatchMode
 
 
 @dcls.dataclass
-class TorchModeContextMixin(ContextMixin):
+class TorchModeContextMixin(OnOffCtx):
     """
     The mixin for either `TFunctionMode`, `TDispatchMode`.
     """
@@ -197,12 +166,8 @@ class TorchModeContextMixin(ContextMixin):
         and store the mode itself s.t. it can be turned on / off later.
         """
 
-        self.STACK.append(self)
-        try:
-            with self._TORCH_MODE(self):
-                yield self
-        finally:
-            _ = self.STACK.pop()
+        with self.STACK.enter(self), self._TORCH_MODE(self):
+            yield self
 
 
 @typing.final
