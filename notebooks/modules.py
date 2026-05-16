@@ -18,33 +18,17 @@ import torch
 from torch import nn
 
 # %%
-from aioway.fn import MFwdMode, MInitMode, module_fwd, module_init, set_nn_mode
-
-
-# %%
-class PrintModuleInit(MInitMode):
-    def __call__(self, thunk):
-        print(thunk)
-        return thunk.do()
-
+from aioway.fn import PrintNnFwd, PrintNnInit, module_fwd, module_init, set_nn_mode
 
 # %%
-with PrintModuleInit().ctx():
+with PrintNnInit().ctx():
     module_init(nn.Linear, 3, 5)
     module_init(nn.Dropout)
-
-
-# %%
-class PrintModuleForward(MFwdMode):
-    def __call__(self, thunk):
-        print(thunk)
-        return thunk.do()
-
 
 # %%
 t = torch.randn(7, 3)
 
-with PrintModuleInit().ctx(), PrintModuleForward().ctx():
+with PrintNnInit().ctx(), PrintNnFwd().ctx():
     linear = module_init(nn.Linear, 3, 5)
     dropout = module_init(nn.Dropout)
 
@@ -57,7 +41,7 @@ with PrintModuleInit().ctx(), PrintModuleForward().ctx():
 t = torch.randn(7, 3)
 
 
-with PrintModuleInit().ctx(), set_nn_mode(False, False), PrintModuleForward().ctx():
+with PrintNnInit().ctx(), set_nn_mode(False, False), PrintNnFwd().ctx():
     linear = module_init(nn.Linear, 3, 5)
     dropout = module_init(nn.Dropout)
 

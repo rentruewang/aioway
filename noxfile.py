@@ -3,11 +3,18 @@
 import dataclasses as dcls
 import functools
 import os
+import pathlib
 import subprocess as sp
 import sys
 from collections import abc as cabc
 
 import nox
+
+ROOT = pathlib.Path(__file__).parent
+"The project root."
+
+VENV = os.getenv("VIRTUAL_ENV")
+"The venv folder if we are in venv."
 
 
 @nox.session
@@ -34,6 +41,19 @@ def formatting(session: nox.Session):
     autoflake(session)
     isort(session)
     black(session)
+
+
+@nox.session
+def clean(session: nox.Session):
+    "Call `git clean`, but exclude venv if present."
+
+    command = "git", "clean", "-fdx"
+
+    if VENV is not None and (venv := pathlib.Path(VENV)).exists():
+        relative = venv.relative_to(ROOT)
+        command = *command, "-e", str(relative)
+
+    session.run(*command, external=True)
 
 
 @nox.session

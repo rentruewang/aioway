@@ -7,13 +7,13 @@ from aioway.fate import Fate
 from aioway.fn import (
     FateFn,
     Fn,
-    FnHistory,
+    HistTensorGraph,
     MightFn,
     NnFwdFn,
     NnInitFn,
-    TDispatchFn,
+    TDisFn,
     TensorInput,
-    TFunctionFn,
+    TFuncFn,
     TorchThunk,
 )
 from aioway.might import Might
@@ -21,8 +21,8 @@ from aioway.might import Might
 
 def _fn_cls():
     yield FateFn
-    yield TDispatchFn
-    yield TFunctionFn
+    yield TDisFn
+    yield TFuncFn
     yield MightFn
     yield NnInitFn
     yield NnFwdFn
@@ -32,7 +32,7 @@ def _fn_cls():
 
 
 def _input_cls():
-    yield FnHistory
+    yield HistTensorGraph
     yield TorchThunk
     yield FateFn
     yield NnFwdFn

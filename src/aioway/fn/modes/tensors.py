@@ -13,23 +13,17 @@ import torch
 from torch import _ops, overrides
 from torch.utils import _python_dispatch as pyd
 
-from aioway._common import (
-    is_aten_op,
-    is_prim_op,
-    render_fcall,
-    render_func_name,
-    replace_tensors,
-)
-from aioway.schemas import attr
+from aioway._common import is_aten_op, is_prim_op
 
+from ..common import render_function_body_prefix
 from ..fn import TorchThunk
 from .toggles import OnOffCtx, OnOffStack
 
 __all__ = [
-    "TFunctionMode",
-    "TDispatchMode",
-    "TFunctionFn",
-    "TDispatchFn",
+    "TFuncMode",
+    "TDisMode",
+    "TFuncFn",
+    "TDisFn",
     "set_torch_mode",
     "torch_mode_off",
     "active_dispatch_modes",
@@ -38,11 +32,11 @@ __all__ = [
 
 LOGGER = logging.getLogger(__name__)
 
-FUNCTIONS: OnOffStack[TFunctionMode] = OnOffStack()
-"`TFunctionMode` that is currently entered."
+FUNCTIONS: OnOffStack[TFuncMode] = OnOffStack()
+"`TFuncMode` that is currently entered."
 
-DISPATCHES: OnOffStack[TDispatchMode] = OnOffStack()
-"`TDispatchMode` that is currently entered."
+DISPATCHES: OnOffStack[TDisMode] = OnOffStack()
+"`TDisMode` that is currently entered."
 
 
 @ctxl.contextmanager
@@ -71,7 +65,7 @@ def torch_mode_off():
 
 
 @dcls.dataclass(match_args=False)
-class TFunctionFn(TorchThunk[cabc.Callable[..., typing.Any]]):
+class TFuncFn(TorchThunk[cabc.Callable[..., typing.Any]]):
     """
     `TorchFunctionT` is the thunk capturing the function calls initiated by `torch`.
 
@@ -85,11 +79,13 @@ class TFunctionFn(TorchThunk[cabc.Callable[..., typing.Any]]):
         return id(self)
 
     def __repr__(self) -> str:
-        return _render_function_body("function", self.func, self.args, self.kwargs)
+        return render_function_body_prefix(
+            "function", self.func, self.args, self.kwargs
+        )
 
 
 @dcls.dataclass(match_args=False)
-class TDispatchFn(TorchThunk[_ops.OpOverload]):
+class TDisFn(TorchThunk[_ops.OpOverload]):
     """
     `TorchDispatchT` is the thunk capturing the function calls initiated by `torch`.
     This is by default what a null-op `__torch_dispatch__` would call.
@@ -107,7 +103,9 @@ class TDispatchFn(TorchThunk[_ops.OpOverload]):
         return id(self)
 
     def __repr__(self) -> str:
-        return _render_function_body("dispatch", self.func, self.args, self.kwargs)
+        return render_function_body_prefix(
+            "dispatch", self.func, self.args, self.kwargs
+        )
 
     @property
     def is_aten(self) -> bool:
@@ -118,37 +116,13 @@ class TDispatchFn(TorchThunk[_ops.OpOverload]):
         return is_prim_op(self.func)
 
 
-def _render_function_body(
-    prefix: str,
-    func: cabc.Callable[..., typing.Any],
-    args: tuple[typing.Any, ...],
-    kwargs: dict[str, typing.Any],
-) -> str:
-    func_name = render_func_name(func)
-    return render_tensor_func_short(prefix + "::" + func_name, args, kwargs)
-
-
-@typing.no_type_check
-def replace_tensors_with_attr[T](obj: T) -> T:
-    return replace_tensors(obj, attr)
-
-
-def render_tensor_func_short(func: str, args, kwargs) -> str:
-    # `Attr`s are better for display than `torch.Tensor`s.
-
-    args = replace_tensors_with_attr(args)
-    kwargs = replace_tensors_with_attr(kwargs)
-
-    return render_fcall(func, *args, **kwargs)
-
-
 type _Mode = overrides.TorchFunctionMode | pyd.TorchDispatchMode
 
 
 @dcls.dataclass
 class TModeOnOff[T](OnOffCtx, abc.ABC):
     """
-    The mixin for either `TFunctionMode`, `TDispatchMode`.
+    The mixin for either `TFuncMode`, `TDisMode`.
     """
 
     _TORCH_MODE: typing.ClassVar[cabc.Callable[..., _Mode]]
@@ -174,10 +148,10 @@ class TModeOnOff[T](OnOffCtx, abc.ABC):
 
 
 @typing.final
-class _TFunctionModeCtx(overrides.TorchFunctionMode):
+class _TFuncModeCtx(overrides.TorchFunctionMode):
     "The `__torch_function__` adaptor"
 
-    def __init__(self, mode: TFunctionMode) -> None:
+    def __init__(self, mode: TFuncMode) -> None:
         super().__init__()
         self.mode = mode
 
@@ -190,28 +164,28 @@ class _TFunctionModeCtx(overrides.TorchFunctionMode):
         if not self.mode.on:
             return func(*args, **kwargs)
 
-        thunk = TFunctionFn(func=func, types=types, args=args, kwargs=kwargs)
+        thunk = TFuncFn(func=func, types=types, args=args, kwargs=kwargs)
         return self.mode(thunk)
 
 
 @dcls.dataclass
-class TFunctionMode(TModeOnOff[TFunctionFn], abc.ABC):
+class TFuncMode(TModeOnOff[TFuncFn], abc.ABC):
     """
-    `TFunctionMode` is the adaptor for `torch.overrides.TorchFunctionMode`.
+    `TFuncMode` is the adaptor for `torch.overrides.TorchFunctionMode`.
 
     It provides a `ctx` context manager that is responsible for
     entering and exiting the torch mode context, as well as an `on` switch.
     """
 
     STACK: typing.ClassVar = FUNCTIONS
-    _TORCH_MODE: typing.ClassVar = _TFunctionModeCtx
+    _TORCH_MODE: typing.ClassVar = _TFuncModeCtx
 
 
 @typing.final
-class _TDispatchModeCtx(pyd.TorchDispatchMode):
+class _TDisModeCtx(pyd.TorchDispatchMode):
     "The `__torch_dispatch__` adaptor"
 
-    def __init__(self, mode: TDispatchMode) -> None:
+    def __init__(self, mode: TDisMode) -> None:
         super().__init__()
         self.mode = mode
 
@@ -227,21 +201,21 @@ class _TDispatchModeCtx(pyd.TorchDispatchMode):
         if not self.mode.on:
             return func(*args, **kwargs)
 
-        thunk = TDispatchFn(func=func, args=args, kwargs=kwargs)
+        thunk = TDisFn(func=func, args=args, kwargs=kwargs)
         return self.mode(thunk)
 
 
 @dcls.dataclass
-class TDispatchMode(TModeOnOff[TDispatchFn], abc.ABC):
+class TDisMode(TModeOnOff[TDisFn], abc.ABC):
     """
-    `TDispatchMode` is the adaptor for `torch.data._python_dispatch.TorchDispatchMode`.
+    `TDisMode` is the adaptor for `torch.data._python_dispatch.TorchDispatchMode`.
 
     It provides a `ctx` context manager that is responsible for
     entering and exiting the torch mode context, as well as an `on` switch.
     """
 
     STACK: typing.ClassVar = DISPATCHES
-    _TORCH_MODE: typing.ClassVar = _TDispatchModeCtx
+    _TORCH_MODE: typing.ClassVar = _TDisModeCtx
 
 
 def active_function_modes():

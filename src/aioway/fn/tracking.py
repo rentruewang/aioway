@@ -1,39 +1,57 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"Tracking / logging related utilities."
+"Tracking / routing related `Fn`s."
 
-import collections
+import contextlib as ctxl
 import dataclasses as dcls
-import itertools
 import logging
 import typing
+from collections import abc as cabc
 
 import rich
-import torch
+from torch import nn
 
 from aioway._common import (
-    find_nested_tensors,
-    is_leaf_has_grad,
+    is_aten_op,
+    is_prim_op,
+    is_torchcodec_op,
+    is_torchvision_op,
+    replace_tensors,
 )
-from aioway.schemas import attr
+from aioway.fake import enabled_fake_mode, torch_fake_mode
 
-from .fn import TensorInput
-from .modes import TDispatchFn, TDispatchMode, TFunctionFn, TFunctionMode
-from .modes.tensors import replace_tensors_with_attr
-from .op import FateFn
+from .common import replace_tensors_with_attr
+from .hists import Hist, HistTensorGraph
+from .modes import (
+    NnFwdFn,
+    NnFwdMode,
+    NnInitFn,
+    NnInitMode,
+    TDisFn,
+    TDisMode,
+    TFuncFn,
+    TFuncMode,
+)
+from .op import FateFn, MightFn
 
 __all__ = [
-    "PrintTorchFunction",
-    "PrintTorchDispatch",
-    "LogTorchFunction",
-    "LogTorchDispatch",
-    "FnHistory",
+    "track_fn",
+    "fake_fn",
+    "PrintTFunc",
+    "PrintTDis",
+    "LogTorchFunc",
+    "LogTorchDis",
+    "RouteTDis",
+    "RouteTFunc",
+    "PrintNnInit",
+    "PrintNnFwd",
 ]
 
 LOGGER = logging.getLogger(__name__)
 
-type TorchCall = FateFn | TFunctionFn | TDispatchFn
-"The calls to `torch.*` APIs."
+
+FateRouter = cabc.Callable[[TDisFn], FateFn]
+MightRouter = cabc.Callable[[NnInitFn], MightFn]
 
 
 class _HasRichFlagMixin:
@@ -42,24 +60,40 @@ class _HasRichFlagMixin:
         self._rich = rich
 
 
-class PrintTorchFunction(_HasRichFlagMixin, TFunctionMode):
-    @typing.override
-    def __call__(self, thunk: TFunctionFn, /) -> object:
-        return _ThunkPrinter(rich=self._rich)(thunk)
+class PrintNnInit(NnInitMode):
+    def __call__(self, thunk: NnInitFn) -> nn.Module:
+        print("invoke", thunk)
+        result = thunk.do()
+        print("return", thunk, "->", result)
+        return result
 
 
-class PrintTorchDispatch(_HasRichFlagMixin, TDispatchMode):
+class PrintNnFwd(NnFwdMode):
+    def __call__(self, thunk: NnFwdFn) -> object:
+        print("invoke", thunk)
+        result = thunk.do()
+        print("return", thunk, "->", replace_tensors_with_attr(result))
+        return result
+
+
+class PrintTFunc(_HasRichFlagMixin, TFuncMode):
     @typing.override
-    def __call__(self, thunk: TDispatchFn, /) -> object:
-        return _ThunkPrinter(rich=self._rich)(thunk)
+    def __call__(self, thunk: TFuncFn, /) -> object:
+        return _TThunkPrinter(rich=self._rich)(thunk)
+
+
+class PrintTDis(_HasRichFlagMixin, TDisMode):
+    @typing.override
+    def __call__(self, thunk: TDisFn, /) -> object:
+        return _TThunkPrinter(rich=self._rich)(thunk)
 
 
 @dcls.dataclass(frozen=True)
-class _ThunkPrinter:
+class _TThunkPrinter:
     rich: bool
     "Use rich for printing."
 
-    def __call__(self, thunk: TFunctionFn | TDispatchFn) -> object:
+    def __call__(self, thunk: TFuncFn | TDisFn) -> object:
         self.print("invoke", thunk)
         result = thunk.do()
         self.print("return", thunk, "->", replace_tensors_with_attr(result))
@@ -71,7 +105,7 @@ class _ThunkPrinter:
 
 
 @dcls.dataclass
-class LogTorchFunction(TFunctionMode):
+class LogTorchFunc(TFuncMode):
     """
     Log every call to function mode.
     """
@@ -83,14 +117,14 @@ class LogTorchFunction(TFunctionMode):
     "The logger to log to. Default to the one in the current module."
 
     @typing.override
-    def __call__(self, thunk: TFunctionFn) -> object:
+    def __call__(self, thunk: TFuncFn) -> object:
         result = thunk.do()
         self.logger.log(self.level, "%s", thunk)
         return result
 
 
 @dcls.dataclass
-class LogTorchDispatch(TDispatchMode):
+class LogTorchDis(TDisMode):
     """
     Log every call to dispatch mode.
     """
@@ -102,136 +136,178 @@ class LogTorchDispatch(TDispatchMode):
     "The logger to log to. Default to the one in the current module."
 
     @typing.override
-    def __call__(self, thunk: TDispatchFn) -> object:
+    def __call__(self, thunk: TDisFn) -> object:
         result = thunk.do()
         self.logger.log(self.level, "%s", thunk)
         return result
 
 
-@dcls.dataclass(frozen=True)
-class FnResult[F: TensorInput]:
-    "The storage class per item for `FnHistory`."
+def might_in_fake(thunk: NnInitFn):
+    """
+    Route in fake mode to `MightFn`.
 
-    fn: F
-    "The `Fn` that has been called."
+    `NotImplemented` is returned when the input does not have a match, or not fake mode.
+    """
 
-    result: object
-    "The output that `fn` has produced."
+    if not enabled_fake_mode():
+        return NotImplemented
+
+    return MightFn.find_might(thunk)
+
+
+def fate_in_fake(thunk: TDisFn):
+    """
+    Route in fake mode to `FateFn`.
+
+    `NotImplemented` is returned when the input does not have a match, or not fake mode.
+    """
+
+    if not enabled_fake_mode():
+        return NotImplemented
+
+    # For now, `Fate` supports aten, because `torchvision`, `torchcodec` rely on real data,
+    # they do not have a good `Fate` to implement for now.
+    # In those operations, real mode is force enabled right now.
+    # See aioway#204 issue.
+    if is_aten_op(thunk.func):
+        return FateFn.find_fate(thunk)
+
+    if not any(
+        is_op(thunk.func) for is_op in [is_prim_op, is_torchvision_op, is_torchcodec_op]
+    ):
+        raise AssertionError(f"Unknown kind of op: {thunk}")
+
+    return NotImplemented
+
+
+class CloneDispatchOp(TDisMode):
+    @typing.override
+    def __call__(self, thunk: TDisFn, /) -> object:
+        result = thunk.do()
+
+        # In fake mode, clone the tensor to prevent `FakeTensor` reuse. Should be cheap.
+        if enabled_fake_mode():
+            result = replace_tensors(result, lambda tensor: tensor.clone())
+
+        return result
+
+
+@dcls.dataclass
+class RouteNnInit(NnInitMode):
+    "The router at the `nn.Module` init level."
+
+    history: Hist[NnInitFn] = dcls.field(default_factory=Hist)
+    """
+    The history. Since it doesn't make sense to connect with `torch.Tensor`,
+    we just use a plain `Hist` to store the history (no graph is needed).
+    """
 
     @typing.override
-    def __repr__(self) -> str:
-        return f"{self.fn!r} -> {self.result}"
+    def __call__(self, thunk: NnInitFn, /) -> nn.Module:
+        result = thunk.do()
+
+        fn: NnInitFn | MightFn
+
+        if (fn := might_in_fake(thunk)) is NotImplemented:
+            fn = thunk
+
+        assert isinstance(fn, NnInitFn | MightFn)
+
+        self.history.append(thunk, result)
+        return result
 
 
-@dcls.dataclass(frozen=True)
-class FnHistory[T: TorchCall]:
+@dcls.dataclass
+class RouteNnFwd(NnFwdMode):
+    "The router at the `nn.Module` forward level."
+
+    history: HistTensorGraph[NnFwdFn] = dcls.field(default_factory=HistTensorGraph)
     """
-    The list of `Fn` that tracks the current history.
-
-    This stores `torch.Tensor` as `dict` keys, which is fine
-    because `torch.Tensor` uses `id` as `hash`,
-    and we only care about objects allocated not data equality.
+    The history. Since `nn.Module`s in forward can be connected with `torch.Tensor`
+    to for a computation graph on the module level, we use `HistTensorGraph`.
     """
 
-    history: list[FnResult[T]] = dcls.field(default_factory=list)
-    """
-    The `TorchFn` that has been called, in order.
-    """
+    @typing.override
+    def __call__(self, thunk: NnFwdFn, /) -> object:
+        result = thunk.do()
+        self.history.append(thunk, result)
+        return result
 
-    input_to_thunk_list: dict[torch.Tensor, list[T]] = dcls.field(
-        default_factory=lambda: collections.defaultdict(list)
+
+@dcls.dataclass
+class RouteTDis(TDisMode):
+    "The router at the torch dispatch level."
+
+    history: HistTensorGraph[TDisFn | FateFn] = dcls.field(
+        default_factory=HistTensorGraph
     )
-    "The mapping from input to the thunk containing that input."
+    "The history used for tracking."
 
-    output_to_thunk_list: dict[torch.Tensor, list[T]] = dcls.field(
-        default_factory=lambda: collections.defaultdict(list)
-    )
-    "The mapping from output to thunk that generates it."
+    def __call__(self, thunk: TDisFn) -> object:
+        fn: TDisFn | FateFn
 
-    def __len__(self) -> int:
-        return len(self.history)
+        if (fn := fate_in_fake(thunk)) is NotImplemented:
+            # Cannot find corresponding operator, set it to the input `thunk`.
+            fn = thunk
 
-    def __getitem__(self, idx: int) -> FnResult[T]:
-        return self.history[idx]
+        assert isinstance(fn, TDisFn | FateFn), type(fn)
 
-    def __iter__(self):
-        yield from self.history
+        # Here, `FateFn` would do its magic and overwrite functions.
+        with capture_do_error(fn):
+            result = fn.do()
 
-    def append(self, item: T, result: object, /):
-        self.history.append(FnResult(item, result))
-        self._update_ref(item, result)
+        self.history.append(fn, result)
+        return result
 
-    def pop(self):
-        return self.history.pop()
 
-    def _update_ref(self, item: T, output: object) -> None:
-        # `__torch_function__` doesn't always return `torch.Tensor` actually!
+@dcls.dataclass
+class RouteTFunc(TFuncMode):
+    """
+    Saves the intermediate graph into a `FnHistory` object.
+    """
 
-        # Update output if tensors are found in the output.
-        for output_tensor in find_nested_tensors(output):
-            self.output_to_thunk_list[output_tensor].append(item)
+    history: HistTensorGraph[TFuncFn] = dcls.field(default_factory=HistTensorGraph)
+    """
+    The `HistTensorGraph` instance that would be responsible for tracking history,
+    and which provides a graph API to interact with saved tensors.
+    """
 
-        # Update input.
-        for input_tensor in item.inputs():
-            self.input_to_thunk_list[input_tensor].append(item)
+    @typing.override
+    def __call__(self, thunk: TFuncFn, /) -> object:
+        result = thunk.do()
+        self.history.append(thunk, result)
+        return result
 
-    def networkx(self):
-        "Convert the graph to `nx.DiGraph`, using data dependencies as link."
 
-        import networkx as nx
+@ctxl.contextmanager
+def capture_do_error(fn: TDisFn | FateFn):
+    try:
+        yield
+    except RuntimeError as err:
+        raise ValueError(f"Function call '{fn}' failed.") from err
 
-        graph: nx.DiGraph[T] = nx.DiGraph()
-        graph.add_nodes_from(hist.fn for hist in self.history)
 
-        ins = self.input_to_thunk_list
-        outs = self.output_to_thunk_list
+@ctxl.contextmanager
+def track_fn():
+    """
+    Track all calls into the torch dispatch mode as `TorchIrFn`.
+    """
 
-        tensors = set(ins.keys()).intersection(outs.keys())
+    init = RouteNnInit()
+    fwd = RouteNnFwd()
+    dis = RouteTDis()
+    func = RouteTFunc()
 
-        for tensor in tensors:
-            for out_thunk, in_thunk in itertools.product(outs[tensor], ins[tensor]):
-                _ = graph.add_edge(out_thunk, in_thunk)
+    with func.ctx(), dis.ctx(), init.ctx(), fwd.ctx():
+        yield func.history, dis.history, init.history, fwd.history
 
-        return graph
 
-    def inputs(self) -> set[torch.Tensor]:
-        """
-        All the inputs of `FnHistory` in a `set`.
+@ctxl.contextmanager
+def fake_fn():
+    """
+    Track all calls into the torch dispatch mode as `TorchIrFn`,
+    when fake mode is active.
+    """
 
-        Inputs are defined as tensors not created by operations tracked by `self`.
-
-        Returns:
-            A `set` that stores all the `inputs` that are not created by `self`.
-        """
-
-        return self._all_inputs() - self._all_outputs()
-
-    def numel(self) -> int:
-        "The total number of elements of the tensors."
-        return sum(param.numel() for param in self._all_tensors())
-
-    def memory(self) -> int:
-        "The total memory consumed by the tensors."
-        return sum(attr(param).memory() for param in self._all_tensors())
-
-    def parameters(self):
-        for tensor in self._all_tensors():
-            if is_leaf_has_grad(tensor):
-                yield tensor
-
-    def _all_inputs(self):
-        def inputs():
-            for hist in self.history:
-                yield from hist.fn.inputs()
-
-        return set(inputs())
-
-    def _all_outputs(self):
-        def outputs():
-            for hist in self.history:
-                yield from find_nested_tensors(hist.result)
-
-        return set(outputs())
-
-    def _all_tensors(self):
-        return self._all_inputs() | self._all_outputs()
+    with torch_fake_mode(), track_fn() as hists:
+        yield hists

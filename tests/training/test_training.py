@@ -38,7 +38,7 @@ class LossParam(typing.NamedTuple):
 def loss_params(
     request: pytest.FixtureRequest, input: torch.Tensor, target: torch.Tensor
 ):
-    with track_fn() as [_, tracker]:
+    with track_fn() as [_, tracker, _, _]:
         loss = request.param(input=input, target=target)
     params = list(tracker.parameters())
     return LossParam(loss=loss, params=params)

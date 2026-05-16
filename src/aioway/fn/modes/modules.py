@@ -18,8 +18,8 @@ from .toggles import OnOffCtx, OnOffStack
 __all__ = [
     "NnFwdFn",
     "NnInitFn",
-    "MFwdMode",
-    "MInitMode",
+    "NnFwdMode",
+    "NnInitMode",
     "set_nn_mode",
     "module_fwd",
     "module_init",
@@ -27,11 +27,11 @@ __all__ = [
 
 LOGGER = logging.getLogger(__name__)
 
-FORWARDS: OnOffStack[MFwdMode] = OnOffStack()
-"`MFwdMode` that is currently entered."
+FORWARDS: OnOffStack[NnFwdMode] = OnOffStack()
+"`NnFwdMode` that is currently entered."
 
-INITS: OnOffStack[MInitMode] = OnOffStack()
-"`MInitMode` that is currently entered."
+INITS: OnOffStack[NnInitMode] = OnOffStack()
+"`NnInitMode` that is currently entered."
 
 
 def module_fwd(module: nn.Module, /, *args, **kwargs) -> typing.Any:
@@ -87,7 +87,7 @@ def _invoke_rec(
         return call(*args, **kwargs)
 
     with stack.temp_pop() as mode:
-        assert isinstance(mode, MModeOnOff)
+        assert isinstance(mode, NnModeOnOff)
 
         thunk = fn_type(func=call, args=args, kwargs=kwargs)
 
@@ -106,8 +106,8 @@ def set_nn_mode(fwd: bool, init: bool):
     Turn on or off the modes for
 
     Args:
-        fwd: Disable the `MFwdMode` mode if `True`.
-        init: Disable the `MInitMode` mode if `True`.
+        fwd: Disable the `NnFwdMode` mode if `True`.
+        init: Disable the `NnInitMode` mode if `True`.
 
     Note:
         This is similar to `set_torch_mode`.
@@ -118,9 +118,9 @@ def set_nn_mode(fwd: bool, init: bool):
 
 
 @dcls.dataclass
-class MModeOnOff[T, V = object](OnOffCtx, abc.ABC):
+class NnModeOnOff[T, V = object](OnOffCtx, abc.ABC):
     """
-    The mixin for either `MFwdMode`, `MInitMode`.
+    The mixin for either `NnFwdMode`, `NnInitMode`.
     """
 
     @abc.abstractmethod
@@ -146,6 +146,9 @@ class NnFwdFn(TorchThunk[nn.Module]):
     func: nn.Module
     "The module for the `Fn`."
 
+    def __hash__(self) -> int:
+        return id(self)
+
     @typing.override
     def do(self) -> object:
         return module_fwd(self.func, *self.args, **self.kwargs)
@@ -170,9 +173,9 @@ class NnFwdFn(TorchThunk[nn.Module]):
         return self.func.state_dict()
 
 
-class MFwdMode(MModeOnOff[NnFwdFn], abc.ABC):
+class NnFwdMode(NnModeOnOff[NnFwdFn], abc.ABC):
     """
-    `MFwdMode` is the mode for similar to `__torch_function__` / `__torch_dispatch__`,
+    `NnFwdMode` is the mode for similar to `__torch_function__` / `__torch_dispatch__`,
     except you enter / exit with a `.ctx()` method (I prefer context managers).
 
     It is triggered when a `nn.Module` is called.
@@ -195,10 +198,14 @@ class NnInitFn(TorchThunk[type[nn.Module]]):
         if not isinstance(self.func, type) or not issubclass(self.func, nn.Module):
             raise TypeError(f"{self.func} should be a subclass of `nn.Module`.")
 
+    @typing.override
+    def do(self) -> nn.Module:
+        return module_init(self.func, *self.args, **self.kwargs)
 
-class MInitMode(MModeOnOff[NnInitFn, nn.Module], abc.ABC):
+
+class NnInitMode(NnModeOnOff[NnInitFn, nn.Module], abc.ABC):
     """
-    `MInitMode` is the mode for similar to `__torch_function__` / `__torch_dispatch__`,
+    `NnInitMode` is the mode for similar to `__torch_function__` / `__torch_dispatch__`,
     except you enter / exit with a `.ctx()` method (I prefer context managers).
 
     It is triggered when a `nn.Module` is initialized.
