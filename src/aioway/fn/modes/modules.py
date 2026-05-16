@@ -12,7 +12,7 @@ from collections import abc as cabc
 import torch
 from torch import nn
 
-from ..fn import TorchThunk, Thunk
+from ..fn import Thunk, TorchThunk
 from ._on_off import OnOffCtx, OnOffStack
 
 __all__ = [
