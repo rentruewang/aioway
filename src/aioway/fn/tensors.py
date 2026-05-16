@@ -51,8 +51,8 @@ def set_torch_mode(function: bool, dispatch: bool):
     for the modes that are **currently activated**.
 
     Args:
-        function: Disable the `__torch_function__` mode if `True`.
-        dispatch: Disable the `__torch_dispatch__` mode if `True`.
+        function: Enable the `__torch_function__` mode if `True`.
+        dispatch: Enable the `__torch_dispatch__` mode if `True`.
 
     Note:
         We are implementing this flag instead of using `no_dispatch` utility from `torch`,
@@ -198,7 +198,7 @@ class TFunctionMode(TModeOnOff[TFunctionFn], abc.ABC):
     """
     `TFunctionMode` is the adaptor for `torch.overrides.TorchFunctionMode`.
 
-    It provides a `context` context manager that is responsible for
+    It provides a `ctx` context manager that is responsible for
     entering and exiting the torch mode context, as well as an `on` switch.
     """
 
@@ -234,6 +234,9 @@ class _TDispatchModeCtx(pyd.TorchDispatchMode):
 class TDispatchMode(TModeOnOff[TDispatchFn], abc.ABC):
     """
     `TDispatchMode` is the adaptor for `torch.data._python_dispatch.TorchDispatchMode`.
+
+    It provides a `ctx` context manager that is responsible for
+    entering and exiting the torch mode context, as well as an `on` switch.
     """
 
     STACK: typing.ClassVar = _DISPATCHES

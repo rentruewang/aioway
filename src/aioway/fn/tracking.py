@@ -16,8 +16,8 @@ from aioway._common import (
 )
 from aioway.schemas import attr
 
-from .fate import FateFn
 from .fn import TensorInput
+from .op import FateFn
 from .tensors import (
     TDispatchFn,
     TDispatchMode,

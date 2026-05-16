@@ -1,16 +1,18 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"`FateFn` is an adaptor for `aioway.fate`."
+"An adaptor of `aioway.op`, brining in `Fate` / `Might` to `Fn`."
 
 import dataclasses as dcls
 import typing
 
 from aioway.fate import Fate, find_fate
+from aioway.might import Might, find_might
 
 from .fn import Fn
+from .nn import NnInitFn
 from .tensors import TDispatchFn
 
-__all__ = ["FateFn"]
+__all__ = ["FateFn", "MightFn"]
 
 
 @typing.final
@@ -62,3 +64,26 @@ class FateFn(Fn):
 
         else:
             return cls(fate=fate, original=thunk)
+
+
+@dcls.dataclass
+class MightFn:
+    """
+    `MightFn` are `Fn` that wrap `Might`s, which are supported `nn.Module` ops.
+    """
+
+    might: Might
+    "The `Might` instance."
+
+    def do(self) -> object:
+        return self.might.do()
+
+    @classmethod
+    def find_might(cls, thunk: NnInitFn) -> typing.Self:
+        might = find_might(thunk.func, *thunk.args, **thunk.kwargs)
+
+        if might is NotImplemented:
+            return NotImplemented
+
+        else:
+            return cls(might)

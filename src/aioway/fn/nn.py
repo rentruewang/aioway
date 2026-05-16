@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"The `Fn`s corresponding to module's."
+"Module fwd/init modes, similar to `torch` function/dispatch modes."
 
 import abc
 import contextlib as ctxl
@@ -11,18 +11,32 @@ from collections import abc as cabc
 import torch
 from torch import nn
 
-from aioway.fn.fn import OnOffStack
-from aioway.might import Might, find_might
-
 from .fn import OnOffCtx, OnOffStack, TorchThunk
 
-__all__ = ["NnFwdFn", "NnInitFn", "MightFn"]
+__all__ = ["NnFwdFn", "NnInitFn"]
 
 _FORWARDS: OnOffStack[MFwdMode] = OnOffStack()
 "`MFwdMode` that is currently entered."
 
 _INITS: OnOffStack[MInitMode] = OnOffStack()
 "`MInitMode` that is currently entered."
+
+
+@ctxl.contextmanager
+def set_nn_mode(fwd: bool, init: bool):
+    """
+    Turn on or off the modes for
+
+    Args:
+        fwd: Disable the `MFwdMode` mode if `True`.
+        init: Disable the `MInitMode` mode if `True`.
+
+    Note:
+        This is similar to `set_torch_mode`.
+    """
+
+    with _FORWARDS.switch(fwd), _INITS.switch(init):
+        yield
 
 
 @dcls.dataclass
@@ -79,6 +93,13 @@ class NnFwdFn(TorchThunk[nn.Module]):
 
 
 class MFwdMode(MModeOnOff[NnFwdFn], abc.ABC):
+    """
+    `MFwdMode` is the mode for similar to `__torch_function__` / `__torch_dispatch__`,
+    except you enter / exit with a `.ctx()` method (I prefer context managers).
+
+    It is triggered when a `nn.Module` is called.
+    """
+
     STACK = _FORWARDS
 
 
@@ -98,27 +119,11 @@ class NnInitFn(TorchThunk[type[nn.Module]]):
 
 
 class MInitMode(MModeOnOff[NnInitFn], abc.ABC):
+    """
+    `MInitMode` is the mode for similar to `__torch_function__` / `__torch_dispatch__`,
+    except you enter / exit with a `.ctx()` method (I prefer context managers).
+
+    It is triggered when a `nn.Module` is initialized.
+    """
+
     STACK = _INITS
-
-
-@dcls.dataclass
-class MightFn:
-    """
-    `MightFn` are `Fn` that wrap `Might`s, which are supported `nn.Module` ops.
-    """
-
-    might: Might
-    "The `Might` instance."
-
-    def do(self) -> object:
-        return self.might.do()
-
-    @classmethod
-    def find_might(cls, thunk: NnInitFn) -> typing.Self:
-        might = find_might(thunk.func, *thunk.args, **thunk.kwargs)
-
-        if might is NotImplemented:
-            return NotImplemented
-
-        else:
-            return cls(might)
