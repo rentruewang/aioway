@@ -298,7 +298,7 @@ def track_fn():
     dis = RouteTorDis()
     func = RouteTorFunc()
 
-    with func.ctx(), dis.ctx(), init.ctx(), fwd.ctx():
+    with func.enter(), dis.enter(), init.enter(), fwd.enter():
         yield func.history, dis.history, init.history, fwd.history
 
 

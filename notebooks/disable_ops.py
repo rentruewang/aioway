@@ -24,7 +24,7 @@ a = torch.randn(3, 4)
 b = torch.randn(1, 1)
 
 # %%
-with PrintTorDis().ctx(), PrintTorFunc().ctx():
+with PrintTorDis().enter(), PrintTorFunc().enter():
     c = a + b
 
 # %% [markdown]
@@ -34,14 +34,14 @@ with PrintTorDis().ctx(), PrintTorFunc().ctx():
 c
 
 # %%
-with PrintTorDis().ctx(), PrintTorFunc().ctx(), mode_off():
+with PrintTorDis().enter(), PrintTorFunc().enter(), mode_off():
     c = a + b
 
 # %% [markdown]
 # Have nothing at all! This is because `torch_mode_off` disable things "outside" its scope.
 
 # %%
-with PrintTorDis().ctx(), mode_off(), PrintTorFunc().ctx():
+with PrintTorDis().enter(), mode_off(), PrintTorFunc().enter():
     c = a + b
 
 # %% [markdown]

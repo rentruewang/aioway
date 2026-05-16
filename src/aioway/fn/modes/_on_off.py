@@ -30,7 +30,11 @@ class OnOffCtx(abc.ABC):
     "The toggle to control whether or not to run the current mode."
 
     @abc.abstractmethod
-    def ctx(self) -> typing.ContextManager[typing.Self]:
+    def enter(self) -> typing.ContextManager[typing.Self]:
+        """
+        The context manager that can be entered, and will be constrained by `self.on`.
+        """
+
         raise NotImplementedError
 
     @ctxl.contextmanager

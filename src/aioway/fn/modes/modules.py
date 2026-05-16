@@ -111,10 +111,13 @@ class NnModeOnOff[T, V = object](OnOffCtx, abc.ABC):
 
     @typing.override
     @ctxl.contextmanager
-    def ctx(self: typing.Self):
+    def enter(self: typing.Self):
         """
         Enter the `__torch_function__` / `__torch_dispatch__` context,
         and store the mode itself s.t. it can be turned on / off later.
+
+        I'm using this function as public API because I don't like `__enter__`, `__exit__`,
+        which IMO is much less elegant looking than context managers (of course necessary).
         """
 
         with self.STACK.hold(self):
@@ -158,7 +161,7 @@ class NnFwdFn(TorchThunk[nn.Module]):
 class NnFwdMode(NnModeOnOff[NnFwdFn], abc.ABC):
     """
     `NnFwdMode` is the mode for similar to `__torch_function__` / `__torch_dispatch__`,
-    except you enter / exit with a `.ctx()` method (I prefer context managers).
+    except you enter / exit with a `.enter()` method (I prefer context managers).
 
     It is triggered when a `nn.Module` is called.
     """
@@ -188,7 +191,7 @@ class NnInitFn(TorchThunk[type[nn.Module]]):
 class NnInitMode(NnModeOnOff[NnInitFn, nn.Module], abc.ABC):
     """
     `NnInitMode` is the mode for similar to `__torch_function__` / `__torch_dispatch__`,
-    except you enter / exit with a `.ctx()` method (I prefer context managers).
+    except you enter / exit with a `.enter()` method (I prefer context managers).
 
     It is triggered when a `nn.Module` is initialized.
     """

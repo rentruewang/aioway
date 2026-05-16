@@ -86,7 +86,7 @@ type _Mode = overrides.TorchFunctionMode | pyd.TorchDispatchMode
 
 
 @dcls.dataclass
-class TModeOnOff[T](OnOffCtx, abc.ABC):
+class TorModeOnOff[T](OnOffCtx, abc.ABC):
     """
     The mixin for either `TorFuncMode`, `TorDisMode`.
     """
@@ -103,7 +103,7 @@ class TModeOnOff[T](OnOffCtx, abc.ABC):
 
     @typing.override
     @ctxl.contextmanager
-    def ctx(self: typing.Self):
+    def enter(self: typing.Self):
         """
         Enter the `__torch_function__` / `__torch_dispatch__` context,
         and store the mode itself s.t. it can be turned on / off later.
@@ -135,7 +135,7 @@ class _TorFuncModeCtx(overrides.TorchFunctionMode):
 
 
 @dcls.dataclass
-class TorFuncMode(TModeOnOff[TorFuncFn], abc.ABC):
+class TorFuncMode(TorModeOnOff[TorFuncFn], abc.ABC):
     """
     `TorFuncMode` is the adaptor for `torch.overrides.TorchFunctionMode`.
 
@@ -172,7 +172,7 @@ class _TorDisModeCtx(pyd.TorchDispatchMode):
 
 
 @dcls.dataclass
-class TorDisMode(TModeOnOff[TorDisFn], abc.ABC):
+class TorDisMode(TorModeOnOff[TorDisFn], abc.ABC):
     """
     `TorDisMode` is the adaptor for `torch.data._python_dispatch.TorchDispatchMode`.
 
