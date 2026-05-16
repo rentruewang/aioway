@@ -17,14 +17,14 @@
 import torch
 
 # %%
-from aioway.fn import PrintTDis, PrintTFunc, torch_mode_off
+from aioway.fn import PrintTorDis, PrintTorFunc, mode_off
 
 # %%
 a = torch.randn(3, 4)
 b = torch.randn(1, 1)
 
 # %%
-with PrintTDis().ctx(), PrintTFunc().ctx():
+with PrintTorDis().enter(), PrintTorFunc().enter():
     c = a + b
 
 # %% [markdown]
@@ -34,14 +34,14 @@ with PrintTDis().ctx(), PrintTFunc().ctx():
 c
 
 # %%
-with PrintTDis().ctx(), PrintTFunc().ctx(), torch_mode_off():
+with PrintTorDis().enter(), PrintTorFunc().enter(), mode_off():
     c = a + b
 
 # %% [markdown]
 # Have nothing at all! This is because `torch_mode_off` disable things "outside" its scope.
 
 # %%
-with PrintTDis().ctx(), torch_mode_off(), PrintTFunc().ctx():
+with PrintTorDis().enter(), mode_off(), PrintTorFunc().enter():
     c = a + b
 
 # %% [markdown]

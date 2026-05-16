@@ -13,14 +13,13 @@ import torch
 from torch import nn
 
 from ..fn import TorchThunk
-from .toggles import OnOffCtx, OnOffStack
+from ._on_off import OnOffCtx, OnOffStack
 
 __all__ = [
     "NnFwdFn",
     "NnInitFn",
     "NnFwdMode",
     "NnInitMode",
-    "set_nn_mode",
     "module_fwd",
     "module_init",
 ]
@@ -100,23 +99,6 @@ def _invoke_rec(
             return thunk.do()
 
 
-@ctxl.contextmanager
-def set_nn_mode(fwd: bool, init: bool):
-    """
-    Turn on or off the modes for
-
-    Args:
-        fwd: Disable the `NnFwdMode` mode if `True`.
-        init: Disable the `NnInitMode` mode if `True`.
-
-    Note:
-        This is similar to `set_torch_mode`.
-    """
-
-    with FORWARDS.switch(fwd), INITS.switch(init):
-        yield
-
-
 @dcls.dataclass
 class NnModeOnOff[T, V = object](OnOffCtx, abc.ABC):
     """
@@ -129,7 +111,7 @@ class NnModeOnOff[T, V = object](OnOffCtx, abc.ABC):
 
     @typing.override
     @ctxl.contextmanager
-    def ctx(self: typing.Self):
+    def enter(self: typing.Self):
         """
         Enter the `__torch_function__` / `__torch_dispatch__` context,
         and store the mode itself s.t. it can be turned on / off later.
@@ -176,7 +158,7 @@ class NnFwdFn(TorchThunk[nn.Module]):
 class NnFwdMode(NnModeOnOff[NnFwdFn], abc.ABC):
     """
     `NnFwdMode` is the mode for similar to `__torch_function__` / `__torch_dispatch__`,
-    except you enter / exit with a `.ctx()` method (I prefer context managers).
+    except you enter / exit with a `.enter()` method (I prefer context managers).
 
     It is triggered when a `nn.Module` is called.
     """
@@ -206,7 +188,7 @@ class NnInitFn(TorchThunk[type[nn.Module]]):
 class NnInitMode(NnModeOnOff[NnInitFn, nn.Module], abc.ABC):
     """
     `NnInitMode` is the mode for similar to `__torch_function__` / `__torch_dispatch__`,
-    except you enter / exit with a `.ctx()` method (I prefer context managers).
+    except you enter / exit with a `.enter()` method (I prefer context managers).
 
     It is triggered when a `nn.Module` is initialized.
     """

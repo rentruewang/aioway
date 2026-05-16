@@ -1,87 +1,74 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"The toggles mixins and stacks."
-
-import abc
 import contextlib as ctxl
-import dataclasses as dcls
-import logging
 import typing
 
-from aioway._common import Stack
+from ._on_off import OnOffStack
+from .modules import FORWARDS, INITS
+from .tensors import DISPATCHES, FUNCTIONS
 
-__all__ = ["OnOffCtx", "OnOffStack"]
+__all__ = ["active_mode", "set_mode", "mode_off"]
 
-LOGGER = logging.getLogger(__name__)
+type _ModeName = typing.Literal["function", "dispatch", "init", "forward"]
 
 
-@dcls.dataclass
-class OnOffCtx(abc.ABC):
+def active_mode(mode: _ModeName):
     """
-    `OnOffCtx` is a mixin class that gives the subclasses a toggle.
+    Get the mode for
+    """
+    match mode:
+        case "function":
+            return FUNCTIONS
+        case "dispatch":
+            return DISPATCHES
+        case "init":
+            return INITS
+        case "forward":
+            return FORWARDS
+        case _:
+            raise ValueError(f"Unexpected {mode=} is not supported.")
+
+
+@ctxl.contextmanager
+def set_mode(
+    *,
+    function: bool | None = None,
+    dispatch: bool | None = None,
+    init: bool | None = None,
+    forward: bool | None,
+):
+    """
+    Turn on or off `__torch_function__` / `__torch_dispatch__` mode for the given scope,
+    for the modes that are **currently activated**.
+
+    If not provided, the modes won't be set is unchanged.
+
+    Args:
+        function: Enable the `__torch_function__` mode.
+        dispatch: Enable the `__torch_dispatch__` mode.
+        init: Enable the hooks during `nn.Module.__init__`.
+        forward: Enable the hooks during `nn.Module.forward`.
+
+    Note:
+        We are implementing this flag instead of using `no_dispatch` utility from `torch`,
+        is because thier version causes segmentation fault in some cases.
     """
 
-    STACK: typing.ClassVar[OnOffStack[typing.Self]]
-    "The stack."
+    with ctxl.ExitStack() as ctx:
 
-    _: dcls.KW_ONLY
+        def _switch_if_not_none(stack: OnOffStack, flag: bool | None):
+            if flag is not None:
+                ctx.enter_context(stack.switch(flag))
 
-    on: bool = True
-    "The toggle to control whether or not to run the current mode."
+        _switch_if_not_none(FUNCTIONS, function)
+        _switch_if_not_none(DISPATCHES, dispatch)
+        _switch_if_not_none(INITS, init)
+        _switch_if_not_none(FORWARDS, forward)
 
-    @abc.abstractmethod
-    def ctx(self) -> typing.ContextManager[typing.Self]:
-        raise NotImplementedError
-
-    @ctxl.contextmanager
-    def switch(self, on: bool, /):
-        "Switch to `on` in the scope (can be overwritten)."
-
-        before = self.on
-        self.on = on
-        try:
-            yield
-        finally:
-            self.on = before
+        yield
 
 
-class OnOffStack[T: OnOffCtx](Stack[T]):
-    """
-    `OnOffStack` provides additional utilites to decide when to turn on or off.
-    """
-
-    @ctxl.contextmanager
-    def switch(self, on: bool | list[bool], /):
-        """
-        Temporarily set the `on` switch to the value given.
-        """
-
-        before = self.on
-        self.on = on
-
-        try:
-            yield
-        finally:
-            self.on = before
-
-    @property
-    def on(self) -> list[bool]:
-        "Get the on off values."
-
-        return [frame.on for frame in self]
-
-    @on.setter
-    def on(self, to: bool | list[bool]) -> None:
-        LOGGER.debug("Current stack %s", self)
-        LOGGER.debug("Setting to %s", to)
-
-        if isinstance(to, bool):
-            to = [to] * len(self)
-
-        if len(to) != len(self):
-            raise ValueError(f"Value {to=} should have equal length with {self=}.")
-
-        for frame, val in zip(self, to):
-            frame.on = val
-
-        LOGGER.debug("Status after setting %s", self)
+@ctxl.contextmanager
+def mode_off():
+    with set_mode(function=False, dispatch=False, init=False, forward=False):
+        yield

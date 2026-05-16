@@ -17,57 +17,23 @@ from aioway._common import is_aten_op, is_prim_op
 
 from ..common import render_function_body_prefix
 from ..fn import TorchThunk
-from .toggles import OnOffCtx, OnOffStack
+from ._on_off import OnOffCtx, OnOffStack
 
-__all__ = [
-    "TFuncMode",
-    "TDisMode",
-    "TFuncFn",
-    "TDisFn",
-    "set_torch_mode",
-    "torch_mode_off",
-    "active_dispatch_modes",
-    "active_function_modes",
-]
+__all__ = ["TorFuncMode", "TorDisMode", "TorFuncFn", "TorDisFn"]
 
 LOGGER = logging.getLogger(__name__)
 
-FUNCTIONS: OnOffStack[TFuncMode] = OnOffStack()
-"`TFuncMode` that is currently entered."
+FUNCTIONS: OnOffStack[TorFuncMode] = OnOffStack()
+"`TorFuncMode` that is currently entered."
 
-DISPATCHES: OnOffStack[TDisMode] = OnOffStack()
-"`TDisMode` that is currently entered."
-
-
-@ctxl.contextmanager
-def set_torch_mode(function: bool, dispatch: bool):
-    """
-    Turn on or off `__torch_function__` / `__torch_dispatch__` mode for the given scope,
-    for the modes that are **currently activated**.
-
-    Args:
-        function: Enable the `__torch_function__` mode if `True`.
-        dispatch: Enable the `__torch_dispatch__` mode if `True`.
-
-    Note:
-        We are implementing this flag instead of using `no_dispatch` utility from `torch`,
-        is because thier version causes segmentation fault in some cases.
-    """
-
-    with FUNCTIONS.switch(function), DISPATCHES.switch(dispatch):
-        yield
-
-
-@ctxl.contextmanager
-def torch_mode_off():
-    with set_torch_mode(False, False):
-        yield
+DISPATCHES: OnOffStack[TorDisMode] = OnOffStack()
+"`TorDisMode` that is currently entered."
 
 
 @dcls.dataclass(match_args=False)
-class TFuncFn(TorchThunk[cabc.Callable[..., typing.Any]]):
+class TorFuncFn(TorchThunk[cabc.Callable[..., typing.Any]]):
     """
-    `TorchFunctionT` is the thunk capturing the function calls initiated by `torch`.
+    `TorFuncFn` is the thunk capturing the function calls initiated by `torch`.
 
     The `func` here are `torch.*` or `torch.Tensor` operators.
     """
@@ -85,9 +51,9 @@ class TFuncFn(TorchThunk[cabc.Callable[..., typing.Any]]):
 
 
 @dcls.dataclass(match_args=False)
-class TDisFn(TorchThunk[_ops.OpOverload]):
+class TorDisFn(TorchThunk[_ops.OpOverload]):
     """
-    `TorchDispatchT` is the thunk capturing the function calls initiated by `torch`.
+    `TorDisFn` is the thunk capturing the function calls initiated by `torch`.
     This is by default what a null-op `__torch_dispatch__` would call.
 
     The `func` here are `torch.ops.aten.*` operators.
@@ -120,9 +86,9 @@ type _Mode = overrides.TorchFunctionMode | pyd.TorchDispatchMode
 
 
 @dcls.dataclass
-class TModeOnOff[T](OnOffCtx, abc.ABC):
+class TorModeOnOff[T](OnOffCtx, abc.ABC):
     """
-    The mixin for either `TFuncMode`, `TDisMode`.
+    The mixin for either `TorFuncMode`, `TorDisMode`.
     """
 
     _TORCH_MODE: typing.ClassVar[cabc.Callable[..., _Mode]]
@@ -137,7 +103,7 @@ class TModeOnOff[T](OnOffCtx, abc.ABC):
 
     @typing.override
     @ctxl.contextmanager
-    def ctx(self: typing.Self):
+    def enter(self: typing.Self):
         """
         Enter the `__torch_function__` / `__torch_dispatch__` context,
         and store the mode itself s.t. it can be turned on / off later.
@@ -148,10 +114,10 @@ class TModeOnOff[T](OnOffCtx, abc.ABC):
 
 
 @typing.final
-class _TFuncModeCtx(overrides.TorchFunctionMode):
+class _TorFuncModeCtx(overrides.TorchFunctionMode):
     "The `__torch_function__` adaptor"
 
-    def __init__(self, mode: TFuncMode) -> None:
+    def __init__(self, mode: TorFuncMode) -> None:
         super().__init__()
         self.mode = mode
 
@@ -164,28 +130,28 @@ class _TFuncModeCtx(overrides.TorchFunctionMode):
         if not self.mode.on:
             return func(*args, **kwargs)
 
-        thunk = TFuncFn(func=func, types=types, args=args, kwargs=kwargs)
+        thunk = TorFuncFn(func=func, types=types, args=args, kwargs=kwargs)
         return self.mode(thunk)
 
 
 @dcls.dataclass
-class TFuncMode(TModeOnOff[TFuncFn], abc.ABC):
+class TorFuncMode(TorModeOnOff[TorFuncFn], abc.ABC):
     """
-    `TFuncMode` is the adaptor for `torch.overrides.TorchFunctionMode`.
+    `TorFuncMode` is the adaptor for `torch.overrides.TorchFunctionMode`.
 
     It provides a `ctx` context manager that is responsible for
     entering and exiting the torch mode context, as well as an `on` switch.
     """
 
     STACK: typing.ClassVar = FUNCTIONS
-    _TORCH_MODE: typing.ClassVar = _TFuncModeCtx
+    _TORCH_MODE: typing.ClassVar = _TorFuncModeCtx
 
 
 @typing.final
-class _TDisModeCtx(pyd.TorchDispatchMode):
+class _TorDisModeCtx(pyd.TorchDispatchMode):
     "The `__torch_dispatch__` adaptor"
 
-    def __init__(self, mode: TDisMode) -> None:
+    def __init__(self, mode: TorDisMode) -> None:
         super().__init__()
         self.mode = mode
 
@@ -201,26 +167,18 @@ class _TDisModeCtx(pyd.TorchDispatchMode):
         if not self.mode.on:
             return func(*args, **kwargs)
 
-        thunk = TDisFn(func=func, args=args, kwargs=kwargs)
+        thunk = TorDisFn(func=func, args=args, kwargs=kwargs)
         return self.mode(thunk)
 
 
 @dcls.dataclass
-class TDisMode(TModeOnOff[TDisFn], abc.ABC):
+class TorDisMode(TorModeOnOff[TorDisFn], abc.ABC):
     """
-    `TDisMode` is the adaptor for `torch.data._python_dispatch.TorchDispatchMode`.
+    `TorDisMode` is the adaptor for `torch.data._python_dispatch.TorchDispatchMode`.
 
     It provides a `ctx` context manager that is responsible for
     entering and exiting the torch mode context, as well as an `on` switch.
     """
 
     STACK: typing.ClassVar = DISPATCHES
-    _TORCH_MODE: typing.ClassVar = _TDisModeCtx
-
-
-def active_function_modes():
-    return FUNCTIONS
-
-
-def active_dispatch_modes():
-    return DISPATCHES
+    _TORCH_MODE: typing.ClassVar = _TorDisModeCtx
