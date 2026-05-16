@@ -83,11 +83,11 @@ def torch_mode_off():
         yield
 
 
-def _get_stack_on_off[M: _ModeContextMixin](stack: Stack[M]):
+def _get_stack_on_off[M: TorchModeContextMixin](stack: Stack[M]):
     return [frame.on for frame in stack]
 
 
-def _set_stack_on_off[M: _ModeContextMixin](stack: Stack[M], to: bool | list[bool]):
+def _set_stack_on_off[M: TorchModeContextMixin](stack: Stack[M], to: bool | list[bool]):
     LOGGER.debug("Current stack %s", stack)
     LOGGER.debug("Status before setting %s", _get_stack_on_off(stack))
     LOGGER.debug("Setting to %s", to)
@@ -180,7 +180,7 @@ type _Mode = overrides.TorchFunctionMode | pyd.TorchDispatchMode
 
 
 @dcls.dataclass
-class _ModeContextMixin:
+class TorchModeContextMixin:
     """
     The mixin for either `TFunctionMode`, `TDispatchMode`.
     """
@@ -247,7 +247,7 @@ class _TorchFunctionModeCtx(overrides.TorchFunctionMode):
 
 
 @dcls.dataclass
-class TFunctionMode(_ModeContextMixin, abc.ABC):
+class TFunctionMode(TorchModeContextMixin, abc.ABC):
     """
     `TFunctionMode` is the adaptor for `torch.overrides.TorchFunctionMode`.
 
@@ -288,7 +288,7 @@ class _TorchDispatchModeCtx(pyd.TorchDispatchMode):
 
 
 @dcls.dataclass
-class TDispatchMode(_ModeContextMixin, abc.ABC):
+class TDispatchMode(TorchModeContextMixin, abc.ABC):
     """
     `TorchDispatchMode` is the adaptor for `torch.data._python_dispatch.TorchDispatchMode`.
     """
