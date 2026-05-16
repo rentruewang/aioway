@@ -6,8 +6,7 @@ import typing
 
 from torch import nn
 
-from aioway._common import dcls_frozen_no_repr
-from aioway._common.typing.checks import is_tuple_of
+from aioway._common import dcls_frozen_no_repr, is_tuple_of
 
 from .might import Might
 
