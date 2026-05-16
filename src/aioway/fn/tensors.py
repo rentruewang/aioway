@@ -330,6 +330,9 @@ class FateFn(HasParam, Fn):
     def tensors(self) -> cabc.Iterator[torch.Tensor]:
         yield from find_nested_tensors(self.fate)
 
+    def inputs(self):
+        yield from self.tensors()
+
     @property
     def func(self):
         return self.original.func

@@ -12,7 +12,7 @@ import torch
 
 from aioway._common import HasParam, find_nested_tensors, render_fcall
 
-__all__ = ["Fn", "Thunk", "TorchThunk"]
+__all__ = ["Fn", "TensorInput", "Thunk", "TorchThunk"]
 
 _PENDING = object()
 "The object signifying a status of pending. This is a `object()` s.t. `FnCache` can store `None`."
@@ -28,11 +28,18 @@ class Fn(typing.Protocol):
     `Fn.do()` executes the computation, `Fn` base class itself does not make any more assumption.
     """
 
-    @abc.abstractmethod
     def do(self) -> object:
-        """
-        Execute the computation.
-        """
+        "Execute the computation."
+
+
+@typing.runtime_checkable
+class TensorInput(typing.Protocol):
+    """
+    `TensorInput` marks a class whose value depend on input tensors for computation.
+    """
+
+    def inputs(self) -> cabc.Iterable[torch.Tensor]:
+        "The tensor operands (inputs to the function)"
 
         raise NotImplementedError
 
@@ -185,3 +192,6 @@ class TorchThunk[T: cabc.Callable[..., typing.Any]](HasParam, abc.ABC):
     def tensors(self) -> cabc.Iterator[torch.Tensor]:
         yield from find_nested_tensors(self.args)
         yield from find_nested_tensors(self.kwargs)
+
+    def inputs(self):
+        yield from self.tensors()

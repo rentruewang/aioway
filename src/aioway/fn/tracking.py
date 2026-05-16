@@ -19,6 +19,7 @@ from aioway._common import (
 )
 from aioway.schemas import attr
 
+from .fn import TensorInput
 from .tensors import (
     FateFn,
     TDispatchFn,
@@ -115,7 +116,7 @@ class LogTorchDispatch(TDispatchMode):
 
 
 @dcls.dataclass(frozen=True)
-class FnResult[F: TorchCall]:
+class FnResult[F: TensorInput]:
     "The storage class per item for `FnHistory`."
 
     fn: F
@@ -178,7 +179,7 @@ class FnHistory[T: TorchCall]:
             self.output_to_thunk_list[output_tensor].append(item)
 
         # Update input.
-        for input_tensor in item.tensors():
+        for input_tensor in item.inputs():
             self.input_to_thunk_list[input_tensor].append(item)
 
     def networkx(self):
@@ -224,7 +225,7 @@ class FnHistory[T: TorchCall]:
 
         def all_inputs():
             for hist in self.history:
-                yield from hist.fn.tensors()
+                yield from hist.fn.inputs()
 
         def all_outputs():
             for hist in self.history:
