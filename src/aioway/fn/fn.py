@@ -5,15 +5,17 @@
 import abc
 import dataclasses as dcls
 import functools
+import logging
 import typing
 from collections import abc as cabc
 
 import torch
 
-from aioway._common import HasParam, find_nested_tensors, render_fcall
+from aioway._common import find_nested_tensors, render_fcall
 
-__all__ = ["Fn", "Thunk", "TorchThunk"]
+__all__ = ["Fn", "TensorInput", "Thunk", "TorchThunk"]
 
+LOGGER = logging.getLogger(__name__)
 _PENDING = object()
 "The object signifying a status of pending. This is a `object()` s.t. `FnCache` can store `None`."
 
@@ -28,11 +30,18 @@ class Fn(typing.Protocol):
     `Fn.do()` executes the computation, `Fn` base class itself does not make any more assumption.
     """
 
-    @abc.abstractmethod
     def do(self) -> object:
-        """
-        Execute the computation.
-        """
+        "Execute the computation."
+
+
+@typing.runtime_checkable
+class TensorInput(typing.Protocol):
+    """
+    `TensorInput` marks a class whose value depend on input tensors for computation.
+    """
+
+    def inputs(self) -> cabc.Iterable[torch.Tensor]:
+        "The tensor operands (inputs to the function)"
 
         raise NotImplementedError
 
@@ -151,7 +160,7 @@ class Thunk:
 
 
 @dcls.dataclass(match_args=False)
-class TorchThunk[T: cabc.Callable[..., typing.Any]](HasParam, abc.ABC):
+class TorchThunk[T: cabc.Callable[..., typing.Any]](abc.ABC):
     """
     `BaseFn` is a really basic `Fn` that acts as a base class,
     with some `torch` utilities.
@@ -181,7 +190,6 @@ class TorchThunk[T: cabc.Callable[..., typing.Any]](HasParam, abc.ABC):
     def do(self) -> object:
         return self.func(*self.args, **self.kwargs)
 
-    @typing.override
-    def tensors(self) -> cabc.Iterator[torch.Tensor]:
+    def inputs(self):
         yield from find_nested_tensors(self.args)
         yield from find_nested_tensors(self.kwargs)

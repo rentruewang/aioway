@@ -9,7 +9,7 @@ from collections import abc as cabc
 
 from torch import _ops
 
-from aioway._common import dcls_frozen_no_repr
+from aioway._common import dcls_frozen_no_repr, find_nested_tensors
 from aioway.op import Op
 
 __all__ = ["Fate", "find_fate", "all_fates"]
@@ -47,6 +47,9 @@ class Fate(Op[_ops.OpOverload], abc.ABC):
         """
 
         raise NotImplementedError
+
+    def inputs(self):
+        yield from find_nested_tensors(self)
 
 
 def find_fate(op: _ops.OpOverload, *args: typing.Any, **kwargs: typing.Any) -> Fate:

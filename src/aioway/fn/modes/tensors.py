@@ -14,25 +14,22 @@ from torch import _ops, overrides
 from torch.utils import _python_dispatch as pyd
 
 from aioway._common import (
-    HasParam,
-    find_nested_tensors,
     is_aten_op,
     is_prim_op,
     render_fcall,
     render_func_name,
     replace_tensors,
 )
-from aioway.fate import Fate, find_fate
 from aioway.schemas import attr
 
-from .fn import Fn, TorchThunk
+from ..fn import TorchThunk
+from .toggles import OnOffCtx, OnOffStack
 
 __all__ = [
     "TFunctionMode",
     "TDispatchMode",
     "TFunctionFn",
     "TDispatchFn",
-    "FateFn",
     "set_torch_mode",
     "torch_mode_off",
     "active_dispatch_modes",
@@ -41,11 +38,11 @@ __all__ = [
 
 LOGGER = logging.getLogger(__name__)
 
-_FUNCTIONS: list[TFunctionMode] = []
-"`TFunctionFn` that is currently in scope."
+FUNCTIONS: OnOffStack[TFunctionMode] = OnOffStack()
+"`TFunctionMode` that is currently entered."
 
-_DISPATCHES: list[TDispatchMode] = []
-"`TDispatchFn` that is currently in scope."
+DISPATCHES: OnOffStack[TDispatchMode] = OnOffStack()
+"`TDispatchMode` that is currently entered."
 
 
 @ctxl.contextmanager
@@ -55,52 +52,22 @@ def set_torch_mode(function: bool, dispatch: bool):
     for the modes that are **currently activated**.
 
     Args:
-        function: Disable the `__torch_function__` mode if `True`.
-        dispatch: Disable the `__torch_dispatch__` mode if `True`.
+        function: Enable the `__torch_function__` mode if `True`.
+        dispatch: Enable the `__torch_dispatch__` mode if `True`.
 
     Note:
         We are implementing this flag instead of using `no_dispatch` utility from `torch`,
         is because thier version causes segmentation fault in some cases.
     """
 
-    functions_before = _get_stack_on_off(_FUNCTIONS)
-    dispatches_before = _get_stack_on_off(_DISPATCHES)
-
-    _set_stack_on_off(_FUNCTIONS, function)
-    _set_stack_on_off(_DISPATCHES, dispatch)
-
-    try:
+    with FUNCTIONS.switch(function), DISPATCHES.switch(dispatch):
         yield
-    finally:
-        _set_stack_on_off(_FUNCTIONS, functions_before)
-        _set_stack_on_off(_DISPATCHES, dispatches_before)
 
 
 @ctxl.contextmanager
 def torch_mode_off():
     with set_torch_mode(False, False):
         yield
-
-
-def _get_stack_on_off(stack: cabc.Sequence[_ModeContextMixin]):
-    return [frame.on for frame in stack]
-
-
-def _set_stack_on_off(stack: cabc.Sequence[_ModeContextMixin], to: bool | list[bool]):
-    LOGGER.debug("Current stack %s", stack)
-    LOGGER.debug("Status before setting %s", _get_stack_on_off(stack))
-    LOGGER.debug("Setting to %s", to)
-
-    if isinstance(to, bool):
-        to = [to] * len(stack)
-
-    if len(to) != len(stack):
-        raise ValueError(f"Value {to=} should have equal length with {stack=}.")
-
-    for frame, val in zip(stack, to):
-        frame.on = val
-
-    LOGGER.debug("Status after setting %s", _get_stack_on_off(stack))
 
 
 @dcls.dataclass(match_args=False)
@@ -179,13 +146,10 @@ type _Mode = overrides.TorchFunctionMode | pyd.TorchDispatchMode
 
 
 @dcls.dataclass
-class _ModeContextMixin:
+class TModeOnOff[T](OnOffCtx, abc.ABC):
     """
     The mixin for either `TFunctionMode`, `TDispatchMode`.
     """
-
-    STACK: typing.ClassVar[list[typing.Self]]
-    "The stack. One of `_FUNCTIONS`, `_DISPATCHES`."
 
     _TORCH_MODE: typing.ClassVar[cabc.Callable[..., _Mode]]
     """
@@ -193,11 +157,11 @@ class _ModeContextMixin:
     These are specific modes that honor the `on` switch (hence private function).
     """
 
-    _: dcls.KW_ONLY
+    @abc.abstractmethod
+    def __call__(self, thunk: T, /) -> object:
+        raise NotImplementedError
 
-    on: bool = True
-    "The toggle to control whether or not to run the current mode."
-
+    @typing.override
     @ctxl.contextmanager
     def ctx(self: typing.Self):
         """
@@ -205,27 +169,12 @@ class _ModeContextMixin:
         and store the mode itself s.t. it can be turned on / off later.
         """
 
-        self.STACK.append(self)
-        try:
-            with self._TORCH_MODE(self):
-                yield self
-        finally:
-            _ = self.STACK.pop()
-
-    @ctxl.contextmanager
-    def switch(self, on: bool):
-        "Switch to `on` in the scope (can be overwritten)."
-
-        before = self.on
-        self.on = on
-        try:
-            yield
-        finally:
-            self.on = before
+        with self.STACK.hold(self), self._TORCH_MODE(self):
+            yield self
 
 
 @typing.final
-class _TorchFunctionModeCtx(overrides.TorchFunctionMode):
+class _TFunctionModeCtx(overrides.TorchFunctionMode):
     "The `__torch_function__` adaptor"
 
     def __init__(self, mode: TFunctionMode) -> None:
@@ -246,24 +195,20 @@ class _TorchFunctionModeCtx(overrides.TorchFunctionMode):
 
 
 @dcls.dataclass
-class TFunctionMode(_ModeContextMixin, abc.ABC):
+class TFunctionMode(TModeOnOff[TFunctionFn], abc.ABC):
     """
     `TFunctionMode` is the adaptor for `torch.overrides.TorchFunctionMode`.
 
-    It provides a `context` context manager that is responsible for
+    It provides a `ctx` context manager that is responsible for
     entering and exiting the torch mode context, as well as an `on` switch.
     """
 
-    STACK: typing.ClassVar = _FUNCTIONS
-    _TORCH_MODE: typing.ClassVar = _TorchFunctionModeCtx
-
-    @abc.abstractmethod
-    def __call__(self, thunk: TFunctionFn, /) -> object:
-        raise NotImplementedError
+    STACK: typing.ClassVar = FUNCTIONS
+    _TORCH_MODE: typing.ClassVar = _TFunctionModeCtx
 
 
 @typing.final
-class _TorchDispatchModeCtx(pyd.TorchDispatchMode):
+class _TDispatchModeCtx(pyd.TorchDispatchMode):
     "The `__torch_dispatch__` adaptor"
 
     def __init__(self, mode: TDispatchMode) -> None:
@@ -287,74 +232,21 @@ class _TorchDispatchModeCtx(pyd.TorchDispatchMode):
 
 
 @dcls.dataclass
-class TDispatchMode(_ModeContextMixin, abc.ABC):
+class TDispatchMode(TModeOnOff[TDispatchFn], abc.ABC):
     """
-    `TorchDispatchMode` is the adaptor for `torch.data._python_dispatch.TorchDispatchMode`.
-    """
+    `TDispatchMode` is the adaptor for `torch.data._python_dispatch.TorchDispatchMode`.
 
-    STACK: typing.ClassVar = _DISPATCHES
-    _TORCH_MODE: typing.ClassVar = _TorchDispatchModeCtx
-
-    @abc.abstractmethod
-    def __call__(self, thunk: TDispatchFn, /) -> object:
-        raise NotImplementedError
-
-
-@typing.final
-@dcls.dataclass(frozen=True)
-class FateFn(HasParam, Fn):
-    """
-    `FateFn` wraps a `Fate` object, which is split out so as to declutter subclasses for `Fn`.
-
-    Each `Fate` is an implementation of an IR, and each IR can have multiple `Fate`s,
-    each handling a subset of parameters (if `Fate.ok` is `False`, it's discarded.)
+    It provides a `ctx` context manager that is responsible for
+    entering and exiting the torch mode context, as well as an `on` switch.
     """
 
-    fate: Fate
-    """
-    The `Fate` object that ends up being selected.
-    """
-
-    original: TDispatchFn
-    "The original `TorchDispatchFn` from which the `Fate` is translated."
-
-    def __repr__(self) -> str:
-        return repr(self.fate)
-
-    @typing.override
-    def do(self) -> object:
-        return self.fate.do()
-
-    @typing.override
-    def tensors(self) -> cabc.Iterator[torch.Tensor]:
-        yield from find_nested_tensors(self.fate)
-
-    @property
-    def func(self):
-        return self.original.func
-
-    @property
-    def args(self):
-        return self.original.args
-
-    @property
-    def kwargs(self):
-        return self.original.kwargs
-
-    @classmethod
-    def find_fate(cls, thunk: TDispatchFn) -> typing.Self:
-        fate = find_fate(thunk.func, *thunk.args, **thunk.kwargs)
-
-        if fate is NotImplemented:
-            return NotImplemented
-
-        else:
-            return cls(fate=fate, original=thunk)
+    STACK: typing.ClassVar = DISPATCHES
+    _TORCH_MODE: typing.ClassVar = _TDispatchModeCtx
 
 
 def active_function_modes():
-    return _FUNCTIONS
+    return FUNCTIONS
 
 
 def active_dispatch_modes():
-    return _DISPATCHES
+    return DISPATCHES

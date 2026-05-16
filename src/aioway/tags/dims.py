@@ -12,7 +12,7 @@ import torch
 
 from aioway.fake import is_fake_tensor
 
-__all__ = ["tag", "get_tag", "check_tag", "DimTag"]
+__all__ = ["set_dim_tag", "get_dim_tag", "check_dim_tag", "DimTag"]
 
 
 @typing.runtime_checkable
@@ -77,7 +77,7 @@ class DimTag:
         return is_fake_tensor(self.tensor)
 
 
-def tag(tensor: torch.Tensor, tag: str):
+def set_dim_tag(tensor: torch.Tensor, tag: str):
     "Tag the `torch.Tensor` with the given tag."
 
     def _cast_tensor(t: typing.Any) -> HasDimTag:
@@ -88,7 +88,7 @@ def tag(tensor: torch.Tensor, tag: str):
     tagged.__aioway_dim_tag__ = dim_tag
 
 
-def get_tag(tensor: torch.Tensor) -> DimTag | None:
+def get_dim_tag(tensor: torch.Tensor) -> DimTag | None:
     if isinstance(tensor, HasDimTag):
         return tensor.__aioway_dim_tag__
 
@@ -96,7 +96,7 @@ def get_tag(tensor: torch.Tensor) -> DimTag | None:
         return None
 
 
-def check_tag(tags: str) -> bool:
+def check_dim_tag(tags: str) -> bool:
     return _valid_regex().fullmatch(tags) is not None
 
 

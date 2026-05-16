@@ -12,30 +12,21 @@ import rich
 import torch
 
 from aioway._common import (
-    Stack,
-    TensorFilter,
-    filter_tensor_off,
     find_nested_tensors,
     is_leaf_has_grad,
 )
 from aioway.schemas import attr
 
-from .tensors import (
-    FateFn,
-    TDispatchFn,
-    TDispatchMode,
-    TFunctionFn,
-    TFunctionMode,
-    replace_tensors_with_attr,
-)
+from .fn import TensorInput
+from .modes import TDispatchFn, TDispatchMode, TFunctionFn, TFunctionMode
+from .modes.tensors import replace_tensors_with_attr
+from .op import FateFn
 
 __all__ = [
     "PrintTorchFunction",
     "PrintTorchDispatch",
     "LogTorchFunction",
     "LogTorchDispatch",
-    "TorchFunctionStack",
-    "TorchDispatchStack",
     "FnHistory",
 ]
 
@@ -117,34 +108,8 @@ class LogTorchDispatch(TDispatchMode):
         return result
 
 
-@dcls.dataclass
-class TorchFunctionStack(TFunctionMode):
-    stack: Stack[TFunctionFn] = dcls.field(default_factory=Stack)
-
-    @typing.override
-    def __call__(self, thunk: TFunctionFn) -> object:
-        with self.stack.enter(thunk):
-            return thunk.do()
-
-
-@dcls.dataclass
-class TorchDispatchStack(TDispatchMode):
-    stack: Stack[TDispatchFn] = dcls.field(default_factory=Stack)
-
-    @typing.override
-    def __call__(self, thunk: TDispatchFn) -> object:
-        with self.stack.enter(thunk):
-            return thunk.do()
-
-    def __len__(self) -> int:
-        return len(self.stack)
-
-    def top(self) -> TDispatchFn:
-        return self.stack.top()
-
-
 @dcls.dataclass(frozen=True)
-class FnResult[F: TorchCall]:
+class FnResult[F: TensorInput]:
     "The storage class per item for `FnHistory`."
 
     fn: F
@@ -207,7 +172,7 @@ class FnHistory[T: TorchCall]:
             self.output_to_thunk_list[output_tensor].append(item)
 
         # Update input.
-        for input_tensor in item.tensors():
+        for input_tensor in item.inputs():
             self.input_to_thunk_list[input_tensor].append(item)
 
     def networkx(self):
@@ -229,18 +194,6 @@ class FnHistory[T: TorchCall]:
 
         return graph
 
-    def parameters(self, select: TensorFilter = is_leaf_has_grad, unique: bool = True):
-        def data_params():
-            for result in self.history:
-                yield from result.fn.parameters(select)
-
-        params = data_params()
-
-        if unique:
-            params = set(data_params())
-
-        yield from params
-
     def inputs(self) -> set[torch.Tensor]:
         """
         All the inputs of `FnHistory` in a `set`.
@@ -251,23 +204,34 @@ class FnHistory[T: TorchCall]:
             A `set` that stores all the `inputs` that are not created by `self`.
         """
 
-        def all_inputs():
-            for hist in self.history:
-                yield from hist.fn.tensors()
-
-        def all_outputs():
-            for hist in self.history:
-                yield from find_nested_tensors(hist.result)
-
-        inputs = set(all_inputs())
-        outputs = set(all_outputs())
-
-        return inputs - outputs
+        return self._all_inputs() - self._all_outputs()
 
     def numel(self) -> int:
         "The total number of elements of the tensors."
-        return sum(param.numel() for param in self.parameters(filter_tensor_off))
+        return sum(param.numel() for param in self._all_tensors())
 
     def memory(self) -> int:
         "The total memory consumed by the tensors."
-        return sum(attr(param).memory() for param in self.parameters(filter_tensor_off))
+        return sum(attr(param).memory() for param in self._all_tensors())
+
+    def parameters(self):
+        for tensor in self._all_tensors():
+            if is_leaf_has_grad(tensor):
+                yield tensor
+
+    def _all_inputs(self):
+        def inputs():
+            for hist in self.history:
+                yield from hist.fn.inputs()
+
+        return set(inputs())
+
+    def _all_outputs(self):
+        def outputs():
+            for hist in self.history:
+                yield from find_nested_tensors(hist.result)
+
+        return set(outputs())
+
+    def _all_tensors(self):
+        return self._all_inputs() | self._all_outputs()

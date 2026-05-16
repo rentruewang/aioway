@@ -6,4 +6,3 @@ from .dtypes import *
 from .layouts import *
 from .sets import *
 from .shapes import *
-from .tags import *

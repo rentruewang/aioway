@@ -52,6 +52,10 @@ class Stack[T]:
     def __bool__(self) -> bool:
         return bool(len(self))
 
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self[i]
+
     def __len__(self) -> int:
         return len(self.stack)
 
@@ -70,9 +74,6 @@ class Stack[T]:
 
         raise TypeError(type(idx))
 
-    def __iter__(self) -> cabc.Generator[T]:
-        yield from self.stack
-
     def top(self) -> T:
         return self.stack[-1]
 
@@ -83,9 +84,28 @@ class Stack[T]:
         return self.stack.pop()
 
     @ctxl.contextmanager
-    def enter(self, item: T):
+    def hold(self, item: T):
+        """
+        Enter the scope, push the `item` onto the stack, and then pop when exit.
+        """
+
         self.append(item)
         try:
             yield
         finally:
             _ = self.pop()
+
+    @ctxl.contextmanager
+    def temp_pop(self) -> cabc.Generator[T]:
+        """
+        Temporarily pop the last item, then push it back after exiting the scope.
+
+        Yields:
+            The last item (which would be pushed back later).
+        """
+
+        item = self.stack.pop()
+        try:
+            yield item
+        finally:
+            self.append(item)
