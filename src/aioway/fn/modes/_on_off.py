@@ -33,6 +33,9 @@ class OnOffCtx(abc.ABC):
     def enter(self) -> typing.ContextManager[typing.Self]:
         """
         The context manager that can be entered, and will be constrained by `self.on`.
+
+        I'm using this function as public API because I don't like `__enter__`, `__exit__`,
+        which IMO is much less elegant looking than context managers (of course necessary).
         """
 
         raise NotImplementedError

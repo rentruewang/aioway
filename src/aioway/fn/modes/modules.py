@@ -115,9 +115,6 @@ class NnModeOnOff[T, V = object](OnOffCtx, abc.ABC):
         """
         Enter the `__torch_function__` / `__torch_dispatch__` context,
         and store the mode itself s.t. it can be turned on / off later.
-
-        I'm using this function as public API because I don't like `__enter__`, `__exit__`,
-        which IMO is much less elegant looking than context managers (of course necessary).
         """
 
         with self.STACK.hold(self):
