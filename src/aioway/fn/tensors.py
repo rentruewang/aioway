@@ -15,6 +15,7 @@ from torch.utils import _python_dispatch as pyd
 
 from aioway._common import (
     HasParam,
+    Stack,
     find_nested_tensors,
     is_aten_op,
     is_prim_op,
@@ -41,10 +42,10 @@ __all__ = [
 
 LOGGER = logging.getLogger(__name__)
 
-_FUNCTIONS: list[TFunctionMode] = []
+_FUNCTIONS: Stack[TFunctionMode] = Stack()
 "`TFunctionFn` that is currently in scope."
 
-_DISPATCHES: list[TDispatchMode] = []
+_DISPATCHES: Stack[TDispatchMode] = Stack()
 "`TDispatchFn` that is currently in scope."
 
 
@@ -82,11 +83,11 @@ def torch_mode_off():
         yield
 
 
-def _get_stack_on_off(stack: cabc.Sequence[_ModeContextMixin]):
+def _get_stack_on_off[M: _ModeContextMixin](stack: Stack[M]):
     return [frame.on for frame in stack]
 
 
-def _set_stack_on_off(stack: cabc.Sequence[_ModeContextMixin], to: bool | list[bool]):
+def _set_stack_on_off[M: _ModeContextMixin](stack: Stack[M], to: bool | list[bool]):
     LOGGER.debug("Current stack %s", stack)
     LOGGER.debug("Status before setting %s", _get_stack_on_off(stack))
     LOGGER.debug("Setting to %s", to)
@@ -184,7 +185,7 @@ class _ModeContextMixin:
     The mixin for either `TFunctionMode`, `TDispatchMode`.
     """
 
-    STACK: typing.ClassVar[list[typing.Self]]
+    STACK: typing.ClassVar[Stack[typing.Self]]
     "The stack. One of `_FUNCTIONS`, `_DISPATCHES`."
 
     _TORCH_MODE: typing.ClassVar[cabc.Callable[..., _Mode]]

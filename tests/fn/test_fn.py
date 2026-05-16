@@ -2,7 +2,6 @@
 
 
 import pytest
-import torch
 
 from aioway.fate import Fate
 from aioway.fn import (
@@ -13,7 +12,6 @@ from aioway.fn import (
     NnInitFn,
     TDispatchFn,
     TFunctionFn,
-    track_fn,
 )
 from aioway.might import Might
 
