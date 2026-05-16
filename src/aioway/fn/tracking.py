@@ -13,6 +13,7 @@ import torch
 
 from aioway._common import (
     find_nested_tensors,
+    is_leaf_has_grad,
 )
 from aioway.schemas import attr
 
@@ -212,6 +213,11 @@ class FnHistory[T: TorchCall]:
     def memory(self) -> int:
         "The total memory consumed by the tensors."
         return sum(attr(param).memory() for param in self._all_tensors())
+
+    def parameters(self):
+        for tensor in self._all_tensors():
+            if is_leaf_has_grad(tensor):
+                yield tensor
 
     def _all_inputs(self):
         def inputs():
