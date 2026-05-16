@@ -322,7 +322,7 @@ class FateFn(HasParam, Fn):
         return repr(self.fate)
 
     @typing.override
-    def do(self) -> torch.Tensor:
+    def do(self) -> object:
         return self.fate.do()
 
     @typing.override

@@ -4,18 +4,18 @@ from torch import nn
 
 from aioway._common import dcls_frozen_no_repr
 
-from .previews import Preview
+from .might import Might
 
 __all__ = ["Linear", "Bilinear"]
 
 
 @dcls_frozen_no_repr
-class Linear(Preview):
+class Linear(Might):
     """
     Apply the transformation A @ x + b.
     """
 
-    NN = nn.Linear
+    KEY = nn.Linear
 
     in_features: int
     "The size of each input sample, must be > 0."
@@ -28,12 +28,12 @@ class Linear(Preview):
 
 
 @dcls_frozen_no_repr
-class Bilinear(Preview):
+class Bilinear(Might):
     """
     Apply the transformation x1 @ A @ x2 + b.
     """
 
-    NN = nn.Bilinear
+    KEY = nn.Bilinear
 
     in1_features: int
     "The size of each first input sample, must be > 0."

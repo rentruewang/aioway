@@ -1,5 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+"The base class for attributes on `torch.Tensor`."
+
 import abc
 import typing
 
@@ -18,6 +20,10 @@ class TorchAttrBase[T](abc.ABC):
 
         if not isinstance(self._data, self.TYPE):
             raise TypeError(f"Data received {data!r} is not of type {self.TYPE}.")
+
+    def __deepcopy__(self, memo) -> typing.Self:
+        # Reparsing should be good enough.
+        return self.parse(self._data)
 
     @typing.final
     def __eq__(self, other: typing.Any, /) -> bool:

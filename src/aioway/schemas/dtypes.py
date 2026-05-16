@@ -128,7 +128,7 @@ class DType(TorchAttrBase[torch.dtype]):
     @classmethod
     def _parse_str(cls, dtype: str, /) -> typing.Self:
         """
-        Create the `DType` instance from the `info` object.
+        Create the `DType` instance from the string rperesentation.
 
         Raises:
             ValueError: If the dtyep cannot be parsed.

@@ -15,10 +15,12 @@ __all__ = ["BooleanMasking", "IntSelect"]
 
 @dcls_frozen_no_repr
 class _GetItem(Fate, abc.ABC):
-    IR = ops.aten.index.Tensor
-
     self: torch.Tensor
     indices: list[torch.Tensor]
+
+    if typing.TYPE_CHECKING:
+        # GetItem has `torch.Tensor` as output.
+        def do(self) -> torch.Tensor: ...
 
     def __hash__(self) -> int:
         return id(self)
@@ -30,6 +32,8 @@ class _GetItem(Fate, abc.ABC):
 
 @dcls_frozen_no_repr
 class BooleanMasking(_GetItem):
+    KEY = ops.aten.index.Tensor
+
     def ok(self) -> bool:
         return len(self.indices) == 1 and self.indices[0].dtype == torch.bool
 
@@ -40,5 +44,7 @@ class BooleanMasking(_GetItem):
 
 @dcls_frozen_no_repr
 class IntSelect(_GetItem):
+    KEY = ops.aten.index.Tensor
+
     def ok(self):
         return len(self.indices) == 1 and self.indices[0].dtype == torch.int

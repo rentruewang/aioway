@@ -102,32 +102,32 @@ class _BinaryScalarUFunc(Fate, abc.ABC):
 
 
 class AddTensor(_BinaryTensorUFunc):
-    IR = ops.aten.add.Tensor
+    KEY = ops.aten.add.Tensor
     BINARY = operator.add
 
 
 class AddScalar(_BinaryScalarUFunc):
-    IR = ops.aten.add.Scalar
+    KEY = ops.aten.add.Scalar
     BINARY = operator.add
 
 
 class SubTensor(_BinaryTensorUFunc):
-    IR = ops.aten.sub.Tensor
+    KEY = ops.aten.sub.Tensor
     BINARY = operator.sub
 
 
 class SubScalar(_BinaryScalarUFunc):
-    IR = ops.aten.sub.Scalar
+    KEY = ops.aten.sub.Scalar
     BINARY = operator.sub
 
 
 class MulTensor(_BinaryTensorUFunc):
-    IR = ops.aten.mul.Tensor
+    KEY = ops.aten.mul.Tensor
     BINARY = operator.mul
 
 
 class MulScalar(_BinaryScalarUFunc):
-    IR = ops.aten.mul.Scalar
+    KEY = ops.aten.mul.Scalar
     BINARY = operator.mul
 
 

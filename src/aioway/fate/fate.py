@@ -3,25 +3,20 @@
 "The module containing `Fate` interface, the implementation for fake aten operations."
 
 import abc
-import dataclasses as dcls
-import inspect
 import re
 import typing
+from collections import abc as cabc
 
-import torch
 from torch import _ops
 
-from aioway._common import dcls_frozen_no_repr, render_fcall
+from aioway._common import dcls_frozen_no_repr
+from aioway.op import Op
 
-__all__ = ["find_fate", "aten_to_fate", "Fate"]
-
-
-_ATEN_TO_FATE_LIST: dict[_ops.OpOverload, list[type[Fate]]] = {}
-"The registry to store `Fate` operators."
+__all__ = ["Fate", "find_fate", "all_fates"]
 
 
 @dcls_frozen_no_repr
-class Fate(abc.ABC):
+class Fate(Op[_ops.OpOverload], abc.ABC):
     """
     `Fate` stands for [f]ake [ate]n. Or [fa]ke [te]nsor. Or a tensor's [fate] (how it behaves).
 
@@ -30,21 +25,7 @@ class Fate(abc.ABC):
     For example, boolean masking is data dependent, and is thus not supported by fake mode.
     """
 
-    IR: typing.ClassVar[_ops.OpOverload]
-    """
-    The torch IR that this `Fate` would be implementing.
-    """
-
-    def __init_subclass__(cls) -> None:
-        cls.__register_preview()
-
-    @typing.override
-    def __repr__(self) -> str:
-        return render_fcall(f"fate::{self.name()}", **dcls.asdict(self))
-
-    @typing.override
-    def __hash__(self) -> int:
-        return id(self)
+    KEY: typing.ClassVar[_ops.OpOverload] = NotImplemented
 
     @abc.abstractmethod
     def ok(self) -> bool:
@@ -54,16 +35,10 @@ class Fate(abc.ABC):
 
         raise NotImplementedError
 
-    def do(self) -> torch.Tensor:
-        """
-        Generate the fake tensor.
-        """
-
-        return self.IR(**dcls.asdict(self))
-
+    @typing.override
     @classmethod
     def name(cls) -> str:
-        return _camel_to_snake(cls.__name__)
+        return "fate::" + _camel_to_snake(cls.__name__)
 
     @abc.abstractmethod
     def cost(self) -> int:
@@ -73,32 +48,6 @@ class Fate(abc.ABC):
 
         raise NotImplementedError
 
-    @classmethod
-    def __register_preview(cls):
-        """
-        Register a patching function that only runs under fake mode.
-
-        The patch would be called. If the patching function returns `NotImplemented`,
-        it will fall back to the default implementation (plain `func(*args, **kwargs)`).
-        """
-
-        # Abstract methods.
-        if inspect.isabstract(cls):
-            return
-
-        # Abstract `ClassVar`.
-        try:
-            ir = cls.IR
-        except AttributeError:
-            return
-
-        # Mimick defaultdict behavior.
-        # Using dict over defaultdict s.t. we don't need special handling in `repr`.
-        if ir not in _ATEN_TO_FATE_LIST:
-            _ATEN_TO_FATE_LIST[ir] = []
-
-        _ATEN_TO_FATE_LIST[ir].append(cls)
-
 
 def find_fate(op: _ops.OpOverload, *args: typing.Any, **kwargs: typing.Any) -> Fate:
     """
@@ -107,11 +56,8 @@ def find_fate(op: _ops.OpOverload, *args: typing.Any, **kwargs: typing.Any) -> F
     Returns `NotImplemented` if a candidate is not found.
     """
 
-    if op not in _ATEN_TO_FATE_LIST:
-        return NotImplemented
-
-    for candidate in _ATEN_TO_FATE_LIST[op]:
-        if not (fate := candidate(*args, **kwargs)).ok():
+    for sub_type in Fate.find(op):
+        if not (fate := sub_type(*args, **kwargs)).ok():
             continue
 
         return fate
@@ -119,12 +65,20 @@ def find_fate(op: _ops.OpOverload, *args: typing.Any, **kwargs: typing.Any) -> F
     return NotImplemented
 
 
-def aten_to_fate():
+@typing.no_type_check
+def all_fates():
     """
-    A mapping of `aten` ops to their `Fate` counterparts.
+    Get the registry for the fates.
     """
+    return list(_iter_fate(Fate))
 
-    return _ATEN_TO_FATE_LIST
+
+def _iter_fate(cls: type[Fate]) -> cabc.Generator[type[Fate]]:
+    for sub in cls.__subclasses__():
+        if sub.is_concrete():
+            yield sub
+
+        yield from _iter_fate(sub)
 
 
 _CAMEL_CASE_REGEX = re.compile(r"(?<!^)(?=[A-Z])")

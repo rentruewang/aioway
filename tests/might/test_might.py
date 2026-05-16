@@ -3,7 +3,7 @@
 import pytest
 from torch import nn
 
-from aioway.previews import Preview, find_preview
+from aioway.might import Might, find_might
 
 
 def _cases():
@@ -12,16 +12,16 @@ def _cases():
 
 
 @pytest.fixture(params=_cases())
-def preview(request: pytest.FixtureRequest):
+def might(request: pytest.FixtureRequest):
     cls, kwargs = request.param
-    return find_preview(cls, **kwargs)
+    return find_might(cls, **kwargs)
 
 
-def test_preview_init(preview: Preview):
-    assert isinstance(preview, Preview)
-    assert repr(preview).startswith("preview::")
+def test_might_init(might: Might):
+    assert isinstance(might, Might)
+    assert repr(might).startswith("might::")
 
 
-def test_preview_do(preview: Preview):
-    module = preview.do()
+def test_might_do(might: Might):
+    module = might.do()
     assert isinstance(module, nn.Module)
