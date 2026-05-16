@@ -14,7 +14,6 @@ import torch
 
 __all__ = [
     "replace_tensors",
-    "replace_tensors_with_attr",
     "find_and_filter",
     "find_nested_tensors",
     "Decomposer",
