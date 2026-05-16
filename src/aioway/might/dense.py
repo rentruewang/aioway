@@ -1,6 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 from torch import nn
+from torch._subclasses.fake_tensor import inferred_fake_kernel_from_real_out
 
 from aioway._common import dcls_frozen_no_repr
 
@@ -26,6 +27,12 @@ class Linear(Might):
     bias: bool = True
     "Whether to include the bias terms or not."
 
+    def __post_init__(self):
+        if self.in_features <= 0:
+            raise ValueError(f"{self.in_features=} <= 0.")
+        if self.out_features <= 0:
+            raise ValueError(f"{self.out_features=} <= 0.")
+
 
 @dcls_frozen_no_repr
 class Bilinear(Might):
@@ -46,3 +53,11 @@ class Bilinear(Might):
 
     bias: bool = True
     "If set to `False`, the layer will not learn an additive bias. Default: `True`."
+
+    def __post_init__(self):
+        if self.in1_features <= 0:
+            raise ValueError(f"{self.in1_features=} <= 0.")
+        if self.in2_features <= 0:
+            raise ValueError(f"{self.in2_features=} <= 0.")
+        if self.out_features <= 0:
+            raise ValueError(f"{self.out_features=} <= 0.")
