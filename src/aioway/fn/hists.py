@@ -53,6 +53,9 @@ class Hist[T]:
     The `TorchFn` that has been called, in order.
     """
 
+    def __bool__(self) -> bool:
+        return bool(len(self))
+
     def __len__(self) -> int:
         return len(self.history)
 
