@@ -27,9 +27,9 @@ class Might(Op[type[nn.Module]], abc.ABC):
 
     @typing.override
     def do(self) -> nn.Module:
-        from aioway.fn import module_init
+        from aioway.fn import NnInitFn
 
-        return module_init(self.KEY, **dcls.asdict(self))
+        return NnInitFn(func=self.KEY, args=(), kwargs=dcls.asdict(self)).do()
 
     @classmethod
     @typing.override

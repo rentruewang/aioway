@@ -13,7 +13,7 @@ import torch
 from torch import nn
 
 from ..fn import TorchThunk
-from .toggles import OnOffCtx, OnOffStack
+from ._on_off import OnOffCtx, OnOffStack
 
 __all__ = [
     "NnFwdFn",

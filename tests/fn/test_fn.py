@@ -11,18 +11,18 @@ from aioway.fn import (
     MightFn,
     NnFwdFn,
     NnInitFn,
-    TDisFn,
     TensorInput,
-    TFuncFn,
     TorchThunk,
+    TorDisFn,
+    TorFuncFn,
 )
 from aioway.might import Might
 
 
 def _fn_cls():
     yield FateFn
-    yield TDisFn
-    yield TFuncFn
+    yield TorDisFn
+    yield TorFuncFn
     yield MightFn
     yield NnInitFn
     yield NnFwdFn

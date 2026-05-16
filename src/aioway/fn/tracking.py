@@ -27,22 +27,22 @@ from .modes import (
     NnFwdMode,
     NnInitFn,
     NnInitMode,
-    TDisFn,
-    TDisMode,
-    TFuncFn,
-    TFuncMode,
+    TorDisFn,
+    TorDisMode,
+    TorFuncFn,
+    TorFuncMode,
 )
 from .op import FateFn, MightFn
 
 __all__ = [
     "track_fn",
     "fake_fn",
-    "PrintTFunc",
-    "PrintTDis",
+    "PrintTorFunc",
+    "PrintTorDis",
     "LogTorchFunc",
     "LogTorchDis",
-    "RouteTDis",
-    "RouteTFunc",
+    "RouteTorDis",
+    "RouteTorFunc",
     "PrintNnInit",
     "PrintNnFwd",
 ]
@@ -50,7 +50,7 @@ __all__ = [
 LOGGER = logging.getLogger(__name__)
 
 
-FateRouter = cabc.Callable[[TDisFn], FateFn]
+FateRouter = cabc.Callable[[TorDisFn], FateFn]
 MightRouter = cabc.Callable[[NnInitFn], MightFn]
 
 
@@ -76,15 +76,15 @@ class PrintNnFwd(NnFwdMode):
         return result
 
 
-class PrintTFunc(_HasRichFlagMixin, TFuncMode):
+class PrintTorFunc(_HasRichFlagMixin, TorFuncMode):
     @typing.override
-    def __call__(self, thunk: TFuncFn, /) -> object:
+    def __call__(self, thunk: TorFuncFn, /) -> object:
         return _TThunkPrinter(rich=self._rich)(thunk)
 
 
-class PrintTDis(_HasRichFlagMixin, TDisMode):
+class PrintTorDis(_HasRichFlagMixin, TorDisMode):
     @typing.override
-    def __call__(self, thunk: TDisFn, /) -> object:
+    def __call__(self, thunk: TorDisFn, /) -> object:
         return _TThunkPrinter(rich=self._rich)(thunk)
 
 
@@ -93,7 +93,7 @@ class _TThunkPrinter:
     rich: bool
     "Use rich for printing."
 
-    def __call__(self, thunk: TFuncFn | TDisFn) -> object:
+    def __call__(self, thunk: TorFuncFn | TorDisFn) -> object:
         self.print("invoke", thunk)
         result = thunk.do()
         self.print("return", thunk, "->", replace_tensors_with_attr(result))
@@ -105,7 +105,7 @@ class _TThunkPrinter:
 
 
 @dcls.dataclass
-class LogTorchFunc(TFuncMode):
+class LogTorchFunc(TorFuncMode):
     """
     Log every call to function mode.
     """
@@ -117,14 +117,14 @@ class LogTorchFunc(TFuncMode):
     "The logger to log to. Default to the one in the current module."
 
     @typing.override
-    def __call__(self, thunk: TFuncFn) -> object:
+    def __call__(self, thunk: TorFuncFn) -> object:
         result = thunk.do()
         self.logger.log(self.level, "%s", thunk)
         return result
 
 
 @dcls.dataclass
-class LogTorchDis(TDisMode):
+class LogTorchDis(TorDisMode):
     """
     Log every call to dispatch mode.
     """
@@ -136,7 +136,7 @@ class LogTorchDis(TDisMode):
     "The logger to log to. Default to the one in the current module."
 
     @typing.override
-    def __call__(self, thunk: TDisFn) -> object:
+    def __call__(self, thunk: TorDisFn) -> object:
         result = thunk.do()
         self.logger.log(self.level, "%s", thunk)
         return result
@@ -155,7 +155,7 @@ def might_in_fake(thunk: NnInitFn):
     return MightFn.find_might(thunk)
 
 
-def fate_in_fake(thunk: TDisFn):
+def fate_in_fake(thunk: TorDisFn):
     """
     Route in fake mode to `FateFn`.
 
@@ -180,9 +180,9 @@ def fate_in_fake(thunk: TDisFn):
     return NotImplemented
 
 
-class CloneDispatchOp(TDisMode):
+class CloneDispatchOp(TorDisMode):
     @typing.override
-    def __call__(self, thunk: TDisFn, /) -> object:
+    def __call__(self, thunk: TorDisFn, /) -> object:
         result = thunk.do()
 
         # In fake mode, clone the tensor to prevent `FakeTensor` reuse. Should be cheap.
@@ -235,22 +235,22 @@ class RouteNnFwd(NnFwdMode):
 
 
 @dcls.dataclass
-class RouteTDis(TDisMode):
+class RouteTorDis(TorDisMode):
     "The router at the torch dispatch level."
 
-    history: HistTensorGraph[TDisFn | FateFn] = dcls.field(
+    history: HistTensorGraph[TorDisFn | FateFn] = dcls.field(
         default_factory=HistTensorGraph
     )
     "The history used for tracking."
 
-    def __call__(self, thunk: TDisFn) -> object:
-        fn: TDisFn | FateFn
+    def __call__(self, thunk: TorDisFn) -> object:
+        fn: TorDisFn | FateFn
 
         if (fn := fate_in_fake(thunk)) is NotImplemented:
             # Cannot find corresponding operator, set it to the input `thunk`.
             fn = thunk
 
-        assert isinstance(fn, TDisFn | FateFn), type(fn)
+        assert isinstance(fn, TorDisFn | FateFn), type(fn)
 
         # Here, `FateFn` would do its magic and overwrite functions.
         with capture_do_error(fn):
@@ -261,26 +261,26 @@ class RouteTDis(TDisMode):
 
 
 @dcls.dataclass
-class RouteTFunc(TFuncMode):
+class RouteTorFunc(TorFuncMode):
     """
     Saves the intermediate graph into a `FnHistory` object.
     """
 
-    history: HistTensorGraph[TFuncFn] = dcls.field(default_factory=HistTensorGraph)
+    history: HistTensorGraph[TorFuncFn] = dcls.field(default_factory=HistTensorGraph)
     """
     The `HistTensorGraph` instance that would be responsible for tracking history,
     and which provides a graph API to interact with saved tensors.
     """
 
     @typing.override
-    def __call__(self, thunk: TFuncFn, /) -> object:
+    def __call__(self, thunk: TorFuncFn, /) -> object:
         result = thunk.do()
         self.history.append(thunk, result)
         return result
 
 
 @ctxl.contextmanager
-def capture_do_error(fn: TDisFn | FateFn):
+def capture_do_error(fn: TorDisFn | FateFn):
     try:
         yield
     except RuntimeError as err:
@@ -295,8 +295,8 @@ def track_fn():
 
     init = RouteNnInit()
     fwd = RouteNnFwd()
-    dis = RouteTDis()
-    func = RouteTFunc()
+    dis = RouteTorDis()
+    func = RouteTorFunc()
 
     with func.ctx(), dis.ctx(), init.ctx(), fwd.ctx():
         yield func.history, dis.history, init.history, fwd.history
