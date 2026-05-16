@@ -15,6 +15,7 @@ from aioway.fn import (
     TensorInput,
     TFunctionFn,
 )
+from aioway.fn.fn import TorchThunk
 from aioway.might import Might
 
 
@@ -32,6 +33,11 @@ def _fn_cls():
 
 def _input_cls():
     yield FnHistory
+    yield TorchThunk
+    yield FateFn
+    yield NnForwardFn
+    yield FateFn
+    yield Fate
 
 
 @pytest.fixture(params=_fn_cls())

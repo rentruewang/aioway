@@ -12,10 +12,7 @@ import rich
 import torch
 
 from aioway._common import (
-    TensorFilter,
-    filter_tensor_off,
     find_nested_tensors,
-    is_leaf_has_grad,
 )
 from aioway.schemas import attr
 
@@ -201,18 +198,6 @@ class FnHistory[T: TorchCall]:
 
         return graph
 
-    def parameters(self, select: TensorFilter = is_leaf_has_grad, unique: bool = True):
-        def data_params():
-            for result in self.history:
-                yield from result.fn.parameters(select)
-
-        params = data_params()
-
-        if unique:
-            params = set(data_params())
-
-        yield from params
-
     def inputs(self) -> set[torch.Tensor]:
         """
         All the inputs of `FnHistory` in a `set`.
@@ -223,23 +208,29 @@ class FnHistory[T: TorchCall]:
             A `set` that stores all the `inputs` that are not created by `self`.
         """
 
-        def all_inputs():
-            for hist in self.history:
-                yield from hist.fn.inputs()
-
-        def all_outputs():
-            for hist in self.history:
-                yield from find_nested_tensors(hist.result)
-
-        inputs = set(all_inputs())
-        outputs = set(all_outputs())
-
-        return inputs - outputs
+        return self._all_inputs() - self._all_outputs()
 
     def numel(self) -> int:
         "The total number of elements of the tensors."
-        return sum(param.numel() for param in self.parameters(filter_tensor_off))
+        return sum(param.numel() for param in self._all_tensors())
 
     def memory(self) -> int:
         "The total memory consumed by the tensors."
-        return sum(attr(param).memory() for param in self.parameters(filter_tensor_off))
+        return sum(attr(param).memory() for param in self._all_tensors())
+
+    def _all_inputs(self):
+        def inputs():
+            for hist in self.history:
+                yield from hist.fn.inputs()
+
+        return set(inputs())
+
+    def _all_outputs(self):
+        def outputs():
+            for hist in self.history:
+                yield from find_nested_tensors(hist.result)
+
+        return set(outputs())
+
+    def _all_tensors(self):
+        return self._all_inputs() | self._all_outputs()

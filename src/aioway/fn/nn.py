@@ -9,7 +9,6 @@ from collections import abc as cabc
 import torch
 from torch import nn
 
-from aioway._common import find_nested_tensors
 from aioway.might import Might, find_might
 
 from .fn import TorchThunk
@@ -42,12 +41,6 @@ class NnForwardFn(TorchThunk[nn.Module]):
         """
 
         return self.func.state_dict()
-
-    @typing.override
-    def tensors(self) -> cabc.Iterator[torch.Tensor]:
-        yield from find_nested_tensors(self.args)
-        yield from find_nested_tensors(self.kwargs)
-        yield from self.func.parameters()
 
 
 class NnInitFn(TorchThunk[type[nn.Module]]):
