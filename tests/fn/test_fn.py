@@ -9,7 +9,7 @@ from aioway.fn import (
     Fn,
     FnHistory,
     MightFn,
-    NnForwardFn,
+    NnFwdFn,
     NnInitFn,
     TDispatchFn,
     TensorInput,
@@ -25,7 +25,7 @@ def _fn_cls():
     yield TFunctionFn
     yield MightFn
     yield NnInitFn
-    yield NnForwardFn
+    yield NnFwdFn
 
     yield Fate
     yield Might
@@ -35,7 +35,7 @@ def _input_cls():
     yield FnHistory
     yield TorchThunk
     yield FateFn
-    yield NnForwardFn
+    yield NnFwdFn
     yield FateFn
     yield Fate
 

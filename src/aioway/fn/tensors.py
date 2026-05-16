@@ -20,17 +20,15 @@ from aioway._common import (
     render_func_name,
     replace_tensors,
 )
-from aioway.fate import Fate, find_fate
 from aioway.schemas import attr
 
-from .fn import Fn, OnOffCtx, OnOffStack, TorchThunk
+from .fn import OnOffCtx, OnOffStack, TorchThunk
 
 __all__ = [
     "TFunctionMode",
     "TDispatchMode",
     "TFunctionFn",
     "TDispatchFn",
-    "FateFn",
     "set_torch_mode",
     "torch_mode_off",
     "active_dispatch_modes",
@@ -40,10 +38,10 @@ __all__ = [
 LOGGER = logging.getLogger(__name__)
 
 _FUNCTIONS: OnOffStack[TFunctionMode] = OnOffStack()
-"`TFunctionFn` that is currently in scope."
+"`TFunctionMode` that is currently entered."
 
 _DISPATCHES: OnOffStack[TDispatchMode] = OnOffStack()
-"`TDispatchFn` that is currently in scope."
+"`TDispatchMode` that is currently entered."
 
 
 @ctxl.contextmanager
@@ -147,7 +145,7 @@ type _Mode = overrides.TorchFunctionMode | pyd.TorchDispatchMode
 
 
 @dcls.dataclass
-class TorchModeContextMixin(OnOffCtx):
+class TModeOnOff[T](OnOffCtx, abc.ABC):
     """
     The mixin for either `TFunctionMode`, `TDispatchMode`.
     """
@@ -157,6 +155,10 @@ class TorchModeContextMixin(OnOffCtx):
     The actual context passed to `torch`.
     These are specific modes that honor the `on` switch (hence private function).
     """
+
+    @abc.abstractmethod
+    def __call__(self, thunk: T, /) -> object:
+        raise NotImplementedError
 
     @typing.override
     @ctxl.contextmanager
@@ -171,7 +173,7 @@ class TorchModeContextMixin(OnOffCtx):
 
 
 @typing.final
-class _TorchFunctionModeCtx(overrides.TorchFunctionMode):
+class _TFunctionModeCtx(overrides.TorchFunctionMode):
     "The `__torch_function__` adaptor"
 
     def __init__(self, mode: TFunctionMode) -> None:
@@ -192,7 +194,7 @@ class _TorchFunctionModeCtx(overrides.TorchFunctionMode):
 
 
 @dcls.dataclass
-class TFunctionMode(TorchModeContextMixin, abc.ABC):
+class TFunctionMode(TModeOnOff[TFunctionFn], abc.ABC):
     """
     `TFunctionMode` is the adaptor for `torch.overrides.TorchFunctionMode`.
 
@@ -201,15 +203,11 @@ class TFunctionMode(TorchModeContextMixin, abc.ABC):
     """
 
     STACK: typing.ClassVar = _FUNCTIONS
-    _TORCH_MODE: typing.ClassVar = _TorchFunctionModeCtx
-
-    @abc.abstractmethod
-    def __call__(self, thunk: TFunctionFn, /) -> object:
-        raise NotImplementedError
+    _TORCH_MODE: typing.ClassVar = _TFunctionModeCtx
 
 
 @typing.final
-class _TorchDispatchModeCtx(pyd.TorchDispatchMode):
+class _TDispatchModeCtx(pyd.TorchDispatchMode):
     "The `__torch_dispatch__` adaptor"
 
     def __init__(self, mode: TDispatchMode) -> None:
@@ -233,68 +231,13 @@ class _TorchDispatchModeCtx(pyd.TorchDispatchMode):
 
 
 @dcls.dataclass
-class TDispatchMode(TorchModeContextMixin, abc.ABC):
+class TDispatchMode(TModeOnOff[TDispatchFn], abc.ABC):
     """
-    `TorchDispatchMode` is the adaptor for `torch.data._python_dispatch.TorchDispatchMode`.
+    `TDispatchMode` is the adaptor for `torch.data._python_dispatch.TorchDispatchMode`.
     """
 
     STACK: typing.ClassVar = _DISPATCHES
-    _TORCH_MODE: typing.ClassVar = _TorchDispatchModeCtx
-
-    @abc.abstractmethod
-    def __call__(self, thunk: TDispatchFn, /) -> object:
-        raise NotImplementedError
-
-
-@typing.final
-@dcls.dataclass(frozen=True)
-class FateFn(Fn):
-    """
-    `FateFn` wraps a `Fate` object, which is split out so as to declutter subclasses for `Fn`.
-
-    Each `Fate` is an implementation of an IR, and each IR can have multiple `Fate`s,
-    each handling a subset of parameters (if `Fate.ok` is `False`, it's discarded.)
-    """
-
-    fate: Fate
-    """
-    The `Fate` object that ends up being selected.
-    """
-
-    original: TDispatchFn
-    "The original `TorchDispatchFn` from which the `Fate` is translated."
-
-    def __repr__(self) -> str:
-        return repr(self.fate)
-
-    @typing.override
-    def do(self) -> object:
-        return self.fate.do()
-
-    def inputs(self):
-        yield from self.fate.inputs()
-
-    @property
-    def func(self):
-        return self.original.func
-
-    @property
-    def args(self):
-        return self.original.args
-
-    @property
-    def kwargs(self):
-        return self.original.kwargs
-
-    @classmethod
-    def find_fate(cls, thunk: TDispatchFn) -> typing.Self:
-        fate = find_fate(thunk.func, *thunk.args, **thunk.kwargs)
-
-        if fate is NotImplemented:
-            return NotImplemented
-
-        else:
-            return cls(fate=fate, original=thunk)
+    _TORCH_MODE: typing.ClassVar = _TDispatchModeCtx
 
 
 def active_function_modes():
