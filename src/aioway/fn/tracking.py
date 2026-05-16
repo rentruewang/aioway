@@ -19,9 +19,10 @@ from aioway._common import (
     replace_tensors_with_attr,
 )
 from aioway.fake import enabled_fake_mode, torch_fake_mode
+from aioway.fn.modes.modules import MInitMode
 
 from .hists import HistoryTensorGraph
-from .modes import TDispatchFn, TDispatchMode, TFunctionFn, TFunctionMode
+from .modes import TDisFn, TDisMode, TFuncFn, TFuncMode
 from .op import FateFn
 
 __all__ = [
@@ -31,14 +32,14 @@ __all__ = [
     "PrintTorchDispatch",
     "LogTorchFunction",
     "LogTorchDispatch",
-    "RouteDispatchOp",
-    "RouteFunctionOp",
+    "RouteTorchDispatch",
+    "RouteTorchFunction",
 ]
 
 LOGGER = logging.getLogger(__name__)
 
 
-FateRouter = cabc.Callable[[TDispatchFn], FateFn]
+FateRouter = cabc.Callable[[TDisFn], FateFn]
 
 
 class _HasRichFlagMixin:
@@ -47,15 +48,15 @@ class _HasRichFlagMixin:
         self._rich = rich
 
 
-class PrintTorchFunction(_HasRichFlagMixin, TFunctionMode):
+class PrintTorchFunction(_HasRichFlagMixin, TFuncMode):
     @typing.override
-    def __call__(self, thunk: TFunctionFn, /) -> object:
+    def __call__(self, thunk: TFuncFn, /) -> object:
         return _ThunkPrinter(rich=self._rich)(thunk)
 
 
-class PrintTorchDispatch(_HasRichFlagMixin, TDispatchMode):
+class PrintTorchDispatch(_HasRichFlagMixin, TDisMode):
     @typing.override
-    def __call__(self, thunk: TDispatchFn, /) -> object:
+    def __call__(self, thunk: TDisFn, /) -> object:
         return _ThunkPrinter(rich=self._rich)(thunk)
 
 
@@ -64,7 +65,7 @@ class _ThunkPrinter:
     rich: bool
     "Use rich for printing."
 
-    def __call__(self, thunk: TFunctionFn | TDispatchFn) -> object:
+    def __call__(self, thunk: TFuncFn | TDisFn) -> object:
         self.print("invoke", thunk)
         result = thunk.do()
         self.print("return", thunk, "->", replace_tensors_with_attr(result))
@@ -76,7 +77,7 @@ class _ThunkPrinter:
 
 
 @dcls.dataclass
-class LogTorchFunction(TFunctionMode):
+class LogTorchFunction(TFuncMode):
     """
     Log every call to function mode.
     """
@@ -88,14 +89,14 @@ class LogTorchFunction(TFunctionMode):
     "The logger to log to. Default to the one in the current module."
 
     @typing.override
-    def __call__(self, thunk: TFunctionFn) -> object:
+    def __call__(self, thunk: TFuncFn) -> object:
         result = thunk.do()
         self.logger.log(self.level, "%s", thunk)
         return result
 
 
 @dcls.dataclass
-class LogTorchDispatch(TDispatchMode):
+class LogTorchDispatch(TDisMode):
     """
     Log every call to dispatch mode.
     """
@@ -107,13 +108,13 @@ class LogTorchDispatch(TDispatchMode):
     "The logger to log to. Default to the one in the current module."
 
     @typing.override
-    def __call__(self, thunk: TDispatchFn) -> object:
+    def __call__(self, thunk: TDisFn) -> object:
         result = thunk.do()
         self.logger.log(self.level, "%s", thunk)
         return result
 
 
-def only_route_in_fake(thunk: TDispatchFn):
+def only_route_in_fake(thunk: TDisFn):
     """
     Route in fake mode.
 
@@ -140,13 +141,13 @@ def only_route_in_fake(thunk: TDispatchFn):
     return NotImplemented
 
 
-def no_route(thunk: TDispatchFn):
+def no_route(thunk: TDisFn):
     return NotImplemented
 
 
-class CloneDispatchOp(TDispatchMode):
+class CloneDispatchOp(TDisMode):
     @typing.override
-    def __call__(self, thunk: TDispatchFn, /) -> object:
+    def __call__(self, thunk: TDisFn, /) -> object:
         result = thunk.do()
 
         # In fake mode, clone the tensor to prevent `FakeTensor` reuse. Should be cheap.
@@ -157,25 +158,25 @@ class CloneDispatchOp(TDispatchMode):
 
 
 @dcls.dataclass
-class RouteDispatchOp(TDispatchMode):
+class RouteTorchDispatch(TDisMode):
     "The router at the torch dispatch level."
 
     router: FateRouter
     "The router that is responsible for finding `Fate` when implemented."
 
-    history: HistoryTensorGraph[TDispatchFn | FateFn] = dcls.field(
+    history: HistoryTensorGraph[TDisFn | FateFn] = dcls.field(
         default_factory=HistoryTensorGraph
     )
     "The history used for tracking."
 
-    def __call__(self, thunk: TDispatchFn) -> object:
-        fn: TDispatchFn | FateFn
+    def __call__(self, thunk: TDisFn) -> object:
+        fn: TDisFn | FateFn
 
         if (fn := self.router(thunk)) is NotImplemented:
             # Cannot find corresponding operator, set it to the input `thunk`.
             fn = thunk
 
-        assert isinstance(fn, TDispatchFn | FateFn), type(fn)
+        assert isinstance(fn, TDisFn | FateFn), type(fn)
 
         # Here, `FateFn` would do its magic and overwrite functions.
         with capture_do_error(fn):
@@ -186,18 +187,23 @@ class RouteDispatchOp(TDispatchMode):
 
 
 @dcls.dataclass
-class RouteFunctionOp(TFunctionMode):
+class RouteModuleInit(MInitMode):
+    pass
+
+
+@dcls.dataclass
+class RouteTorchFunction(TFuncMode):
     """
     Saves the intermediate graph into a `FnHistory` object,
     and route the function to using `FateFn` if it's a `torch.ops.*` and in fake mode.
     """
 
-    dispatcher: RouteDispatchOp
+    dispatcher: RouteTorchDispatch
     """
     The router for which to route the `torch.ops.*` operations.
     """
 
-    history: HistoryTensorGraph[TFunctionFn] = dcls.field(
+    history: HistoryTensorGraph[TFuncFn] = dcls.field(
         default_factory=HistoryTensorGraph
     )
     """
@@ -206,7 +212,7 @@ class RouteFunctionOp(TFunctionMode):
     """
 
     @typing.override
-    def __call__(self, thunk: TFunctionFn, /) -> object:
+    def __call__(self, thunk: TFuncFn, /) -> object:
         with self.dispatcher.ctx():
             result = thunk.do()
 
@@ -215,7 +221,7 @@ class RouteFunctionOp(TFunctionMode):
 
 
 @ctxl.contextmanager
-def capture_do_error(fn: TDispatchFn | FateFn):
+def capture_do_error(fn: TDisFn | FateFn):
     try:
         yield
     except RuntimeError as err:
@@ -228,8 +234,8 @@ def track_fn():
     Track all calls into the torch dispatch mode as `TorchIrFn`.
     """
 
-    dispatcher = RouteDispatchOp(no_route)
-    tracker = RouteFunctionOp(dispatcher)
+    dispatcher = RouteTorchDispatch(no_route)
+    tracker = RouteTorchFunction(dispatcher)
 
     with tracker.ctx():
         yield tracker.history, dispatcher.history
@@ -242,8 +248,8 @@ def fake_fn():
     when fake mode is active.
     """
 
-    dispatcher = RouteDispatchOp(only_route_in_fake)
-    tracker = RouteFunctionOp(dispatcher)
+    dispatcher = RouteTorchDispatch(only_route_in_fake)
+    tracker = RouteTorchFunction(dispatcher)
 
     with torch_fake_mode(), tracker.ctx(), CloneDispatchOp().ctx():
         yield tracker.history, dispatcher.history

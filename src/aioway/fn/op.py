@@ -9,7 +9,7 @@ from aioway.fate import Fate, find_fate
 from aioway.might import Might, find_might
 
 from .fn import Fn
-from .modes import NnInitFn, TDispatchFn
+from .modes import NnInitFn, TDisFn
 
 __all__ = ["FateFn", "MightFn"]
 
@@ -29,8 +29,8 @@ class FateFn(Fn):
     The `Fate` object that ends up being selected.
     """
 
-    original: TDispatchFn
-    "The original `TorchDispatchFn` from which the `Fate` is translated."
+    original: TDisFn
+    "The original `TDisFn` from which the `Fate` is translated."
 
     def __repr__(self) -> str:
         return repr(self.fate)
@@ -55,7 +55,7 @@ class FateFn(Fn):
         return self.original.kwargs
 
     @classmethod
-    def find_fate(cls, thunk: TDispatchFn) -> typing.Self:
+    def find_fate(cls, thunk: TDisFn) -> typing.Self:
         fate = find_fate(thunk.func, *thunk.args, **thunk.kwargs)
 
         if fate is NotImplemented:
