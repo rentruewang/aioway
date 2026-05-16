@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"History saves what was previously done."
+"History is used with contexts to save previous events, providing tracking."
 
 import collections
 import dataclasses as dcls
@@ -17,16 +17,17 @@ from aioway._common import (
 from aioway.schemas import attr
 
 from .fn import TensorInput
-from .modes import TDispatchFn, TFunctionFn
-from .op import FateFn
 
 LOGGER = logging.getLogger(__name__)
-type TorchCall = FateFn | TFunctionFn | TDispatchFn
-"The calls to `torch.*` APIs."
+
+__all__ = ["History", "HistoryGraph"]
+
+
+class HashableTensorInput(typing.Hashable, TensorInput, typing.Protocol): ...
 
 
 @dcls.dataclass(frozen=True)
-class FnResult[F: TensorInput]:
+class FnResult[F]:
     "The storage class per item for `FnHistory`."
 
     fn: F
@@ -41,18 +42,25 @@ class FnResult[F: TensorInput]:
 
 
 @dcls.dataclass(frozen=True)
-class HistoryGraph[T: TorchCall]:
+class History[T]:
+    """
+    `History` is a list storing previous events in order.
+    """
+
+    history: list[FnResult[T]] = dcls.field(default_factory=list)
+    """
+    The `TorchFn` that has been called, in order.
+    """
+
+
+@dcls.dataclass(frozen=True)
+class HistoryGraph[T: HashableTensorInput](History[T]):
     """
     The list of `Fn` that tracks the current history.
 
     This stores `torch.Tensor` as `dict` keys, which is fine
     because `torch.Tensor` uses `id` as `hash`,
     and we only care about objects allocated not data equality.
-    """
-
-    history: list[FnResult[T]] = dcls.field(default_factory=list)
-    """
-    The `TorchFn` that has been called, in order.
     """
 
     input_to_thunk_list: dict[torch.Tensor, list[T]] = dcls.field(
