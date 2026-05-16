@@ -11,14 +11,15 @@ from collections import abc as cabc
 import torch
 from torch import nn
 
-from .fn import OnOffCtx, OnOffStack, TorchThunk
+from ..fn import TorchThunk
+from .toggles import OnOffCtx, OnOffStack
 
 __all__ = ["NnFwdFn", "NnInitFn"]
 
-_FORWARDS: OnOffStack[MFwdMode] = OnOffStack()
+FORWARDS: OnOffStack[MFwdMode] = OnOffStack()
 "`MFwdMode` that is currently entered."
 
-_INITS: OnOffStack[MInitMode] = OnOffStack()
+INITS: OnOffStack[MInitMode] = OnOffStack()
 "`MInitMode` that is currently entered."
 
 
@@ -35,7 +36,7 @@ def set_nn_mode(fwd: bool, init: bool):
         This is similar to `set_torch_mode`.
     """
 
-    with _FORWARDS.switch(fwd), _INITS.switch(init):
+    with FORWARDS.switch(fwd), INITS.switch(init):
         yield
 
 
@@ -100,7 +101,7 @@ class MFwdMode(MModeOnOff[NnFwdFn], abc.ABC):
     It is triggered when a `nn.Module` is called.
     """
 
-    STACK = _FORWARDS
+    STACK = FORWARDS
 
 
 class NnInitFn(TorchThunk[type[nn.Module]]):
@@ -126,4 +127,4 @@ class MInitMode(MModeOnOff[NnInitFn], abc.ABC):
     It is triggered when a `nn.Module` is initialized.
     """
 
-    STACK = _INITS
+    STACK = INITS

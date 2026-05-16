@@ -15,8 +15,8 @@ from aioway._common import (
 )
 from aioway.fake import enabled_fake_mode, torch_fake_mode
 
+from .modes import TDispatchFn, TDispatchMode, TFunctionFn, TFunctionMode
 from .op import FateFn
-from .tensors import TDispatchFn, TDispatchMode, TFunctionFn, TFunctionMode
 from .tracking import FnHistory
 
 __all__ = [

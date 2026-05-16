@@ -9,8 +9,7 @@ from aioway.fate import Fate, find_fate
 from aioway.might import Might, find_might
 
 from .fn import Fn
-from .nn import NnInitFn
-from .tensors import TDispatchFn
+from .modes import NnInitFn, TDispatchFn
 
 __all__ = ["FateFn", "MightFn"]
 

@@ -17,14 +17,9 @@ from aioway._common import (
 from aioway.schemas import attr
 
 from .fn import TensorInput
+from .modes import TDispatchFn, TDispatchMode, TFunctionFn, TFunctionMode
+from .modes.tensors import replace_tensors_with_attr
 from .op import FateFn
-from .tensors import (
-    TDispatchFn,
-    TDispatchMode,
-    TFunctionFn,
-    TFunctionMode,
-    replace_tensors_with_attr,
-)
 
 __all__ = [
     "PrintTorchFunction",

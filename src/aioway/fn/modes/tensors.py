@@ -22,7 +22,8 @@ from aioway._common import (
 )
 from aioway.schemas import attr
 
-from .fn import OnOffCtx, OnOffStack, TorchThunk
+from ..fn import TorchThunk
+from .toggles import OnOffCtx, OnOffStack
 
 __all__ = [
     "TFunctionMode",
@@ -37,10 +38,10 @@ __all__ = [
 
 LOGGER = logging.getLogger(__name__)
 
-_FUNCTIONS: OnOffStack[TFunctionMode] = OnOffStack()
+FUNCTIONS: OnOffStack[TFunctionMode] = OnOffStack()
 "`TFunctionMode` that is currently entered."
 
-_DISPATCHES: OnOffStack[TDispatchMode] = OnOffStack()
+DISPATCHES: OnOffStack[TDispatchMode] = OnOffStack()
 "`TDispatchMode` that is currently entered."
 
 
@@ -59,7 +60,7 @@ def set_torch_mode(function: bool, dispatch: bool):
         is because thier version causes segmentation fault in some cases.
     """
 
-    with _FUNCTIONS.switch(function), _DISPATCHES.switch(dispatch):
+    with FUNCTIONS.switch(function), DISPATCHES.switch(dispatch):
         yield
 
 
@@ -202,7 +203,7 @@ class TFunctionMode(TModeOnOff[TFunctionFn], abc.ABC):
     entering and exiting the torch mode context, as well as an `on` switch.
     """
 
-    STACK: typing.ClassVar = _FUNCTIONS
+    STACK: typing.ClassVar = FUNCTIONS
     _TORCH_MODE: typing.ClassVar = _TFunctionModeCtx
 
 
@@ -239,13 +240,13 @@ class TDispatchMode(TModeOnOff[TDispatchFn], abc.ABC):
     entering and exiting the torch mode context, as well as an `on` switch.
     """
 
-    STACK: typing.ClassVar = _DISPATCHES
+    STACK: typing.ClassVar = DISPATCHES
     _TORCH_MODE: typing.ClassVar = _TDispatchModeCtx
 
 
 def active_function_modes():
-    return _FUNCTIONS
+    return FUNCTIONS
 
 
 def active_dispatch_modes():
-    return _DISPATCHES
+    return DISPATCHES
