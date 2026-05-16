@@ -4,6 +4,8 @@ import contextlib as ctxl
 import dataclasses as dcls
 import typing
 
+from collections import abc as cabc
+
 __all__ = [
     "dcls_no_eq",
     "dcls_no_repr",
@@ -83,9 +85,28 @@ class Stack[T]:
         return self.stack.pop()
 
     @ctxl.contextmanager
-    def enter(self, item: T):
+    def hold(self, item: T):
+        """
+        Enter the scope, push the `item` onto the stack, and then pop when exit.
+        """
+
         self.append(item)
         try:
             yield
         finally:
             _ = self.pop()
+
+    @ctxl.contextmanager
+    def temp_pop(self) -> cabc.Generator[T]:
+        """
+        Temporarily pop the last item, then push it back after exiting the scope.
+
+        Yields:
+            The last item (which would be pushed back later).
+        """
+
+        item = self.stack.pop()
+        try:
+            yield item
+        finally:
+            self.append(item)

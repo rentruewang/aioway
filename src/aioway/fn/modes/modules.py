@@ -62,7 +62,7 @@ class MModeOnOff[T](OnOffCtx, abc.ABC):
             yield self
             return
 
-        with self.STACK.enter(self):
+        with self.STACK.hold(self):
             yield self
 
 

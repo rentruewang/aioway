@@ -169,7 +169,7 @@ class TModeOnOff[T](OnOffCtx, abc.ABC):
         and store the mode itself s.t. it can be turned on / off later.
         """
 
-        with self.STACK.enter(self), self._TORCH_MODE(self):
+        with self.STACK.hold(self), self._TORCH_MODE(self):
             yield self
 
 
