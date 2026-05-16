@@ -21,7 +21,7 @@ from .fn import TensorInput, cabc
 
 LOGGER = logging.getLogger(__name__)
 
-__all__ = ["History", "HistoryTensorGraph"]
+__all__ = ["History", "HistoryTGraph"]
 
 
 class HashableTensorInput(typing.Hashable, TensorInput, typing.Protocol): ...
@@ -75,9 +75,9 @@ class History[T]:
 
 
 @dcls.dataclass(frozen=True)
-class HistoryTensorGraph[T: HashableTensorInput](History[T]):
+class HistoryTGraph[T: HashableTensorInput](History[T]):
     """
-    `HistoryTensorGraph` is a `History` that can be converted to a graph,
+    `HistoryTGraph` is a `History` that can be converted to a graph,
     using the `torch.Tensor`s in the inputs and outputs as links.
 
     An edge is present if between 2 thunks, if there is a `torch.Tensor`

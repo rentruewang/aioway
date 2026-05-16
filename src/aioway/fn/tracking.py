@@ -21,17 +21,17 @@ from aioway._common import (
 from aioway.fake import enabled_fake_mode, torch_fake_mode
 from aioway.fn.modes.modules import MInitMode
 
-from .hists import HistoryTensorGraph
+from .hists import HistoryTGraph
 from .modes import TDisFn, TDisMode, TFuncFn, TFuncMode
 from .op import FateFn
 
 __all__ = [
     "track_fn",
     "fake_fn",
-    "PrintTorchFunction",
-    "PrintTorchDispatch",
-    "LogTorchFunction",
-    "LogTorchDispatch",
+    "PrintTFunc",
+    "PrintTDis",
+    "LogTorchFunc",
+    "LogTorchDis",
     "RouteTorchDispatch",
     "RouteTorchFunction",
 ]
@@ -48,13 +48,13 @@ class _HasRichFlagMixin:
         self._rich = rich
 
 
-class PrintTorchFunction(_HasRichFlagMixin, TFuncMode):
+class PrintTFunc(_HasRichFlagMixin, TFuncMode):
     @typing.override
     def __call__(self, thunk: TFuncFn, /) -> object:
         return _ThunkPrinter(rich=self._rich)(thunk)
 
 
-class PrintTorchDispatch(_HasRichFlagMixin, TDisMode):
+class PrintTDis(_HasRichFlagMixin, TDisMode):
     @typing.override
     def __call__(self, thunk: TDisFn, /) -> object:
         return _ThunkPrinter(rich=self._rich)(thunk)
@@ -77,7 +77,7 @@ class _ThunkPrinter:
 
 
 @dcls.dataclass
-class LogTorchFunction(TFuncMode):
+class LogTorchFunc(TFuncMode):
     """
     Log every call to function mode.
     """
@@ -96,7 +96,7 @@ class LogTorchFunction(TFuncMode):
 
 
 @dcls.dataclass
-class LogTorchDispatch(TDisMode):
+class LogTorchDis(TDisMode):
     """
     Log every call to dispatch mode.
     """
@@ -164,9 +164,7 @@ class RouteTorchDispatch(TDisMode):
     router: FateRouter
     "The router that is responsible for finding `Fate` when implemented."
 
-    history: HistoryTensorGraph[TDisFn | FateFn] = dcls.field(
-        default_factory=HistoryTensorGraph
-    )
+    history: HistoryTGraph[TDisFn | FateFn] = dcls.field(default_factory=HistoryTGraph)
     "The history used for tracking."
 
     def __call__(self, thunk: TDisFn) -> object:
@@ -203,9 +201,7 @@ class RouteTorchFunction(TFuncMode):
     The router for which to route the `torch.ops.*` operations.
     """
 
-    history: HistoryTensorGraph[TFuncFn] = dcls.field(
-        default_factory=HistoryTensorGraph
-    )
+    history: HistoryTGraph[TFuncFn] = dcls.field(default_factory=HistoryTGraph)
     """
     The `FnHistory` instance that would be responsible for tracking history,
     and which provides a graph API to interact with saved tensors.

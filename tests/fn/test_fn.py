@@ -7,7 +7,7 @@ from aioway.fate import Fate
 from aioway.fn import (
     FateFn,
     Fn,
-    HistoryTensorGraph,
+    HistoryTGraph,
     MightFn,
     NnFwdFn,
     NnInitFn,
@@ -32,7 +32,7 @@ def _fn_cls():
 
 
 def _input_cls():
-    yield HistoryTensorGraph
+    yield HistoryTGraph
     yield TorchThunk
     yield FateFn
     yield NnFwdFn
