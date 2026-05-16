@@ -10,18 +10,15 @@ import typing
 
 import torch
 
-from aioway._common import (
-    find_nested_tensors,
-    is_leaf_has_grad,
-    replace_tensors_with_attr,
-)
+from aioway._common import find_nested_tensors, is_leaf_has_grad
 from aioway.schemas import attr
 
+from .common import replace_tensors_with_attr
 from .fn import TensorInput, cabc
 
 LOGGER = logging.getLogger(__name__)
 
-__all__ = ["History", "HistoryTGraph"]
+__all__ = ["Hist", "HistTensorGraph"]
 
 
 class HashableTensorInput(typing.Hashable, TensorInput, typing.Protocol): ...
@@ -44,9 +41,9 @@ class FnResult[F]:
 
 
 @dcls.dataclass(frozen=True)
-class History[T]:
+class Hist[T]:
     """
-    `History` is a list storing previous events in order.
+    `Hist` is a list storing previous events in order.
 
     The history list stores past thunks in the order that we received.
     """
@@ -75,9 +72,9 @@ class History[T]:
 
 
 @dcls.dataclass(frozen=True)
-class HistoryTGraph[T: HashableTensorInput](History[T]):
+class HistTensorGraph[T: HashableTensorInput](Hist[T]):
     """
-    `HistoryTGraph` is a `History` that can be converted to a graph,
+    `HistTensorGraph` is a `Hist` that can be converted to a graph,
     using the `torch.Tensor`s in the inputs and outputs as links.
 
     An edge is present if between 2 thunks, if there is a `torch.Tensor`

@@ -79,13 +79,6 @@ def _replace_tensors(
     return obj
 
 
-@typing.no_type_check
-def replace_tensors_with_attr[T](obj: T) -> T:
-    from aioway.schemas import attr
-
-    return replace_tensors(obj, attr)
-
-
 @typing.runtime_checkable
 class DecomposeCheck(typing.Protocol):
     def __call__(self, obj: object, /) -> bool: ...

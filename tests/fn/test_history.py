@@ -43,7 +43,7 @@ def fake_b():
 
 
 def test_einsum(a: torch.Tensor, b: torch.Tensor):
-    with track_fn() as [func_calls, dis_calls]:
+    with track_fn() as [func_calls, dis_calls, _, _]:
         result = torch.einsum("i,j->", a, b)
 
     assert result.ndim == 0
@@ -54,7 +54,7 @@ def test_einsum(a: torch.Tensor, b: torch.Tensor):
 
 
 def test_call(a: torch.Tensor, c: torch.Tensor):
-    with track_fn() as [func_hist, dis_hist]:
+    with track_fn() as [func_hist, dis_hist, _, _]:
         result = a + c
 
     assert result.ndim == 1

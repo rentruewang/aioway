@@ -13,13 +13,9 @@ import torch
 from torch import _ops, overrides
 from torch.utils import _python_dispatch as pyd
 
-from aioway._common import (
-    is_aten_op,
-    is_prim_op,
-    render_func_name,
-    render_tensor_func_short,
-)
+from aioway._common import is_aten_op, is_prim_op
 
+from ..common import render_function_body_prefix
 from ..fn import TorchThunk
 from .toggles import OnOffCtx, OnOffStack
 
@@ -83,7 +79,9 @@ class TFuncFn(TorchThunk[cabc.Callable[..., typing.Any]]):
         return id(self)
 
     def __repr__(self) -> str:
-        return _render_function_body("function", self.func, self.args, self.kwargs)
+        return render_function_body_prefix(
+            "function", self.func, self.args, self.kwargs
+        )
 
 
 @dcls.dataclass(match_args=False)
@@ -105,7 +103,9 @@ class TDisFn(TorchThunk[_ops.OpOverload]):
         return id(self)
 
     def __repr__(self) -> str:
-        return _render_function_body("dispatch", self.func, self.args, self.kwargs)
+        return render_function_body_prefix(
+            "dispatch", self.func, self.args, self.kwargs
+        )
 
     @property
     def is_aten(self) -> bool:
@@ -114,16 +114,6 @@ class TDisFn(TorchThunk[_ops.OpOverload]):
     @property
     def is_prim(self) -> bool:
         return is_prim_op(self.func)
-
-
-def _render_function_body(
-    prefix: str,
-    func: cabc.Callable[..., typing.Any],
-    args: tuple[typing.Any, ...],
-    kwargs: dict[str, typing.Any],
-) -> str:
-    func_name = render_func_name(func)
-    return render_tensor_func_short(prefix + "::" + func_name, args, kwargs)
 
 
 type _Mode = overrides.TorchFunctionMode | pyd.TorchDispatchMode
