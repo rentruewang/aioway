@@ -3,9 +3,9 @@
 import pytest
 import torch
 from torch import nn
+
 from aioway.fake import enabled_fake_mode, torch_fake_mode
-from aioway.fn import fake_fn, track_fn
-from aioway.fn import module_init
+from aioway.fn import fake_fn, module_init, track_fn
 from aioway.fn.modes.modules import module_fwd
 
 
