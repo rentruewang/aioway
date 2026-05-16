@@ -12,7 +12,7 @@ from torch import _ops
 from aioway._common import dcls_frozen_no_repr
 from aioway.op import Op
 
-__all__ = ["find_fate", "all_fates", "Fate"]
+__all__ = ["Fate", "find_fate", "all_fates"]
 
 
 @dcls_frozen_no_repr
