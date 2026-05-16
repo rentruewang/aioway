@@ -10,7 +10,11 @@ import typing
 
 import torch
 
-from aioway._common import find_nested_tensors, is_leaf_has_grad
+from aioway._common import (
+    find_nested_tensors,
+    is_leaf_has_grad,
+    replace_tensors_with_attr,
+)
 from aioway.schemas import attr
 
 from .fn import TensorInput, cabc
@@ -35,11 +39,12 @@ class FnResult[F]:
 
     @typing.override
     def __repr__(self) -> str:
-        return f"{self.fn!r} -> {self.result}"
+        result = replace_tensors_with_attr(self.result)
+        return f"{self.fn!r} -> {result}"
 
 
 @dcls.dataclass(frozen=True)
-class History[T: typing.Hashable]:
+class History[T]:
     """
     `History` is a list storing previous events in order.
 
