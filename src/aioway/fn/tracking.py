@@ -8,8 +8,9 @@ import typing
 
 import rich
 
+from aioway._common import replace_tensors_with_attr
+
 from .modes import TDispatchFn, TDispatchMode, TFunctionFn, TFunctionMode
-from .modes.tensors import replace_tensors_with_attr
 
 __all__ = [
     "PrintTorchFunction",

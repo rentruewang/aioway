@@ -14,6 +14,7 @@ import torch
 
 __all__ = [
     "replace_tensors",
+    "replace_tensors_with_attr",
     "find_and_filter",
     "find_nested_tensors",
     "Decomposer",
@@ -76,6 +77,13 @@ def _replace_tensors(
         return _replace_tensors(_dataclass_as_dict(obj), replace)
 
     return obj
+
+
+@typing.no_type_check
+def replace_tensors_with_attr[T](obj: T) -> T:
+    from aioway.schemas import attr
+
+    return replace_tensors(obj, attr)
 
 
 @typing.runtime_checkable

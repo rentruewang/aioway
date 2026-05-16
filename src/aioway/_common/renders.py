@@ -11,12 +11,15 @@ import torch
 from rich import syntax, tree
 from torch import _ops
 
+from .decomps import replace_tensors_with_attr
+
 __all__ = [
     "render_fcall",
     "subclass_tree",
     "print_subclass_tree",
     "render_class_syntax",
     "render_func_name",
+    "render_tensor_func_short",
 ]
 
 type FunctionLike = str | cabc.Callable[..., typing.Any]
@@ -39,6 +42,15 @@ def render_fcall(func: FunctionLike, *args: typing.Any, **kwargs: typing.Any) ->
 
 def render_class_syntax(cls: type):
     return syntax.Syntax(f"class {cls.__module__}.{cls.__qualname__}", lexer="py")
+
+
+def render_tensor_func_short(func: str, args, kwargs) -> str:
+    # `Attr`s are better for display than `torch.Tensor`s.
+
+    args = replace_tensors_with_attr(args)
+    kwargs = replace_tensors_with_attr(kwargs)
+
+    return render_fcall(func, *args, **kwargs)
 
 
 def subclass_tree(cls: type, render: cabc.Callable[[type], typing.Any] = repr):
