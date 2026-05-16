@@ -14,8 +14,8 @@ from aioway.fn import (
     TDispatchFn,
     TensorInput,
     TFunctionFn,
+    TorchThunk,
 )
-from aioway.fn.fn import TorchThunk
 from aioway.might import Might
 
 
