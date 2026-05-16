@@ -4,7 +4,7 @@
 import typing
 from collections import abc as cabc
 
-from aioway._common import render_fcall, render_func_name, replace_tensors
+from aioway._common import render_fcall, render_torch_func_name, replace_tensors
 from aioway.schemas import attr
 
 __all__ = [
@@ -35,5 +35,5 @@ def render_function_body_prefix(
     args: tuple[typing.Any, ...],
     kwargs: dict[str, typing.Any],
 ) -> str:
-    func_name = render_func_name(func)
+    func_name = render_torch_func_name(func)
     return render_tensor_func_short(prefix + "::" + func_name, args, kwargs)
