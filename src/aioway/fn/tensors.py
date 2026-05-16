@@ -178,13 +178,36 @@ type _Mode = overrides.TorchFunctionMode | pyd.TorchDispatchMode
 
 
 @dcls.dataclass
-class TorchModeContextMixin:
+class ContextMixin(abc.ABC):
+    STACK: typing.ClassVar[Stack[typing.Self]]
+    "The stack."
+
+    _: dcls.KW_ONLY
+
+    on: bool = True
+    "The toggle to control whether or not to run the current mode."
+
+    @abc.abstractmethod
+    def ctx(self) -> typing.ContextManager[typing.Self]:
+        raise NotImplementedError
+
+    @ctxl.contextmanager
+    def switch(self, on: bool):
+        "Switch to `on` in the scope (can be overwritten)."
+
+        before = self.on
+        self.on = on
+        try:
+            yield
+        finally:
+            self.on = before
+
+
+@dcls.dataclass
+class TorchModeContextMixin(ContextMixin):
     """
     The mixin for either `TFunctionMode`, `TDispatchMode`.
     """
-
-    STACK: typing.ClassVar[Stack[typing.Self]]
-    "The stack. One of `_FUNCTIONS`, `_DISPATCHES`."
 
     _TORCH_MODE: typing.ClassVar[cabc.Callable[..., _Mode]]
     """
@@ -192,11 +215,7 @@ class TorchModeContextMixin:
     These are specific modes that honor the `on` switch (hence private function).
     """
 
-    _: dcls.KW_ONLY
-
-    on: bool = True
-    "The toggle to control whether or not to run the current mode."
-
+    @typing.override
     @ctxl.contextmanager
     def ctx(self: typing.Self):
         """
@@ -210,17 +229,6 @@ class TorchModeContextMixin:
                 yield self
         finally:
             _ = self.STACK.pop()
-
-    @ctxl.contextmanager
-    def switch(self, on: bool):
-        "Switch to `on` in the scope (can be overwritten)."
-
-        before = self.on
-        self.on = on
-        try:
-            yield
-        finally:
-            self.on = before
 
 
 @typing.final
