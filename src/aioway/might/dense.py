@@ -1,7 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 from torch import nn
-from torch._subclasses.fake_tensor import inferred_fake_kernel_from_real_out
 
 from aioway._common import dcls_frozen_no_repr
 

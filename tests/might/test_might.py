@@ -1,12 +1,12 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import typing
+
 import pytest
 from torch import nn
 
 from aioway._common import render_fcall
 from aioway.might import Might, find_might
-
-import typing
 
 
 class _ModuleOpts(typing.NamedTuple):

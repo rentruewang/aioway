@@ -96,7 +96,7 @@ class Stack[T]:
             _ = self.pop()
 
     @ctxl.contextmanager
-    def temp_pop(self) -> cabc.Generator[T]:
+    def borrow(self) -> cabc.Generator[T]:
         """
         Temporarily pop the last item, then push it back after exiting the scope.
 
