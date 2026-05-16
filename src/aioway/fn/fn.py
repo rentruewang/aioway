@@ -3,6 +3,7 @@
 "Metadata for torch operators / functions."
 
 import abc
+import contextlib as ctxl
 import dataclasses as dcls
 import functools
 import typing
@@ -10,7 +11,7 @@ from collections import abc as cabc
 
 import torch
 
-from aioway._common import find_nested_tensors, render_fcall
+from aioway._common import Stack, find_nested_tensors, render_fcall
 
 __all__ = ["Fn", "TensorInput", "Thunk", "TorchThunk"]
 
@@ -191,3 +192,29 @@ class TorchThunk[T: cabc.Callable[..., typing.Any]](abc.ABC):
     def inputs(self):
         yield from find_nested_tensors(self.args)
         yield from find_nested_tensors(self.kwargs)
+
+
+@dcls.dataclass
+class ContextMixin(abc.ABC):
+    STACK: typing.ClassVar[Stack[typing.Self]]
+    "The stack."
+
+    _: dcls.KW_ONLY
+
+    on: bool = True
+    "The toggle to control whether or not to run the current mode."
+
+    @abc.abstractmethod
+    def ctx(self) -> typing.ContextManager[typing.Self]:
+        raise NotImplementedError
+
+    @ctxl.contextmanager
+    def switch(self, on: bool):
+        "Switch to `on` in the scope (can be overwritten)."
+
+        before = self.on
+        self.on = on
+        try:
+            yield
+        finally:
+            self.on = before

@@ -24,7 +24,7 @@ from aioway._common import (
 from aioway.fate import Fate, find_fate
 from aioway.schemas import attr
 
-from .fn import Fn, TorchThunk
+from .fn import ContextMixin, Fn, TorchThunk
 
 __all__ = [
     "TFunctionMode",
@@ -175,32 +175,6 @@ def render_tensor_func_short(func: str, args, kwargs) -> str:
 
 
 type _Mode = overrides.TorchFunctionMode | pyd.TorchDispatchMode
-
-
-@dcls.dataclass
-class ContextMixin(abc.ABC):
-    STACK: typing.ClassVar[Stack[typing.Self]]
-    "The stack."
-
-    _: dcls.KW_ONLY
-
-    on: bool = True
-    "The toggle to control whether or not to run the current mode."
-
-    @abc.abstractmethod
-    def ctx(self) -> typing.ContextManager[typing.Self]:
-        raise NotImplementedError
-
-    @ctxl.contextmanager
-    def switch(self, on: bool):
-        "Switch to `on` in the scope (can be overwritten)."
-
-        before = self.on
-        self.on = on
-        try:
-            yield
-        finally:
-            self.on = before
 
 
 @dcls.dataclass
