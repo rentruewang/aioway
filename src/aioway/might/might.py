@@ -24,6 +24,10 @@ class Might(Op[type[nn.Module]], abc.ABC):
 
     KEY: typing.ClassVar[type[nn.Module]] = NotImplemented
 
+    @typing.override
+    def do(self) -> nn.Module:
+        return super().do()
+
     @classmethod
     @typing.override
     def name(cls) -> str:

@@ -9,6 +9,7 @@ import typing
 from collections import abc as cabc
 
 from aioway._common import dcls_frozen_no_repr, render_fcall
+from aioway.schemas import DimTag
 
 __all__ = ["Op"]
 
@@ -54,12 +55,18 @@ class Op[K: cabc.Callable[..., object]](abc.ABC):
     def __hash__(self) -> int:
         return id(self)
 
-    def do(self) -> object:
+    def do(self) -> typing.Any:
         """
         Generate the fake tensor.
         """
 
         return self.KEY(**dcls.asdict(self))
+
+    @property
+    @abc.abstractmethod
+    def __aioway_dim_tag__(self) -> DimTag:
+        "Also process `DimTag`s from the input."
+        return NotImplemented
 
     @classmethod
     @abc.abstractmethod
