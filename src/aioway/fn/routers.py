@@ -15,7 +15,7 @@ from aioway._common import (
 )
 from aioway.fake import enabled_fake_mode, torch_fake_mode
 
-from .hists import HistoryGraph
+from .hists import HistoryTensorGraph
 from .modes import TDispatchFn, TDispatchMode, TFunctionFn, TFunctionMode
 from .op import FateFn
 
@@ -82,8 +82,8 @@ class RouteDispatchOp(TDispatchMode):
     router: FateRouter
     "The router that is responsible for finding `Fate` when implemented."
 
-    history: HistoryGraph[TDispatchFn | FateFn] = dcls.field(
-        default_factory=HistoryGraph
+    history: HistoryTensorGraph[TDispatchFn | FateFn] = dcls.field(
+        default_factory=HistoryTensorGraph
     )
     "The history used for tracking."
 
@@ -116,7 +116,9 @@ class RouteFunctionOp(TFunctionMode):
     The router for which to route the `torch.ops.*` operations.
     """
 
-    history: HistoryGraph[TFunctionFn] = dcls.field(default_factory=HistoryGraph)
+    history: HistoryTensorGraph[TFunctionFn] = dcls.field(
+        default_factory=HistoryTensorGraph
+    )
     """
     The `FnHistory` instance that would be responsible for tracking history,
     and which provides a graph API to interact with saved tensors.

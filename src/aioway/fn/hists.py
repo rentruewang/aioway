@@ -10,17 +10,14 @@ import typing
 
 import torch
 
-from aioway._common import (
-    find_nested_tensors,
-    is_leaf_has_grad,
-)
+from aioway._common import find_nested_tensors, is_leaf_has_grad
 from aioway.schemas import attr
 
-from .fn import TensorInput
+from .fn import TensorInput, cabc
 
 LOGGER = logging.getLogger(__name__)
 
-__all__ = ["History", "HistoryGraph"]
+__all__ = ["History", "HistoryTensorGraph"]
 
 
 class HashableTensorInput(typing.Hashable, TensorInput, typing.Protocol): ...
@@ -42,9 +39,11 @@ class FnResult[F]:
 
 
 @dcls.dataclass(frozen=True)
-class History[T]:
+class History[T: typing.Hashable]:
     """
     `History` is a list storing previous events in order.
+
+    The history list stores past thunks in the order that we received.
     """
 
     history: list[FnResult[T]] = dcls.field(default_factory=list)
@@ -52,11 +51,32 @@ class History[T]:
     The `TorchFn` that has been called, in order.
     """
 
+    def __len__(self) -> int:
+        return len(self.history)
+
+    def __getitem__(self, idx: int) -> FnResult[T]:
+        return self.history[idx]
+
+    def __iter__(self) -> cabc.Generator[FnResult[T]]:
+        yield from self.history
+
+    def append(self, thunk: T, result: object, /) -> None:
+        "Add a new entry in the `History`."
+        self.history.append(FnResult(thunk, result))
+
+    def pop(self) -> FnResult[T]:
+        "Drop the last result from the `History`."
+        return self.history.pop()
+
 
 @dcls.dataclass(frozen=True)
-class HistoryGraph[T: HashableTensorInput](History[T]):
+class HistoryTensorGraph[T: HashableTensorInput](History[T]):
     """
-    The list of `Fn` that tracks the current history.
+    `HistoryTensorGraph` is a `History` that can be converted to a graph,
+    using the `torch.Tensor`s in the inputs and outputs as links.
+
+    An edge is present if between 2 thunks, if there is a `torch.Tensor`
+    both in the input of the first thunk and marked as another thunk's output.
 
     This stores `torch.Tensor` as `dict` keys, which is fine
     because `torch.Tensor` uses `id` as `hash`,
@@ -73,32 +93,21 @@ class HistoryGraph[T: HashableTensorInput](History[T]):
     )
     "The mapping from output to thunk that generates it."
 
-    def __len__(self) -> int:
-        return len(self.history)
+    @typing.override
+    def append(self, thunk: T, result: object, /) -> None:
+        super().append(thunk, result)
+        self._update_ref(thunk, result)
 
-    def __getitem__(self, idx: int) -> FnResult[T]:
-        return self.history[idx]
-
-    def __iter__(self):
-        yield from self.history
-
-    def append(self, item: T, result: object, /):
-        self.history.append(FnResult(item, result))
-        self._update_ref(item, result)
-
-    def pop(self):
-        return self.history.pop()
-
-    def _update_ref(self, item: T, output: object) -> None:
+    def _update_ref(self, thunk: T, output: object) -> None:
         # `__torch_function__` doesn't always return `torch.Tensor` actually!
 
         # Update output if tensors are found in the output.
         for output_tensor in find_nested_tensors(output):
-            self.output_to_thunk_list[output_tensor].append(item)
+            self.output_to_thunk_list[output_tensor].append(thunk)
 
         # Update input.
-        for input_tensor in item.inputs():
-            self.input_to_thunk_list[input_tensor].append(item)
+        for input_tensor in thunk.inputs():
+            self.input_to_thunk_list[input_tensor].append(thunk)
 
     def networkx(self):
         "Convert the graph to `nx.DiGraph`, using data dependencies as link."
