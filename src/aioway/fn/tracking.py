@@ -12,7 +12,6 @@ import rich
 import torch
 
 from aioway._common import (
-    Stack,
     TensorFilter,
     filter_tensor_off,
     find_nested_tensors,
@@ -34,8 +33,6 @@ __all__ = [
     "PrintTorchDispatch",
     "LogTorchFunction",
     "LogTorchDispatch",
-    "TorchFunctionStack",
-    "TorchDispatchStack",
     "FnHistory",
 ]
 
@@ -115,32 +112,6 @@ class LogTorchDispatch(TDispatchMode):
         result = thunk.do()
         self.logger.log(self.level, "%s", thunk)
         return result
-
-
-@dcls.dataclass
-class TorchFunctionStack(TFunctionMode):
-    stack: Stack[TFunctionFn] = dcls.field(default_factory=Stack)
-
-    @typing.override
-    def __call__(self, thunk: TFunctionFn) -> object:
-        with self.stack.enter(thunk):
-            return thunk.do()
-
-
-@dcls.dataclass
-class TorchDispatchStack(TDispatchMode):
-    stack: Stack[TDispatchFn] = dcls.field(default_factory=Stack)
-
-    @typing.override
-    def __call__(self, thunk: TDispatchFn) -> object:
-        with self.stack.enter(thunk):
-            return thunk.do()
-
-    def __len__(self) -> int:
-        return len(self.stack)
-
-    def top(self) -> TDispatchFn:
-        return self.stack.top()
 
 
 @dcls.dataclass(frozen=True)
