@@ -12,7 +12,7 @@ from collections import abc as cabc
 import torch
 from torch import nn
 
-from ..fn import TorchThunk
+from ..fn import Thunk, TorchThunk
 from ._on_off import OnOffCtx, OnOffStack
 
 __all__ = [
@@ -82,9 +82,18 @@ def _invoke_rec(
     which corresponds to our `temp_pop` function on the stack.
     """
 
+    LOGGER.debug("Inovked on %s", stack)
+    LOGGER.debug("type: %s", fn_type)
+    LOGGER.debug("Thunk: %s", Thunk(call, *args, **kwargs))
+
     if not stack:
         return call(*args, **kwargs)
 
+    # Pop one `mode` for each call. At some point this would be exhausted.
+    # And go to the previous `if not stack` shortcut.
+    # For this to work, `mode(thunk)` must call `_invoke_rec` indirectly,
+    # therefore you must call `module_fwd` / `module_init`,
+    # or using `.do()` on `NnFwdFn` / `NnInitFn` does the same thing.
     with stack.temp_pop() as mode:
         assert isinstance(mode, NnModeOnOff)
 
