@@ -6,21 +6,15 @@ import abc
 import dataclasses as dcls
 import inspect
 import typing
-
-import torch
-from torch import _ops
+from collections import abc as cabc
 
 from aioway._common import dcls_frozen_no_repr, render_fcall
 
-__all__ = ["find_fate", "aten_to_fate", "Fate"]
-
-
-_ATEN_TO_FATE_LIST: dict[_ops.OpOverload, list[type[Fate]]] = {}
-"The registry to store `Fate` operators."
+__all__ = ["Op"]
 
 
 @dcls_frozen_no_repr
-class Op(abc.ABC):
+class Op[K: cabc.Callable[..., object]](abc.ABC):
     """
     `Op` stands for [o]verridable [p]ass. Or [op]erator. It follows a pattern:
     it sits in a family of similar operations, and can be looked up by a key (and signature).
@@ -33,34 +27,34 @@ class Op(abc.ABC):
     2. `Preview` for `nn.Module` init.
     """
 
-    KEY: typing.ClassVar[typing.Any]
+    KEY: typing.ClassVar[K] = NotImplemented
     """
-    The torch IR that this `Fate` would be implementing.
+    The key that is set on the subclasses.
+
+    When querying
     """
 
-    def __init_subclass__(cls, key: typing.Any = None) -> None:
-        if not inspect.isabstract(cls) and key is None:
-            raise KeyError(f"Key is not specified for non abstract {cls=}.")
+    def __init_subclass__(cls) -> None:
+        # The key is not overwritten. This is considered an abstract class. Pass.
+        if cls.KEY is NotImplemented:
+            return
 
-        cls.KEY = key
+        # Pass abstract class naturally.
+        if inspect.isabstract(cls):
+            return
+
+        if not callable(cls.KEY):
+            raise TypeError(f"Non callable function key for {cls=}, {cls.KEY=}.")
 
     @typing.override
     def __repr__(self) -> str:
-        return render_fcall(f"fate::{self.name()}", **dcls.asdict(self))
+        return render_fcall(f"{self.name()}", **dcls.asdict(self))
 
     @typing.override
     def __hash__(self) -> int:
         return id(self)
 
-    @abc.abstractmethod
-    def ok(self) -> bool:
-        """
-        Whether or not the arguments are valid.
-        """
-
-        raise NotImplementedError
-
-    def do(self) -> torch.Tensor:
+    def do(self) -> object:
         """
         Generate the fake tensor.
         """
@@ -68,39 +62,35 @@ class Op(abc.ABC):
         return self.KEY(**dcls.asdict(self))
 
     @classmethod
-    def name(cls) -> str:
-        return _camel_to_snake(cls.__name__)
-
     @abc.abstractmethod
-    def cost(self) -> int:
-        """
-        Return the cost of each operation.
-        """
+    def name(cls) -> str:
+        "The name of the class to be rendered."
 
         raise NotImplementedError
 
     @classmethod
-    def __register_preview(cls):
+    def find(cls, key: K) -> cabc.Generator[type[typing.Self]]:
         """
-        Register a patching function that only runs under fake mode.
+        Recursively find the class tagged `key` in the subclass.
 
-        The patch would be called. If the patching function returns `NotImplemented`,
-        it will fall back to the default implementation (plain `func(*args, **kwargs)`).
+        This function iterates over the subclass by doing a DFS traversal.
+        This has the benefit of being able to query new classes on the fly,
+        while not maintaining a global dictionary.
+
+        If this ends up being too slow, we'll change to a mapping-based method.
+
+        Yields:
+            All the subclasses with the `key` as key.
+            Only concrete classes are considered.
         """
 
-        # Abstract methods.
-        if inspect.isabstract(cls):
-            return
+        for sub in cls.__subclasses__():
+            if sub.is_concrete() and sub.KEY == key:
+                yield sub
 
-        # Abstract `ClassVar`.
-        try:
-            ir = cls.KEY
-        except AttributeError:
-            return
+            yield from sub.find(key)
 
-        # Mimick defaultdict behavior.
-        # Using dict over defaultdict s.t. we don't need special handling in `repr`.
-        if ir not in _ATEN_TO_FATE_LIST:
-            _ATEN_TO_FATE_LIST[ir] = []
-
-        _ATEN_TO_FATE_LIST[ir].append(cls)
+    @classmethod
+    def is_concrete(cls) -> bool:
+        # Concrete in class var and concrete in methods.
+        return cls.KEY is not NotImplemented and not inspect.isabstract(cls)

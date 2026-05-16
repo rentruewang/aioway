@@ -1,22 +1,19 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import abc
-import dataclasses as dcls
-import inspect
 import typing
+from collections import abc as cabc
 
 from torch import nn
 
 from aioway._common import dcls_frozen_no_repr
-from aioway._common.renders import render_fcall
+from aioway.op import Op
 
 __all__ = ["Preview", "find_preview", "all_previews"]
 
-_PREVIEWS_REGISTRY: dict[type[nn.Module], type[Preview]] = {}
-
 
 @dcls_frozen_no_repr
-class Preview(abc.ABC):
+class Preview(Op[type[nn.Module]], abc.ABC):
     """
     `Preview` is a preview of how an `nn.Module` would be initialized.
 
@@ -28,38 +25,12 @@ class Preview(abc.ABC):
     so for historical reasons, I won't touch it.
     """
 
-    NN: typing.ClassVar[type[nn.Module]]
-    "The `nn.Module` type that should be implemented."
-
-    def __init_subclass__(cls) -> None:
-        cls._register()
-
-    @typing.override
-    def __repr__(self) -> str:
-        return render_fcall(f"preview::{type(self).__name__}", **dcls.asdict(self))
-
-    def do(self) -> nn.Module:
-        return self.NN(**dcls.asdict(self))
+    KEY: typing.ClassVar[type[nn.Module]] = NotImplemented
 
     @classmethod
-    def _register(cls) -> None:
-        # Skip abstract class and don't register it.
-        if inspect.isabstract(cls):
-            return
-
-        # Abstract class that does not define `ClassVar` is not properly captured by `inspect.isabstract`.
-        try:
-            nn_type = cls.NN
-        except AttributeError:
-            return
-
-        if not isinstance(nn_type, type) or not issubclass(nn_type, nn.Module):
-            raise TypeError(f"{cls}.NN={nn_type} is not an `nn.Module`.")
-
-        if prev := _PREVIEWS_REGISTRY.get(cls.NN):
-            raise KeyError(f"Another implementation for {cls.NN} found: {prev}.")
-
-        _PREVIEWS_REGISTRY[cls.NN] = cls
+    @typing.override
+    def name(cls) -> str:
+        return "preview::" + cls.__name__
 
 
 def find_preview(nn_type: type[nn.Module], *args, **kwargs) -> Preview:
@@ -67,17 +38,28 @@ def find_preview(nn_type: type[nn.Module], *args, **kwargs) -> Preview:
     Get a `Preview` from the `nn.Module` type. If not found, return `NotImplemented`.
     """
 
-    if (preview_type := _PREVIEWS_REGISTRY.get(nn_type, None)) is None:
-        return NotImplemented
-
+    # Right now, each `Preview` should have distinct key, so just return the 1st.
     # Just get the type. If an error is raised, construction failed,
     # pass the error back, since upper level signature failed.
-    return preview_type(*args, **kwargs)
+    for preview_type in Preview.find(nn_type):
+        return preview_type(*args, **kwargs)
+
+    # No implementation found.
+    return NotImplemented
 
 
+@typing.no_type_check
 def all_previews():
     """
     Get the registry for previews.
     """
 
-    return _PREVIEWS_REGISTRY
+    return list(_iter_previews(Preview))
+
+
+def _iter_previews(cls: type[Preview]) -> cabc.Generator[type[Preview]]:
+    for sub in cls.__subclasses__():
+        if sub.is_concrete():
+            yield sub
+
+        yield from _iter_previews(sub)

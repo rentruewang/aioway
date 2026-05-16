@@ -95,7 +95,8 @@ def torch_real_mode():
     """
     Disable `torch`'s fake mode temporarily.
 
-    Yields the context manager that is pushed to torch's dispatch stack.
+    Yields:
+        The context manager that is pushed to torch's dispatch stack.
     """
 
     with ft.unset_fake_temporarily() as mode, _set_fake_mode_flag(False):

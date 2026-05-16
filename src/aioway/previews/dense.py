@@ -15,7 +15,7 @@ class Linear(Preview):
     Apply the transformation A @ x + b.
     """
 
-    NN = nn.Linear
+    KEY = nn.Linear
 
     in_features: int
     "The size of each input sample, must be > 0."
@@ -33,7 +33,7 @@ class Bilinear(Preview):
     Apply the transformation x1 @ A @ x2 + b.
     """
 
-    NN = nn.Bilinear
+    KEY = nn.Bilinear
 
     in1_features: int
     "The size of each first input sample, must be > 0."
