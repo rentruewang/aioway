@@ -2,7 +2,7 @@
 
 import pytest
 
-from aioway.schemas import check_tag
+from aioway.tags import check_dim_tag
 
 
 def _valid_tags():
@@ -28,8 +28,8 @@ def invalid_tags(request: pytest.FixtureRequest):
 
 
 def test_valid_tags(valid_tags: str):
-    assert check_tag(valid_tags)
+    assert check_dim_tag(valid_tags)
 
 
 def test_invalid_tags(invalid_tags: str):
-    assert not check_tag(invalid_tags)
+    assert not check_dim_tag(invalid_tags)
