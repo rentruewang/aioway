@@ -24,6 +24,25 @@ class NnForwardFn(TorchThunk[nn.Module]):
     func: nn.Module
     "The module for the `Fn`."
 
+    def load_state_dict(
+        self,
+        state_dict: cabc.Mapping[str, torch.Tensor],
+        strict: bool = True,
+        assign: bool = False,
+    ):
+        """
+        Expose the `nn.Module.load_state_dict` function to the users.
+        """
+
+        return self.func.load_state_dict(state_dict, strict=strict, assign=assign)
+
+    def state_dict(self):
+        """
+        Expose the `nn.Module.state_dict` function to the users.
+        """
+
+        return self.func.state_dict()
+
     @typing.override
     def tensors(self) -> cabc.Iterator[torch.Tensor]:
         yield from find_nested_tensors(self.args)
