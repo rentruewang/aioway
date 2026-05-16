@@ -4,7 +4,7 @@ from torch import nn
 
 from aioway._common import dcls_frozen_no_repr
 
-from .mint import Might
+from .might import Might
 
 __all__ = ["Linear", "Bilinear"]
 

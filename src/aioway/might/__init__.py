@@ -2,4 +2,4 @@
 
 from .convs import *
 from .dense import *
-from .mint import *
+from .might import *
