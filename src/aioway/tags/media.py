@@ -2,6 +2,8 @@
 
 "Extra information about the tensors."
 
+import typing
+
 import torch
 
 from aioway._common import dcls_frozen_slots_no_eq
@@ -21,32 +23,29 @@ class IsImageTag(Tag):
 
     TAG = "__aioway_is_image__"
 
-    def __post_init__(self) -> None:
-        super().__post_init__()
+    @typing.override
+    def _validate(self, tensor: torch.Tensor) -> None:
+        self._check_ndim(tensor)
+        self._check_value(tensor)
 
-        self._check_ndim()
-        self._check_value()
-
-    def _check_ndim(self):
-        if self.tensor.ndim not in [3, 4]:
+    def _check_ndim(self, tensor: torch.Tensor):
+        if tensor.ndim not in [3, 4]:
             raise ValueError(
-                f"The tensor has ndim={self.tensor.ndim}!=3,4. Should be [B]CWH."
+                f"The tensor has ndim={tensor.ndim}!=3,4. Should be [B]CWH."
             )
 
-    def _check_value(self):
-        dtype = DType.parse(self.tensor.dtype)
+    def _check_value(self, tensor: torch.Tensor):
+        dtype = DType.parse(tensor.dtype)
 
         if dtype == torch.uint8:
             return
 
         # If fake mode then ok.
-        if dtype.is_floating_point and is_fake_tensor(self.tensor):
+        if dtype.is_floating_point and is_fake_tensor(tensor):
             return
 
         def is_0_to_1():
-            return (
-                torch.all(0 <= self.tensor).item() and torch.all(self.tensor < 1).item()
-            )
+            return torch.all(0 <= tensor).item() and torch.all(tensor < 1).item()
 
         if dtype.is_floating_point and is_0_to_1():
             return
@@ -70,8 +69,7 @@ class SampleRateTag(Tag):
     The sample rate. Must be positive.
     """
 
-    def __post_init__(self):
-        super().__post_init__()
-
+    @typing.override
+    def _validate(self, tensor: torch.Tensor) -> None:
         if self.sample_rate <= 0:
             raise ValueError(f"{self.sample_rate} <= 0.")

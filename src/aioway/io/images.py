@@ -9,17 +9,13 @@ from PIL import Image as image
 from torchvision import io as vio
 from torchvision.transforms import v2 as tt
 
-from aioway.fake import torch_enable_fake_mode_func
+from aioway.fake import enabled_fake_mode, torch_enable_fake_mode_func
 from aioway.schemas import attr
+from aioway.schemas.attrs import AttrLike
 
 from .io import ImageLoader
 
-__all__ = [
-    "ComposedImageLoader",
-    "PillowImageLoader",
-    "FakePillowImageLoader",
-    "TvioImageLoader",
-]
+__all__ = ["ComposedImageLoader", "PillowImageLoader", "TvioImageLoader"]
 
 
 @dcls.dataclass
@@ -57,24 +53,24 @@ class PillowImageLoader(ImageLoader):
 
     @typing.override
     def load_img(self, fname: str | pathlib.Path, /) -> torch.Tensor:
-        img = image.open(fname)
-        return self.transform(img)
+        if enabled_fake_mode():
+            return self._real_load_img(fname)
 
+        else:
+            return self._real_load_img(fname)
 
-@dcls.dataclass
-class FakePillowImageLoader(ImageLoader):
-    @typing.override
-    def load_img(self, fname: str | pathlib.Path, /) -> torch.Tensor:
-        img = image.open(fname)
+    def _real_load_img(self, fname: str | pathlib.Path, /) -> torch.Tensor:
+        with image.open(fname) as img:
+            transform = tt.PILToTensor()
+            return transform(img)
 
-        # Convert to `uint8` as a hack, because we don't support it in our dtypes.
-        return attr(
-            {
+    def _fake_load_img(self, fname: str | pathlib.Path, /) -> torch.Tensor:
+        with image.open(fname) as img:
+            attr_dict: AttrLike = {
                 "shape": [len(img.mode), img.width, img.height],
-                "device": "cpu",
                 "dtype": "uint8",
             }
-        ).to_fake_tensor()
+            return attr(attr_dict).to_fake_tensor()
 
 
 @dcls.dataclass

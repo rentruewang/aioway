@@ -7,8 +7,7 @@ import typing
 
 import torch
 
-from aioway.tags import IsImageTag
-from aioway.tags.media import SampleRateTag
+from aioway.tags import IsImageTag, SampleRateTag
 
 
 @dcls.dataclass
@@ -38,6 +37,11 @@ class ImageLoader(FileLoader, abc.ABC):
         raise NotImplementedError
 
 
+class AudioData(typing.NamedTuple):
+    data: torch.Tensor
+    sample_rate: int
+
+
 @dcls.dataclass
 class AudioLoader(FileLoader, abc.ABC):
     """
@@ -52,13 +56,11 @@ class AudioLoader(FileLoader, abc.ABC):
     def __call__(self, fname: str | pathlib.Path, /) -> torch.Tensor:
         audio = self.load_wave(fname)
 
-        # Ensure it's actually tagged.
-        if SampleRateTag.extract(audio) is None:
-            raise AssertionError(f"Forgot to tag the audio tensor with sample rate.")
+        _ = SampleRateTag(audio.data, audio.sample_rate)
 
-        assert audio.ndim == 2, audio.shape
-        return audio
+        assert audio.data.ndim == 2, audio.data.shape
+        return audio.data
 
     @abc.abstractmethod
-    def load_wave(self, fname: str | pathlib.Path, /) -> torch.Tensor:
+    def load_wave(self, fname: str | pathlib.Path, /) -> AudioData:
         raise NotImplementedError

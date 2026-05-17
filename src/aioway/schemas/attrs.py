@@ -17,7 +17,7 @@ from .dtypes import DType, DTypeLike
 from .layouts import Layout, LayoutLike
 from .shapes import Shape, ShapeLike
 
-__all__ = ["Attr", "attr"]
+__all__ = ["Attr", "attr", "AttrLike"]
 
 
 LOGGER = logging.getLogger(__name__)

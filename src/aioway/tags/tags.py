@@ -10,7 +10,6 @@ import typing
 import torch
 
 from aioway._common import dcls_frozen_slots_no_eq
-from aioway.fake import is_fake_tensor
 
 __all__ = ["Tag", "extract_tags"]
 
@@ -38,7 +37,7 @@ class Tag(abc.ABC):
     The name of the tag. Must be of the format `__aioway_*__`.
     """
 
-    tensor: torch.Tensor
+    tensor: dcls.InitVar[torch.Tensor]
     "The tensor that is being piggybacked."
 
     def __init_subclass__(cls) -> None:
@@ -47,9 +46,16 @@ class Tag(abc.ABC):
                 f"Tag name should be of the format `__aioway_*__`. Got {cls.TAG}."
             )
 
-    def __post_init__(self) -> None:
+    @typing.final
+    def __post_init__(self, tensor: torch.Tensor) -> None:
         # Set the tag onto the tensor.
-        setattr(self.tensor, self.TAG, self)
+        setattr(tensor, self.TAG, self)
+
+    def _validate(self, tensor: torch.Tensor) -> None:
+        """
+        Execute additional validation for subclasses. Subclasses can override this,
+        and raise an error if `self` is not valid or cannot attach to `tensor`.
+        """
 
     @typing.override
     def __eq__(self, other: object):
@@ -62,36 +68,22 @@ class Tag(abc.ABC):
         return NotImplemented
 
     def _cmp_dict(self):
-        fields = {f.name for f in dcls.fields(self)}
+        item_fields = {f.name for f in dcls.fields(self)}
         base_tag_fields = {f.name for f in dcls.fields(Tag)}
-        to_compare = fields - base_tag_fields
+
+        # Compare everything, except the tensors.
+        to_compare = item_fields - base_tag_fields
         return {key: getattr(self, key) for key in to_compare}
-
-    @property
-    def ndim(self) -> int:
-        return self.tensor.ndim
-
-    @property
-    def shape(self) -> torch.Size:
-        return self.tensor.shape
-
-    @property
-    def is_fake(self) -> bool:
-        return is_fake_tensor(self.tensor)
 
     def attach(self, other: torch.Tensor, /) -> typing.Self:
         """
         Tag the instance on another tensor. These 2 tags would be `==` to each other.
         """
 
-        # In case the same tensor is tagged again.
-        if self.tensor is other:
-            return self
-
         # Replace the `tensor` attribute,
         # and call `__post_init__` which handles attribute setting.
         copied = dcls.replace(self, tensor=other)
-        copied.__post_init__()
+        copied.__post_init__(other)
         assert copied is self.extract(other)
         assert self == copied
         return copied
