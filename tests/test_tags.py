@@ -46,4 +46,4 @@ def test_valid_tags(valid_tags: TensorAndTag):
 
 def test_invalid_tags(invalid_tags: TensorAndTag):
     with pytest.raises(ValueError):
-        assert DimTag(invalid_tags.tensor, invalid_tags.tag)
+        _ = DimTag(invalid_tags.tensor, invalid_tags.tag)
