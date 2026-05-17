@@ -1,13 +1,21 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 from torch import nn
-from torch._subclasses.fake_tensor import inferred_fake_kernel_from_real_out
 
 from aioway._common import dcls_frozen_no_repr
 
 from .might import Might
 
-__all__ = ["Linear", "Bilinear"]
+__all__ = ["Identity", "Linear", "Bilinear"]
+
+
+@dcls_frozen_no_repr
+class Identity(Might):
+    """
+    A placeholder identity operator that is argument-insensitive.
+    """
+
+    KEY = nn.Identity
 
 
 @dcls_frozen_no_repr
@@ -30,6 +38,7 @@ class Linear(Might):
     def __post_init__(self):
         if self.in_features <= 0:
             raise ValueError(f"{self.in_features=} <= 0.")
+
         if self.out_features <= 0:
             raise ValueError(f"{self.out_features=} <= 0.")
 
@@ -57,7 +66,9 @@ class Bilinear(Might):
     def __post_init__(self):
         if self.in1_features <= 0:
             raise ValueError(f"{self.in1_features=} <= 0.")
+
         if self.in2_features <= 0:
             raise ValueError(f"{self.in2_features=} <= 0.")
+
         if self.out_features <= 0:
             raise ValueError(f"{self.out_features=} <= 0.")

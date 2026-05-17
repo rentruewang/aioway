@@ -38,11 +38,13 @@ with PrintTorDis().enter(), PrintTorFunc().enter(), mode_off():
     c = a + b
 
 # %% [markdown]
-# Have nothing at all! This is because `torch_mode_off` disable things "outside" its scope.
+# Have nothing at all! This is because `mode_off` disable things "outside" its scope.
+#
+# This is the same to how it works with torch's dispatch mode and function mode.
 
 # %%
 with PrintTorDis().enter(), mode_off(), PrintTorFunc().enter():
     c = a + b
 
 # %% [markdown]
-# Only "function::" calls are left. `torch_mode_off` disabled all the contexts entered before it.
+# Only "function::" calls are left. `mode_off` disabled all the contexts entered before it.

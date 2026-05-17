@@ -32,7 +32,9 @@ with PrintNnInit().enter(), PrintNnFwd().enter():
     linear = module_init(nn.Linear, 3, 5)
     dropout = module_init(nn.Dropout)
 
-    print("forward")
+    print()
+    print("fwd")
+    print()
 
     t = module_fwd(linear, t)
     t = module_fwd(dropout, t)
@@ -45,13 +47,30 @@ with PrintNnInit().enter(), mode_off(), PrintNnFwd().enter():
     linear = module_init(nn.Linear, 3, 5)
     dropout = module_init(nn.Dropout)
 
-    print("forward")
+    print("fwd, this should be the first statement in the cell's output")
+    print()
 
     t = module_fwd(linear, t)
     t = module_fwd(dropout, t)
 
 # %% [markdown]
-# Note that outside contexts of `mode_off` (no init calls in second cell) is disabled. This is consistent with how `set_torch_mode` works.
+# Note that outside contexts of `mode_off` (no init calls in second cell) is disabled. This is consistent with how `torch`'s dispatch mode and function mode works.
+
+# %%
+t = torch.randn(7, 3)
+
+
+with PrintNnInit().enter(), PrintNnFwd().enter(), mode_off():
+    linear = module_init(nn.Linear, 3, 5)
+    dropout = module_init(nn.Dropout)
+
+    print("This should be the ONLY statement in the cell's output")
+    print()
+
+    t = module_fwd(linear, t)
+    t = module_fwd(dropout, t)
 
 # %% [markdown]
-# This means we copied torch modes' mechanism beautifully.
+# Perfect. This means we copied torch modes' mechanism beautifully.
+
+# %%

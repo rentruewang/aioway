@@ -64,9 +64,9 @@ def module_init(init: type[nn.Module], /, *args, **kwargs) -> nn.Module:
     return result
 
 
-def _invoke_rec(
-    stack: OnOffStack[typing.Any],
-    fn_type: type,
+def _invoke_rec[T: NnModeOnOff[typing.Any, typing.Any]](
+    stack: OnOffStack[T],
+    fn_type: type[TorchThunk[typing.Any]],
     call: cabc.Callable[..., typing.Any],
     args: tuple[typing.Any, ...],
     kwargs: dict[str, typing.Any],
@@ -79,13 +79,14 @@ def _invoke_rec(
 
     This concept is borrowed from `__torch_function__` and `__torch_dispatch__`,
     you can see similarity when reading the code around their `_pop_mode_temporarily` function,
-    which corresponds to our `temp_pop` function on the stack.
+    which corresponds to our `borrow` function on the stack.
     """
 
     LOGGER.debug("Inovked on %s", stack)
     LOGGER.debug("type: %s", fn_type)
     LOGGER.debug("Thunk: %s", Thunk(call, *args, **kwargs))
 
+    # Do not reinvoke the function! Call directly.
     if not stack:
         return call(*args, **kwargs)
 
@@ -94,18 +95,14 @@ def _invoke_rec(
     # For this to work, `mode(thunk)` must call `_invoke_rec` indirectly,
     # therefore you must call `module_fwd` / `module_init`,
     # or using `.do()` on `NnFwdFn` / `NnInitFn` does the same thing.
-    with stack.temp_pop() as mode:
-        assert isinstance(mode, NnModeOnOff)
-
-        thunk = fn_type(func=call, args=args, kwargs=kwargs)
-
-        assert isinstance(thunk, TorchThunk)
+    with stack.borrow() as mode:
 
         if mode.on:
+            thunk = fn_type(func=call, args=args, kwargs=kwargs)
             return mode(thunk)
 
         else:
-            return thunk.do()
+            return _invoke_rec(stack, fn_type, call, args, kwargs)
 
 
 @dcls.dataclass
