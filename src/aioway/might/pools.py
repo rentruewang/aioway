@@ -38,7 +38,6 @@ class Linear(Might):
     def __post_init__(self):
         if self.in_features <= 0:
             raise ValueError(f"{self.in_features=} <= 0.")
-
         if self.out_features <= 0:
             raise ValueError(f"{self.out_features=} <= 0.")
 
@@ -66,9 +65,7 @@ class Bilinear(Might):
     def __post_init__(self):
         if self.in1_features <= 0:
             raise ValueError(f"{self.in1_features=} <= 0.")
-
         if self.in2_features <= 0:
             raise ValueError(f"{self.in2_features=} <= 0.")
-
         if self.out_features <= 0:
             raise ValueError(f"{self.out_features=} <= 0.")
