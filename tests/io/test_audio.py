@@ -14,7 +14,7 @@ def _loaders():
     yield AvAudioLoader()
 
 
-@pytest.fixture(params=_loaders())
+@pytest.fixture(params=_loaders(), ids=lambda l: type(l).__name__)
 def loader(request: pytest.FixtureRequest):
     return request.param
 
