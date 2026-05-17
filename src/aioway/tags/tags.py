@@ -92,7 +92,8 @@ class Tag(abc.ABC):
         # and call `__post_init__` which handles attribute setting.
         copied = dcls.replace(self, tensor=other)
         copied.__post_init__()
-        assert copied == self.extract(other)
+        assert copied is self.extract(other)
+        assert self == copied
         return copied
 
     @classmethod
