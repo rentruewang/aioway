@@ -12,6 +12,7 @@ from aioway.io import (
     TvioImageLoader,
 )
 from aioway.io.images import FakePillowImageLoader
+from aioway.tags import IsImageTag, extract_tags
 
 
 @pytest.fixture
@@ -34,18 +35,30 @@ def fake_pillow_image_loader():
     return FakePillowImageLoader()
 
 
-def test_read_image(
-    example_image: pathlib.Path, image_loader: ImageLoader, maybe_fake_mode
-):
+def _read_image(example_image: pathlib.Path, image_loader: ImageLoader) -> torch.Tensor:
     image = image_loader(example_image)
     assert isinstance(image, torch.Tensor)
     assert image.dtype == torch.uint8
+    return image
+
+
+def test_read_image(
+    example_image: pathlib.Path, image_loader: ImageLoader, maybe_fake_mode
+):
+    _ = _read_image(example_image, image_loader)
+
+
+def test_read_image_tags(
+    example_image: pathlib.Path, image_loader: ImageLoader, maybe_fake_mode
+):
+    image = _read_image(example_image, image_loader)
+    tags = extract_tags(image)
+    assert IsImageTag.TAG in tags
+    assert isinstance(tags[IsImageTag.TAG], IsImageTag)
 
 
 def test_read_image_fake(
     example_image: pathlib.Path, fake_pillow_image_loader: ImageLoader, fake_mode
 ):
-    image = fake_pillow_image_loader(example_image)
-    assert isinstance(image, torch.Tensor)
+    image = _read_image(example_image, fake_pillow_image_loader)
     assert is_fake_tensor(image)
-    assert image.dtype == torch.uint8
