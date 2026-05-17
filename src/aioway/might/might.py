@@ -7,13 +7,13 @@ from collections import abc as cabc
 
 from torch import nn
 
-from aioway._common import dcls_frozen_no_repr
+from aioway._common import dcls_no_repr
 from aioway.op import Op
 
 __all__ = ["Might", "find_might", "all_mights"]
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class Might(Op[type[nn.Module]], abc.ABC):
     """
     `Might` is a preview of how an `nn.Module` would be initialized.

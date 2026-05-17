@@ -8,13 +8,13 @@ import inspect
 import typing
 from collections import abc as cabc
 
-from aioway._common import dcls_frozen_no_repr, render_fcall
+from aioway._common import dcls_no_repr, render_fcall
 from aioway.tags import DimTag
 
 __all__ = ["Op"]
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class Op[K: cabc.Callable[..., object]](abc.ABC):
     """
     `Op` stands for [o]verridable [p]ass. Or [op]erator. It follows a pattern:

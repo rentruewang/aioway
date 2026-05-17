@@ -9,13 +9,13 @@ from collections import abc as cabc
 
 from torch import _ops
 
-from aioway._common import dcls_frozen_no_repr, find_nested_tensors
+from aioway._common import dcls_no_repr, find_nested_tensors
 from aioway.op import Op
 
 __all__ = ["Fate", "find_fate", "all_fates"]
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class Fate(Op[_ops.OpOverload], abc.ABC):
     """
     `Fate` stands for [f]ake [ate]n. Or [fa]ke [te]nsor. Or a tensor's [fate] (how it behaves).

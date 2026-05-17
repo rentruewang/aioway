@@ -4,14 +4,14 @@ import typing
 
 from torch import nn
 
-from aioway._common import dcls_frozen_no_repr
+from aioway._common import dcls_no_repr
 
 from .might import Might
 
 __all__ = ["Embedding"]
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class _BaseEmbedding(Might):
     KEY: typing.ClassVar[type[nn.Module]] = NotImplemented
 
@@ -29,7 +29,7 @@ class _BaseEmbedding(Might):
             raise ValueError(f"{self.embedding_dim=} <= 0.")
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class Embedding(_BaseEmbedding):
     """
     A simple lookup table that stores embeddings of a fixed dictionary and size.
@@ -38,7 +38,7 @@ class Embedding(_BaseEmbedding):
     KEY = nn.Embedding
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class EmbeddingBag(_BaseEmbedding):
     """
     Compute sums or means of 'bags' of embeddings,

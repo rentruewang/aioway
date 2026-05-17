@@ -9,7 +9,7 @@ from collections import abc as cabc
 import torch
 from torch import ops
 
-from aioway._common import dcls_frozen_no_repr, is_float_tensor
+from aioway._common import dcls_no_repr, is_float_tensor
 
 from .fate import Fate
 
@@ -39,7 +39,7 @@ __all__ = [
 Scalar = int | float | bool
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class _BinaryTensorUFunc(Fate, abc.ABC):
     BINARY: typing.ClassVar[cabc.Callable[..., typing.Any]]
 
@@ -76,7 +76,7 @@ class _BinaryTensorUFunc(Fate, abc.ABC):
         return torch.broadcast_shapes(self.self.shape, self.other.shape)
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class _BinaryScalarUFunc(Fate, abc.ABC):
     BINARY: typing.ClassVar[cabc.Callable[..., typing.Any]]
 

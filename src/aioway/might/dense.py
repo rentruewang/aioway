@@ -2,14 +2,14 @@
 
 from torch import nn
 
-from aioway._common import dcls_frozen_no_repr
+from aioway._common import dcls_no_repr
 
 from .might import Might
 
 __all__ = ["Identity", "Linear", "Bilinear"]
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class Identity(Might):
     """
     A placeholder identity operator that is argument-insensitive.
@@ -18,7 +18,7 @@ class Identity(Might):
     KEY = nn.Identity
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class Linear(Might):
     """
     Apply the transformation A @ x + b.
@@ -43,7 +43,7 @@ class Linear(Might):
             raise ValueError(f"{self.out_features=} <= 0.")
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class Bilinear(Might):
     """
     Apply the transformation x1 @ A @ x2 + b.

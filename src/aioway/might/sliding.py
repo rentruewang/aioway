@@ -7,7 +7,7 @@ import typing
 
 from torch import nn
 
-from aioway._common import dcls_frozen_no_repr, is_tuple_of
+from aioway._common import dcls_no_repr, is_tuple_of
 
 from .might import Might
 
@@ -27,7 +27,7 @@ _PADDING = frozenset(["zeros", "reflect", "replicate", "circular"])
 "Valid padding values."
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class _BaseAvgSliding(abc.ABC):
     KEY: typing.ClassVar[type[nn.Module]] = NotImplemented
     NDIM: typing.ClassVar[int]
@@ -50,7 +50,7 @@ class _BaseAvgSliding(abc.ABC):
         _ = _cast_ndim_int(self.NDIM, self.padding)
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class _BaseSliding(_BaseAvgSliding, abc.ABC):
     _: dcls.KW_ONLY
 
@@ -62,7 +62,7 @@ class _BaseSliding(_BaseAvgSliding, abc.ABC):
         _ = _cast_ndim_int(self.NDIM, self.dilation)
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class _BaseConvWeights(abc.ABC):
     _: dcls.KW_ONLY
 
@@ -100,20 +100,20 @@ class _BaseConvWeights(abc.ABC):
             raise ValueError(f"{self.padding_mode=!r} should be one of {_PADDING}.")
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class _BaseConv(_BaseSliding, _BaseConvWeights, Might):
     def __post_init__(self) -> None:
         _BaseSliding.__post_init__(self)
         _BaseConvWeights.__post_init__(self)
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class _BaseAvgPool(_BaseAvgSliding, Might):
     def __post_init__(self) -> None:
         _BaseAvgSliding.__post_init__(self)
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class _BaseMaxPool(_BaseSliding, Might):
     return_indices: bool = False
     """
@@ -125,7 +125,7 @@ class _BaseMaxPool(_BaseSliding, Might):
         _BaseSliding.__post_init__(self)
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class Conv1d(_BaseConv):
     """
     Applies a 1D convolution over an input signal composed of several input planes.
@@ -135,7 +135,7 @@ class Conv1d(_BaseConv):
     NDIM = 1
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class Conv2d(_BaseConv):
     """
     Applies a 2D convolution over an input signal composed of several input planes.
@@ -145,7 +145,7 @@ class Conv2d(_BaseConv):
     NDIM = 2
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class Conv3d(_BaseConv):
     """
     Applies a 3D convolution over an input signal composed of several input planes.
@@ -155,7 +155,7 @@ class Conv3d(_BaseConv):
     NDIM = 3
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class MaxPool1d(_BaseMaxPool):
     """
     Applies a 1D max pooling over an input signal composed of several input planes.
@@ -165,7 +165,7 @@ class MaxPool1d(_BaseMaxPool):
     NDIM = 1
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class MaxPool2d(_BaseMaxPool):
     """
     Applies a 2D max pooling over an input signal composed of several input planes.
@@ -175,7 +175,7 @@ class MaxPool2d(_BaseMaxPool):
     NDIM = 2
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class MaxPool3d(_BaseMaxPool):
     """
     Applies a 3D max pooling over an input signal composed of several input planes.
@@ -185,7 +185,7 @@ class MaxPool3d(_BaseMaxPool):
     NDIM = 3
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class AvgPool1d(_BaseAvgPool):
     """
     Applies a 1D average pooling over an input signal composed of several input planes.
@@ -195,7 +195,7 @@ class AvgPool1d(_BaseAvgPool):
     NDIM = 1
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class AvgPool2d(_BaseAvgPool):
     """
     Applies a 2D average pooling over an input signal composed of several input planes.
@@ -205,7 +205,7 @@ class AvgPool2d(_BaseAvgPool):
     NDIM = 2
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class AvgPool3d(_BaseAvgPool):
     """
     Applies a 3D average pooling over an input signal composed of several input planes.
