@@ -4,7 +4,7 @@ import typing
 
 from torch import nn
 
-from aioway._common import dcls_frozen_no_repr
+from aioway._common import dcls_no_repr
 
 from .might import Might
 
@@ -18,7 +18,7 @@ __all__ = [
 ]
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class _BaseNorm(Might):
     "Base normalization layer for shared code of batch norm and instance norm."
 

@@ -4,7 +4,7 @@ import typing
 
 from torch import nn
 
-from aioway._common import dcls_frozen_no_repr
+from aioway._common import dcls_no_repr
 
 from .might import Might
 
@@ -23,7 +23,7 @@ __all__ = [
 _REDUCTION = frozenset(["none", "mean", "sum"])
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class _ReducibleLoss(Might):
     """
     Creates a criterion that measures the mean absolute error (MAE)
@@ -33,7 +33,7 @@ class _ReducibleLoss(Might):
     KEY: typing.ClassVar[type[nn.Module]] = NotImplemented
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class L1Loss(_ReducibleLoss):
     """
     Creates a criterion that measures the mean absolute error (MAE)
@@ -43,7 +43,7 @@ class L1Loss(_ReducibleLoss):
     KEY = nn.L1Loss
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class MSELoss(_ReducibleLoss):
     """
     Creates a criterion that measures the mean squared error (squared L2 norm)
@@ -53,7 +53,7 @@ class MSELoss(_ReducibleLoss):
     KEY = nn.MSELoss
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class CrossEntropyLoss(_ReducibleLoss):
     """
     This criterion computes the cross entropy loss between input logits and target.
@@ -62,7 +62,7 @@ class CrossEntropyLoss(_ReducibleLoss):
     KEY = nn.CrossEntropyLoss
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class CTCLoss(_ReducibleLoss):
     """
     The Connectionist Temporal Classification loss.
@@ -71,7 +71,7 @@ class CTCLoss(_ReducibleLoss):
     KEY = nn.CTCLoss
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class NLLLoss(_ReducibleLoss):
     """
     The negative log likelihood loss.
@@ -81,7 +81,7 @@ class NLLLoss(_ReducibleLoss):
     KEY = nn.NLLLoss
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class KLDivLoss(_ReducibleLoss):
     """
     The Kullback-Leibler divergence loss.
@@ -90,7 +90,7 @@ class KLDivLoss(_ReducibleLoss):
     KEY = nn.KLDivLoss
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class BCELoss(_ReducibleLoss):
     """
     Creates a criterion that measures the Binary Cross Entropy between the target and the input probabilities.
@@ -99,7 +99,7 @@ class BCELoss(_ReducibleLoss):
     KEY = nn.BCELoss
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class BCEWithLogitsLoss(_ReducibleLoss):
     """
     This loss combines a Sigmoid layer and the BCELoss in one single class.
@@ -111,7 +111,7 @@ class BCEWithLogitsLoss(_ReducibleLoss):
     KEY = nn.BCEWithLogitsLoss
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class SmoothL1Loss(_ReducibleLoss):
     """
     Creates a criterion that uses a squared term

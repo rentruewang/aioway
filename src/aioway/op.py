@@ -8,13 +8,13 @@ import inspect
 import typing
 from collections import abc as cabc
 
-from aioway._common import dcls_frozen_no_repr, render_fcall
+from aioway._common import dcls_no_repr, render_fcall
 from aioway.tags import DimTag
 
 __all__ = ["Op"]
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class Op[K: cabc.Callable[..., object]](abc.ABC):
     """
     `Op` stands for [o]verridable [p]ass. Or [op]erator. It follows a pattern:
@@ -100,23 +100,3 @@ class Op[K: cabc.Callable[..., object]](abc.ABC):
     def is_concrete(cls) -> bool:
         # Concrete in class var and concrete in methods.
         return cls.KEY is not NotImplemented and not inspect.isabstract(cls)
-
-    @classmethod
-    def create(cls, *args, **kwargs) -> typing.Self:
-        """
-        The constructor for the `Op` class.
-        This is designed to handle inconsistencies between `aioway` and `torch` API.
-        To do that, external classes must call `.create` and not `cls()` directly.
-        This is possible because both `Op`'s implementations, `Fate` and `Might`,
-        are only initalized with `find_fate` and `find_might` (and not directly),
-        so we do not need to make sure that these 2 functions use `.create` to initialize.
-
-        Note:
-            The reason `.create` is created, is because it's impossible for a dataclass
-            to model arbitrary *args and **kwargs, and that `nn.Sequential` uses it.
-
-            For classes like `nn.Sequential`, we must override `.create` and `.do`
-            so that `find_fate` and `find_might` can ensure API compatibility.
-        """
-
-        return cls(*args, **kwargs)

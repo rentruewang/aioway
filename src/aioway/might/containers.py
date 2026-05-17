@@ -4,14 +4,12 @@ import typing
 
 from torch import nn
 
-from aioway._common import dcls_frozen_no_repr
-
 from .might import Might
 
 __all__ = ["Sequential"]
 
 
-@dcls_frozen_no_repr
+# @dcls_no_repr
 class Sequential(Might):
     """
     The wrapper for `nn.Sequential`.
@@ -26,6 +24,10 @@ class Sequential(Might):
     A list of `Might` objects that can be resolved later.
     """
 
+    def __init__(self, *args: nn.Module):
+        super().__init__()
+        self.modules = args
+
     @typing.override
     def do(self) -> nn.Module:
         from aioway.fn import NnInitFn
@@ -33,8 +35,3 @@ class Sequential(Might):
         # Create `nn.Sequential` instance with `NnInitFn` is the best way
         # to ensure that the modes are invoked properly.
         return NnInitFn(func=self.KEY, args=self.modules, kwargs={}).do()
-
-    @classmethod
-    @typing.override
-    def create(cls, *args: nn.Module) -> typing.Self:
-        return cls(modules=args)
