@@ -106,9 +106,17 @@ class Op[K: cabc.Callable[..., object]](abc.ABC):
         """
         The constructor for the `Op` class.
         This is designed to handle inconsistencies between `aioway` and `torch` API.
+        To do that, external classes must call `.create` and not `cls()` directly.
+        This is possible because both `Op`'s implementations, `Fate` and `Might`,
+        are only initalized with `find_fate` and `find_might` (and not directly),
+        so we do not need to make sure that these 2 functions use `.create` to initialize.
 
-        For example, `nn.Sequential(*nn.Module)` really cannot be modelled into dataclasses,
-        but, solvable with both `create` and `do` (and every calls these functions only).
+        Note:
+            The reason `.create` is created, is because it's impossible for a dataclass
+            to model arbitrary *args and **kwargs, and that `nn.Sequential` uses it.
+
+            For classes like `nn.Sequential`, we must override `.create` and `.do`
+            so that `find_fate` and `find_might` can ensure API compatibility.
         """
 
         return cls(*args, **kwargs)
