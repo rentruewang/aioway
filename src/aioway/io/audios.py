@@ -9,10 +9,11 @@ import torch
 from torchcodec import decoders as dec
 
 from aioway.fake import enabled_fake_mode, torch_enable_fake_mode_func
+from aioway.io.io import AudioData
 from aioway.schemas import Attr
 from aioway.tags import SampleRateTag
 
-from .io import AudioLoader
+from .io import AudioData, AudioLoader
 
 __all__ = ["AvAudioLoader", "TorchCodecAudioLoader"]
 
@@ -36,7 +37,7 @@ class AvAudioLoader(AudioLoader):
     "Load the audio with `av` library."
 
     @typing.override
-    def load_wave(self, fname: str | pathlib.Path, /) -> torch.Tensor:
+    def load_wave(self, fname: str | pathlib.Path, /) -> AudioData:
         container = av.open(fname)
 
         # Get the metadata for fake mode to work.
@@ -64,18 +65,17 @@ class AvAudioLoader(AudioLoader):
             array = np.concat(chunks, axis=1)
             tensor = torch.tensor(array)
 
-        _ = SampleRateTag(tensor, sample_rate)
-        return tensor
+        return AudioData(tensor, sample_rate)
 
 
 class TorchCodecAudioLoader(AudioLoader):
 
     @typing.override
-    def load_wave(self, fname: str | pathlib.Path, /) -> torch.Tensor:
+    def load_wave(self, fname: str | pathlib.Path, /) -> AudioData:
         return self._read_audio_from_path(fname)
 
     @torch_enable_fake_mode_func(False)
-    def _read_audio_from_path(self, fname: str | pathlib.Path) -> torch.Tensor:
+    def _read_audio_from_path(self, fname: str | pathlib.Path) -> AudioData:
         """
         Read and decode audio from path.
 
@@ -95,5 +95,4 @@ class TorchCodecAudioLoader(AudioLoader):
                 f"and output {samples.sample_rate} should be equal."
             )
 
-        _ = SampleRateTag(samples.data, samples.sample_rate)
-        return samples.data
+        return AudioData(samples.data, samples.sample_rate)

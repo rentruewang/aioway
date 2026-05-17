@@ -41,30 +41,32 @@ def invalid_tags(request: pytest.FixtureRequest):
 
 
 def test_valid_tags(valid_tags: TensorAndTag):
-    _ = DimTag(valid_tags.tensor, valid_tags.tag)
+    DimTag(valid_tags.tag).attach(valid_tags.tensor)
 
 
 def test_invalid_tags(invalid_tags: TensorAndTag):
+    tag = DimTag(invalid_tags.tag)
     with pytest.raises(ValueError):
-        _ = DimTag(invalid_tags.tensor, invalid_tags.tag)
+        tag.attach(invalid_tags.tensor)
 
 
 def test_attach(valid_tags: TensorAndTag):
-    tag = DimTag(valid_tags.tensor, valid_tags.tag)
-    assert tag.tensor is valid_tags.tensor
-    assert hasattr(tag.tensor, DimTag.TAG)
+    tag = DimTag(valid_tags.tag)
+    tag.attach(valid_tags.tensor)
+    assert hasattr(valid_tags.tensor, DimTag.TAG)
     assert DimTag.extract(valid_tags.tensor) is tag
     assert extract_tags(valid_tags.tensor) == {DimTag.TAG: tag}
 
 
 def test_tag_eq(valid_tags: TensorAndTag):
-    tag = DimTag(valid_tags.tensor, valid_tags.tag)
+    tag = DimTag(valid_tags.tag)
+    tag.attach(valid_tags.tensor)
     another = valid_tags.tensor.clone()
 
     assert not extract_tags(another)
 
-    other_tag = tag.attach(another)
+    tag.attach(another)
+    other_tag = DimTag.extract(another)
 
     assert extract_tags(another)
-    assert tag is not other_tag
-    assert tag == other_tag
+    assert tag is other_tag

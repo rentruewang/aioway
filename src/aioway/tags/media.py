@@ -6,7 +6,7 @@ import typing
 
 import torch
 
-from aioway._common import dcls_frozen_slots_no_eq
+from aioway._common import dcls_frozen_slots
 from aioway.fake import is_fake_tensor
 from aioway.schemas import DType
 
@@ -15,7 +15,7 @@ from .tags import Tag
 __all__ = ["IsImageTag", "SampleRateTag"]
 
 
-@dcls_frozen_slots_no_eq
+@dcls_frozen_slots
 class IsImageTag(Tag):
     """
     Tag the tensor as image. Should be 4 dimensional.
@@ -56,7 +56,7 @@ class IsImageTag(Tag):
         )
 
 
-@dcls_frozen_slots_no_eq
+@dcls_frozen_slots
 class SampleRateTag(Tag):
     """
     Tag the tensor as audio, and having a sample rate.

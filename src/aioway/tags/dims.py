@@ -9,7 +9,7 @@ import typing
 
 import torch
 
-from aioway._common import dcls_frozen_slots_no_eq
+from aioway._common import dcls_frozen_slots
 
 from .tags import Tag
 
@@ -47,7 +47,7 @@ class DimInfo(enum.StrEnum):
     """
 
 
-@dcls_frozen_slots_no_eq
+@dcls_frozen_slots
 class DimTag(Tag):
     TAG = "__aioway_dim_tag__"
 

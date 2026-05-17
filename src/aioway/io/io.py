@@ -27,8 +27,7 @@ class ImageLoader(FileLoader, abc.ABC):
     def __call__(self, fname: str | pathlib.Path, /) -> torch.Tensor:
         data = self.load_img(fname)
 
-        # Attach the tag onto the tensor.
-        _ = IsImageTag(data)
+        IsImageTag().attach(data)
 
         return data
 
@@ -56,7 +55,7 @@ class AudioLoader(FileLoader, abc.ABC):
     def __call__(self, fname: str | pathlib.Path, /) -> torch.Tensor:
         audio = self.load_wave(fname)
 
-        _ = SampleRateTag(audio.data, audio.sample_rate)
+        SampleRateTag(audio.sample_rate).attach(audio.data)
 
         assert audio.data.ndim == 2, audio.data.shape
         return audio.data

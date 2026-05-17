@@ -23,7 +23,8 @@ from aioway.tags import SampleRateTag
 t = torch.randn(3, 4)
 
 # %%
-sr = SampleRateTag(t, 100)
+sr = SampleRateTag(100)
+sr.attach(t)
 
 # %%
 s = torch.randn(4, 5)
