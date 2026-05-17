@@ -39,3 +39,6 @@ SampleRateTag.extract(s)
 
 # %%
 SampleRateTag.extract(t) == SampleRateTag.extract(s)
+
+# %%
+t.__aioway_audio_sample_rate__
