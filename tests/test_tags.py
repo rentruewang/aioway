@@ -55,3 +55,16 @@ def test_attach(valid_tags: TensorAndTag):
     assert hasattr(tag.tensor, DimTag.TAG)
     assert DimTag.extract(valid_tags.tensor) is tag
     assert extract_tags(valid_tags.tensor) == {DimTag.TAG: tag}
+
+
+def test_tag_eq(valid_tags: TensorAndTag):
+    tag = DimTag(valid_tags.tensor, valid_tags.tag)
+    another = valid_tags.tensor.clone()
+
+    assert not extract_tags(another)
+
+    other_tag = tag.tag(another)
+
+    assert extract_tags(another)
+    assert tag is not other_tag
+    assert tag == other_tag

@@ -2,10 +2,9 @@
 
 "Extra information about the tensors."
 
-import dataclasses as dcls
-
 import torch
 
+from aioway._common import dcls_frozen_slots_no_eq
 from aioway.fake import is_fake_tensor
 from aioway.schemas import DType
 
@@ -14,7 +13,7 @@ from .tags import Tag
 __all__ = ["IsImageTag", "SampleRateTag"]
 
 
-@dcls.dataclass(frozen=True, slots=True)
+@dcls_frozen_slots_no_eq
 class IsImageTag(Tag):
     """
     Tag the tensor as image. Should be 4 dimensional.
@@ -24,6 +23,7 @@ class IsImageTag(Tag):
 
     def __post_init__(self) -> None:
         super().__post_init__()
+
         self._check_ndim()
         self._check_value()
 
@@ -57,7 +57,7 @@ class IsImageTag(Tag):
         )
 
 
-@dcls.dataclass(frozen=True, slots=True)
+@dcls_frozen_slots_no_eq
 class SampleRateTag(Tag):
     """
     Tag the tensor as audio, and having a sample rate.
@@ -71,5 +71,7 @@ class SampleRateTag(Tag):
     """
 
     def __post_init__(self):
+        super().__post_init__()
+
         if self.sample_rate <= 0:
             raise ValueError(f"{self.sample_rate} <= 0.")

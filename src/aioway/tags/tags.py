@@ -9,6 +9,7 @@ import typing
 
 import torch
 
+from aioway._common import dcls_frozen_slots_no_eq
 from aioway.fake import is_fake_tensor
 
 __all__ = ["Tag", "extract_tags"]
@@ -16,7 +17,7 @@ __all__ = ["Tag", "extract_tags"]
 _TAG_NAME = re.compile(r"^__aioway_[a-zA-Z0-9_]+__$")
 
 
-@dcls.dataclass(frozen=True, slots=True)
+@dcls_frozen_slots_no_eq
 class Tag(abc.ABC):
     """
     The base class for tags. A tag describes a `torch.Tensor`,
@@ -50,6 +51,22 @@ class Tag(abc.ABC):
         # Set the tag onto the tensor.
         setattr(self.tensor, self.TAG, self)
 
+    @typing.override
+    def __eq__(self, other: object):
+        "Comparing 2 tags compare all fields that are not the `.tensor`."
+
+        if type(self) == type(other):
+            assert isinstance(other, Tag)
+            return self._cmp_dict() == other._cmp_dict()
+
+        return NotImplemented
+
+    def _cmp_dict(self):
+        fields = {f.name for f in dcls.fields(self)}
+        base_tag_fields = {f.name for f in dcls.fields(Tag)}
+        to_compare = fields - base_tag_fields
+        return {key: getattr(self, key) for key in to_compare}
+
     @property
     def ndim(self) -> int:
         return self.tensor.ndim
@@ -61,6 +78,21 @@ class Tag(abc.ABC):
     @property
     def is_fake(self) -> bool:
         return is_fake_tensor(self.tensor)
+
+    def tag(self, other: torch.Tensor, /) -> typing.Self:
+        """
+        Tag the instance on another tensor.
+        """
+
+        # In case the same tensor is tagged again.
+        if self.tensor is other:
+            return self
+
+        # Replace the `tensor` attribute,
+        # and call `__post_init__` which handles attribute setting.
+        copied = dcls.replace(self, tensor=other)
+        copied.__post_init__()
+        return copied
 
     @classmethod
     def extract(cls, tensor: torch.Tensor) -> typing.Self | None:

@@ -9,6 +9,7 @@ __all__ = [
     "dcls_no_eq",
     "dcls_no_repr",
     "dcls_frozen_no_repr",
+    "dcls_frozen_slots_no_eq",
     "dcls_no_eq_no_repr",
     "Stack",
 ]
@@ -17,6 +18,12 @@ __all__ = [
 @typing.dataclass_transform(eq_default=False)
 def dcls_no_eq[T: type](cls: T) -> T:
     result: typing.Any = dcls.dataclass(eq=False)(cls)
+    return result
+
+
+@typing.dataclass_transform(eq_default=False, frozen_default=True)
+def dcls_frozen_slots_no_eq[T: type](cls: T) -> T:
+    result: typing.Any = dcls.dataclass(eq=False, frozen=True, slots=True)(cls)
     return result
 
 
