@@ -26,7 +26,7 @@ class ImageLoader(FileLoader, abc.ABC):
 
     @typing.override
     def __call__(self, fname: str | pathlib.Path, /) -> torch.Tensor:
-        data = self.load(fname)
+        data = self.load_img(fname)
 
         # Attach the tag onto the tensor.
         _ = IsImageTag(data)
@@ -34,7 +34,7 @@ class ImageLoader(FileLoader, abc.ABC):
         return data
 
     @abc.abstractmethod
-    def load(self, fname: str | pathlib.Path, /) -> torch.Tensor:
+    def load_img(self, fname: str | pathlib.Path, /) -> torch.Tensor:
         raise NotImplementedError
 
 

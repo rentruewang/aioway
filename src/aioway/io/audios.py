@@ -3,15 +3,18 @@
 import pathlib
 import typing
 
+import av
+import numpy as np
 import torch
 from torchcodec import decoders as dec
 
-from aioway.fake import torch_enable_fake_mode_func
+from aioway.fake import enabled_fake_mode, torch_enable_fake_mode_func
+from aioway.schemas import Attr
 from aioway.tags import SampleRateTag
 
 from .io import AudioLoader
 
-__all__ = ["TorchCodecAudioLoader"]
+__all__ = ["AvAudioLoader", "TorchCodecAudioLoader"]
 
 
 def encode_with_stft(audio: torch.Tensor, /, n_fft: int) -> torch.Tensor:
@@ -22,6 +25,39 @@ def encode_with_stft(audio: torch.Tensor, /, n_fft: int) -> torch.Tensor:
     result = torch.stft(audio, n_fft, return_complex=True)
     SampleRateTag.extract(audio)
     return result.real
+
+
+class AvAudioLoader(AudioLoader):
+    "Load the audio with `av` library."
+
+    @typing.override
+    def load_wave(self, fname: str | pathlib.Path, /) -> torch.Tensor:
+        container = av.open(fname)
+
+        stream = container.streams.audio[0]
+        sample_rate = stream.codec_context.sample_rate
+        channels = stream.codec_context.channels
+        frames = stream.frames
+
+        # Create a fake tensor of float32 in fake mode.
+        if enabled_fake_mode():
+            tensor = Attr.parse(
+                shape=[channels, frames], dtype=torch.float32
+            ).to_fake_tensor()
+
+        else:
+            chunks: list[np.ndarray] = []
+            for frame in container.decode(stream):
+                arr = frame.to_ndarray()
+                assert arr.ndim == 2
+                assert len(arr) == channels
+                chunks.append(arr)
+
+            array = np.concat(chunks, axis=1)
+            tensor = torch.tensor(array)
+
+        _ = SampleRateTag(tensor, sample_rate)
+        return tensor
 
 
 class TorchCodecAudioLoader(AudioLoader):
