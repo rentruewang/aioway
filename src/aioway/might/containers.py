@@ -5,16 +5,19 @@ import typing
 from torch import nn
 
 from .might import Might
+from aioway._common import dcls_no_repr
 
 __all__ = ["Sequential"]
 
 
-# @dcls_no_repr
+@dcls_no_repr
 class Sequential(Might):
     """
     The wrapper for `nn.Sequential`.
 
-    There is no easy way to model
+    Since the API of `nn.Sequential` takes in `*nn.Module`s,
+    and there is no easy way of making that into a dataclass,
+    we must overwrite `.do` because the default is `KEY(**dcls.asdict(self))`.
     """
 
     KEY = nn.Sequential
