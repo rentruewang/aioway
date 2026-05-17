@@ -10,7 +10,7 @@ import numpy as np
 import tensordict as td
 from torch.utils import data
 
-from aioway._common import IntArray, is_list_of
+from aioway._common import is_list_of
 from aioway.schemas import AttrSet
 
 from ..datasets import Dataset, DatasetColumnView, DatasetSelectView, DatasetViewTypes
@@ -53,7 +53,9 @@ class Frame(Dataset, data.Dataset[td.TensorDict], abc.ABC):
     def __getitem__(self, idx: list[str]) -> DatasetSelectView[typing.Self]: ...
 
     @typing.overload
-    def __getitem__(self, idx: int | slice | list[int] | IntArray) -> td.TensorDict: ...
+    def __getitem__(
+        self, idx: int | slice | list[int] | np.ndarray
+    ) -> td.TensorDict: ...
 
     @typing.final
     @typing.override
@@ -83,13 +85,13 @@ class Frame(Dataset, data.Dataset[td.TensorDict], abc.ABC):
         # If slice, convert to `range(len(self))[idx]`.
         # This will be the same length as the output list,
         # so it's ok that `NDArray` is less efficient than `slice`.
-        it: range | list[int] | IntArray
+        it: range | list[int] | np.ndarray
         if isinstance(idx, slice):
             it = range(len(self))[idx]
         else:
             it = idx
 
-        arr: IntArray = np.asarray(it)
+        arr: np.ndarray = np.asarray(it)
         arr = self._check_idx(arr)
 
         item = self._getitems_batch(arr.tolist())
@@ -116,7 +118,7 @@ class Frame(Dataset, data.Dataset[td.TensorDict], abc.ABC):
 
         return DatasetViewTypes(column=FrameColumnView, select=FrameSelectView)
 
-    def _check_idx(self, idx: IntArray, /) -> IntArray:
+    def _check_idx(self, idx: np.ndarray, /) -> np.ndarray:
         "Check if the index is valid, and then remap the index to be positive."
 
         length = len(self)

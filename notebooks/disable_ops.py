@@ -17,14 +17,14 @@
 import torch
 
 # %%
-from aioway.fn import PrintTorchDispatch, PrintTorchFunction, torch_mode_off
+from aioway.fn import PrintTorDis, PrintTorFunc, mode_off
 
 # %%
 a = torch.randn(3, 4)
 b = torch.randn(1, 1)
 
 # %%
-with PrintTorchDispatch().ctx(), PrintTorchFunction().ctx():
+with PrintTorDis().enter(), PrintTorFunc().enter():
     c = a + b
 
 # %% [markdown]
@@ -34,15 +34,17 @@ with PrintTorchDispatch().ctx(), PrintTorchFunction().ctx():
 c
 
 # %%
-with PrintTorchDispatch().ctx(), PrintTorchFunction().ctx(), torch_mode_off():
+with PrintTorDis().enter(), PrintTorFunc().enter(), mode_off():
     c = a + b
 
 # %% [markdown]
-# Have nothing at all! This is because `torch_mode_off` disable things "outside" its scope.
+# Have nothing at all! This is because `mode_off` disable things "outside" its scope.
+#
+# This is the same to how it works with torch's dispatch mode and function mode.
 
 # %%
-with PrintTorchDispatch().ctx(), torch_mode_off(), PrintTorchFunction().ctx():
+with PrintTorDis().enter(), mode_off(), PrintTorFunc().enter():
     c = a + b
 
 # %% [markdown]
-# Only "function::" calls are left. `torch_mode_off` disabled all the contexts entered before it.
+# Only "function::" calls are left. `mode_off` disabled all the contexts entered before it.

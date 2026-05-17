@@ -5,7 +5,7 @@ import dataclasses as dcls
 import pytest
 import torch
 
-from aioway._common.decomps import find_nested_tensors
+from aioway._common import find_nested_tensors
 
 
 @pytest.fixture

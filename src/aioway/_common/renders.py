@@ -16,7 +16,7 @@ __all__ = [
     "subclass_tree",
     "print_subclass_tree",
     "render_class_syntax",
-    "render_func_name",
+    "render_torch_func_name",
 ]
 
 type FunctionLike = str | cabc.Callable[..., typing.Any]
@@ -78,7 +78,7 @@ def _subclass_tree(
         _subclass_tree(sub_cls, sub_tree, seen=seen, render=render)
 
 
-def render_func_name(func: cabc.Callable[..., typing.Any]) -> str:
+def render_torch_func_name(func: cabc.Callable[..., typing.Any]) -> str:
     name = func.__name__
 
     # Only descriptors use `__get__`, and we render the descriptor itself.

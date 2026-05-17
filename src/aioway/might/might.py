@@ -1,18 +1,19 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import abc
+import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
 from torch import nn
 
-from aioway._common import dcls_frozen_no_repr
+from aioway._common import dcls_no_repr
 from aioway.op import Op
 
 __all__ = ["Might", "find_might", "all_mights"]
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
 class Might(Op[type[nn.Module]], abc.ABC):
     """
     `Might` is a preview of how an `nn.Module` would be initialized.
@@ -26,7 +27,9 @@ class Might(Op[type[nn.Module]], abc.ABC):
 
     @typing.override
     def do(self) -> nn.Module:
-        return super().do()
+        from aioway.fn import NnInitFn
+
+        return NnInitFn(func=self.KEY, args=(), kwargs=dcls.asdict(self)).do()
 
     @classmethod
     @typing.override
@@ -42,8 +45,8 @@ def find_might(nn_type: type[nn.Module], *args, **kwargs) -> Might:
     # Right now, each `Might` should have distinct key, so just return the 1st.
     # Just get the type. If an error is raised, construction failed,
     # pass the error back, since upper level signature failed.
-    for preview_type in Might.find(nn_type):
-        return preview_type(*args, **kwargs)
+    for might_type in Might.find(nn_type):
+        return might_type(*args, **kwargs)
 
     # No implementation found.
     return NotImplemented

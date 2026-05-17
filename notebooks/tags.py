@@ -17,28 +17,25 @@
 import torch
 
 # %%
-from aioway.fake import torch_fake_mode
-from aioway.fn import PrintTorDis, PrintTorFunc
+from aioway.tags import SampleRateTag
 
 # %%
-a = torch.randn(3, 4)
-b = torch.randn(1, 1)
+t = torch.randn(3, 4)
 
 # %%
-with PrintTorDis().enter(), PrintTorFunc().enter():
-    c = a + b
+sr = SampleRateTag(t, 100)
 
 # %%
-c
+s = torch.randn(4, 5)
 
 # %%
-with torch_fake_mode():
-    a = torch.randn(3, 4)
-    b = torch.randn(1, 1)
+sr.attach(s)
 
 # %%
-with PrintTorDis().enter(), PrintTorFunc().enter():
-    c = a + b
+SampleRateTag.extract(t)
 
 # %%
-c
+SampleRateTag.extract(s)
+
+# %%
+SampleRateTag.extract(t) == SampleRateTag.extract(s)

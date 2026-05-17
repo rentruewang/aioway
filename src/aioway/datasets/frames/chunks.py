@@ -9,7 +9,7 @@ import typing
 import numpy as np
 import tensordict as td
 
-from aioway._common import IntArray, is_list_of
+from aioway._common import is_list_of
 from aioway.schemas import AttrSet, attr_set
 
 from .frames import Frame
@@ -83,15 +83,15 @@ class TdListFrame(Frame):
         idx = np.asarray(i)
 
         # Which tensordict to use in `self.tensordicts`.
-        td_idx: IntArray = np.searchsorted(self._cumsum_len, idx, side="right")
+        td_idx = np.searchsorted(self._cumsum_len, idx, side="right")
         assert td_idx.shape == idx.shape
 
         # How many elements are in the partitions prior to the current.
-        prior_elements: IntArray = np.roll(self._cumsum_len, 1)
+        prior_elements = np.roll(self._cumsum_len, 1)
         prior_elements[0] = 0
 
         # Index in partition = original index - elements in prior partitions.
-        idx_in_part: IntArray = idx - prior_elements[td_idx]
+        idx_in_part = idx - prior_elements[td_idx]
 
         # `Chunk` that each index would correspond to.
         td_for_idx: list[td.TensorDict] = [self._list[t] for t in td_idx]
@@ -109,7 +109,7 @@ class TdListFrame(Frame):
         return td.cat(chunks).auto_batch_size_()
 
     @property
-    def _cumsum_len(self) -> IntArray:
+    def _cumsum_len(self):
         return np.cumsum([len(d) for d in self._list])
 
     @property

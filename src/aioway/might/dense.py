@@ -2,14 +2,23 @@
 
 from torch import nn
 
-from aioway._common import dcls_frozen_no_repr
+from aioway._common import dcls_no_repr
 
 from .might import Might
 
-__all__ = ["Linear", "Bilinear"]
+__all__ = ["Identity", "Linear", "Bilinear"]
 
 
-@dcls_frozen_no_repr
+@dcls_no_repr
+class Identity(Might):
+    """
+    A placeholder identity operator that is argument-insensitive.
+    """
+
+    KEY = nn.Identity
+
+
+@dcls_no_repr
 class Linear(Might):
     """
     Apply the transformation A @ x + b.
@@ -26,8 +35,15 @@ class Linear(Might):
     bias: bool = True
     "Whether to include the bias terms or not."
 
+    def __post_init__(self):
+        if self.in_features <= 0:
+            raise ValueError(f"{self.in_features=} <= 0.")
 
-@dcls_frozen_no_repr
+        if self.out_features <= 0:
+            raise ValueError(f"{self.out_features=} <= 0.")
+
+
+@dcls_no_repr
 class Bilinear(Might):
     """
     Apply the transformation x1 @ A @ x2 + b.
@@ -46,3 +62,13 @@ class Bilinear(Might):
 
     bias: bool = True
     "If set to `False`, the layer will not learn an additive bias. Default: `True`."
+
+    def __post_init__(self):
+        if self.in1_features <= 0:
+            raise ValueError(f"{self.in1_features=} <= 0.")
+
+        if self.in2_features <= 0:
+            raise ValueError(f"{self.in2_features=} <= 0.")
+
+        if self.out_features <= 0:
+            raise ValueError(f"{self.out_features=} <= 0.")

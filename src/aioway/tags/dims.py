@@ -2,22 +2,15 @@
 
 "Extra information about the tensors."
 
-import dataclasses as dcls
 import enum
 import functools
 import re
-import typing
 
-import torch
+from aioway._common import dcls_frozen_slots_no_eq
 
-from aioway.fake import is_fake_tensor
+from .tags import Tag
 
-__all__ = ["tag", "get_tag", "check_tag", "DimTag"]
-
-
-@typing.runtime_checkable
-class HasDimTag(typing.Protocol):
-    __aioway_dim_tag__: DimTag
+__all__ = ["DimTag", "DimInfo"]
 
 
 class DimInfo(enum.StrEnum):
@@ -51,10 +44,9 @@ class DimInfo(enum.StrEnum):
     """
 
 
-@dcls.dataclass(frozen=True)
-class DimTag:
-    tensor: torch.Tensor
-    "The tensor that is being piggy backed."
+@dcls_frozen_slots_no_eq
+class DimTag(Tag):
+    TAG = "__aioway_dim_tag__"
 
     tags: str
     """
@@ -63,40 +55,18 @@ class DimTag:
     """
 
     def __post_init__(self) -> None:
+        super().__post_init__()
+
         if len(self.tags) != (ndim := self.ndim):
             raise ValueError(
                 f"The {self.tags=} dimensions do not match the tensor's {ndim=}."
             )
 
-    @property
-    def ndim(self) -> int:
-        return self.tensor.ndim
-
-    @property
-    def is_fake(self) -> bool:
-        return is_fake_tensor(self.tensor)
+        if not _valid_dim_tag(self.tags):
+            raise ValueError("The dimension tags are not valid.")
 
 
-def tag(tensor: torch.Tensor, tag: str):
-    "Tag the `torch.Tensor` with the given tag."
-
-    def _cast_tensor(t: typing.Any) -> HasDimTag:
-        return t
-
-    dim_tag = DimTag(tensor, tag)
-    tagged = _cast_tensor(tensor)
-    tagged.__aioway_dim_tag__ = dim_tag
-
-
-def get_tag(tensor: torch.Tensor) -> DimTag | None:
-    if isinstance(tensor, HasDimTag):
-        return tensor.__aioway_dim_tag__
-
-    else:
-        return None
-
-
-def check_tag(tags: str) -> bool:
+def _valid_dim_tag(tags: str) -> bool:
     return _valid_regex().fullmatch(tags) is not None
 
 

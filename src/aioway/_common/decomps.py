@@ -42,9 +42,9 @@ DECOMP_BLOCK_TYPES = (
 def replace_tensors(
     obj: object, replace: cabc.Callable[[torch.Tensor], object]
 ) -> object:
-    from aioway.fn import set_torch_mode
+    from aioway.fn import mode_off
 
-    with set_torch_mode(False, False):
+    with mode_off():
         return _replace_tensors(obj, replace)
 
 
