@@ -101,17 +101,6 @@ class _BaseConvWeights(abc.ABC):
 
 
 @dcls_frozen_no_repr
-class _BasePoolReturn(abc.ABC):
-    _: dcls.KW_ONLY
-
-    return_indices: bool
-    """
-    If `True`, will return the max indices along with the outputs.
-    Useful for `torch.nn.MaxUnpool*d` later
-    """
-
-
-@dcls_frozen_no_repr
 class _BaseConv(_BaseSliding, _BaseConvWeights, Might):
     def __post_init__(self) -> None:
         _BaseSliding.__post_init__(self)
@@ -119,13 +108,19 @@ class _BaseConv(_BaseSliding, _BaseConvWeights, Might):
 
 
 @dcls_frozen_no_repr
-class _BaseAvgPool(_BaseAvgSliding, _BasePoolReturn, Might):
+class _BaseAvgPool(_BaseAvgSliding, Might):
     def __post_init__(self) -> None:
         _BaseAvgSliding.__post_init__(self)
 
 
 @dcls_frozen_no_repr
-class _BasePool(_BaseSliding, _BasePoolReturn, Might):
+class _BaseMaxPool(_BaseSliding, Might):
+    return_indices: bool = False
+    """
+    If `True`, will return the max indices along with the outputs.
+    Useful for `torch.nn.MaxUnpool*d` later
+    """
+
     def __post_init__(self) -> None:
         _BaseSliding.__post_init__(self)
 
@@ -161,7 +156,7 @@ class Conv3d(_BaseConv):
 
 
 @dcls_frozen_no_repr
-class MaxPool1d(_BasePool):
+class MaxPool1d(_BaseMaxPool):
     """
     Applies a 1D max pooling over an input signal composed of several input planes.
     """
@@ -171,7 +166,7 @@ class MaxPool1d(_BasePool):
 
 
 @dcls_frozen_no_repr
-class MaxPool2d(_BasePool):
+class MaxPool2d(_BaseMaxPool):
     """
     Applies a 2D max pooling over an input signal composed of several input planes.
     """
@@ -181,7 +176,7 @@ class MaxPool2d(_BasePool):
 
 
 @dcls_frozen_no_repr
-class MaxPool3d(_BasePool):
+class MaxPool3d(_BaseMaxPool):
     """
     Applies a 3D max pooling over an input signal composed of several input planes.
     """

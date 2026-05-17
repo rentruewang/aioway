@@ -37,26 +37,26 @@ class _BaseNorm(Might):
     Default: 0.1.
     """
 
-    affine: bool = True
-    """
-    A boolean value that when set to `True`, this module has learnable affine parameters.
-    Default: `True`.
-    """
+    # affine: bool = True
+    # """
+    # A boolean value that when set to `True`, this module has learnable affine parameters.
+    # Default: `True`.
+    # """
 
-    track_running_stats: bool = True
-    """
-    A boolean value that when set to `True`, this module tracks the running mean and variance,
-    and when set to `False`, this module does not track such statistics,
-    and initializes statistics buffers running_mean and running_var as None.
-    When these buffers are None, this module always uses batch statistics.
-    In both training and eval modes. Default: `True`
-    """
+    # track_running_stats: bool = True
+    # """
+    # A boolean value that when set to `True`, this module tracks the running mean and variance,
+    # and when set to `False`, this module does not track such statistics,
+    # and initializes statistics buffers running_mean and running_var as None.
+    # When these buffers are None, this module always uses batch statistics.
+    # In both training and eval modes. Default: `True`
+    # """
 
-    bias: bool = True
-    """
-    If set to `False`, the layer will not learn an additive bias,
-    only relevant if affine is `True`. Default: `True`
-    """
+    # bias: bool = True
+    # """
+    # If set to `False`, the layer will not learn an additive bias,
+    # only relevant if affine is `True`. Default: `True`
+    # """
 
     def __post_init__(self) -> None:
         if self.num_features <= 0:

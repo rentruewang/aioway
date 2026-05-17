@@ -24,6 +24,14 @@ def _cases():
     yield nn.Conv2d, {"in_channels": 3, "out_channels": 4, "kernel_size": 3}
     yield nn.Conv3d, {"in_channels": 3, "out_channels": 4, "kernel_size": 3}
 
+    yield nn.MaxPool1d, {"kernel_size": 3}
+    yield nn.MaxPool2d, {"kernel_size": 3}
+    yield nn.MaxPool3d, {"kernel_size": 3}
+
+    yield nn.AvgPool1d, {"kernel_size": 3}
+    yield nn.AvgPool2d, {"kernel_size": 3}
+    yield nn.AvgPool3d, {"kernel_size": 3}
+
     yield nn.Embedding, {"num_embeddings": 10, "embedding_dim": 3}
     yield nn.EmbeddingBag, {"num_embeddings": 10, "embedding_dim": 3}
 
@@ -36,6 +44,19 @@ def _cases():
     yield nn.BCELoss, {}
     yield nn.BCEWithLogitsLoss, {}
     yield nn.SmoothL1Loss, {}
+
+    yield nn.Dropout, {}
+    yield nn.Dropout1d, {}
+    yield nn.Dropout2d, {}
+    yield nn.Dropout3d, {}
+
+    yield nn.BatchNorm1d, {"num_features": 13}
+    yield nn.BatchNorm2d, {"num_features": 13}
+    yield nn.BatchNorm3d, {"num_features": 13}
+
+    yield nn.InstanceNorm1d, {"num_features": 13}
+    yield nn.InstanceNorm2d, {"num_features": 13}
+    yield nn.InstanceNorm3d, {"num_features": 13}
 
 
 def _module_opts():
