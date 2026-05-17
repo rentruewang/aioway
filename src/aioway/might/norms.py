@@ -1,13 +1,21 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import typing
+
 from torch import nn
 
 from aioway._common import dcls_frozen_no_repr
 
 from .might import Might
 
-__all__ = ["Identity", "Linear", "Bilinear"]
+__all__ = [
+    "BatchNorm1d",
+    "BatchNorm2d",
+    "BatchNorm3d",
+    "InstanceNorm1d",
+    "InstanceNorm2d",
+    "InstanceNorm3d",
+]
 
 
 @dcls_frozen_no_repr

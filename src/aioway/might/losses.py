@@ -1,12 +1,12 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import typing
+
 from torch import nn
 
 from aioway._common import dcls_frozen_no_repr
 
 from .might import Might
-
-import typing
 
 __all__ = [
     "L1Loss",
