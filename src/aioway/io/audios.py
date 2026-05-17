@@ -34,10 +34,11 @@ class AvAudioLoader(AudioLoader):
     def load_wave(self, fname: str | pathlib.Path, /) -> torch.Tensor:
         container = av.open(fname)
 
+        # Get the metadata for fake mode to work.
         stream = container.streams.audio[0]
         sample_rate = stream.codec_context.sample_rate
         channels = stream.codec_context.channels
-        assert stream.duration
+        assert stream.duration, "Duration should exist, this is not a stream!"
         frames = stream.duration * stream.sample_rate
 
         # Create a fake tensor of float32 in fake mode.
@@ -46,6 +47,7 @@ class AvAudioLoader(AudioLoader):
                 shape=[channels, frames], dtype=torch.float32
             ).to_fake_tensor()
 
+        # Decode frame by frame.
         else:
             chunks: list[np.ndarray] = []
             for frame in container.decode(stream):
