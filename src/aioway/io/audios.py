@@ -23,8 +23,13 @@ def encode_with_stft(audio: torch.Tensor, /, n_fft: int) -> torch.Tensor:
     """
 
     result = torch.stft(audio, n_fft, return_complex=True)
-    SampleRateTag.extract(audio)
-    return result.real
+    real_result = result.real
+
+    # Perhaps we should handle tags passing in `Fate`.
+    if tag := SampleRateTag.extract(audio):
+        tag.attach(real_result)
+
+    return real_result
 
 
 class AvAudioLoader(AudioLoader):

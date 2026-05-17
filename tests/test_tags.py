@@ -63,7 +63,7 @@ def test_tag_eq(valid_tags: TensorAndTag):
 
     assert not extract_tags(another)
 
-    other_tag = tag.tag(another)
+    other_tag = tag.attach(another)
 
     assert extract_tags(another)
     assert tag is not other_tag

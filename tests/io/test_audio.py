@@ -38,4 +38,4 @@ def test_read_audio_stft(
     audio = loader(example_audio)
     stft = encode_with_stft(audio, 20)
     assert isinstance(stft, torch.Tensor)
-    # assert SampleRateTag.extract(stft) == SampleRateTag.extract(audio)
+    assert SampleRateTag.extract(stft) == SampleRateTag.extract(audio)

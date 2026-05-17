@@ -79,9 +79,9 @@ class Tag(abc.ABC):
     def is_fake(self) -> bool:
         return is_fake_tensor(self.tensor)
 
-    def tag(self, other: torch.Tensor, /) -> typing.Self:
+    def attach(self, other: torch.Tensor, /) -> typing.Self:
         """
-        Tag the instance on another tensor.
+        Tag the instance on another tensor. These 2 tags would be `==` to each other.
         """
 
         # In case the same tensor is tagged again.
@@ -92,6 +92,7 @@ class Tag(abc.ABC):
         # and call `__post_init__` which handles attribute setting.
         copied = dcls.replace(self, tensor=other)
         copied.__post_init__()
+        assert copied == self.extract(other)
         return copied
 
     @classmethod

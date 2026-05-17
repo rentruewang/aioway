@@ -21,5 +21,7 @@ class SampleRateTag(Tag):
     """
 
     def __post_init__(self):
+        super().__post_init__()
+
         if self.sample_rate <= 0:
             raise ValueError(f"{self.sample_rate} <= 0.")
