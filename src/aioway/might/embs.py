@@ -1,21 +1,18 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import typing
 from torch import nn
 
 from aioway._common import dcls_frozen_no_repr
 
 from .might import Might
 
-__all__ = ["Linear", "Bilinear"]
+__all__ = ["Embedding"]
 
 
 @dcls_frozen_no_repr
-class Embedding(Might):
-    """
-    A simple lookup table that stores embeddings of a fixed dictionary and size.
-    """
-
-    KEY = nn.Embedding
+class _BaseEmbedding(Might):
+    KEY: typing.ClassVar[type[nn.Module]] = NotImplemented
 
     num_embeddings: int
     "The size of the dictionary of embeddings."
@@ -29,3 +26,22 @@ class Embedding(Might):
 
         if self.embedding_dim <= 0:
             raise ValueError(f"{self.embedding_dim=} <= 0.")
+
+
+@dcls_frozen_no_repr
+class Embedding(_BaseEmbedding):
+    """
+    A simple lookup table that stores embeddings of a fixed dictionary and size.
+    """
+
+    KEY = nn.Embedding
+
+
+@dcls_frozen_no_repr
+class EmbeddingBag(_BaseEmbedding):
+    """
+    Compute sums or means of 'bags' of embeddings,
+    without instantiating the intermediate embeddings.
+    """
+
+    KEY = nn.EmbeddingBag

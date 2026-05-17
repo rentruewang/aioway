@@ -10,6 +10,9 @@ from aioway._common import dcls_frozen_no_repr, is_tuple_of
 
 from .might import Might
 
+_PADDING = frozenset(["zeros", "reflect", "replicate", "circular"])
+"Valid padding values."
+
 
 @dcls_frozen_no_repr
 class _BaseConv(Might, abc.ABC):
@@ -62,10 +65,8 @@ class _BaseConv(Might, abc.ABC):
         _ = self._int_as_tuple(self.dilation)
 
         # Padding should be one of these.
-        if self.padding_mode not in (
-            opts := ["zeros", "reflect", "replicate", "circular"]
-        ):
-            raise ValueError(f"{self.padding_mode=!r} should be one of {opts}.")
+        if self.padding_mode not in _PADDING:
+            raise ValueError(f"{self.padding_mode=!r} should be one of {_PADDING}.")
 
     @classmethod
     def _int_as_tuple(cls, val: int | tuple[int, ...]) -> tuple[int, ...]:

@@ -3,3 +3,5 @@
 from .convs import *
 from .dense import *
 from .might import *
+from .losses import *
+from .embs import *

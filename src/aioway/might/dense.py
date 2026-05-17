@@ -6,7 +6,16 @@ from aioway._common import dcls_frozen_no_repr
 
 from .might import Might
 
-__all__ = ["Linear", "Bilinear"]
+__all__ = ["Identity", "Linear", "Bilinear"]
+
+
+@dcls_frozen_no_repr
+class Identity(Might):
+    """
+    A placeholder identity operator that is argument-insensitive.
+    """
+
+    KEY = nn.Identity
 
 
 @dcls_frozen_no_repr
