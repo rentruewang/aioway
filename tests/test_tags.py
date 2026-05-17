@@ -5,8 +5,7 @@ import typing
 import pytest
 import torch
 
-from aioway.tags import DimTag
-from aioway.tags.tags import extract_tags
+from aioway.tags import DimTag, extract_tags
 
 
 def _valid_tags():
