@@ -14,7 +14,7 @@ if typing.TYPE_CHECKING:
     from .audios import SampleRateTag
     from .dims import DimTag
 
-__all__ = ["Tag", "DimTagged"]
+__all__ = ["Tag", "HasDimTag", "HasSampleRateTag"]
 
 
 @dcls.dataclass(frozen=True, slots=True)
@@ -40,12 +40,12 @@ class Tag(abc.ABC):
 
 
 @typing.runtime_checkable
-class DimTagged(typing.Protocol):
+class HasDimTag(typing.Protocol):
     __aioway_dim_tag__: DimTag
     "The dimension tag on the tensor."
 
 
 @typing.runtime_checkable
-class SampleRateTagged(typing.Protocol):
+class HasSampleRateTag(typing.Protocol):
     __aioway_sample_rate__: SampleRateTag
     "The sample rate on the audio tensor."

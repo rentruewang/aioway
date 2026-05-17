@@ -9,7 +9,7 @@ import re
 
 from .tags import Tag
 
-__all__ = ["DimTag", "DimInfo", "valid_dim_tag"]
+__all__ = ["DimTag", "DimInfo"]
 
 
 class DimInfo(enum.StrEnum):
@@ -57,11 +57,11 @@ class DimTag(Tag):
                 f"The {self.tags=} dimensions do not match the tensor's {ndim=}."
             )
 
-        if not valid_dim_tag(self.tags):
+        if not _valid_dim_tag(self.tags):
             raise ValueError("The dimension tags are not valid.")
 
 
-def valid_dim_tag(tags: str) -> bool:
+def _valid_dim_tag(tags: str) -> bool:
     return _valid_regex().fullmatch(tags) is not None
 
 
