@@ -5,7 +5,7 @@ import typing
 import pytest
 import torch
 
-from aioway.tags.dims import DimTag
+from aioway.tags import DimTag, extract_tags
 
 
 def _valid_tags():
@@ -41,9 +41,30 @@ def invalid_tags(request: pytest.FixtureRequest):
 
 
 def test_valid_tags(valid_tags: TensorAndTag):
-    assert DimTag(valid_tags.tensor, valid_tags.tag)
+    _ = DimTag(valid_tags.tensor, valid_tags.tag)
 
 
 def test_invalid_tags(invalid_tags: TensorAndTag):
     with pytest.raises(ValueError):
         _ = DimTag(invalid_tags.tensor, invalid_tags.tag)
+
+
+def test_attach(valid_tags: TensorAndTag):
+    tag = DimTag(valid_tags.tensor, valid_tags.tag)
+    assert tag.tensor is valid_tags.tensor
+    assert hasattr(tag.tensor, DimTag.TAG)
+    assert DimTag.extract(valid_tags.tensor) is tag
+    assert extract_tags(valid_tags.tensor) == {DimTag.TAG: tag}
+
+
+def test_tag_eq(valid_tags: TensorAndTag):
+    tag = DimTag(valid_tags.tensor, valid_tags.tag)
+    another = valid_tags.tensor.clone()
+
+    assert not extract_tags(another)
+
+    other_tag = tag.attach(another)
+
+    assert extract_tags(another)
+    assert tag is not other_tag
+    assert tag == other_tag

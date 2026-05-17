@@ -1,6 +1,5 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import abc
 import dataclasses as dcls
 import pathlib
 import typing
@@ -13,22 +12,14 @@ from torchvision.transforms import v2 as tt
 from aioway.fake import torch_enable_fake_mode_func
 from aioway.schemas import attr
 
+from .io import ImageLoader
+
 __all__ = [
-    "ImageLoader",
     "ComposedImageLoader",
     "PillowImageLoader",
     "FakePillowImageLoader",
     "TvioImageLoader",
 ]
-
-
-@dcls.dataclass
-class ImageLoader(abc.ABC):
-    "The image loader API. Converts from a file name `fname` to a tensor."
-
-    @abc.abstractmethod
-    def __call__(self, fname: str | pathlib.Path, /) -> torch.Tensor:
-        raise NotImplementedError
 
 
 @dcls.dataclass
@@ -50,7 +41,7 @@ class ComposedImageLoader(ImageLoader):
     """
 
     @typing.override
-    def __call__(self, fname: str | pathlib.Path, /) -> torch.Tensor:
+    def load_img(self, fname: str | pathlib.Path, /) -> torch.Tensor:
         tensor = self.loader(fname)
         return self.transform(tensor)
 
@@ -65,7 +56,7 @@ class PillowImageLoader(ImageLoader):
     "The transform to use to convert the pillow image to a tensor."
 
     @typing.override
-    def __call__(self, fname: str | pathlib.Path, /) -> torch.Tensor:
+    def load_img(self, fname: str | pathlib.Path, /) -> torch.Tensor:
         img = image.open(fname)
         return self.transform(img)
 
@@ -73,7 +64,7 @@ class PillowImageLoader(ImageLoader):
 @dcls.dataclass
 class FakePillowImageLoader(ImageLoader):
     @typing.override
-    def __call__(self, fname: str | pathlib.Path, /) -> torch.Tensor:
+    def load_img(self, fname: str | pathlib.Path, /) -> torch.Tensor:
         img = image.open(fname)
 
         # Convert to `uint8` as a hack, because we don't support it in our dtypes.
@@ -87,7 +78,7 @@ class FakePillowImageLoader(ImageLoader):
 
 
 @dcls.dataclass
-class TvioImageLoader:
+class TvioImageLoader(ImageLoader):
     """
     The loader backed by `torchvision.io`. It should be faster than the PIL route.
 
@@ -97,7 +88,8 @@ class TvioImageLoader:
     norm: bool = False
     "If `True`, normalize the `uint8` tensor to 0-1 `float` tensor."
 
-    def __call__(self, fname: str | pathlib.Path):
+    @typing.override
+    def load_img(self, fname: str | pathlib.Path):
         reader = self._read_normalized if self.norm else self._read_image
         return reader(fname)
 

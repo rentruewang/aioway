@@ -2,10 +2,11 @@
 
 "Extra information about the tensors."
 
-import dataclasses as dcls
 import enum
 import functools
 import re
+
+from aioway._common import dcls_frozen_slots_no_eq
 
 from .tags import Tag
 
@@ -43,8 +44,10 @@ class DimInfo(enum.StrEnum):
     """
 
 
-@dcls.dataclass(frozen=True, slots=True)
+@dcls_frozen_slots_no_eq
 class DimTag(Tag):
+    TAG = "__aioway_dim_tag__"
+
     tags: str
     """
     The tags. For efficiency purposes we store it in strings.
@@ -52,6 +55,8 @@ class DimTag(Tag):
     """
 
     def __post_init__(self) -> None:
+        super().__post_init__()
+
         if len(self.tags) != (ndim := self.ndim):
             raise ValueError(
                 f"The {self.tags=} dimensions do not match the tensor's {ndim=}."

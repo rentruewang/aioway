@@ -1,45 +1,99 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import os
+import pathlib
 import typing
 
+import av
+import numpy as np
 import torch
 from torchcodec import decoders as dec
 
-from aioway.fake import torch_enable_fake_mode_func
+from aioway.fake import enabled_fake_mode, torch_enable_fake_mode_func
+from aioway.schemas import Attr
+from aioway.tags import SampleRateTag
 
-__all__ = ["AudioData", "read_audio_from_path"]
+from .io import AudioLoader
 
-
-class AudioData(typing.Protocol):
-    data: torch.Tensor
-    "The sample data, [num channels, num samples]."
-
-    sample_rate: int
-    "The sample rate in Hz."
+__all__ = ["AvAudioLoader", "TorchCodecAudioLoader"]
 
 
-@torch_enable_fake_mode_func(False)
-def read_audio_from_path(
-    fname: os.PathLike[str], sample_rate: int | None = None
-) -> AudioData:
+def encode_with_stft(audio: torch.Tensor, /, n_fft: int) -> torch.Tensor:
     """
-    Read and decode audio from path.
-
-    Args:
-        fname: The file location.
-        sample_rate:
-            The sample rate in Hz.
-            If given, this should be equal to the sample rate in return value.
+    Encode the audio with `torch.stft`. Naturally works with fake mode.
     """
 
-    decoder = dec.AudioDecoder(str(fname), sample_rate=sample_rate)
-    samples = decoder.get_all_samples()
+    result = torch.stft(audio, n_fft, return_complex=True)
+    real_result = result.real
 
-    if sample_rate and sample_rate != samples.sample_rate:
-        raise AssertionError(
-            f"The configured sample rates {sample_rate} "
-            f"and output {samples.sample_rate} should be equal."
-        )
+    # Perhaps we should handle tags passing in `Fate`.
+    if tag := SampleRateTag.extract(audio):
+        tag.attach(real_result)
 
-    return samples
+    return real_result
+
+
+class AvAudioLoader(AudioLoader):
+    "Load the audio with `av` library."
+
+    @typing.override
+    def load_wave(self, fname: str | pathlib.Path, /) -> torch.Tensor:
+        container = av.open(fname)
+
+        # Get the metadata for fake mode to work.
+        stream = container.streams.audio[0]
+        sample_rate = stream.codec_context.sample_rate
+        channels = stream.codec_context.channels
+        assert stream.duration, "Duration should exist, this is not a stream!"
+        frames = stream.duration * stream.sample_rate
+
+        # Create a fake tensor of float32 in fake mode.
+        if enabled_fake_mode():
+            tensor = Attr.parse(
+                shape=[channels, frames], dtype=torch.float32
+            ).to_fake_tensor()
+
+        # Decode frame by frame.
+        else:
+            chunks: list[np.ndarray] = []
+            for frame in container.decode(stream):
+                arr = frame.to_ndarray()
+                assert arr.ndim == 2
+                assert len(arr) == channels
+                chunks.append(arr)
+
+            array = np.concat(chunks, axis=1)
+            tensor = torch.tensor(array)
+
+        _ = SampleRateTag(tensor, sample_rate)
+        return tensor
+
+
+class TorchCodecAudioLoader(AudioLoader):
+
+    @typing.override
+    def load_wave(self, fname: str | pathlib.Path, /) -> torch.Tensor:
+        return self._read_audio_from_path(fname)
+
+    @torch_enable_fake_mode_func(False)
+    def _read_audio_from_path(self, fname: str | pathlib.Path) -> torch.Tensor:
+        """
+        Read and decode audio from path.
+
+        Args:
+            fname: The file location.
+            sample_rate:
+                The sample rate in Hz.
+                If given, this should be equal to the sample rate in return value.
+        """
+
+        decoder = dec.AudioDecoder(str(fname), sample_rate=self.sample_rate)
+        samples = decoder.get_all_samples()
+
+        if self.sample_rate and self.sample_rate != samples.sample_rate:
+            raise AssertionError(
+                f"The configured sample rates {self.sample_rate} "
+                f"and output {samples.sample_rate} should be equal."
+            )
+
+        _ = SampleRateTag(samples.data, samples.sample_rate)
+        return samples.data
