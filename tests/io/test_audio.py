@@ -6,6 +6,7 @@ import pytest
 import torch
 
 from aioway.io import AudioLoader, AvAudioLoader, TorchCodecAudioLoader
+from aioway.io.audios import encode_with_stft
 from aioway.tags import SampleRateTag
 
 
@@ -29,3 +30,12 @@ def test_read_audio_tags(
 ):
     audio = loader(example_audio)
     assert SampleRateTag.extract(audio) is not None
+
+
+def test_read_audio_stft(
+    example_audio: pathlib.Path, loader: AudioLoader, maybe_fake_mode
+):
+    audio = loader(example_audio)
+    stft = encode_with_stft(audio, 20)
+    assert isinstance(stft, torch.Tensor)
+    # assert SampleRateTag.extract(stft) == SampleRateTag.extract(audio)

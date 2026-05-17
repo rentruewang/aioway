@@ -56,6 +56,7 @@ class AudioLoader(FileLoader, abc.ABC):
         if SampleRateTag.extract(audio) is None:
             raise AssertionError(f"Forgot to tag the audio tensor with sample rate.")
 
+        assert audio.ndim == 2, audio.shape
         return audio
 
     @abc.abstractmethod

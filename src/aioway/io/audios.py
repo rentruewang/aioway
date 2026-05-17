@@ -37,7 +37,8 @@ class AvAudioLoader(AudioLoader):
         stream = container.streams.audio[0]
         sample_rate = stream.codec_context.sample_rate
         channels = stream.codec_context.channels
-        frames = stream.frames
+        assert stream.duration
+        frames = stream.duration * stream.sample_rate
 
         # Create a fake tensor of float32 in fake mode.
         if enabled_fake_mode():
