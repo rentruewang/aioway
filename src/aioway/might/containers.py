@@ -21,7 +21,7 @@ class Sequential(Might):
 
     KEY = nn.Sequential
 
-    modules: list[Might]
+    modules: tuple[nn.Module, ...]
     """
     A list of `Might` objects that can be resolved later.
     """
@@ -32,8 +32,9 @@ class Sequential(Might):
 
         # Create `nn.Sequential` instance with `NnInitFn` is the best way
         # to ensure that the modes are invoked properly.
-        return NnInitFn(
-            func=self.KEY,
-            args=tuple(might.do() for might in self.modules),
-            kwargs={},
-        ).do()
+        return NnInitFn(func=self.KEY, args=self.modules, kwargs={}).do()
+
+    @classmethod
+    @typing.override
+    def create(cls, *args: nn.Module) -> typing.Self:
+        return cls(modules=args)

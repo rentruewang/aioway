@@ -6,7 +6,7 @@ import pytest
 from torch import nn
 
 from aioway._common import render_fcall
-from aioway.might import Might, find_might
+from aioway.might import Might, Sequential, find_might
 
 
 class _ModuleOpts(typing.NamedTuple):
@@ -81,3 +81,10 @@ def test_might_init(might: Might):
 def test_might_do(might: Might):
     module = might.do()
     assert isinstance(module, nn.Module)
+
+
+def test_sequential():
+    seq = find_might(nn.Sequential, nn.Linear(1, 2), nn.Linear(2, 3), nn.Linear(3, 4))
+    assert isinstance(seq, Might)
+    assert isinstance(seq, Sequential)
+    assert len(seq.modules) == 3

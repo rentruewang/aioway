@@ -100,3 +100,15 @@ class Op[K: cabc.Callable[..., object]](abc.ABC):
     def is_concrete(cls) -> bool:
         # Concrete in class var and concrete in methods.
         return cls.KEY is not NotImplemented and not inspect.isabstract(cls)
+
+    @classmethod
+    def create(cls, *args, **kwargs) -> typing.Self:
+        """
+        The constructor for the `Op` class.
+        This is designed to handle inconsistencies between `aioway` and `torch` API.
+
+        For example, `nn.Sequential(*nn.Module)` really cannot be modelled into dataclasses,
+        but, solvable with both `create` and `do` (and every calls these functions only).
+        """
+
+        return cls(*args, **kwargs)

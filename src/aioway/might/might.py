@@ -46,7 +46,7 @@ def find_might(nn_type: type[nn.Module], *args, **kwargs) -> Might:
     # Just get the type. If an error is raised, construction failed,
     # pass the error back, since upper level signature failed.
     for might_type in Might.find(nn_type):
-        return might_type(*args, **kwargs)
+        return might_type.create(*args, **kwargs)
 
     # No implementation found.
     return NotImplemented

@@ -60,7 +60,7 @@ def find_fate(op: _ops.OpOverload, *args: typing.Any, **kwargs: typing.Any) -> F
     """
 
     for sub_type in Fate.find(op):
-        if not (fate := sub_type(*args, **kwargs)).ok():
+        if not (fate := sub_type.create(*args, **kwargs)).ok():
             continue
 
         return fate
