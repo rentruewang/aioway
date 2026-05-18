@@ -2,5 +2,7 @@
 
 from .fn import *
 from .hists import *
-from .modes import *
+from .modules import *
+from .tensors import *
+from .toggles import *
 from .tracking import *

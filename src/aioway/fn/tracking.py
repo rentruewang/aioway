@@ -17,16 +17,8 @@ from aioway.fake import enabled_fake_mode, torch_fake_mode
 
 from .common import replace_tensors_with_attr
 from .hists import Hist, HistTensorGraph
-from .modes import (
-    NnFwdFn,
-    NnFwdMode,
-    NnInitFn,
-    NnInitMode,
-    TorDisFn,
-    TorDisMode,
-    TorFuncFn,
-    TorFuncMode,
-)
+from .modules import NnFwdFn, NnFwdMode, NnInitFn, NnInitMode
+from .tensors import TorDisFn, TorDisMode, TorFuncFn, TorFuncMode
 
 if typing.TYPE_CHECKING:
     from aioway.fate import FateFn

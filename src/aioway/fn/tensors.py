@@ -15,9 +15,9 @@ from torch.utils import _python_dispatch as pyd
 
 from aioway._common import is_aten_op, is_prim_op
 
-from ..common import render_function_body_prefix
-from ..fn import TorchThunk
 from ._on_off import OnOffCtx, OnOffStack
+from .common import render_function_body_prefix
+from .fn import TorchThunk
 
 __all__ = ["TorFuncMode", "TorDisMode", "TorFuncFn", "TorDisFn"]
 

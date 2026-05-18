@@ -14,8 +14,9 @@ type _ModeName = typing.Literal["function", "dispatch", "init", "forward"]
 
 def active_mode(mode: _ModeName):
     """
-    Get the mode for
+    Get the mode stack for the specified `mode`.
     """
+
     match mode:
         case "function":
             return FUNCTIONS
