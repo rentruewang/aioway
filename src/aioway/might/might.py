@@ -3,7 +3,6 @@
 import abc
 import dataclasses as dcls
 import typing
-from collections import abc as cabc
 
 from torch import nn
 
@@ -58,12 +57,4 @@ def all_mights():
     Get the registry for previews.
     """
 
-    return list(_iter_previews(Might))
-
-
-def _iter_previews(cls: type[Might]) -> cabc.Generator[type[Might]]:
-    for sub in cls.__subclasses__():
-        if sub.is_concrete():
-            yield sub
-
-        yield from _iter_previews(sub)
+    return list(Might.impls())

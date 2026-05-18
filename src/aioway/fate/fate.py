@@ -5,7 +5,6 @@
 import abc
 import re
 import typing
-from collections import abc as cabc
 
 from torch import _ops
 
@@ -73,15 +72,7 @@ def all_fates():
     """
     Get the registry for the fates.
     """
-    return list(_iter_fate(Fate))
-
-
-def _iter_fate(cls: type[Fate]) -> cabc.Generator[type[Fate]]:
-    for sub in cls.__subclasses__():
-        if sub.is_concrete():
-            yield sub
-
-        yield from _iter_fate(sub)
+    return list(Fate.impls())
 
 
 _CAMEL_CASE_REGEX = re.compile(r"(?<!^)(?=[A-Z])")

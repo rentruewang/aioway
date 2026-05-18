@@ -90,13 +90,30 @@ class Op[K: cabc.Callable[..., object]](abc.ABC):
             Only concrete classes are considered.
         """
 
-        for sub in cls.__subclasses__():
-            if sub.is_concrete() and sub.KEY == key:
+        for sub in cls.impls():
+            if sub.KEY == key:
                 yield sub
 
-            yield from sub.find(key)
+    @classmethod
+    def impls(cls) -> cabc.Generator[type[typing.Self]]:
+        """
+        Walk the subclass tree, and get all the concrete subclasses that `Op` has.
+
+        Yields:
+            Subclasses if they are concrete (has `cls.is_concrete()` is `True`).
+        """
+
+        yield from _iter_ops(cls)
 
     @classmethod
     def is_concrete(cls) -> bool:
         # Concrete in class var and concrete in methods.
         return cls.KEY is not NotImplemented and not inspect.isabstract(cls)
+
+
+def _iter_ops[T: Op](cls: type[T]) -> cabc.Generator[type[T]]:
+    for sub in cls.__subclasses__():
+        if sub.is_concrete():
+            yield sub
+
+        yield from _iter_ops(sub)

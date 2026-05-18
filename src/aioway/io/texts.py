@@ -7,13 +7,22 @@ import pathlib
 import torch
 import transformers
 
+from aioway.tags import IsTokenizedTag
+
+from ._bases import TorchCompatible
+
 __all__ = ["TokenizerLoader", "TokenizeResult"]
 
 
 @dcls.dataclass(frozen=True)
-class TokenizeResult:
+class TokenizeResult(TorchCompatible):
+    tokenizer: str
     input_ids: torch.Tensor
     attention_mask: torch.Tensor
+
+    def to_tensor(self):
+        IsTokenizedTag(self.tokenizer).attach(self.input_ids)
+        return self.input_ids
 
 
 @dcls.dataclass
@@ -28,7 +37,9 @@ class TokenizerLoader:
         text = fname.read_text()
         result = self.tokenizer(text, return_tensors="pt", padding=True)
         return TokenizeResult(
-            input_ids=result["input_ids"], attention_mask=result["attention_mask"]
+            tokenizer=self.name,
+            input_ids=result["input_ids"],
+            attention_mask=result["attention_mask"],
         )
 
     @property
