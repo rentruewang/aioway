@@ -10,7 +10,7 @@ import typing
 import rich
 from torch import nn
 
-from aioway._common.decomps import replace_tensors
+from aioway.decomps import replace_tensors
 from aioway.fake import enabled_fake_mode, torch_fake_mode
 
 from .common import replace_tensors_with_attr

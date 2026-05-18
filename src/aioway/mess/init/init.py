@@ -6,10 +6,10 @@ import typing
 
 from torch import nn
 
-from aioway._common._types import dcls_no_repr
-from aioway._common.renders import render_fcall
 from aioway._keyed import Keyed
+from aioway._types import dcls_no_repr
 from aioway.fn import NnInitFn
+from aioway.renders import render_fcall
 
 __all__ = ["MessInit", "find_might", "all_mights"]
 

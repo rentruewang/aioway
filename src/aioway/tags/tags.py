@@ -8,7 +8,7 @@ import typing
 
 import torch
 
-from aioway._common._types import dcls_frozen_slots
+from aioway._types import dcls_frozen_slots
 
 __all__ = ["Tag", "extract_tags"]
 

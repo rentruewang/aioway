@@ -7,7 +7,7 @@ import pytest
 import tensordict as td
 import torch
 
-from aioway._common._torch import tdict_all_equal
+from aioway._torch import tdict_all_equal
 from aioway.datasets import (
     CacheStream,
     ListStream,

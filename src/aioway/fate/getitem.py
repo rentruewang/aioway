@@ -6,7 +6,7 @@ import typing
 import torch
 from torch import ops
 
-from aioway._common._types import dcls_no_repr
+from aioway._types import dcls_no_repr
 
 from .fate import Fate
 

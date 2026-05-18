@@ -10,8 +10,8 @@ import typing
 
 import torch
 
-from aioway._common._torch import is_leaf_has_grad
-from aioway._common.decomps import find_nested_tensors
+from aioway._torch import is_leaf_has_grad
+from aioway.decomps import find_nested_tensors
 from aioway.schemas import attr
 
 from .common import replace_tensors_with_attr

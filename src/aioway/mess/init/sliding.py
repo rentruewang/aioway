@@ -7,8 +7,8 @@ import typing
 
 from torch import nn
 
-from aioway._common._types import dcls_no_repr
-from aioway._common._typing import is_tuple_of
+from aioway._types import dcls_no_repr
+from aioway._typing import is_tuple_of
 
 from .init import MessInit
 

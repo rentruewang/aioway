@@ -6,8 +6,8 @@ import typing
 
 from torch import nn
 
-from aioway._common._types import dcls_no_repr
 from aioway._keyed import Keyed
+from aioway._types import dcls_no_repr
 from aioway.fn import NnFwdFn
 
 __all__ = ["Mess"]
