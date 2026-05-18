@@ -1,22 +1,20 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-raise NotImplementedError
 import abc
 import dataclasses as dcls
 import typing
 
 from torch import nn
 
-from aioway._common import dcls_no_repr
+from aioway._common._types import dcls_no_repr
+from aioway._keyed import Keyed
 from aioway.fn import NnFwdFn
-
-from .op import Op
 
 __all__ = ["Mess"]
 
 
 @dcls_no_repr
-class Mess(Op[type[nn.Module]], abc.ABC):
+class Mess(Keyed[type[nn.Module]], abc.ABC):
     """
     `Mess` is the runtime information for `nn.Module`,
     containing information of `nn.Module.forward`.
@@ -27,7 +25,6 @@ class Mess(Op[type[nn.Module]], abc.ABC):
 
     KEY: typing.ClassVar[type[nn.Module]] = NotImplemented
 
-    @typing.override
     def do(self) -> object:
         return NnFwdFn(func=self.KEY, args=(), kwargs=dcls.asdict(self)).do()
 

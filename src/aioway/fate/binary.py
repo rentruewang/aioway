@@ -9,7 +9,8 @@ from collections import abc as cabc
 import torch
 from torch import ops
 
-from aioway._common import dcls_no_repr, is_float_tensor
+from aioway._common._torch import is_float_tensor
+from aioway._common._types import dcls_no_repr
 
 from .fate import Fate
 

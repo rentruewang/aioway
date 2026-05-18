@@ -13,7 +13,7 @@ from collections import abc as cabc
 import tensordict as td
 from torch.utils import data
 
-from aioway._common import is_list_of
+from aioway._common._typing import is_list_of
 from aioway.schemas import AttrSet, attr_set
 
 from ..frames import Frame

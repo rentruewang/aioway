@@ -8,7 +8,9 @@ import typing
 
 from torch import _ops
 
-from aioway._common import dcls_no_repr, find_nested_tensors, render_fcall
+from aioway._common._types import dcls_no_repr
+from aioway._common.decomps import find_nested_tensors
+from aioway._common.renders import render_fcall
 from aioway._keyed import Keyed
 
 __all__ = ["Fate", "find_fate", "all_fates"]

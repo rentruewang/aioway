@@ -10,7 +10,7 @@ import numpy as np
 import tensordict as td
 from torch.utils import data
 
-from aioway._common import is_list_of
+from aioway._common._typing import is_list_of
 from aioway.schemas import AttrSet
 
 from ..datasets import Dataset, DatasetColumnView, DatasetSelectView, DatasetViewTypes

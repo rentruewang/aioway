@@ -5,7 +5,7 @@
 import dataclasses as dcls
 import typing
 
-from aioway._common.torch import (
+from aioway._common._torch import (
     is_aten_op,
 )
 from aioway.fake import enabled_fake_mode

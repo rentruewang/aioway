@@ -6,7 +6,7 @@ import typing
 
 from torch import nn
 
-from aioway._common import dcls_no_repr
+from aioway._common._types import dcls_no_repr
 from aioway._common.renders import render_fcall
 from aioway._keyed import Keyed
 from aioway.fn import NnInitFn

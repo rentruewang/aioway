@@ -5,7 +5,7 @@ import typing
 import pytest
 from torch import nn
 
-from aioway._common import render_fcall
+from aioway._common.renders import render_fcall
 from aioway.mess import MessInit, Sequential, find_might
 
 

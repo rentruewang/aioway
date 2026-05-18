@@ -13,7 +13,7 @@ import torch
 from torch import _ops, overrides
 from torch.utils import _python_dispatch as pyd
 
-from aioway._common import is_aten_op, is_prim_op
+from aioway._common._torch import is_aten_op, is_prim_op
 
 from ._on_off import OnOffCtx, OnOffStack
 from .common import render_function_body_prefix

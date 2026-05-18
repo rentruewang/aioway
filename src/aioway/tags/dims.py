@@ -9,7 +9,7 @@ import typing
 
 import torch
 
-from aioway._common import dcls_frozen_slots
+from aioway._common._types import dcls_frozen_slots
 
 from .tags import Tag
 
