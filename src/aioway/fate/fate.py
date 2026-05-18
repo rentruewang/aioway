@@ -68,8 +68,8 @@ def find_fate(op: _ops.OpOverload, *args: typing.Any, **kwargs: typing.Any) -> F
             continue
 
         return fate
-
-    return NotImplemented
+    else:
+        return NotImplemented
 
 
 @typing.no_type_check

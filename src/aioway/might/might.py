@@ -45,9 +45,8 @@ def find_might(nn_type: type[nn.Module], *args, **kwargs) -> Might:
     # pass the error back, since upper level signature failed.
     for might_type in Might.find(nn_type):
         return might_type(*args, **kwargs)
-
-    # No implementation found.
-    return NotImplemented
+    else:
+        return NotImplemented
 
 
 @typing.no_type_check
