@@ -55,16 +55,19 @@ class _AvStream[T](abc.ABC):
     @functools.cached_property
     def audio_stream(self):
         stream = self.container.streams.audio[0]
-        stream.codec_context.thread_type = "AUTO"
-        stream.codec_context.thread_count = 0
+        _set_threads(stream)
         return stream
 
     @functools.cached_property
     def video_stream(self):
         stream = self.container.streams.video[0]
-        stream.codec_context.thread_type = "AUTO"
-        stream.codec_context.thread_count = 0
+        _set_threads(stream)
         return stream
+
+
+def _set_threads(stream: av.AudioStream | av.VideoStream, /):
+    stream.codec_context.thread_type = "AUTO"
+    stream.codec_context.thread_count = 0
 
 
 class AudioStream(_AvStream[AudioStreamInfo]):
