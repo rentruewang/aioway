@@ -126,4 +126,4 @@ class VideoStream(_AvStream[VideoStreamInfo]):
             chunks.append(arr)
 
         stacked = np.stack(chunks, axis=0)
-        return np.einsum("nhwc->nchw", stacked)
+        return np.einsum("thwc->tchw", stacked)

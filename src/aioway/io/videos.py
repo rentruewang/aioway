@@ -32,9 +32,9 @@ class AvVideoLoader(VideoLoader):
                 shape=[info.num_frames, 3, info.width, info.height], dtype=torch.float32
             ).to_fake_tensor()
 
-        # Decode frame by frame.
         else:
             array = stream.numpy()
+            assert array.ndim == 4
             assert array.shape[1] == 3
             tensor = torch.from_numpy(array)
 
