@@ -1,5 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import abc
 import dataclasses as dcls
 import pathlib
 import typing
@@ -10,12 +11,26 @@ from torchvision import io as vio
 from torchvision.transforms import v2 as tt
 
 from aioway.fake import enabled_fake_mode, torch_set_fake_mode_func
-from aioway.schemas import attr
-from aioway.schemas.attrs import AttrLike
+from aioway.schemas import AttrLike, attr
+from aioway.tags import IsImageTag
 
-from .io import ImageLoader
+__all__ = ["ImageLoader", "ComposedImageLoader", "PillowImageLoader", "TvioImageLoader"]
 
-__all__ = ["ComposedImageLoader", "PillowImageLoader", "TvioImageLoader"]
+
+@dcls.dataclass
+class ImageLoader(abc.ABC):
+    "The image loader API. Converts from a file name `fname` to a tensor."
+
+    def __call__(self, fname: str | pathlib.Path, /) -> torch.Tensor:
+        data = self.load_img(fname)
+
+        IsImageTag().attach(data)
+
+        return data
+
+    @abc.abstractmethod
+    def load_img(self, fname: str | pathlib.Path, /) -> torch.Tensor:
+        raise NotImplementedError
 
 
 @dcls.dataclass
