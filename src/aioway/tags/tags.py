@@ -39,7 +39,7 @@ class Tag(abc.ABC):
     def __init_subclass__(cls) -> None:
         if not _TAG_NAME.fullmatch(cls.TAG):
             raise ValueError(
-                f"Tag name should be of the format `__aioway_*__`. Got {cls.TAG}."
+                f"Tag name should be of the format `__aioway_*__`. Got '{cls.TAG}'."
             )
 
     @abc.abstractmethod

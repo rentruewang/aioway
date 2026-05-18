@@ -7,7 +7,9 @@ import typing
 
 import torch
 
-from aioway.tags import IsImageTag, SampleRateTag
+from aioway.tags import IsImageTag, IsVideoTag, SampleRateTag
+
+__all__ = ["FileLoader", "ImageLoader", "AudioLoader", "VideooLoader"]
 
 
 @dcls.dataclass
@@ -48,9 +50,6 @@ class AudioLoader(FileLoader, abc.ABC):
     Result is tensor [num_channels, num_frames].
     """
 
-    sample_rate: int | None = None
-    "The specified sample rate. If `None` the default would be loaded."
-
     @typing.override
     def __call__(self, fname: str | pathlib.Path, /) -> torch.Tensor:
         audio = self.load_wave(fname)
@@ -62,4 +61,23 @@ class AudioLoader(FileLoader, abc.ABC):
 
     @abc.abstractmethod
     def load_wave(self, fname: str | pathlib.Path, /) -> AudioData:
+        raise NotImplementedError
+
+
+@dcls.dataclass
+class VideooLoader(FileLoader, abc.ABC):
+    """
+    The video loader API. Load the data into a 4D tensor.
+    """
+
+    @typing.override
+    def __call__(self, fname: str | pathlib.Path, /) -> torch.Tensor:
+        video = self.load_video(fname)
+
+        IsVideoTag().attach(video)
+
+        return video
+
+    @abc.abstractmethod
+    def load_video(self, fname: str | pathlib.Path, /) -> torch.Tensor:
         raise NotImplementedError

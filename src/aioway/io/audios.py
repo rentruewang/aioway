@@ -69,6 +69,15 @@ class AvAudioLoader(AudioLoader):
 
 
 class TorchCodecAudioLoader(AudioLoader):
+    """
+    The `AudioLoader` backed by the `torchcodec` library.
+
+    Note that during fake mode, it's still loaded in memory as `torch.Tensor`,
+    because there aren't any good way to overwrite torch codecs to enable fake mode.
+    """
+
+    sample_rate: int | None = None
+    "The targetting sample rate to load. If `None`, the default is used."
 
     @typing.override
     def load_wave(self, fname: str | pathlib.Path, /) -> AudioData:
