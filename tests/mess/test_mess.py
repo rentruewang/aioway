@@ -5,7 +5,7 @@ import typing
 import pytest
 from torch import nn
 
-from aioway.mess import MessInit, Sequential, find_mess_init
+from aioway.mess import Mess, MessInit, Sequential
 from aioway.renders import render_fcall
 
 
@@ -70,12 +70,12 @@ def _module_opts():
 )
 def might(request: pytest.FixtureRequest) -> MessInit:
     cls, kwargs = request.param
-    return find_mess_init(cls, **kwargs)
+    return Mess.find(cls).init(**kwargs)
 
 
-def test_might_init(might: MessInit):
+def test_mess_init(might: MessInit):
     assert isinstance(might, MessInit)
-    assert repr(might).startswith("might::")
+    assert repr(might).startswith("mess_init::")
 
 
 def test_might_do(might: MessInit):
@@ -84,8 +84,8 @@ def test_might_do(might: MessInit):
 
 
 def test_sequential():
-    seq = find_mess_init(
-        nn.Sequential, nn.Linear(1, 2), nn.Linear(2, 3), nn.Linear(3, 4)
+    seq = Mess.find(nn.Sequential).init(
+        nn.Linear(1, 2), nn.Linear(2, 3), nn.Linear(3, 4)
     )
     assert isinstance(seq, MessInit)
     assert isinstance(seq, Sequential)

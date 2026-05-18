@@ -1,14 +1,11 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import abc
 import typing
 
 from torch import nn
 
-from aioway._keyed import Keyed
 from aioway._types import dcls_no_repr
 from aioway.mess.fwds import MessFwd
-from aioway.mess.inits.inits import find_mess_init
 
 from .inits import MessInit
 
@@ -16,7 +13,7 @@ __all__ = ["Mess"]
 
 
 @dcls_no_repr
-class Mess(abc.ABC):
+class Mess:
     """
     `Mess` is the runtime information for `nn.Module`,
     containing information of `nn.Module.forward`.
@@ -43,7 +40,14 @@ class Mess(abc.ABC):
         # Right now, each `MessInit` should have distinct key, so just return the 1st.
         # Just get the type. If an error is raised, construction failed,
         # pass the error back, since upper level signature failed.
-        for mess_type in MessInit.find(nn_type):
-            return mess_type
+        for init_type in MessInit.find(nn_type):
+            break
         else:
-            return NotImplemented
+            init_type = NotImplemented
+
+        for fwd_type in MessFwd.find(nn_type):
+            break
+        else:
+            fwd_type = NotImplemented
+
+        return cls(init=init_type, fwd=fwd_type)

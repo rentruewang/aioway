@@ -11,7 +11,7 @@ from aioway._types import dcls_no_repr
 from aioway.fn import NnInitFn
 from aioway.renders import render_fcall
 
-__all__ = ["MessInit", "find_mess_init"]
+__all__ = ["MessInit"]
 
 
 @dcls_no_repr
