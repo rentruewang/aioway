@@ -14,8 +14,21 @@ from aioway.schemas import Attr
 from aioway.tags import IsVideoTag
 
 from ._av import VideoStream
+from ._bases import TorchCompatible
 
-__all__ = ["VideoLoader", "AvVideoLoader", "TorchCodecVideoLoader"]
+__all__ = ["VideoLoader", "AvVideoLoader", "TorchCodecVideoLoader", "VideoData"]
+
+
+@dcls.dataclass(frozen=True)
+class VideoData(TorchCompatible):
+    data: torch.Tensor
+    "The tensor decoded from the video."
+
+    @typing.override
+    def to_tensor(self) -> torch.Tensor:
+
+        IsVideoTag().attach(self.data)
+        return self.data
 
 
 @dcls.dataclass
@@ -24,12 +37,9 @@ class VideoLoader(abc.ABC):
     The video loader API. Load the data into a 4D tensor.
     """
 
-    def __call__(self, fname: str | pathlib.Path, /) -> torch.Tensor:
+    def __call__(self, fname: str | pathlib.Path, /) -> VideoData:
         video = self.load_video(fname)
-
-        IsVideoTag().attach(video)
-
-        return video
+        return VideoData(video)
 
     @abc.abstractmethod
     def load_video(self, fname: str | pathlib.Path, /) -> torch.Tensor:

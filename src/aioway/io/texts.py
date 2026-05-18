@@ -7,7 +7,7 @@ import pathlib
 import torch
 import transformers
 
-__all__ = ["TokenizerLoader"]
+__all__ = ["TokenizerLoader", "TokenizeResult"]
 
 
 @dcls.dataclass(frozen=True)
@@ -23,12 +23,13 @@ class TokenizerLoader:
     The tokenizer name to use.
     """
 
-    def __call__(self, fname: str | pathlib.Path, /) -> torch.Tensor:
+    def __call__(self, fname: str | pathlib.Path, /) -> TokenizeResult:
         fname = pathlib.Path(fname)
         text = fname.read_text()
-        tokens = self.tokenizer(text, return_tensors="pt", padding=True)
-        assert isinstance(tokens, torch.Tensor)
-        return tokens
+        result = self.tokenizer(text, return_tensors="pt", padding=True)
+        return TokenizeResult(
+            input_ids=result["input_ids"], attention_mask=result["attention_mask"]
+        )
 
     @property
     def tokenizer(self):

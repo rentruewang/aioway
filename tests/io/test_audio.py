@@ -22,7 +22,7 @@ def loader(request: pytest.FixtureRequest):
 
 def _read_audio(audio: pathlib.Path, loader: AudioLoader):
     result = loader(audio)
-    return result.torch()
+    return result.to_tensor()
 
 
 def test_read_audio(example_audio: pathlib.Path, loader: AudioLoader, maybe_fake_mode):

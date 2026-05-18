@@ -9,13 +9,13 @@ import torch
 from torchcodec import decoders as dec
 
 from aioway.fake import enabled_fake_mode, torch_set_fake_mode_func
-from ._bases import TorchCompatible
 from aioway.schemas import Attr
 from aioway.tags import SampleRateTag
 
 from ._av import AudioStream
+from ._bases import TorchCompatible
 
-__all__ = ["AudioLoader", "AvAudioLoader", "TorchCodecAudioLoader"]
+__all__ = ["AudioLoader", "AvAudioLoader", "TorchCodecAudioLoader", "AudioData"]
 
 
 @dcls.dataclass(frozen=True)
@@ -29,7 +29,8 @@ class AudioData(TorchCompatible):
     def __post_init__(self):
         assert self.data.ndim == 2, self.data.shape
 
-    def torch(self):
+    @typing.override
+    def to_tensor(self):
         SampleRateTag(self.sample_rate).attach(self.data)
         return self.data
 
