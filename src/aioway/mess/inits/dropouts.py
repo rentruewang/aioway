@@ -4,7 +4,7 @@ import typing
 
 from torch import nn
 
-from .init import MessInit
+from .inits import MessInit
 
 __all__ = ["Dropout", "Dropout1d", "Dropout2d", "Dropout3d"]
 

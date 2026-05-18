@@ -11,7 +11,7 @@ from aioway._types import dcls_no_repr
 from aioway.fn import NnInitFn
 from aioway.renders import render_fcall
 
-__all__ = ["MessInit", "find_might", "all_mights"]
+__all__ = ["MessInit", "find_might"]
 
 
 @dcls_no_repr
@@ -46,12 +46,3 @@ def find_might(nn_type: type[nn.Module], *args, **kwargs) -> MessInit:
         return might_type(*args, **kwargs)
     else:
         return NotImplemented
-
-
-@typing.no_type_check
-def all_mights():
-    """
-    Get the registry for previews.
-    """
-
-    return list(MessInit.impls())

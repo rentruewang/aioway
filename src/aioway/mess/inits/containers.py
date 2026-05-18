@@ -7,7 +7,7 @@ from torch import nn
 from aioway._types import dcls_no_repr
 from aioway.fn import NnInitFn
 
-from .init import MessInit
+from .inits import MessInit
 
 __all__ = ["Sequential"]
 

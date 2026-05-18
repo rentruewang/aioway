@@ -5,7 +5,7 @@ from .containers import *
 from .dense import *
 from .dropouts import *
 from .embs import *
-from .init import *
+from .inits import *
 from .losses import *
 from .norms import *
 from .sliding import *

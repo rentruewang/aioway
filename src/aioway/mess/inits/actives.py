@@ -2,7 +2,7 @@
 
 from torch import nn
 
-from .init import MessInit
+from .inits import MessInit
 
 __all__ = [
     "ReLU",

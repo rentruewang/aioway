@@ -1,14 +1,13 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import abc
-import dataclasses as dcls
 import typing
 
 from torch import nn
 
 from aioway._keyed import Keyed
 from aioway._types import dcls_no_repr
-from aioway.fn import NnFwdFn
+from aioway.mess import MessInit
 
 __all__ = ["Mess"]
 
@@ -25,14 +24,7 @@ class Mess(Keyed[type[nn.Module]], abc.ABC):
 
     KEY: typing.ClassVar[type[nn.Module]] = NotImplemented
 
-    def do(self) -> object:
-        return NnFwdFn(func=self.KEY, args=(), kwargs=dcls.asdict(self)).do()
-
-
-@typing.no_type_check
-def all_messes():
+    init: type[MessInit]
     """
-    Get the registry for `Mess`es.
+    The initialization function for `MessInit`.
     """
-
-    return list(Might.impls())
