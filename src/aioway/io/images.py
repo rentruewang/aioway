@@ -9,7 +9,7 @@ from PIL import Image as image
 from torchvision import io as vio
 from torchvision.transforms import v2 as tt
 
-from aioway.fake import enabled_fake_mode, torch_enable_fake_mode_func
+from aioway.fake import enabled_fake_mode, torch_set_fake_mode_func
 from aioway.schemas import attr
 from aioway.schemas.attrs import AttrLike
 
@@ -89,7 +89,7 @@ class TvioImageLoader(ImageLoader):
         reader = self._read_normalized if self.norm else self._read_image
         return reader(fname)
 
-    @torch_enable_fake_mode_func(False)
+    @torch_set_fake_mode_func(False)
     def _read_image(self, fname: str | pathlib.Path):
         fname_path = pathlib.Path(fname)
         fname_str = str(fname_path)

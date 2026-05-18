@@ -9,7 +9,7 @@ import torch
 
 from aioway.tags import IsImageTag, IsVideoTag, SampleRateTag
 
-__all__ = ["FileLoader", "ImageLoader", "AudioLoader", "VideooLoader"]
+__all__ = ["FileLoader", "ImageLoader", "AudioLoader", "VideoLoader"]
 
 
 @dcls.dataclass
@@ -65,7 +65,7 @@ class AudioLoader(FileLoader, abc.ABC):
 
 
 @dcls.dataclass
-class VideooLoader(FileLoader, abc.ABC):
+class VideoLoader(FileLoader, abc.ABC):
     """
     The video loader API. Load the data into a 4D tensor.
     """

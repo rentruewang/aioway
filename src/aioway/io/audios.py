@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from torchcodec import decoders as dec
 
-from aioway.fake import enabled_fake_mode, torch_enable_fake_mode_func
+from aioway.fake import enabled_fake_mode, torch_set_fake_mode_func
 from aioway.io.io import AudioData
 from aioway.schemas import Attr
 from aioway.tags import SampleRateTag
@@ -72,8 +72,10 @@ class TorchCodecAudioLoader(AudioLoader):
     """
     The `AudioLoader` backed by the `torchcodec` library.
 
-    Note that during fake mode, it's still loaded in memory as `torch.Tensor`,
+    Note that similar to `TorchCodecVideoLoader`, even during fake mode,
+    the video is still loaded in memory as `torch.Tensor`,
     because there aren't any good way to overwrite torch codecs to enable fake mode.
+    This is due to limitations in `torchcodecs` as they use custom `torch.ops`.
     """
 
     sample_rate: int | None = None
@@ -83,7 +85,7 @@ class TorchCodecAudioLoader(AudioLoader):
     def load_wave(self, fname: str | pathlib.Path, /) -> AudioData:
         return self._read_audio_from_path(fname)
 
-    @torch_enable_fake_mode_func(False)
+    @torch_set_fake_mode_func(False)
     def _read_audio_from_path(self, fname: str | pathlib.Path) -> AudioData:
         """
         Read and decode audio from path.
