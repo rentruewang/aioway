@@ -13,8 +13,8 @@ from torch._subclasses import fake_tensor as ft
 
 __all__ = [
     "torch_fake_mode",
-    "torch_enable_fake_mode",
-    "torch_enable_fake_mode_func",
+    "torch_set_fake_mode",
+    "torch_set_fake_mode_func",
     "is_fake_tensor",
     "is_real_tensor",
     "to_fake_tensor",
@@ -103,7 +103,7 @@ def torch_real_mode():
         yield mode
 
 
-def torch_enable_fake_mode(yes: bool, /):
+def torch_set_fake_mode(yes: bool, /):
     """
     Context manager to set the fake mode if `True` or `False` to set to the real mode.
     """
@@ -126,14 +126,14 @@ def _set_fake_mode_flag(to: bool):
         _fake_mode_is_active = before
 
 
-def torch_enable_fake_mode_func(to: bool, /):
+def torch_set_fake_mode_func(to: bool, /):
     def decorator[**P, T](func: cabc.Callable[P, T]) -> cabc.Callable[P, T]:
         """
         Decorator on a function, s.t. when the function is being called, fake mode is enabled.
         """
 
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-            with torch_enable_fake_mode(to):
+            with torch_set_fake_mode(to):
                 return func(*args, **kwargs)
 
         _set_wrapper_func(wrapper, func)

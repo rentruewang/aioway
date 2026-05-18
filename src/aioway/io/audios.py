@@ -3,16 +3,16 @@
 import pathlib
 import typing
 
-import av
-import numpy as np
 import torch
 from torchcodec import decoders as dec
 
-from aioway.fake import enabled_fake_mode, torch_enable_fake_mode_func
+from aioway.fake import enabled_fake_mode, torch_set_fake_mode_func
+from aioway.io.io import AudioData
 from aioway.schemas import Attr
 from aioway.tags import SampleRateTag
 
-from .io import AudioLoader
+from ._av import AudioStream
+from .io import AudioData, AudioLoader
 
 __all__ = ["AvAudioLoader", "TorchCodecAudioLoader"]
 
@@ -36,46 +36,46 @@ class AvAudioLoader(AudioLoader):
     "Load the audio with `av` library."
 
     @typing.override
-    def load_wave(self, fname: str | pathlib.Path, /) -> torch.Tensor:
-        container = av.open(fname)
+    def load_wave(self, fname: str | pathlib.Path, /) -> AudioData:
+        stream = AudioStream(fname)
 
         # Get the metadata for fake mode to work.
-        stream = container.streams.audio[0]
-        sample_rate = stream.codec_context.sample_rate
-        channels = stream.codec_context.channels
-        assert stream.duration, "Duration should exist, this is not a stream!"
-        frames = stream.duration * stream.sample_rate
+        info = stream.info()
 
         # Create a fake tensor of float32 in fake mode.
         if enabled_fake_mode():
             tensor = Attr.parse(
-                shape=[channels, frames], dtype=torch.float32
+                shape=[info.num_channels, info.num_frames], dtype=torch.float32
             ).to_fake_tensor()
 
         # Decode frame by frame.
         else:
-            chunks: list[np.ndarray] = []
-            for frame in container.decode(stream):
-                arr = frame.to_ndarray()
-                assert arr.ndim == 2
-                assert len(arr) == channels
-                chunks.append(arr)
+            array = stream.numpy()
+            assert len(array) == info.num_channels
+            tensor = torch.from_numpy(array)
 
-            array = np.concat(chunks, axis=1)
-            tensor = torch.tensor(array)
-
-        _ = SampleRateTag(tensor, sample_rate)
-        return tensor
+        return AudioData(tensor, info.sample_rate)
 
 
 class TorchCodecAudioLoader(AudioLoader):
+    """
+    The `AudioLoader` backed by the `torchcodec` library.
+
+    Note that similar to `TorchCodecVideoLoader`, even during fake mode,
+    the video is still loaded in memory as `torch.Tensor`,
+    because there aren't any good way to overwrite torch codecs to enable fake mode.
+    This is due to limitations in `torchcodecs` as they use custom `torch.ops`.
+    """
+
+    sample_rate: int | None = None
+    "The targetting sample rate to load. If `None`, the default is used."
 
     @typing.override
-    def load_wave(self, fname: str | pathlib.Path, /) -> torch.Tensor:
+    def load_wave(self, fname: str | pathlib.Path, /) -> AudioData:
         return self._read_audio_from_path(fname)
 
-    @torch_enable_fake_mode_func(False)
-    def _read_audio_from_path(self, fname: str | pathlib.Path) -> torch.Tensor:
+    @torch_set_fake_mode_func(False)
+    def _read_audio_from_path(self, fname: str | pathlib.Path) -> AudioData:
         """
         Read and decode audio from path.
 
@@ -95,5 +95,4 @@ class TorchCodecAudioLoader(AudioLoader):
                 f"and output {samples.sample_rate} should be equal."
             )
 
-        _ = SampleRateTag(samples.data, samples.sample_rate)
-        return samples.data
+        return AudioData(samples.data, samples.sample_rate)

@@ -23,7 +23,8 @@ from aioway.tags import SampleRateTag
 t = torch.randn(3, 4)
 
 # %%
-sr = SampleRateTag(t, 100)
+sr = SampleRateTag(100)
+sr.attach(t)
 
 # %%
 s = torch.randn(4, 5)
@@ -39,3 +40,6 @@ SampleRateTag.extract(s)
 
 # %%
 SampleRateTag.extract(t) == SampleRateTag.extract(s)
+
+# %%
+t.__aioway_audio_sample_rate__

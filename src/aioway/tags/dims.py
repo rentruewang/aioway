@@ -5,8 +5,11 @@
 import enum
 import functools
 import re
+import typing
 
-from aioway._common import dcls_frozen_slots_no_eq
+import torch
+
+from aioway._common import dcls_frozen_slots
 
 from .tags import Tag
 
@@ -44,7 +47,7 @@ class DimInfo(enum.StrEnum):
     """
 
 
-@dcls_frozen_slots_no_eq
+@dcls_frozen_slots
 class DimTag(Tag):
     TAG = "__aioway_dim_tag__"
 
@@ -54,10 +57,9 @@ class DimTag(Tag):
     Strings are more compact and we can use regex.
     """
 
-    def __post_init__(self) -> None:
-        super().__post_init__()
-
-        if len(self.tags) != (ndim := self.ndim):
+    @typing.override
+    def _validate(self, tensor: torch.Tensor) -> None:
+        if len(self.tags) != (ndim := tensor.ndim):
             raise ValueError(
                 f"The {self.tags=} dimensions do not match the tensor's {ndim=}."
             )

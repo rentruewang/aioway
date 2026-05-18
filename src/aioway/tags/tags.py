@@ -3,21 +3,19 @@
 "Extra information about the tensors."
 
 import abc
-import dataclasses as dcls
 import re
 import typing
 
 import torch
 
-from aioway._common import dcls_frozen_slots_no_eq
-from aioway.fake import is_fake_tensor
+from aioway._common import dcls_frozen_slots
 
 __all__ = ["Tag", "extract_tags"]
 
 _TAG_NAME = re.compile(r"^__aioway_[a-zA-Z0-9_]+__$")
 
 
-@dcls_frozen_slots_no_eq
+@dcls_frozen_slots
 class Tag(abc.ABC):
     """
     The base class for tags. A tag describes a `torch.Tensor`,
@@ -38,63 +36,33 @@ class Tag(abc.ABC):
     The name of the tag. Must be of the format `__aioway_*__`.
     """
 
-    tensor: torch.Tensor
-    "The tensor that is being piggybacked."
-
     def __init_subclass__(cls) -> None:
         if not _TAG_NAME.fullmatch(cls.TAG):
             raise ValueError(
-                f"Tag name should be of the format `__aioway_*__`. Got {cls.TAG}."
+                f"Tag name should be of the format `__aioway_*__`. Got '{cls.TAG}'."
             )
 
-    def __post_init__(self) -> None:
-        # Set the tag onto the tensor.
-        setattr(self.tensor, self.TAG, self)
-
-    @typing.override
-    def __eq__(self, other: object):
-        "Comparing 2 tags compare all fields that are not the `.tensor`."
-
-        if type(self) == type(other):
-            assert isinstance(other, Tag)
-            return self._cmp_dict() == other._cmp_dict()
-
-        return NotImplemented
-
-    def _cmp_dict(self):
-        fields = {f.name for f in dcls.fields(self)}
-        base_tag_fields = {f.name for f in dcls.fields(Tag)}
-        to_compare = fields - base_tag_fields
-        return {key: getattr(self, key) for key in to_compare}
-
-    @property
-    def ndim(self) -> int:
-        return self.tensor.ndim
-
-    @property
-    def shape(self) -> torch.Size:
-        return self.tensor.shape
-
-    @property
-    def is_fake(self) -> bool:
-        return is_fake_tensor(self.tensor)
-
-    def attach(self, other: torch.Tensor, /) -> typing.Self:
+    @abc.abstractmethod
+    def _validate(self, tensor: torch.Tensor) -> None:
         """
-        Tag the instance on another tensor. These 2 tags would be `==` to each other.
+        Execute additional validation for subclasses. Subclasses can override this,
+        and raise an error if `self` is not valid or cannot attach to `tensor`.
         """
 
-        # In case the same tensor is tagged again.
-        if self.tensor is other:
-            return self
+    def attach(self, tensor: torch.Tensor, /, overwrite: bool = True) -> None:
+        """
+        Tag the instance on another tensor. Validate then set `self` on the `tensor`.
 
-        # Replace the `tensor` attribute,
-        # and call `__post_init__` which handles attribute setting.
-        copied = dcls.replace(self, tensor=other)
-        copied.__post_init__()
-        assert copied is self.extract(other)
-        assert self == copied
-        return copied
+        If `overwrite` is `False` (defaults to `True`), and the tag already exists,
+        raise a `ValueError` and do not set the attribute.
+        """
+
+        self._validate(tensor)
+
+        if not overwrite and hasattr(tensor, self.TAG):
+            raise ValueError(f"`{self.TAG}` already exists on {tensor=}.")
+
+        setattr(tensor, self.TAG, self)
 
     @classmethod
     def extract(cls, tensor: torch.Tensor) -> typing.Self | None:

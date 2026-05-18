@@ -7,8 +7,9 @@ import typing
 
 import torch
 
-from aioway.tags import IsImageTag
-from aioway.tags.media import SampleRateTag
+from aioway.tags import IsImageTag, IsVideoTag, SampleRateTag
+
+__all__ = ["FileLoader", "ImageLoader", "AudioLoader", "VideoLoader"]
 
 
 @dcls.dataclass
@@ -28,14 +29,18 @@ class ImageLoader(FileLoader, abc.ABC):
     def __call__(self, fname: str | pathlib.Path, /) -> torch.Tensor:
         data = self.load_img(fname)
 
-        # Attach the tag onto the tensor.
-        _ = IsImageTag(data)
+        IsImageTag().attach(data)
 
         return data
 
     @abc.abstractmethod
     def load_img(self, fname: str | pathlib.Path, /) -> torch.Tensor:
         raise NotImplementedError
+
+
+class AudioData(typing.NamedTuple):
+    data: torch.Tensor
+    sample_rate: int
 
 
 @dcls.dataclass
@@ -45,20 +50,34 @@ class AudioLoader(FileLoader, abc.ABC):
     Result is tensor [num_channels, num_frames].
     """
 
-    sample_rate: int | None = None
-    "The specified sample rate. If `None` the default would be loaded."
-
     @typing.override
     def __call__(self, fname: str | pathlib.Path, /) -> torch.Tensor:
         audio = self.load_wave(fname)
 
-        # Ensure it's actually tagged.
-        if SampleRateTag.extract(audio) is None:
-            raise AssertionError(f"Forgot to tag the audio tensor with sample rate.")
+        SampleRateTag(audio.sample_rate).attach(audio.data)
 
-        assert audio.ndim == 2, audio.shape
-        return audio
+        assert audio.data.ndim == 2, audio.data.shape
+        return audio.data
 
     @abc.abstractmethod
-    def load_wave(self, fname: str | pathlib.Path, /) -> torch.Tensor:
+    def load_wave(self, fname: str | pathlib.Path, /) -> AudioData:
+        raise NotImplementedError
+
+
+@dcls.dataclass
+class VideoLoader(FileLoader, abc.ABC):
+    """
+    The video loader API. Load the data into a 4D tensor.
+    """
+
+    @typing.override
+    def __call__(self, fname: str | pathlib.Path, /) -> torch.Tensor:
+        video = self.load_video(fname)
+
+        IsVideoTag().attach(video)
+
+        return video
+
+    @abc.abstractmethod
+    def load_video(self, fname: str | pathlib.Path, /) -> torch.Tensor:
         raise NotImplementedError
