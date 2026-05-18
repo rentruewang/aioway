@@ -73,6 +73,7 @@ def _set_threads(stream: av.AudioStream | av.VideoStream, /):
 class AudioStream(_AvStream[AudioStreamInfo]):
     "The audio stream which is a light wrapper around `av.open` utilities."
 
+    @typing.override
     def info(self) -> AudioStreamInfo:
         stream = self.audio_stream
         duration = stream.duration
@@ -84,6 +85,7 @@ class AudioStream(_AvStream[AudioStreamInfo]):
             duration=duration,
         )
 
+    @typing.override
     def numpy(self):
         chunks: list[np.ndarray] = []
         for frame in self.container.decode(self.audio_stream):
@@ -117,6 +119,7 @@ class VideoStream(_AvStream[VideoStreamInfo]):
             height=stream.height,
         )
 
+    @typing.override
     def numpy(self):
         chunks: list[np.ndarray] = []
         for frame in self.container.decode(self.video_stream):
