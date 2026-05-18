@@ -3,12 +3,10 @@
 
 import pytest
 
-from aioway.fate import Fate
+from aioway.fate import Fate, FateFn
 from aioway.fn import (
-    FateFn,
     Fn,
     HistTensorGraph,
-    MightFn,
     NnFwdFn,
     NnInitFn,
     TensorInput,
@@ -16,19 +14,18 @@ from aioway.fn import (
     TorDisFn,
     TorFuncFn,
 )
-from aioway.might import Might
+from aioway.mess import MessInit
 
 
 def _fn_cls():
     yield FateFn
     yield TorDisFn
     yield TorFuncFn
-    yield MightFn
     yield NnInitFn
     yield NnFwdFn
 
     yield Fate
-    yield Might
+    yield MessInit
 
 
 def _input_cls():

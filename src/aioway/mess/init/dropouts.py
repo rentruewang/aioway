@@ -4,12 +4,12 @@ import typing
 
 from torch import nn
 
-from .might import Might
+from .init import MessInit
 
 __all__ = ["Dropout", "Dropout1d", "Dropout2d", "Dropout3d"]
 
 
-class _BaseDropout(Might):
+class _BaseDropout(MessInit):
     KEY: typing.ClassVar[type[nn.Module]] = NotImplemented
 
     p: float = 0.5

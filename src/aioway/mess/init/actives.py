@@ -2,7 +2,7 @@
 
 from torch import nn
 
-from .might import Might
+from .init import MessInit
 
 __all__ = [
     "ReLU",
@@ -17,55 +17,55 @@ __all__ = [
 ]
 
 
-class ReLU(Might):
+class ReLU(MessInit):
     "Applies the rectified linear unit function element-wise."
 
     KEY = nn.ReLU
 
 
-class ReLU6(Might):
+class ReLU6(MessInit):
     "Applies the ReLU6 function element-wise."
 
     KEY = nn.ReLU6
 
 
-class CELU(Might):
+class CELU(MessInit):
     "Applies the CELU function element-wise."
 
     KEY = nn.CELU
 
 
-class GELU(Might):
+class GELU(MessInit):
     "Applies the GELU function element-wise."
 
     KEY = nn.GELU
 
 
-class Sigmoid(Might):
+class Sigmoid(MessInit):
     "Applies the Sigmoid function element-wise."
 
     KEY = nn.Sigmoid
 
 
-class Tanh(Might):
+class Tanh(MessInit):
     "Applies the Tanh function element-wise."
 
     KEY = nn.Tanh
 
 
-class Softmin(Might):
+class Softmin(MessInit):
     "Applies the Softmin function to an n-dimensional input Tensor."
 
     KEY = nn.Softmin
 
 
-class Softmax(Might):
+class Softmax(MessInit):
     "Applies the Softmax function to an n-dimensional input Tensor."
 
     KEY = nn.Softmax
 
 
-class LogSoftmax(Might):
+class LogSoftmax(MessInit):
     "Applies the LogSoftmax function to an n-dimensional input Tensor."
 
     KEY = nn.LogSoftmax

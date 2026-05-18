@@ -6,6 +6,7 @@ import dataclasses as dcls
 import typing
 
 from torch import nn
+
 from aioway._common import dcls_no_repr
 from aioway.fn import NnFwdFn
 

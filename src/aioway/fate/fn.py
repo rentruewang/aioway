@@ -5,13 +5,15 @@
 import dataclasses as dcls
 import typing
 
-from .modes import NnInitFn, TorDisFn
+from aioway._common.torch import (
+    is_aten_op,
+)
+from aioway.fake import enabled_fake_mode
+from aioway.fn import TorDisFn
 
-if typing.TYPE_CHECKING:
-    from aioway.fate import Fate
-    from aioway.might import Might
+from .fate import Fate, find_fate
 
-__all__ = ["FateFn", "MightFn"]
+__all__ = ["FateFn"]
 
 
 @typing.final
@@ -55,7 +57,15 @@ class FateFn:
 
     @classmethod
     def find_fate(cls, thunk: TorDisFn) -> typing.Self:
-        from aioway.fate import find_fate
+        if not enabled_fake_mode():
+            return NotImplemented
+
+        # For now, `Fate` supports aten, because `torchvision`, `torchcodec` rely on real data,
+        # they do not have a good `Fate` to implement for now.
+        # In those operations, real mode is force enabled right now.
+        # See aioway#204 issue.
+        if not is_aten_op(thunk.func):
+            return NotImplemented
 
         fate = find_fate(thunk.func, *thunk.args, **thunk.kwargs)
 
@@ -64,28 +74,3 @@ class FateFn:
 
         else:
             return cls(fate=fate, original=thunk)
-
-
-@dcls.dataclass
-class MightFn:
-    """
-    `MightFn` are `Fn` that wrap `Might`s, which are supported `nn.Module` ops.
-    """
-
-    might: Might
-    "The `Might` instance."
-
-    def do(self) -> object:
-        return self.might.do()
-
-    @classmethod
-    def find_might(cls, thunk: NnInitFn) -> typing.Self:
-        from aioway.might import find_might
-
-        might = find_might(thunk.func, *thunk.args, **thunk.kwargs)
-
-        if might is NotImplemented:
-            return NotImplemented
-
-        else:
-            return cls(might)

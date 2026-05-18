@@ -3,5 +3,4 @@
 from .fn import *
 from .hists import *
 from .modes import *
-from .op import *
 from .tracking import *

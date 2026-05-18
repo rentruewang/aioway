@@ -6,7 +6,7 @@ from torch import nn
 
 from aioway._common import dcls_no_repr
 
-from .might import Might
+from .init import MessInit
 
 __all__ = [
     "L1Loss",
@@ -24,7 +24,7 @@ _REDUCTION = frozenset(["none", "mean", "sum"])
 
 
 @dcls_no_repr
-class _ReducibleLoss(Might):
+class _ReducibleLoss(MessInit):
     """
     Creates a criterion that measures the mean absolute error (MAE)
     between each element in the input x and target y

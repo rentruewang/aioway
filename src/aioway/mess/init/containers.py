@@ -7,13 +7,13 @@ from torch import nn
 from aioway._common import dcls_no_repr
 from aioway.fn import NnInitFn
 
-from .might import Might
+from .init import MessInit
 
 __all__ = ["Sequential"]
 
 
 @dcls_no_repr
-class Sequential(Might):
+class Sequential(MessInit):
     """
     The wrapper for `nn.Sequential`.
 

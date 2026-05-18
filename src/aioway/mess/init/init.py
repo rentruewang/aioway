@@ -10,14 +10,14 @@ from aioway._common import dcls_no_repr
 from aioway.fn import NnInitFn
 from aioway.op import Op
 
-__all__ = ["Might", "find_might", "all_mights"]
+__all__ = ["MessInit", "find_might", "all_mights"]
 
 
 @dcls_no_repr
-class Might(Op[type[nn.Module]], abc.ABC):
+class MessInit(Op[type[nn.Module]], abc.ABC):
     """
-    `Might` is a preview of how an `nn.Module` would be initialized.
-    It stands for [m]odule [in]it of wei[ght]s. Or the modules you [might] want.
+    `MessInit` is a preview of how an `nn.Module` would be initialized.
+    It is the init part of `Mess`.
 
     It provides metadata as to what `nn.Module` arguments are valid or not,
     much like how `Fate`'s objects mimicks the function signature of `torch.ops.aten.*`.
@@ -35,7 +35,7 @@ class Might(Op[type[nn.Module]], abc.ABC):
         return "might::" + cls.__name__
 
 
-def find_might(nn_type: type[nn.Module], *args, **kwargs) -> Might:
+def find_might(nn_type: type[nn.Module], *args, **kwargs) -> MessInit:
     """
     Get a `Might` from the `nn.Module` type. If not found, return `NotImplemented`.
     """
@@ -43,7 +43,7 @@ def find_might(nn_type: type[nn.Module], *args, **kwargs) -> Might:
     # Right now, each `Might` should have distinct key, so just return the 1st.
     # Just get the type. If an error is raised, construction failed,
     # pass the error back, since upper level signature failed.
-    for might_type in Might.find(nn_type):
+    for might_type in MessInit.find(nn_type):
         return might_type(*args, **kwargs)
     else:
         return NotImplemented
@@ -55,4 +55,4 @@ def all_mights():
     Get the registry for previews.
     """
 
-    return list(Might.impls())
+    return list(MessInit.impls())
