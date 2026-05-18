@@ -35,8 +35,10 @@ INITS: OnOffStack[NnInitMode] = OnOffStack()
 
 def module_fwd(module: nn.Module, /, *args, **kwargs) -> typing.Any:
     """
-    Call the `nn.Module`.
+    Call the `nn.Module`. This would execute all the modes at the outermost module.
     `aioway` functions must call this function to call `nn.Module`.
+
+    For nested modules (fields of modules), use `register_*_hook` from `torch`.
     """
 
     if not isinstance(module, nn.Module):
@@ -47,8 +49,10 @@ def module_fwd(module: nn.Module, /, *args, **kwargs) -> typing.Any:
 
 def module_init(init: type[nn.Module], /, *args, **kwargs) -> nn.Module:
     """
-    Initialize the `nn.Module`.
+    Initialize the `nn.Module`. This would execute all the modes at the outermost module.
     `aioway` functions must call this function to initalize `nn.Module`.
+
+    For nested modules (fields of modules), use `register_*_hook` from `torch`.
     """
 
     if not isinstance(init, type) or not issubclass(init, nn.Module):
