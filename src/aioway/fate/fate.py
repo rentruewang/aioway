@@ -4,19 +4,18 @@
 
 import abc
 import dataclasses as dcls
-import re
 import typing
 
 from torch import _ops
 
-from aioway._common import dcls_no_repr, find_nested_tensors
-from aioway.op import Op
+from aioway._common import dcls_no_repr, find_nested_tensors, render_fcall
+from aioway._keyed import Keyed
 
 __all__ = ["Fate", "find_fate", "all_fates"]
 
 
 @dcls_no_repr
-class Fate(Op[_ops.OpOverload], abc.ABC):
+class Fate(Keyed[_ops.OpOverload], abc.ABC):
     """
     `Fate` stands for [f]ake [ate]n. Or [fa]ke [te]nsor. Or a tensor's [fate] (how it behaves).
 
@@ -28,6 +27,9 @@ class Fate(Op[_ops.OpOverload], abc.ABC):
     KEY: typing.ClassVar[_ops.OpOverload] = NotImplemented
 
     @typing.override
+    def __repr__(self) -> str:
+        return render_fcall("fate::" + self._name(), **dcls.asdict(self))
+
     def do(self) -> typing.Any:
         return self.KEY(**dcls.asdict(self))
 
@@ -78,10 +80,3 @@ def all_fates():
     Get the registry for the fates.
     """
     return list(Fate.impls())
-
-
-_CAMEL_CASE_REGEX = re.compile(r"(?<!^)(?=[A-Z])")
-
-
-def _camel_to_snake(name: str) -> str:
-    return re.sub(_CAMEL_CASE_REGEX, "_", name).lower()

@@ -7,14 +7,15 @@ import typing
 from torch import nn
 
 from aioway._common import dcls_no_repr
+from aioway._common.renders import render_fcall
+from aioway._keyed import Keyed
 from aioway.fn import NnInitFn
-from aioway.op import Op
 
 __all__ = ["MessInit", "find_might", "all_mights"]
 
 
 @dcls_no_repr
-class MessInit(Op[type[nn.Module]], abc.ABC):
+class MessInit(Keyed[type[nn.Module]], abc.ABC):
     """
     `MessInit` is a preview of how an `nn.Module` would be initialized.
     It is the init part of `Mess`.
@@ -26,13 +27,11 @@ class MessInit(Op[type[nn.Module]], abc.ABC):
     KEY: typing.ClassVar[type[nn.Module]] = NotImplemented
 
     @typing.override
+    def __repr__(self) -> str:
+        return render_fcall("might::" + self._name(), **dcls.asdict(self))
+
     def do(self) -> nn.Module:
         return NnInitFn(func=self.KEY, args=(), kwargs=dcls.asdict(self)).do()
-
-    @classmethod
-    @typing.override
-    def name(cls) -> str:
-        return "might::" + cls.__name__
 
 
 def find_might(nn_type: type[nn.Module], *args, **kwargs) -> MessInit:
