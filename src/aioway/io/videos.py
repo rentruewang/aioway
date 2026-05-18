@@ -7,11 +7,38 @@ import torch
 from torchcodec import decoders as dec
 
 from aioway._common import num_threads
-from aioway.fake import torch_set_fake_mode_func
+from aioway.fake import enabled_fake_mode, torch_set_fake_mode_func
+from aioway.schemas import Attr
 
+from ._av import VideoStream
 from .io import VideoLoader
 
-__all__ = ["TorchCodecVideoLoader"]
+__all__ = ["AvVideoLoader", "TorchCodecVideoLoader"]
+
+
+class AvVideoLoader(VideoLoader):
+    "Load the video with `av` library."
+
+    @typing.override
+    def load_video(self, fname: str | pathlib.Path, /) -> torch.Tensor:
+        stream = VideoStream(fname)
+
+        # Get the metadata for fake mode to work.
+        info = stream.info()
+
+        # Create a fake tensor of float32 in fake mode.
+        if enabled_fake_mode():
+            tensor = Attr.parse(
+                shape=[info.num_frames, 3, info.width, info.height], dtype=torch.float32
+            ).to_fake_tensor()
+
+        # Decode frame by frame.
+        else:
+            array = stream.numpy()
+            assert array.shape[1] == 3
+            tensor = torch.from_numpy(array)
+
+        return tensor
 
 
 class TorchCodecVideoLoader(VideoLoader):

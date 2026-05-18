@@ -7,14 +7,16 @@ import torch
 
 from aioway.io import TorchCodecVideoLoader
 from aioway.io.io import VideoLoader
+from aioway.io.videos import AvVideoLoader
 from aioway.tags.media import IsVideoTag
 
 
 def _loader():
+    yield AvVideoLoader()
     yield TorchCodecVideoLoader()
 
 
-@pytest.fixture(params=_loader())
+@pytest.fixture(params=_loader(), ids=lambda x: type(x).__name__)
 def loader(request: pytest.FixtureRequest):
     return request.param
 
