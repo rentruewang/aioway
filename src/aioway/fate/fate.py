@@ -43,11 +43,6 @@ class Fate(Keyed[_ops.OpOverload], abc.ABC):
 
         raise NotImplementedError
 
-    @typing.override
-    @classmethod
-    def name(cls) -> str:
-        return "fate::" + _camel_to_snake(cls.__name__)
-
     @abc.abstractmethod
     def cost(self) -> int:
         """

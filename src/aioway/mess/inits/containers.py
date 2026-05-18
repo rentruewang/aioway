@@ -26,7 +26,7 @@ class Sequential(MessInit):
 
     modules: tuple[nn.Module, ...]
     """
-    A list of `Might` objects that can be resolved later.
+    A list of already initialized `nn.Module` objects.
     """
 
     def __init__(self, *args: nn.Module):

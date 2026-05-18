@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"An adaptor of `aioway.op`, brining in `Fate` / `Might` to `Fn`."
+"An adaptor of `Fate` and `Fn`, using `Fate` in fake modes."
 
 import dataclasses as dcls
 import typing

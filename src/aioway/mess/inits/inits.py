@@ -11,7 +11,7 @@ from aioway._types import dcls_no_repr
 from aioway.fn import NnInitFn
 from aioway.renders import render_fcall
 
-__all__ = ["MessInit", "find_might"]
+__all__ = ["MessInit", "find_mess_init"]
 
 
 @dcls_no_repr
@@ -28,21 +28,7 @@ class MessInit(Keyed[type[nn.Module]], abc.ABC):
 
     @typing.override
     def __repr__(self) -> str:
-        return render_fcall("might::" + self._name(), **dcls.asdict(self))
+        return render_fcall("mess_init::" + self._name(), **dcls.asdict(self))
 
     def do(self) -> nn.Module:
         return NnInitFn(func=self.KEY, args=(), kwargs=dcls.asdict(self)).do()
-
-
-def find_might(nn_type: type[nn.Module], *args, **kwargs) -> MessInit:
-    """
-    Get a `Might` from the `nn.Module` type. If not found, return `NotImplemented`.
-    """
-
-    # Right now, each `Might` should have distinct key, so just return the 1st.
-    # Just get the type. If an error is raised, construction failed,
-    # pass the error back, since upper level signature failed.
-    for might_type in MessInit.find(nn_type):
-        return might_type(*args, **kwargs)
-    else:
-        return NotImplemented
