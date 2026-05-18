@@ -35,7 +35,6 @@ class FateFn:
     def __repr__(self) -> str:
         return repr(self.fate)
 
-    @typing.override
     def do(self) -> object:
         return self.fate.do()
 
