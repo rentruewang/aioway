@@ -1,5 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import abc
 import dataclasses as dcls
 import pathlib
 import typing
@@ -10,12 +11,40 @@ from torchvision import io as vio
 from torchvision.transforms import v2 as tt
 
 from aioway.fake import enabled_fake_mode, torch_set_fake_mode_func
-from aioway.schemas import attr
-from aioway.schemas.attrs import AttrLike
+from aioway.schemas import AttrLike, attr
+from aioway.tags import IsImageTag
 
-from .io import ImageLoader
+from ._bases import TorchCompatible
 
-__all__ = ["ComposedImageLoader", "PillowImageLoader", "TvioImageLoader"]
+__all__ = [
+    "ImageLoader",
+    "ComposedImageLoader",
+    "PillowImageLoader",
+    "TvioImageLoader",
+    "ImageData",
+]
+
+
+@dcls.dataclass(frozen=True)
+class ImageData(TorchCompatible):
+    image: torch.Tensor
+
+    @typing.override
+    def to_tensor(self) -> torch.Tensor:
+        IsImageTag().attach(self.image)
+        return self.image
+
+
+@dcls.dataclass
+class ImageLoader(abc.ABC):
+    "The image loader API. Converts from a file name `fname` to a tensor."
+
+    def __call__(self, fname: str | pathlib.Path, /) -> ImageData:
+        return ImageData(self.load_img(fname))
+
+    @abc.abstractmethod
+    def load_img(self, fname: str | pathlib.Path, /) -> torch.Tensor:
+        raise NotImplementedError
 
 
 @dcls.dataclass
@@ -86,11 +115,11 @@ class TvioImageLoader(ImageLoader):
 
     @typing.override
     def load_img(self, fname: str | pathlib.Path):
-        reader = self._read_normalized if self.norm else self._read_image
+        reader = self._load_normalized if self.norm else self._load_image
         return reader(fname)
 
     @torch_set_fake_mode_func(False)
-    def _read_image(self, fname: str | pathlib.Path):
+    def _load_image(self, fname: str | pathlib.Path):
         fname_path = pathlib.Path(fname)
         fname_str = str(fname_path)
 
@@ -110,5 +139,5 @@ class TvioImageLoader(ImageLoader):
             case _:
                 raise ValueError(f"Does not support {fname_path.suffix} files.")
 
-    def _read_normalized(self, fname: str | pathlib.Path):
-        return self._read_image(fname).float() / 255
+    def _load_normalized(self, fname: str | pathlib.Path):
+        return self._load_image(fname).float() / 255

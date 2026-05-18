@@ -6,6 +6,11 @@ import pytest
 
 
 @pytest.fixture
+def example_txt(media: pathlib.Path):
+    return media / "in_search_of_lost_time.txt"
+
+
+@pytest.fixture
 def example_jpg(media: pathlib.Path):
     return media / "file_example_JPG_2500kB.jpg"
 
@@ -26,7 +31,13 @@ def example_mp3(media: pathlib.Path):
 
 
 @pytest.fixture(
-    params=[example_jpg.name, example_png.name, example_mp3.name, example_mp4.name]
+    params=[
+        example_txt.name,
+        example_jpg.name,
+        example_png.name,
+        example_mp3.name,
+        example_mp4.name,
+    ]
 )
 def example_file(request: pytest.FixtureRequest):
     return request.getfixturevalue(request.param)

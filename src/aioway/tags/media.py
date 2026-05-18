@@ -13,7 +13,28 @@ from aioway.schemas import DType
 
 from .tags import Tag
 
-__all__ = ["IsVideoTag", "IsImageTag", "SampleRateTag"]
+__all__ = ["IsTokenizedTag", "IsVideoTag", "IsImageTag", "SampleRateTag"]
+
+
+@dcls_frozen_slots
+class IsTokenizedTag(Tag):
+    """
+    Tag the tensor as embeddings (tokenized).
+    """
+
+    TAG = "__aioway_is_tokenized__"
+
+    tokenizer: str
+    """
+    The name of the tokenizer used to construct the tensor.
+    """
+
+    @typing.override
+    def _validate(self, tensor: torch.Tensor) -> None:
+        if (family := DType.parse(tensor.dtype).family) != "int":
+            raise ValueError(
+                f"Tokenized result has dtype family: '{family}', not 'int'."
+            )
 
 
 @dcls_frozen_slots

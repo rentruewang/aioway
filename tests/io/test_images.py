@@ -20,7 +20,7 @@ def loader(request: pytest.FixtureRequest):
 
 
 def _read_image(example_image: pathlib.Path, loader: ImageLoader) -> torch.Tensor:
-    image = loader(example_image)
+    image = loader(example_image).to_tensor()
     assert isinstance(image, torch.Tensor)
     assert image.dtype == torch.uint8
     return image

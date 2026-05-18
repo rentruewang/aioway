@@ -1,5 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import abc
+import dataclasses as dcls
 import pathlib
 import typing
 
@@ -7,14 +9,42 @@ import torch
 from torchcodec import decoders as dec
 
 from aioway.fake import enabled_fake_mode, torch_set_fake_mode_func
-from aioway.io.io import AudioData
 from aioway.schemas import Attr
 from aioway.tags import SampleRateTag
 
 from ._av import AudioStream
-from .io import AudioData, AudioLoader
+from ._bases import TorchCompatible
 
-__all__ = ["AvAudioLoader", "TorchCodecAudioLoader"]
+__all__ = ["AudioLoader", "AvAudioLoader", "TorchCodecAudioLoader", "AudioData"]
+
+
+@dcls.dataclass(frozen=True)
+class AudioData(TorchCompatible):
+    data: torch.Tensor
+    "The loaded audio."
+
+    sample_rate: int
+    "The sample rate."
+
+    def __post_init__(self):
+        assert self.data.ndim == 2, self.data.shape
+
+    @typing.override
+    def to_tensor(self):
+        SampleRateTag(self.sample_rate).attach(self.data)
+        return self.data
+
+
+@dcls.dataclass
+class AudioLoader(abc.ABC):
+    """
+    The audio loader API. Load the data into wave.
+    Result is tensor [num_channels, num_frames].
+    """
+
+    @abc.abstractmethod
+    def __call__(self, fname: str | pathlib.Path, /) -> AudioData:
+        raise NotImplementedError
 
 
 def encode_with_stft(audio: torch.Tensor, /, n_fft: int) -> torch.Tensor:
@@ -36,7 +66,7 @@ class AvAudioLoader(AudioLoader):
     "Load the audio with `av` library."
 
     @typing.override
-    def load_wave(self, fname: str | pathlib.Path, /) -> AudioData:
+    def __call__(self, fname: str | pathlib.Path, /) -> AudioData:
         stream = AudioStream(fname)
 
         # Get the metadata for fake mode to work.
@@ -71,7 +101,7 @@ class TorchCodecAudioLoader(AudioLoader):
     "The targetting sample rate to load. If `None`, the default is used."
 
     @typing.override
-    def load_wave(self, fname: str | pathlib.Path, /) -> AudioData:
+    def __call__(self, fname: str | pathlib.Path, /) -> AudioData:
         return self._read_audio_from_path(fname)
 
     @torch_set_fake_mode_func(False)

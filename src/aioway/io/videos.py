@@ -1,5 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import abc
+import dataclasses as dcls
 import pathlib
 import typing
 
@@ -9,11 +11,39 @@ from torchcodec import decoders as dec
 from aioway._common import num_threads
 from aioway.fake import enabled_fake_mode, torch_set_fake_mode_func
 from aioway.schemas import Attr
+from aioway.tags import IsVideoTag
 
 from ._av import VideoStream
-from .io import VideoLoader
+from ._bases import TorchCompatible
 
-__all__ = ["AvVideoLoader", "TorchCodecVideoLoader"]
+__all__ = ["VideoLoader", "AvVideoLoader", "TorchCodecVideoLoader", "VideoData"]
+
+
+@dcls.dataclass(frozen=True)
+class VideoData(TorchCompatible):
+    data: torch.Tensor
+    "The tensor decoded from the video."
+
+    @typing.override
+    def to_tensor(self) -> torch.Tensor:
+
+        IsVideoTag().attach(self.data)
+        return self.data
+
+
+@dcls.dataclass
+class VideoLoader(abc.ABC):
+    """
+    The video loader API. Load the data into a 4D tensor.
+    """
+
+    def __call__(self, fname: str | pathlib.Path, /) -> VideoData:
+        video = self.load_video(fname)
+        return VideoData(video)
+
+    @abc.abstractmethod
+    def load_video(self, fname: str | pathlib.Path, /) -> torch.Tensor:
+        raise NotImplementedError
 
 
 class AvVideoLoader(VideoLoader):
