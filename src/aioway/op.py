@@ -55,12 +55,13 @@ class Op[K: cabc.Callable[..., object]](abc.ABC):
     def __hash__(self) -> int:
         return id(self)
 
+    @abc.abstractmethod
     def do(self) -> typing.Any:
         """
         Generate the fake tensor.
         """
 
-        return self.KEY(**dcls.asdict(self))
+        raise NotImplementedError
 
     @property
     def __aioway_dim_tag__(self) -> DimTag:

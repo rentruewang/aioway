@@ -7,6 +7,7 @@ import typing
 from torch import nn
 
 from aioway._common import dcls_no_repr
+from aioway.fn import NnInitFn
 from aioway.op import Op
 
 __all__ = ["Might", "find_might", "all_mights"]
@@ -26,8 +27,6 @@ class Might(Op[type[nn.Module]], abc.ABC):
 
     @typing.override
     def do(self) -> nn.Module:
-        from aioway.fn import NnInitFn
-
         return NnInitFn(func=self.KEY, args=(), kwargs=dcls.asdict(self)).do()
 
     @classmethod

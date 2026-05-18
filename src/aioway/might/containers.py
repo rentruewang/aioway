@@ -5,6 +5,7 @@ import typing
 from torch import nn
 
 from aioway._common import dcls_no_repr
+from aioway.fn import NnInitFn
 
 from .might import Might
 
@@ -34,8 +35,6 @@ class Sequential(Might):
 
     @typing.override
     def do(self) -> nn.Module:
-        from aioway.fn import NnInitFn
-
         # Create `nn.Sequential` instance with `NnInitFn` is the best way
         # to ensure that the modes are invoked properly.
         return NnInitFn(func=self.KEY, args=self.modules, kwargs={}).do()

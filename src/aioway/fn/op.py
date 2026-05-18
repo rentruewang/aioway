@@ -5,11 +5,12 @@
 import dataclasses as dcls
 import typing
 
-from aioway.fate import Fate, find_fate
-from aioway.might import Might, find_might
-
 from .fn import Fn
 from .modes import NnInitFn, TorDisFn
+
+if typing.TYPE_CHECKING:
+    from aioway.fate import Fate
+    from aioway.might import Might
 
 __all__ = ["FateFn", "MightFn"]
 
@@ -56,6 +57,8 @@ class FateFn(Fn):
 
     @classmethod
     def find_fate(cls, thunk: TorDisFn) -> typing.Self:
+        from aioway.fate import find_fate
+
         fate = find_fate(thunk.func, *thunk.args, **thunk.kwargs)
 
         if fate is NotImplemented:
@@ -79,6 +82,8 @@ class MightFn:
 
     @classmethod
     def find_might(cls, thunk: NnInitFn) -> typing.Self:
+        from aioway.might import find_might
+
         might = find_might(thunk.func, *thunk.args, **thunk.kwargs)
 
         if might is NotImplemented:

@@ -3,6 +3,7 @@
 "The module containing `Fate` interface, the implementation for fake aten operations."
 
 import abc
+import dataclasses as dcls
 import re
 import typing
 
@@ -25,6 +26,10 @@ class Fate(Op[_ops.OpOverload], abc.ABC):
     """
 
     KEY: typing.ClassVar[_ops.OpOverload] = NotImplemented
+
+    @typing.override
+    def do(self) -> typing.Any:
+        return self.KEY(**dcls.asdict(self))
 
     @abc.abstractmethod
     def ok(self) -> bool:
