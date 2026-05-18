@@ -123,6 +123,7 @@ class VideoStream(_AvStream[VideoStreamInfo]):
             # Would decode into an array of [h, w, 3].
             arr = frame.to_ndarray(format="rgb24")
             assert arr.ndim == 3
+            assert arr.shape[-1] == 3
             chunks.append(arr)
 
         stacked = np.stack(chunks, axis=0)
