@@ -5,7 +5,6 @@
 import dataclasses as dcls
 import typing
 
-from .fn import Fn
 from .modes import NnInitFn, TorDisFn
 
 if typing.TYPE_CHECKING:
@@ -17,7 +16,7 @@ __all__ = ["FateFn", "MightFn"]
 
 @typing.final
 @dcls.dataclass(frozen=True)
-class FateFn(Fn):
+class FateFn:
     """
     `FateFn` wraps a `Fate` object, which is split out so as to declutter subclasses for `Fn`.
 

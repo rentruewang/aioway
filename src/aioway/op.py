@@ -9,7 +9,6 @@ import typing
 from collections import abc as cabc
 
 from aioway._common import dcls_no_repr, render_fcall
-from aioway.tags import DimTag
 
 __all__ = ["Op"]
 
