@@ -1,11 +1,4 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from .actives import *
-from .containers import *
-from .dense import *
-from .dropouts import *
-from .embs import *
+from . import _actives, _containers, _dense, _dropouts, _embs, _losses, _norms, _sliding
 from .inits import *
-from .losses import *
-from .norms import *
-from .sliding import *
