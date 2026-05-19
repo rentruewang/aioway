@@ -12,8 +12,8 @@ from collections import abc as cabc
 import torch
 from torch import nn
 
-from ..fn import Thunk, TorchThunk
 from ._on_off import OnOffCtx, OnOffStack
+from .fn import Thunk, TorchThunk
 
 __all__ = [
     "NnFwdFn",
@@ -35,8 +35,10 @@ INITS: OnOffStack[NnInitMode] = OnOffStack()
 
 def module_fwd(module: nn.Module, /, *args, **kwargs) -> typing.Any:
     """
-    Call the `nn.Module`.
+    Call the `nn.Module`. This would execute all the modes at the outermost module.
     `aioway` functions must call this function to call `nn.Module`.
+
+    For nested modules (fields of modules), use `register_*_hook` from `torch`.
     """
 
     if not isinstance(module, nn.Module):
@@ -47,8 +49,10 @@ def module_fwd(module: nn.Module, /, *args, **kwargs) -> typing.Any:
 
 def module_init(init: type[nn.Module], /, *args, **kwargs) -> nn.Module:
     """
-    Initialize the `nn.Module`.
+    Initialize the `nn.Module`. This would execute all the modes at the outermost module.
     `aioway` functions must call this function to initalize `nn.Module`.
+
+    For nested modules (fields of modules), use `register_*_hook` from `torch`.
     """
 
     if not isinstance(init, type) or not issubclass(init, nn.Module):
@@ -129,7 +133,11 @@ class NnModeOnOff[T, V = object](OnOffCtx, abc.ABC):
 
 @dcls.dataclass
 class NnFwdFn(TorchThunk[nn.Module]):
-    "`NnFwdFn` represents the module calls."
+    """
+    `NnFwdFn` represents the module calls.
+
+    It hooks into `module_fwd` so it allows for optional overwrites.
+    """
 
     func: nn.Module
     "The module for the `Fn`."
@@ -166,7 +174,7 @@ class NnFwdMode(NnModeOnOff[NnFwdFn], abc.ABC):
     `NnFwdMode` is the mode for similar to `__torch_function__` / `__torch_dispatch__`,
     except you enter / exit with a `.enter()` method (I prefer context managers).
 
-    It is triggered when a `nn.Module` is called.
+    It is triggered when a `module_fwd` is called.
     """
 
     STACK = FORWARDS
@@ -174,7 +182,9 @@ class NnFwdMode(NnModeOnOff[NnFwdFn], abc.ABC):
 
 class NnInitFn(TorchThunk[type[nn.Module]]):
     """
-    `NnInitFn` is the "leftover" `nn.Module`s that are not covered by the `Might` API.
+    `NnInitFn` are used to initialize `nn.Module`s.
+
+    It hooks into `module_init` so it allows for optional overwrites.
     """
 
     func: type[nn.Module]
@@ -196,7 +206,7 @@ class NnInitMode(NnModeOnOff[NnInitFn, nn.Module], abc.ABC):
     `NnInitMode` is the mode for similar to `__torch_function__` / `__torch_dispatch__`,
     except you enter / exit with a `.enter()` method (I prefer context managers).
 
-    It is triggered when a `nn.Module` is initialized.
+    It is triggered when a `module_init` is called.
     """
 
     STACK = INITS

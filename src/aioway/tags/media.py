@@ -7,7 +7,7 @@ from collections import abc as cabc
 
 import torch
 
-from aioway._common import dcls_frozen_slots
+from aioway._types import dcls_frozen_slots
 from aioway.fake import is_fake_tensor
 from aioway.schemas import DType
 

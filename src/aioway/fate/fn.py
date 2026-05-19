@@ -1,22 +1,24 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"An adaptor of `aioway.op`, brining in `Fate` / `Might` to `Fn`."
+"An adaptor of `Fate` and `Fn`, using `Fate` in fake modes."
 
 import dataclasses as dcls
 import typing
 
-from aioway.fate import Fate, find_fate
-from aioway.might import Might, find_might
+from aioway._torch import (
+    is_aten_op,
+)
+from aioway.fake import enabled_fake_mode
+from aioway.fn import TorDisFn
 
-from .fn import Fn
-from .modes import NnInitFn, TorDisFn
+from .fate import Fate, find_fate
 
-__all__ = ["FateFn", "MightFn"]
+__all__ = ["FateFn"]
 
 
 @typing.final
 @dcls.dataclass(frozen=True)
-class FateFn(Fn):
+class FateFn:
     """
     `FateFn` wraps a `Fate` object, which is split out so as to declutter subclasses for `Fn`.
 
@@ -35,7 +37,6 @@ class FateFn(Fn):
     def __repr__(self) -> str:
         return repr(self.fate)
 
-    @typing.override
     def do(self) -> object:
         return self.fate.do()
 
@@ -56,6 +57,16 @@ class FateFn(Fn):
 
     @classmethod
     def find_fate(cls, thunk: TorDisFn) -> typing.Self:
+        if not enabled_fake_mode():
+            return NotImplemented
+
+        # For now, `Fate` supports aten, because `torchvision`, `torchcodec` rely on real data,
+        # they do not have a good `Fate` to implement for now.
+        # In those operations, real mode is force enabled right now.
+        # See aioway#204 issue.
+        if not is_aten_op(thunk.func):
+            return NotImplemented
+
         fate = find_fate(thunk.func, *thunk.args, **thunk.kwargs)
 
         if fate is NotImplemented:
@@ -63,26 +74,3 @@ class FateFn(Fn):
 
         else:
             return cls(fate=fate, original=thunk)
-
-
-@dcls.dataclass
-class MightFn:
-    """
-    `MightFn` are `Fn` that wrap `Might`s, which are supported `nn.Module` ops.
-    """
-
-    might: Might
-    "The `Might` instance."
-
-    def do(self) -> object:
-        return self.might.do()
-
-    @classmethod
-    def find_might(cls, thunk: NnInitFn) -> typing.Self:
-        might = find_might(thunk.func, *thunk.args, **thunk.kwargs)
-
-        if might is NotImplemented:
-            return NotImplemented
-
-        else:
-            return cls(might)

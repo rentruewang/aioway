@@ -2,15 +2,15 @@
 
 from torch import nn
 
-from aioway._common import dcls_no_repr
+from aioway._types import dcls_no_repr
 
-from .might import Might
+from .inits import MessInit
 
 __all__ = ["Identity", "Linear", "Bilinear"]
 
 
 @dcls_no_repr
-class Identity(Might):
+class Identity(MessInit):
     """
     A placeholder identity operator that is argument-insensitive.
     """
@@ -19,7 +19,7 @@ class Identity(Might):
 
 
 @dcls_no_repr
-class Linear(Might):
+class Linear(MessInit):
     """
     Apply the transformation A @ x + b.
     """
@@ -44,7 +44,7 @@ class Linear(Might):
 
 
 @dcls_no_repr
-class Bilinear(Might):
+class Bilinear(MessInit):
     """
     Apply the transformation x1 @ A @ x2 + b.
     """

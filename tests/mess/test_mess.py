@@ -5,8 +5,8 @@ import typing
 import pytest
 from torch import nn
 
-from aioway._common import render_fcall
-from aioway.might import Might, Sequential, find_might
+from aioway.mess import Mess, MessInit
+from aioway.renders import render_fcall
 
 
 class _ModuleOpts(typing.NamedTuple):
@@ -68,23 +68,27 @@ def _module_opts():
     params=_module_opts(),
     ids=lambda x: render_fcall(x.module.__name__, **x.options),
 )
-def might(request: pytest.FixtureRequest):
+def mess_init(request: pytest.FixtureRequest) -> MessInit:
     cls, kwargs = request.param
-    return find_might(cls, **kwargs)
+    return Mess.find(cls).init(**kwargs)
 
 
-def test_might_init(might: Might):
-    assert isinstance(might, Might)
-    assert repr(might).startswith("might::")
+def test_mess_init(mess_init: MessInit):
+    assert isinstance(mess_init, MessInit)
+    assert repr(mess_init).startswith("mess_init::")
 
 
-def test_might_do(might: Might):
-    module = might.do()
+def test_mess_init_do(mess_init: MessInit):
+    module = mess_init.do()
     assert isinstance(module, nn.Module)
 
 
 def test_sequential():
-    seq = find_might(nn.Sequential, nn.Linear(1, 2), nn.Linear(2, 3), nn.Linear(3, 4))
-    assert isinstance(seq, Might)
+    from aioway.mess.inits._containers import Sequential
+
+    seq = Mess.find(nn.Sequential).init(
+        nn.Linear(1, 2), nn.Linear(2, 3), nn.Linear(3, 4)
+    )
+    assert isinstance(seq, MessInit)
     assert isinstance(seq, Sequential)
     assert len(seq.modules) == 3

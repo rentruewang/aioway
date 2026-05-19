@@ -4,7 +4,8 @@
 import typing
 from collections import abc as cabc
 
-from aioway._common import render_fcall, render_torch_func_name, replace_tensors
+from aioway.decomps import replace_tensors
+from aioway.renders import render_fcall, render_torch_func_name
 from aioway.schemas import attr
 
 __all__ = [

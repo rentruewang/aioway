@@ -4,15 +4,15 @@ import typing
 
 from torch import nn
 
-from aioway._common import dcls_no_repr
+from aioway._types import dcls_no_repr
 
-from .might import Might
+from .inits import MessInit
 
 __all__ = ["Embedding"]
 
 
 @dcls_no_repr
-class _BaseEmbedding(Might):
+class _BaseEmbedding(MessInit):
     KEY: typing.ClassVar[type[nn.Module]] = NotImplemented
 
     num_embeddings: int

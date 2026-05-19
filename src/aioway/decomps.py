@@ -87,6 +87,8 @@ class DecomposeCheck(typing.Protocol):
 class DecompStep(typing.Protocol):
     def handles(self, obj, /) -> bool: ...
     def decompose(self, obj, /) -> cabc.Iterable[typing.Any]: ...
+
+
 @functools.cache
 def _ids_of(seq: cabc.Sequence[typing.Any]) -> list[int]:
     return [id(item) for item in seq]
