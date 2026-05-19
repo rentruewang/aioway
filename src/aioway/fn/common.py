@@ -17,7 +17,6 @@ __all__ = [
 
 @typing.no_type_check
 def replace_tensors_with_attr[T](obj: T) -> T:
-
     return replace_tensors(obj, attr)
 
 
