@@ -24,9 +24,11 @@ class MessInit(Keyed[type[nn.Module]], abc.ABC):
     much like how `Fate`'s objects mimicks the function signature of `torch.ops.aten.*`.
     """
 
+    KEY: typing.ClassVar[type[nn.Module]] = NotImplemented
+
     @typing.override
     def __repr__(self) -> str:
         return render_fcall("mess_init::" + self._name(), **dcls.asdict(self))
 
     def do(self) -> nn.Module:
-        return NnInitFn(func=self.key, args=(), kwargs=dcls.asdict(self)).do()
+        return NnInitFn(func=self.KEY, args=(), kwargs=dcls.asdict(self)).do()

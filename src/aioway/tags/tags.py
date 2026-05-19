@@ -43,7 +43,7 @@ class Tag(abc.ABC):
             )
 
     @abc.abstractmethod
-    def _check_tensor(self, tensor: torch.Tensor) -> None:
+    def _validate(self, tensor: torch.Tensor) -> None:
         """
         Execute additional validation for subclasses. Subclasses can override this,
         and raise an error if `self` is not valid or cannot attach to `tensor`.
@@ -57,7 +57,7 @@ class Tag(abc.ABC):
         raise a `ValueError` and do not set the attribute.
         """
 
-        self._check_tensor(tensor)
+        self._validate(tensor)
 
         if not overwrite and hasattr(tensor, self.TAG):
             raise ValueError(f"`{self.TAG}` already exists on {tensor=}.")

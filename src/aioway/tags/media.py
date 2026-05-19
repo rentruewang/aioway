@@ -30,7 +30,7 @@ class IsTokenizedTag(Tag):
     """
 
     @typing.override
-    def _check_tensor(self, tensor: torch.Tensor) -> None:
+    def _validate(self, tensor: torch.Tensor) -> None:
         if (family := DType.parse(tensor.dtype).family) != "int":
             raise ValueError(
                 f"Tokenized result has dtype family: '{family}', not 'int'."
@@ -46,7 +46,7 @@ class IsVideoTag(Tag):
     TAG = "__aioway_is_video__"
 
     @typing.override
-    def _check_tensor(self, tensor: torch.Tensor) -> None:
+    def _validate(self, tensor: torch.Tensor) -> None:
         _check_image_or_video(tensor, _VIDEO_NDIM_INFO)
 
 
@@ -59,7 +59,7 @@ class IsImageTag(Tag):
     TAG = "__aioway_is_image__"
 
     @typing.override
-    def _check_tensor(self, tensor: torch.Tensor) -> None:
+    def _validate(self, tensor: torch.Tensor) -> None:
         _check_image_or_video(tensor, _IMAGE_NDIM_INFO)
 
 
@@ -77,7 +77,7 @@ class SampleRateTag(Tag):
     """
 
     @typing.override
-    def _check_tensor(self, tensor: torch.Tensor) -> None:
+    def _validate(self, tensor: torch.Tensor) -> None:
         if self.sample_rate <= 0:
             raise ValueError(f"{self.sample_rate} <= 0.")
 

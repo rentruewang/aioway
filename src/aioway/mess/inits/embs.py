@@ -13,14 +13,15 @@ __all__ = ["Embedding"]
 
 @dcls_no_repr
 class _BaseEmbedding(MessInit):
+    KEY: typing.ClassVar[type[nn.Module]] = NotImplemented
+
     num_embeddings: int
     "The size of the dictionary of embeddings."
 
     embedding_dim: int
     "The size of each embedding vector."
 
-    @typing.override
-    def _check_data(self):
+    def __post_init__(self):
         if self.num_embeddings <= 0:
             raise ValueError(f"{self.num_embeddings=} <= 0.")
 
@@ -29,15 +30,19 @@ class _BaseEmbedding(MessInit):
 
 
 @dcls_no_repr
-class Embedding(_BaseEmbedding, key=nn.Embedding):
+class Embedding(_BaseEmbedding):
     """
     A simple lookup table that stores embeddings of a fixed dictionary and size.
     """
 
+    KEY = nn.Embedding
+
 
 @dcls_no_repr
-class EmbeddingBag(_BaseEmbedding, key=nn.EmbeddingBag):
+class EmbeddingBag(_BaseEmbedding):
     """
     Compute sums or means of 'bags' of embeddings,
     without instantiating the intermediate embeddings.
     """
+
+    KEY = nn.EmbeddingBag

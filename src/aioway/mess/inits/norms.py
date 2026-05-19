@@ -22,6 +22,8 @@ __all__ = [
 class _BaseNorm(MessInit):
     "Base normalization layer for shared code of batch norm and instance norm."
 
+    KEY: typing.ClassVar[type[nn.Module]] = NotImplemented
+
     num_features: int
     "The number of features C of the output."
 
@@ -35,8 +37,7 @@ class _BaseNorm(MessInit):
     Default: 0.1.
     """
 
-    @typing.override
-    def _check_data(self) -> None:
+    def __post_init__(self) -> None:
         if self.num_features <= 0:
             raise ValueError(f"{self.num_features=} <= 0.")
 
@@ -47,25 +48,37 @@ class _BaseNorm(MessInit):
             raise ValueError(f"If given, {self.momentum=} should be positive.")
 
 
-class BatchNorm1d(_BaseNorm, key=nn.BatchNorm1d):
+class BatchNorm1d(_BaseNorm):
     "Applies Batch Normalization over a 2D or 3D input."
 
+    KEY = nn.BatchNorm1d
 
-class BatchNorm2d(_BaseNorm, key=nn.BatchNorm2d):
+
+class BatchNorm2d(_BaseNorm):
     "Applies Batch Normalization over a 4D input."
 
+    KEY = nn.BatchNorm2d
 
-class BatchNorm3d(_BaseNorm, key=nn.BatchNorm3d):
+
+class BatchNorm3d(_BaseNorm):
     "Applies Batch Normalization over a 5D input."
 
+    KEY = nn.BatchNorm3d
 
-class InstanceNorm1d(_BaseNorm, key=nn.InstanceNorm1d):
+
+class InstanceNorm1d(_BaseNorm):
     "Applies Instance Normalization over a 2D or 3D input."
 
+    KEY = nn.InstanceNorm1d
 
-class InstanceNorm2d(_BaseNorm, key=nn.InstanceNorm2d):
+
+class InstanceNorm2d(_BaseNorm):
     "Applies Instance Normalization over a 4D input."
 
+    KEY = nn.InstanceNorm2d
 
-class InstanceNorm3d(_BaseNorm, key=nn.InstanceNorm3d):
+
+class InstanceNorm3d(_BaseNorm):
     "Applies Instance Normalization over a 5D input."
+
+    KEY = nn.InstanceNorm3d

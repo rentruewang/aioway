@@ -58,7 +58,7 @@ class DimTag(Tag):
     """
 
     @typing.override
-    def _check_tensor(self, tensor: torch.Tensor) -> None:
+    def _validate(self, tensor: torch.Tensor) -> None:
         if len(self.tags) != (ndim := tensor.ndim):
             raise ValueError(
                 f"The {self.tags=} dimensions do not match the tensor's {ndim=}."

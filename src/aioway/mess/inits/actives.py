@@ -17,37 +17,55 @@ __all__ = [
 ]
 
 
-class ReLU(MessInit, key=nn.ReLU):
+class ReLU(MessInit):
     "Applies the rectified linear unit function element-wise."
 
+    KEY = nn.ReLU
 
-class ReLU6(MessInit, key=nn.ReLU6):
+
+class ReLU6(MessInit):
     "Applies the ReLU6 function element-wise."
 
+    KEY = nn.ReLU6
 
-class CELU(MessInit, key=nn.CELU):
+
+class CELU(MessInit):
     "Applies the CELU function element-wise."
 
+    KEY = nn.CELU
 
-class GELU(MessInit, key=nn.GELU):
+
+class GELU(MessInit):
     "Applies the GELU function element-wise."
 
+    KEY = nn.GELU
 
-class Sigmoid(MessInit, key=nn.Sigmoid):
+
+class Sigmoid(MessInit):
     "Applies the Sigmoid function element-wise."
 
+    KEY = nn.Sigmoid
 
-class Tanh(MessInit, key=nn.Tanh):
+
+class Tanh(MessInit):
     "Applies the Tanh function element-wise."
 
+    KEY = nn.Tanh
 
-class Softmin(MessInit, key=nn.Softmin):
+
+class Softmin(MessInit):
     "Applies the Softmin function to an n-dimensional input Tensor."
 
+    KEY = nn.Softmin
 
-class Softmax(MessInit, key=nn.Softmax):
+
+class Softmax(MessInit):
     "Applies the Softmax function to an n-dimensional input Tensor."
 
+    KEY = nn.Softmax
 
-class LogSoftmax(MessInit, key=nn.LogSoftmax):
+
+class LogSoftmax(MessInit):
     "Applies the LogSoftmax function to an n-dimensional input Tensor."
+
+    KEY = nn.LogSoftmax

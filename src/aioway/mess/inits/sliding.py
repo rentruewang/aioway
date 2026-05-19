@@ -29,7 +29,8 @@ _PADDING = frozenset(["zeros", "reflect", "replicate", "circular"])
 
 
 @dcls_no_repr
-class _BaseAvgSliding(MessInit, abc.ABC):
+class _BaseAvgSliding(abc.ABC):
+    KEY: typing.ClassVar[type[nn.Module]] = NotImplemented
     NDIM: typing.ClassVar[int]
 
     _: dcls.KW_ONLY
@@ -43,10 +44,7 @@ class _BaseAvgSliding(MessInit, abc.ABC):
     padding: int | tuple[int, ...] = 0
     "Padding added to both sides of the input. Default: 0."
 
-    @typing.override
-    def _check_data(self) -> None:
-        super()._check_data()
-
+    def __post_init__(self) -> None:
         # Check these `int`s or `tuple`s if they are valid.
         _ = _cast_ndim_int(self.NDIM, self.kernel_size)
         _ = _cast_ndim_int(self.NDIM, self.stride)
@@ -54,20 +52,19 @@ class _BaseAvgSliding(MessInit, abc.ABC):
 
 
 @dcls_no_repr
-class _BaseSliding(_BaseAvgSliding, MessInit, abc.ABC):
+class _BaseSliding(_BaseAvgSliding, abc.ABC):
     _: dcls.KW_ONLY
 
     dilation: int | tuple[int, ...] = 1
     "Spacing between kernel elements. Default: 1."
 
-    @typing.override
-    def _check_data(self):
-        super()._check_data()
+    def __post_init__(self):
+        super().__post_init__()
         _ = _cast_ndim_int(self.NDIM, self.dilation)
 
 
 @dcls_no_repr
-class _BaseConvWeights(MessInit, abc.ABC):
+class _BaseConvWeights(abc.ABC):
     _: dcls.KW_ONLY
 
     in_channels: int
@@ -85,7 +82,7 @@ class _BaseConvWeights(MessInit, abc.ABC):
     padding_mode: str = "zeros"
     "'zeros', 'reflect', 'replicate' or 'circular'. Default: 'zeros'."
 
-    def _check_data(self) -> None:
+    def __post_init__(self) -> None:
         if self.in_channels <= 0:
             raise ValueError(f"{self.in_channels=} <= 0.")
 
@@ -106,15 +103,15 @@ class _BaseConvWeights(MessInit, abc.ABC):
 
 @dcls_no_repr
 class _BaseConv(_BaseSliding, _BaseConvWeights, MessInit):
-    def _check_data(self) -> None:
-        _BaseSliding._check_data(self)
-        _BaseConvWeights._check_data(self)
+    def __post_init__(self) -> None:
+        _BaseSliding.__post_init__(self)
+        _BaseConvWeights.__post_init__(self)
 
 
 @dcls_no_repr
 class _BaseAvgPool(_BaseAvgSliding, MessInit):
-    def _check_data(self) -> None:
-        super()._check_data()
+    def __post_init__(self) -> None:
+        _BaseAvgSliding.__post_init__(self)
 
 
 @dcls_no_repr
@@ -125,88 +122,97 @@ class _BaseMaxPool(_BaseSliding, MessInit):
     Useful for `torch.nn.MaxUnpool*d` later
     """
 
-    def _check_data(self) -> None:
-        super()._check_data()
+    def __post_init__(self) -> None:
+        _BaseSliding.__post_init__(self)
 
 
 @dcls_no_repr
-class Conv1d(_BaseConv, key=nn.Conv1d):
+class Conv1d(_BaseConv):
     """
     Applies a 1D convolution over an input signal composed of several input planes.
     """
 
+    KEY = nn.Conv1d
     NDIM = 1
 
 
 @dcls_no_repr
-class Conv2d(_BaseConv, key=nn.Conv2d):
+class Conv2d(_BaseConv):
     """
     Applies a 2D convolution over an input signal composed of several input planes.
     """
 
+    KEY = nn.Conv2d
     NDIM = 2
 
 
 @dcls_no_repr
-class Conv3d(_BaseConv, key=nn.Conv3d):
+class Conv3d(_BaseConv):
     """
     Applies a 3D convolution over an input signal composed of several input planes.
     """
 
+    KEY = nn.Conv3d
     NDIM = 3
 
 
 @dcls_no_repr
-class MaxPool1d(_BaseMaxPool, key=nn.MaxPool1d):
+class MaxPool1d(_BaseMaxPool):
     """
     Applies a 1D max pooling over an input signal composed of several input planes.
     """
 
+    KEY = nn.MaxPool1d
     NDIM = 1
 
 
 @dcls_no_repr
-class MaxPool2d(_BaseMaxPool, key=nn.MaxPool2d):
+class MaxPool2d(_BaseMaxPool):
     """
     Applies a 2D max pooling over an input signal composed of several input planes.
     """
 
+    KEY = nn.MaxPool2d
     NDIM = 2
 
 
 @dcls_no_repr
-class MaxPool3d(_BaseMaxPool, key=nn.MaxPool3d):
+class MaxPool3d(_BaseMaxPool):
     """
     Applies a 3D max pooling over an input signal composed of several input planes.
     """
 
+    KEY = nn.MaxPool3d
     NDIM = 3
 
 
 @dcls_no_repr
-class AvgPool1d(_BaseAvgPool, key=nn.AvgPool1d):
+class AvgPool1d(_BaseAvgPool):
     """
     Applies a 1D average pooling over an input signal composed of several input planes.
     """
 
+    KEY = nn.AvgPool1d
     NDIM = 1
 
 
 @dcls_no_repr
-class AvgPool2d(_BaseAvgPool, key=nn.AvgPool2d):
+class AvgPool2d(_BaseAvgPool):
     """
     Applies a 2D average pooling over an input signal composed of several input planes.
     """
 
+    KEY = nn.AvgPool2d
     NDIM = 2
 
 
 @dcls_no_repr
-class AvgPool3d(_BaseAvgPool, key=nn.AvgPool3d):
+class AvgPool3d(_BaseAvgPool):
     """
     Applies a 3D average pooling over an input signal composed of several input planes.
     """
 
+    KEY = nn.AvgPool3d
     NDIM = 3
 
 
