@@ -12,6 +12,7 @@ from aioway._keyed import Keyed
 from aioway._types import dcls_no_repr
 from aioway.decomps import find_nested_tensors
 from aioway.renders import render_fcall
+from aioway.fn import TorDisFn
 
 __all__ = ["Fate", "find_fate", "all_fates"]
 
@@ -55,15 +56,15 @@ class Fate(Keyed[_ops.OpOverload], abc.ABC):
         yield from find_nested_tensors(self)
 
 
-def find_fate(op: _ops.OpOverload, *args: typing.Any, **kwargs: typing.Any) -> Fate:
+def find_fate(dispatch: TorDisFn) -> Fate:
     """
     Try finding a `Fate` operator with the thunk, and then wrap into `FateFn`.
 
     Returns `NotImplemented` if a candidate is not found.
     """
 
-    for sub_type in Fate.find(op):
-        if not (fate := sub_type(*args, **kwargs)).ok():
+    for sub_type in Fate.find(dispatch.func):
+        if not (fate := sub_type(*dispatch.args, **dispatch.kwargs)).ok():
             continue
 
         return fate

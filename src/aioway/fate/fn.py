@@ -3,6 +3,7 @@
 "An adaptor of `Fate` and `Fn`, using `Fate` in fake modes."
 
 import dataclasses as dcls
+import logging
 import typing
 
 from aioway._torch import (
@@ -14,6 +15,8 @@ from aioway.fn import TorDisFn
 from .fate import Fate, find_fate
 
 __all__ = ["FateFn"]
+
+LOGGER = logging.getLogger(__name__)
 
 
 @typing.final
@@ -60,17 +63,22 @@ class FateFn:
         if not enabled_fake_mode():
             return NotImplemented
 
+        LOGGER.debug("Resolving `Fate` object for %s", thunk)
+
         # For now, `Fate` supports aten, because `torchvision`, `torchcodec` rely on real data,
         # they do not have a good `Fate` to implement for now.
         # In those operations, real mode is force enabled right now.
         # See aioway#204 issue.
         if not is_aten_op(thunk.func):
+            LOGGER.debug("%s is not aten.", thunk)
             return NotImplemented
 
-        fate = find_fate(thunk.func, *thunk.args, **thunk.kwargs)
+        fate = find_fate(thunk)
 
         if fate is NotImplemented:
+            LOGGER.debug("Fate for %s not found.", thunk)
             return NotImplemented
 
         else:
+            LOGGER.debug("Fate for %s found: %s.", thunk, fate)
             return cls(fate=fate, original=thunk)

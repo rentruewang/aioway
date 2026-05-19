@@ -21,8 +21,9 @@ __all__ = [
     "SubScalar",
     "MulTensor",
     "MulScalar",
-    "DivTensor",
-    "DivScalar",
+    "TrueDivTensor",
+    "TrueDivScalar",
+    "FloorDiv",
     "EqTensor",
     "EqScalar",
     "NeTensor",
@@ -41,27 +42,20 @@ Scalar = int | float | bool
 
 
 @dcls_no_repr
-class _BinaryTensorUFunc(Fate, abc.ABC):
+class _BinaryUFunc(Fate, abc.ABC):
     BINARY: typing.ClassVar[cabc.Callable[..., typing.Any]]
 
-    self: torch.Tensor
-    other: torch.Tensor
+    self: torch.Tensor | Scalar
+    other: torch.Tensor | Scalar
     alpha: float = 1
-
-    def __post_init__(self):
-        if not isinstance(self.self, torch.Tensor):
-            raise TypeError(type(self.self))
-
-        if not isinstance(self.other, torch.Tensor):
-            raise TypeError(type(self.other))
 
     @typing.override
     def ok(self) -> bool:
-        try:
-            _ = torch.broadcast_shapes(self.self.shape, self.other.shape)
-            return True
-        except RuntimeError:
-            return False
+        return (
+            False
+            or isinstance(self.self, torch.Tensor)
+            or isinstance(self.other, torch.Tensor)
+        )
 
     @typing.override
     def do(self) -> torch.Tensor:
@@ -74,145 +68,120 @@ class _BinaryTensorUFunc(Fate, abc.ABC):
 
     @functools.cached_property
     def _shape(self) -> torch.Size:
-        return torch.broadcast_shapes(self.self.shape, self.other.shape)
+        self_is_tensor = isinstance(self.self, torch.Tensor)
+        other_is_tensor = isinstance(self.other, torch.Tensor)
+
+        match self_is_tensor, other_is_tensor:
+            case True, True:
+                return torch.broadcast_shapes(self.self.shape, self.other.shape)
+            case True, False:
+                return self.self.shape
+            case False, True:
+                return self.other.shape
+            case _, _:
+                raise RuntimeError("Not happening.")
 
 
-@dcls_no_repr
-class _BinaryScalarUFunc(Fate, abc.ABC):
-    BINARY: typing.ClassVar[cabc.Callable[..., typing.Any]]
-
-    self: torch.Tensor
-    other: Scalar
-
-    def __post_init__(self):
-        if not isinstance(self.self, torch.Tensor):
-            raise TypeError(type(self.self))
-
-    @typing.override
-    def ok(self) -> bool:
-        return True
-
-    @typing.override
-    def do(self) -> torch.Tensor:
-        return self.BINARY(self.self, self.other)
-
-    @typing.final
-    @typing.override
-    def cost(self) -> int:
-        return self.self.numel()
-
-
-class AddTensor(_BinaryTensorUFunc):
+class AddTensor(_BinaryUFunc):
     KEY = ops.aten.add.Tensor
     BINARY = operator.add
 
 
-class AddScalar(_BinaryScalarUFunc):
+class AddScalar(_BinaryUFunc):
     KEY = ops.aten.add.Scalar
     BINARY = operator.add
 
 
-class SubTensor(_BinaryTensorUFunc):
+class SubTensor(_BinaryUFunc):
     KEY = ops.aten.sub.Tensor
     BINARY = operator.sub
 
 
-class SubScalar(_BinaryScalarUFunc):
+class SubScalar(_BinaryUFunc):
     KEY = ops.aten.sub.Scalar
     BINARY = operator.sub
 
 
-class MulTensor(_BinaryTensorUFunc):
+class MulTensor(_BinaryUFunc):
     KEY = ops.aten.mul.Tensor
     BINARY = operator.mul
 
 
-class MulScalar(_BinaryScalarUFunc):
+class MulScalar(_BinaryUFunc):
     KEY = ops.aten.mul.Scalar
     BINARY = operator.mul
 
 
-def _tensor_div(self: torch.Tensor, other: torch.Tensor):
-    if is_float_tensor(other):
-        return self / other
-
-    else:
-        return self // other
+class TrueDivTensor(_BinaryUFunc):
+    KEY = ops.aten.div.Tensor
+    BINARY = operator.truediv
 
 
-class DivTensor(_BinaryTensorUFunc):
-    IR = ops.aten.div.Tensor
-    BINARY = _tensor_div
+class TrueDivScalar(_BinaryUFunc):
+    KEY = ops.aten.div.Scalar
+    BINARY = operator.truediv
 
 
-def _scalar_div(self: torch.Tensor, other: Scalar, /):
-    if isinstance(other, float):
-        return self / other
-
-    else:
-        return self // other
+class FloorDiv(_BinaryUFunc):
+    KEY = ops.aten.floor_divide.default
+    BINARY = operator.floordiv
 
 
-class DivScalar(_BinaryScalarUFunc):
-    IR = ops.aten.div.Scalar
-    BINARY = _scalar_div
-
-
-class EqTensor(_BinaryTensorUFunc):
-    IR = ops.aten.eq.Tensor
+class EqTensor(_BinaryUFunc):
+    KEY = ops.aten.eq.Tensor
     BINARY = operator.eq
 
 
-class EqScalar(_BinaryScalarUFunc):
-    IR = ops.aten.eq.Scalar
+class EqScalar(_BinaryUFunc):
+    KEY = ops.aten.eq.Scalar
     BINARY = operator.eq
 
 
-class NeTensor(_BinaryTensorUFunc):
-    IR = ops.aten.ne.Tensor
+class NeTensor(_BinaryUFunc):
+    KEY = ops.aten.ne.Tensor
     BINARY = operator.ne
 
 
-class NeScalar(_BinaryScalarUFunc):
-    IR = ops.aten.ne.Scalar
+class NeScalar(_BinaryUFunc):
+    KEY = ops.aten.ne.Scalar
     BINARY = operator.ne
 
 
-class GeTensor(_BinaryTensorUFunc):
-    IR = ops.aten.ge.Tensor
+class GeTensor(_BinaryUFunc):
+    KEY = ops.aten.ge.Tensor
     BINARY = operator.ge
 
 
-class GeScalar(_BinaryScalarUFunc):
-    IR = ops.aten.ge.Scalar
+class GeScalar(_BinaryUFunc):
+    KEY = ops.aten.ge.Scalar
     BINARY = operator.ge
 
 
-class GtTensor(_BinaryTensorUFunc):
-    IR = ops.aten.gt.Tensor
+class GtTensor(_BinaryUFunc):
+    KEY = ops.aten.gt.Tensor
     BINARY = operator.gt
 
 
-class GtScalar(_BinaryScalarUFunc):
-    IR = ops.aten.gt.Scalar
+class GtScalar(_BinaryUFunc):
+    KEY = ops.aten.gt.Scalar
     BINARY = operator.gt
 
 
-class LeTensor(_BinaryTensorUFunc):
-    IR = ops.aten.le.Tensor
+class LeTensor(_BinaryUFunc):
+    KEY = ops.aten.le.Tensor
     BINARY = operator.le
 
 
-class LeScalar(_BinaryScalarUFunc):
-    IR = ops.aten.le.Scalar
+class LeScalar(_BinaryUFunc):
+    KEY = ops.aten.le.Scalar
     BINARY = operator.le
 
 
-class LtTensor(_BinaryTensorUFunc):
-    IR = ops.aten.lt.Tensor
+class LtTensor(_BinaryUFunc):
+    KEY = ops.aten.lt.Tensor
     BINARY = operator.lt
 
 
-class LtScalar(_BinaryScalarUFunc):
-    IR = ops.aten.lt.Scalar
+class LtScalar(_BinaryUFunc):
+    KEY = ops.aten.lt.Scalar
     BINARY = operator.lt

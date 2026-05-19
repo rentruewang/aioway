@@ -149,8 +149,8 @@ class RouteNnInit(NnInitMode):
 
     @typing.override
     def __call__(self, thunk: NnInitFn, /) -> nn.Module:
-        result = thunk.do()
-        self.history.append(thunk, result)
+        result = self.history.execute(thunk)
+        assert isinstance(result, nn.Module), type(result)
         return result
 
 
@@ -166,9 +166,7 @@ class RouteNnFwd(NnFwdMode):
 
     @typing.override
     def __call__(self, thunk: NnFwdFn, /) -> object:
-        result = thunk.do()
-        self.history.append(thunk, result)
-        return result
+        return self.history.execute(thunk)
 
 
 @dcls.dataclass
@@ -192,11 +190,7 @@ class RouteTorDis(TorDisMode):
         assert isinstance(fn, TorDisFn | FateFn), type(fn)
 
         # Here, `FateFn` would do its magic and overwrite functions.
-        with capture_do_error(fn):
-            result = fn.do()
-
-        self.history.append(fn, result)
-        return result
+        return self.history.execute(thunk)
 
 
 @dcls.dataclass
@@ -213,17 +207,7 @@ class RouteTorFunc(TorFuncMode):
 
     @typing.override
     def __call__(self, thunk: TorFuncFn, /) -> object:
-        result = thunk.do()
-        self.history.append(thunk, result)
-        return result
-
-
-@ctxl.contextmanager
-def capture_do_error(fn: TorDisFn | FateFn):
-    try:
-        yield
-    except RuntimeError as err:
-        raise ValueError(f"Function call '{fn}' failed.") from err
+        return self.history.execute(thunk)
 
 
 @ctxl.contextmanager
