@@ -22,8 +22,6 @@ __all__ = [
 class _BaseNorm(MessInit):
     "Base normalization layer for shared code of batch norm and instance norm."
 
-    KEY: typing.ClassVar[type[nn.Module]] = NotImplemented
-
     num_features: int
     "The number of features C of the output."
 

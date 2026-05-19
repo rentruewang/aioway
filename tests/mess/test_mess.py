@@ -69,8 +69,8 @@ def _module_opts():
     ids=lambda x: render_fcall(x.module.__name__, **x.options),
 )
 def might(request: pytest.FixtureRequest) -> MessInit:
-    cls, kwargs = request.param
-    return Mess.find(cls).init(**kwargs)
+    nn_cls, kwargs = request.param
+    return Mess.find(nn_cls).init(key=nn_cls, **kwargs)
 
 
 def test_mess_init(might: MessInit):
@@ -78,14 +78,14 @@ def test_mess_init(might: MessInit):
     assert repr(might).startswith("mess_init::")
 
 
-def test_might_do(might: MessInit):
+def test_mess_init_do(might: MessInit):
     module = might.do()
     assert isinstance(module, nn.Module)
 
 
 def test_sequential():
     seq = Mess.find(nn.Sequential).init(
-        nn.Linear(1, 2), nn.Linear(2, 3), nn.Linear(3, 4)
+        nn.Sequential, nn.Linear(1, 2), nn.Linear(2, 3), nn.Linear(3, 4)
     )
     assert isinstance(seq, MessInit)
     assert isinstance(seq, Sequential)

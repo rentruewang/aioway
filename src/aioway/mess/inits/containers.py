@@ -19,7 +19,7 @@ class Sequential(MessInit, key=nn.Sequential):
 
     Since the API of `nn.Sequential` takes in `*nn.Module`s,
     and there is no easy way of making that into a dataclass,
-    we must overwrite `.do` because the default is `KEY(**dcls.asdict(self))`.
+    we must overwrite `.do` because the default is `key(**dcls.asdict(self))`.
     """
 
     modules: tuple[nn.Module, ...]
@@ -30,9 +30,10 @@ class Sequential(MessInit, key=nn.Sequential):
     def __init__(self, key: type[nn.Module], *args: nn.Module):
         super().__init__(key=key)
         self.modules = args
+        assert key is nn.Sequential
 
     @typing.override
     def do(self) -> nn.Module:
         # Create `nn.Sequential` instance with `NnInitFn` is the best way
         # to ensure that the modes are invoked properly.
-        return NnInitFn(func=self.KEY, args=self.modules, kwargs={}).do()
+        return NnInitFn(func=nn.Sequential, args=self.modules, kwargs={}).do()

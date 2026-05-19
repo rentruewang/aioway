@@ -10,8 +10,6 @@ __all__ = ["Dropout", "Dropout1d", "Dropout2d", "Dropout3d"]
 
 
 class _BaseDropout(MessInit):
-    KEY: typing.ClassVar[type[nn.Module]] = NotImplemented
-
     p: float = 0.5
     "Probability of an element to be zeroed. Default: 0.5."
 

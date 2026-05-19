@@ -26,14 +26,12 @@ class Fate(Keyed[_ops.OpOverload], abc.ABC):
     For example, boolean masking is data dependent, and is thus not supported by fake mode.
     """
 
-    KEY: typing.ClassVar[_ops.OpOverload] = NotImplemented
-
     @typing.override
     def __repr__(self) -> str:
         return render_fcall("fate::" + self._name(), **dcls.asdict(self))
 
     def do(self) -> typing.Any:
-        return self.KEY(**dcls.asdict(self))
+        return self.key(**dcls.asdict(self))
 
     @abc.abstractmethod
     def ok(self) -> bool:
@@ -63,7 +61,7 @@ def find_fate(op: _ops.OpOverload, *args: typing.Any, **kwargs: typing.Any) -> F
     """
 
     for sub_type in Fate.find(op):
-        if not (fate := sub_type(*args, **kwargs)).ok():
+        if not (fate := sub_type(op, *args, **kwargs)).ok():
             continue
 
         return fate

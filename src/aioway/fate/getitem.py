@@ -31,8 +31,7 @@ class _GetItem(Fate, abc.ABC):
 
 
 @dcls_no_repr
-class BooleanMasking(_GetItem):
-    KEY = ops.aten.index.Tensor
+class BooleanMasking(_GetItem, key=ops.aten.index.Tensor):
 
     def ok(self) -> bool:
         return len(self.indices) == 1 and self.indices[0].dtype == torch.bool
@@ -43,8 +42,7 @@ class BooleanMasking(_GetItem):
 
 
 @dcls_no_repr
-class IntSelect(_GetItem):
-    KEY = ops.aten.index.Tensor
+class IntSelect(_GetItem, key=ops.aten.index.Tensor):
 
     def ok(self):
         return len(self.indices) == 1 and self.indices[0].dtype == torch.int

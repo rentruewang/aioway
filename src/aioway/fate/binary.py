@@ -21,8 +21,9 @@ __all__ = [
     "SubScalar",
     "MulTensor",
     "MulScalar",
-    "DivTensor",
-    "DivScalar",
+    "TrueDivTensor",
+    "TrueDivScalar",
+    "FLoorDivTensorScalar",
     "EqTensor",
     "EqScalar",
     "NeTensor",
@@ -128,28 +129,16 @@ class MulScalar(_BinaryScalarUFunc, key=ops.aten.mul.Scalar):
     BINARY = operator.mul
 
 
-def _tensor_div(self: torch.Tensor, other: torch.Tensor):
-    if is_float_tensor(other):
-        return self / other
-
-    else:
-        return self // other
+class TrueDivTensor(_BinaryTensorUFunc, key=ops.aten.div.Tensor):
+    BINARY = operator.truediv
 
 
-class DivTensor(_BinaryTensorUFunc, key=ops.aten.div.Tensor):
-    BINARY = _tensor_div
+class TrueDivScalar(_BinaryScalarUFunc, key=ops.aten.div.Scalar):
+    BINARY = operator.truediv
 
 
-def _scalar_div(self: torch.Tensor, other: Scalar, /):
-    if isinstance(other, float):
-        return self / other
-
-    else:
-        return self // other
-
-
-class DivScalar(_BinaryScalarUFunc, key=ops.aten.div.Scalar):
-    BINARY = _scalar_div
+class FLoorDivTensorScalar(_BinaryTensorUFunc, key=ops.aten.floor_divide.default):
+    BINARY = operator.floordiv
 
 
 class EqTensor(_BinaryTensorUFunc, key=ops.aten.eq.Tensor):

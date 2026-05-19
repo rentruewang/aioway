@@ -13,8 +13,6 @@ __all__ = ["Embedding"]
 
 @dcls_no_repr
 class _BaseEmbedding(MessInit):
-    KEY: typing.ClassVar[type[nn.Module]] = NotImplemented
-
     num_embeddings: int
     "The size of the dictionary of embeddings."
 
