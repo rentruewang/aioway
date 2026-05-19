@@ -89,7 +89,7 @@ class AvAudioLoader(AudioLoader):
             assert len(array) == info.num_channels
             tensor = torch.from_numpy(array)
 
-        return AudioData(tensor, self.sample_rate or info.sample_rate)
+        return AudioData(tensor, stream.sample_rate)
 
 
 class TorchCodecAudioLoader(AudioLoader):
