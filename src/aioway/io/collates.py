@@ -4,12 +4,12 @@ import functools
 import torch
 from collections import abc as cabc
 
-__all__ = ["chunk_collate", "chunk_collate_decompose_nth_dim"]
+__all__ = ["chunk_collate", "chunk_collate_decompose_dim"]
 
 type CollateFunc = cabc.Callable[[list[torch.Tensor]], torch.Tensor]
 
 
-def chunk_collate_decompose_nth_dim(max_len: int, dim: int) -> CollateFunc:
+def chunk_collate_decompose_dim(max_len: int, dim: int) -> CollateFunc:
     """
     Instead of decomposing the 0th dimension, decompose the `dim` dimension.
 
@@ -55,6 +55,6 @@ def chunk_collate_decompose_nth_dim(max_len: int, dim: int) -> CollateFunc:
 
 
 def chunk_collate(max_len: int):
-    "Equivalent to `chunk_collate_decompose_nth_dim(max_len, 0)`."
+    "Equivalent to `chunk_collate_decompose_dim(max_len, 0)`."
 
-    return chunk_collate_decompose_nth_dim(max_len, 0)
+    return chunk_collate_decompose_dim(max_len, 0)

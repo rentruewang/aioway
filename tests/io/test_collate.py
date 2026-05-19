@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from aioway.io import chunk_collate_decompose_nth_dim
+from aioway.io import chunk_collate_decompose_dim
 import typing
 
 
@@ -59,7 +59,7 @@ def samples(request: pytest.FixtureRequest):
 def test_chunk_collate(samples: SamplesCollateDim, max_len: int):
     tensor_list, collate_dim = samples
     [ndim] = {t.ndim for t in tensor_list}
-    collator = chunk_collate_decompose_nth_dim(max_len, collate_dim)
+    collator = chunk_collate_decompose_dim(max_len, collate_dim)
     result = collator(tensor_list)
 
     # After decompose, first dim is batch, rest is unchanged relatively.
