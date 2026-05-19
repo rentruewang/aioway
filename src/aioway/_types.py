@@ -63,14 +63,6 @@ class _CallCounter[**P, T]:
         with self._increase_call_count():
             return self._func(*args, **kwargs)
 
-    @ctxl.contextmanager
-    def _increase_call_count(self):
-        try:
-            self.__invokes += 1
-            yield
-        finally:
-            self.__invokes -= 1
-
     def __repr__(self) -> str:
         return repr(self._func)
 
@@ -95,6 +87,14 @@ class _CallCounter[**P, T]:
     def __invoke_count__(self) -> int:
         "The number of times this function is being invoked."
         return self.__invokes
+
+    @ctxl.contextmanager
+    def _increase_call_count(self):
+        try:
+            self.__invokes += 1
+            yield
+        finally:
+            self.__invokes -= 1
 
 
 track_call_count = _CallCounter
