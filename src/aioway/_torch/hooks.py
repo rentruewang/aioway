@@ -6,7 +6,6 @@ import contextlib as ctxl
 import typing
 
 from torch import nn
-import torch
 from torch.nn.modules import module as _M
 
 __all__ = [
