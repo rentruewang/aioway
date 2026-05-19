@@ -75,7 +75,15 @@ class _CallCounter[**P, T]:
         return repr(self._func)
 
     def __str__(self) -> str:
-        return f"{self._func.__module__}.{self._func.__qualname__}[{self.__invoke_count__}](...)"
+        string_builder = [
+            self._func.__module__,
+            self._func.__qualname__,
+            "[",
+            str(self.__invoke_count__),
+            "]",
+            "(...)",
+        ]
+        return "".join(string_builder)
 
     @property
     def __func__(self) -> cabc.Callable[P, T]:
