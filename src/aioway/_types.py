@@ -11,6 +11,7 @@ __all__ = [
     "dcls_frozen_no_repr",
     "dcls_frozen_slots",
     "dcls_no_eq_no_repr",
+    "track_call_count",
     "Stack",
 ]
 
@@ -43,6 +44,51 @@ def dcls_frozen_no_repr[T: type](cls: T) -> T:
 def dcls_no_eq_no_repr[T: type](cls: T) -> T:
     result: typing.Any = dcls.dataclass(eq=False, repr=False)(cls)
     return result
+
+
+class _CallCounter[**P, T]:
+    """
+    Track the function's call count.
+    The function appears to be the same in `repr`, improved `str`,
+    and provide a new attribute `__invoke_count__` to track call count,
+    which shows you the number of invokes performed on this funcion.
+    You can access the original function in `__func__` attribute.
+    """
+
+    def __init__(self, func: cabc.Callable[P, T], /) -> None:
+        self._func = func
+        self._num_invokes = 0
+
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
+        with self._increase_call_count():
+            return self._func(*args, **kwargs)
+
+    @ctxl.contextmanager
+    def _increase_call_count(self):
+        try:
+            self._num_invokes += 1
+            yield
+        finally:
+            self._num_invokes -= 1
+
+    def __repr__(self) -> str:
+        return repr(self._func)
+
+    def __str__(self) -> str:
+        return f"{self._func.__module__}.{self._func.__qualname__}"
+
+    @property
+    def __func__(self) -> cabc.Callable[P, T]:
+        "Returns the original funciton."
+        return self._func
+
+    @property
+    def __invoke_count__(self) -> int:
+        "The number of times this function is being invoked."
+        return self._num_invokes
+
+
+track_call_count = _CallCounter
 
 
 @dcls.dataclass(frozen=True)
