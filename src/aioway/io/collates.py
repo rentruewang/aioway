@@ -25,7 +25,7 @@ def chunk_collate_decompose_dim(max_len: int, dim: int) -> CollateFunc:
     Returns:
         A function that can be passed to `data.DataLoader`'s `collate_fn`.
 
-        The function takes in a list of `torch.Tensor,
+        The function takes in a list of `torch.Tensor`,
         it decomposes the first dimension of the tensor,
         and outputs the tensor of shape [batch_size, max_len, ...],
         where ... is the dimensions outside of last dimension unchanged.
