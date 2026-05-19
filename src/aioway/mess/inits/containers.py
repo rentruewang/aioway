@@ -13,7 +13,7 @@ __all__ = ["Sequential"]
 
 
 @dcls_no_repr
-class Sequential(MessInit):
+class Sequential(MessInit, key=nn.Sequential):
     """
     The wrapper for `nn.Sequential`.
 
@@ -22,15 +22,13 @@ class Sequential(MessInit):
     we must overwrite `.do` because the default is `KEY(**dcls.asdict(self))`.
     """
 
-    KEY = nn.Sequential
-
     modules: tuple[nn.Module, ...]
     """
     A list of already initialized `nn.Module` objects.
     """
 
-    def __init__(self, *args: nn.Module):
-        super().__init__()
+    def __init__(self, key: type[nn.Module], *args: nn.Module):
+        super().__init__(key=key)
         self.modules = args
 
     @typing.override

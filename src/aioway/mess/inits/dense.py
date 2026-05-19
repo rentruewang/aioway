@@ -1,5 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import typing
+
 from torch import nn
 
 from aioway._types import dcls_no_repr
@@ -10,21 +12,17 @@ __all__ = ["Identity", "Linear", "Bilinear"]
 
 
 @dcls_no_repr
-class Identity(MessInit):
+class Identity(MessInit, key=nn.Identity):
     """
     A placeholder identity operator that is argument-insensitive.
     """
 
-    KEY = nn.Identity
-
 
 @dcls_no_repr
-class Linear(MessInit):
+class Linear(MessInit, key=nn.Linear):
     """
     Apply the transformation A @ x + b.
     """
-
-    KEY = nn.Linear
 
     in_features: int
     "The size of each input sample, must be > 0."
@@ -35,7 +33,8 @@ class Linear(MessInit):
     bias: bool = True
     "Whether to include the bias terms or not."
 
-    def __post_init__(self):
+    @typing.override
+    def _check_data(self):
         if self.in_features <= 0:
             raise ValueError(f"{self.in_features=} <= 0.")
 
@@ -44,12 +43,10 @@ class Linear(MessInit):
 
 
 @dcls_no_repr
-class Bilinear(MessInit):
+class Bilinear(MessInit, key=nn.Bilinear):
     """
     Apply the transformation x1 @ A @ x2 + b.
     """
-
-    KEY = nn.Bilinear
 
     in1_features: int
     "The size of each first input sample, must be > 0."
@@ -63,7 +60,8 @@ class Bilinear(MessInit):
     bias: bool = True
     "If set to `False`, the layer will not learn an additive bias. Default: `True`."
 
-    def __post_init__(self):
+    @typing.override
+    def _check_data(self):
         if self.in1_features <= 0:
             raise ValueError(f"{self.in1_features=} <= 0.")
 

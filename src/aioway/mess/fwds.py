@@ -8,4 +8,4 @@ __all__ = ["MessFwd"]
 
 
 class MessFwd(Keyed[type[nn.Module]]):
-    KEY = NotImplemented
+    pass

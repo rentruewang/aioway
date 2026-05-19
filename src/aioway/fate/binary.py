@@ -48,7 +48,8 @@ class _BinaryTensorUFunc(Fate, abc.ABC):
     other: torch.Tensor
     alpha: float = 1
 
-    def __post_init__(self):
+    @typing.override
+    def _check_data(self):
         if not isinstance(self.self, torch.Tensor):
             raise TypeError(type(self.self))
 
@@ -84,7 +85,8 @@ class _BinaryScalarUFunc(Fate, abc.ABC):
     self: torch.Tensor
     other: Scalar
 
-    def __post_init__(self):
+    @typing.override
+    def _check_data(self):
         if not isinstance(self.self, torch.Tensor):
             raise TypeError(type(self.self))
 
