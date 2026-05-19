@@ -5,7 +5,7 @@ import typing
 import pytest
 from torch import nn
 
-from aioway.mess import Mess, MessInit, Sequential
+from aioway.mess import Mess, MessInit
 from aioway.renders import render_fcall
 
 
@@ -84,6 +84,8 @@ def test_mess_init_do(mess_init: MessInit):
 
 
 def test_sequential():
+    from aioway.mess.inits._containers import Sequential
+
     seq = Mess.find(nn.Sequential).init(
         nn.Linear(1, 2), nn.Linear(2, 3), nn.Linear(3, 4)
     )
