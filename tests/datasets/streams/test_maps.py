@@ -7,7 +7,7 @@ from collections import abc as cabc
 import pytest
 import tensordict as td
 
-from aioway._torch import tdict_all_equal, tdict_rename
+from aioway._tdicts import tdict_all_equal, tdict_rename
 from aioway.datasets import (
     ApplyStream,
     CacheStream,
