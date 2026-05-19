@@ -77,6 +77,7 @@ class _CallCounter[**P, T]:
     def __str__(self) -> str:
         string_builder = [
             self._func.__module__,
+            ".",
             self._func.__qualname__,
             "[",
             str(self.__invoke_count__),
