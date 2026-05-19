@@ -210,6 +210,13 @@ class RouteTorFunc(TorFuncMode):
         return self.history.execute(thunk)
 
 
+class HistoryCollection(typing.NamedTuple):
+    function: HistTensorGraph[TorFuncFn]
+    dispatch: HistTensorGraph[TorDisFn | FateFn]
+    nn_init: Hist[NnInitFn]
+    nn_fwd: Hist[NnFwdFn]
+
+
 @ctxl.contextmanager
 def track_fn():
     """
@@ -222,7 +229,12 @@ def track_fn():
     func = RouteTorFunc()
 
     with func.enter(), dis.enter(), init.enter(), fwd.enter():
-        yield func.history, dis.history, init.history, fwd.history
+        yield HistoryCollection(
+            function=func.history,
+            dispatch=dis.history,
+            nn_init=init.history,
+            nn_fwd=fwd.history,
+        )
 
 
 @ctxl.contextmanager
