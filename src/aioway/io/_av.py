@@ -9,7 +9,6 @@ import typing
 
 import av
 import numpy as np
-from av.audio.stream import AudioStream
 from numpy import typing as npt
 
 __all__ = ["AudioStream"]
@@ -81,6 +80,7 @@ class AudioStream(_AvStream[AudioStreamInfo]):
         self._sample_rate = sample_rate
 
     @typing.override
+    @functools.cache
     def info(self) -> AudioStreamInfo:
         stream = self.audio_stream
         duration = stream.duration
@@ -106,16 +106,16 @@ class AudioStream(_AvStream[AudioStreamInfo]):
 
     def _resample(self, frame: av.AudioFrame):
         # No need for resample, but need to convert to list for API.
-        if (
-            False
-            or self._sample_rate is None
-            or self._sample_rate == self.info().sample_rate
-        ):
+        if self.sample_rate == self.info().sample_rate:
             yield frame
 
         else:
             resampler = av.AudioResampler(rate=self._sample_rate)
             yield from resampler.resample(frame)
+
+    @functools.cached_property
+    def sample_rate(self):
+        return self._sample_rate or self.info().sample_rate
 
 
 class VideoStream(_AvStream[VideoStreamInfo]):
