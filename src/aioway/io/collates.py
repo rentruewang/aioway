@@ -1,8 +1,8 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import functools
-import torch
 from collections import abc as cabc
+
+import torch
 
 __all__ = ["chunk_collate", "chunk_collate_decompose_dim"]
 

@@ -6,17 +6,17 @@ import pathlib
 import typing
 
 import torch
+from torch.utils import data
 from torchcodec import decoders as dec
 
 from aioway.fake import enabled_fake_mode, torch_set_fake_mode_func
 from aioway.schemas import Attr
-from torch.utils import data
 from aioway.tags import SampleRateTag
 from aioway.tags.media import IsStftTag
-from .collates import chunk_collate
+
 from ._av import AudioStream
 from ._bases import TorchCompatible
-import torch
+from .collates import chunk_collate
 
 __all__ = [
     "AudioLoader",

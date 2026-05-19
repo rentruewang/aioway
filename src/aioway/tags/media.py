@@ -6,7 +6,6 @@ import typing
 from collections import abc as cabc
 
 import torch
-from torch.utils._sympy.value_ranges import ValueRangeError
 
 from aioway._types import dcls_frozen_slots
 from aioway.fake import is_fake_tensor

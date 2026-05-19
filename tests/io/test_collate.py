@@ -1,10 +1,11 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import typing
+
 import pytest
 import torch
 
 from aioway.io import chunk_collate_decompose_dim
-import typing
 
 
 class SamplesCollateDim(typing.NamedTuple):
