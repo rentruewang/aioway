@@ -1,5 +1,5 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 from .fwds import *
-from .inits import *
-from .mess import *
+from .layers import *
+from .losses import *

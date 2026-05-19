@@ -20,8 +20,7 @@ class MessInit(Keyed[type[nn.Module]], abc.ABC):
     `MessInit` is a preview of how an `nn.Module` would be initialized.
     It is the init part of `Mess`.
 
-    It provides metadata as to what `nn.Module` arguments are valid or not,
-    much like how `Fate`'s objects mimicks the function signature of `torch.ops.aten.*`.
+    It provides metadata as to what `nn.Module` arguments are valid or not.
     """
 
     KEY: typing.ClassVar[type[nn.Module]] = NotImplemented

@@ -68,18 +68,18 @@ def _module_opts():
     params=_module_opts(),
     ids=lambda x: render_fcall(x.module.__name__, **x.options),
 )
-def might(request: pytest.FixtureRequest) -> MessInit:
+def mess_init(request: pytest.FixtureRequest) -> MessInit:
     cls, kwargs = request.param
     return Mess.find(cls).init(**kwargs)
 
 
-def test_mess_init(might: MessInit):
-    assert isinstance(might, MessInit)
-    assert repr(might).startswith("mess_init::")
+def test_mess_init(mess_init: MessInit):
+    assert isinstance(mess_init, MessInit)
+    assert repr(mess_init).startswith("mess_init::")
 
 
-def test_might_do(might: MessInit):
-    module = might.do()
+def test_mess_init_do(mess_init: MessInit):
+    module = mess_init.do()
     assert isinstance(module, nn.Module)
 
 
