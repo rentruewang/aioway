@@ -104,33 +104,27 @@ class _BinaryScalarUFunc(Fate, abc.ABC):
         return self.self.numel()
 
 
-class AddTensor(_BinaryTensorUFunc):
-    KEY = ops.aten.add.Tensor
+class AddTensor(_BinaryTensorUFunc, key=ops.aten.add.Tensor):
     BINARY = operator.add
 
 
-class AddScalar(_BinaryScalarUFunc):
-    KEY = ops.aten.add.Scalar
+class AddScalar(_BinaryScalarUFunc, key=ops.aten.add.Scalar):
     BINARY = operator.add
 
 
-class SubTensor(_BinaryTensorUFunc):
-    KEY = ops.aten.sub.Tensor
+class SubTensor(_BinaryTensorUFunc, key=ops.aten.sub.Tensor):
     BINARY = operator.sub
 
 
-class SubScalar(_BinaryScalarUFunc):
-    KEY = ops.aten.sub.Scalar
+class SubScalar(_BinaryScalarUFunc, key=ops.aten.sub.Scalar):
     BINARY = operator.sub
 
 
-class MulTensor(_BinaryTensorUFunc):
-    KEY = ops.aten.mul.Tensor
+class MulTensor(_BinaryTensorUFunc, key=ops.aten.mul.Tensor):
     BINARY = operator.mul
 
 
-class MulScalar(_BinaryScalarUFunc):
-    KEY = ops.aten.mul.Scalar
+class MulScalar(_BinaryScalarUFunc, key=ops.aten.mul.Scalar):
     BINARY = operator.mul
 
 
@@ -142,8 +136,7 @@ def _tensor_div(self: torch.Tensor, other: torch.Tensor):
         return self // other
 
 
-class DivTensor(_BinaryTensorUFunc):
-    IR = ops.aten.div.Tensor
+class DivTensor(_BinaryTensorUFunc, key=ops.aten.div.Tensor):
     BINARY = _tensor_div
 
 
@@ -155,66 +148,53 @@ def _scalar_div(self: torch.Tensor, other: Scalar, /):
         return self // other
 
 
-class DivScalar(_BinaryScalarUFunc):
-    IR = ops.aten.div.Scalar
+class DivScalar(_BinaryScalarUFunc, key=ops.aten.div.Scalar):
     BINARY = _scalar_div
 
 
-class EqTensor(_BinaryTensorUFunc):
-    IR = ops.aten.eq.Tensor
+class EqTensor(_BinaryTensorUFunc, key=ops.aten.eq.Tensor):
     BINARY = operator.eq
 
 
-class EqScalar(_BinaryScalarUFunc):
-    IR = ops.aten.eq.Scalar
+class EqScalar(_BinaryScalarUFunc, key=ops.aten.eq.Scalar):
     BINARY = operator.eq
 
 
-class NeTensor(_BinaryTensorUFunc):
-    IR = ops.aten.ne.Tensor
+class NeTensor(_BinaryTensorUFunc, key=ops.aten.ne.Tensor):
     BINARY = operator.ne
 
 
-class NeScalar(_BinaryScalarUFunc):
-    IR = ops.aten.ne.Scalar
+class NeScalar(_BinaryScalarUFunc, key=ops.aten.ne.Scalar):
     BINARY = operator.ne
 
 
-class GeTensor(_BinaryTensorUFunc):
-    IR = ops.aten.ge.Tensor
+class GeTensor(_BinaryTensorUFunc, key=ops.aten.ge.Tensor):
     BINARY = operator.ge
 
 
-class GeScalar(_BinaryScalarUFunc):
-    IR = ops.aten.ge.Scalar
+class GeScalar(_BinaryScalarUFunc, key=ops.aten.ge.Scalar):
     BINARY = operator.ge
 
 
-class GtTensor(_BinaryTensorUFunc):
-    IR = ops.aten.gt.Tensor
+class GtTensor(_BinaryTensorUFunc, key=ops.aten.gt.Tensor):
     BINARY = operator.gt
 
 
-class GtScalar(_BinaryScalarUFunc):
-    IR = ops.aten.gt.Scalar
+class GtScalar(_BinaryScalarUFunc, key=ops.aten.gt.Scalar):
     BINARY = operator.gt
 
 
-class LeTensor(_BinaryTensorUFunc):
-    IR = ops.aten.le.Tensor
+class LeTensor(_BinaryTensorUFunc, key=ops.aten.le.Tensor):
     BINARY = operator.le
 
 
-class LeScalar(_BinaryScalarUFunc):
-    IR = ops.aten.le.Scalar
+class LeScalar(_BinaryScalarUFunc, key=ops.aten.le.Scalar):
     BINARY = operator.le
 
 
-class LtTensor(_BinaryTensorUFunc):
-    IR = ops.aten.lt.Tensor
+class LtTensor(_BinaryTensorUFunc, key=ops.aten.lt.Tensor):
     BINARY = operator.lt
 
 
-class LtScalar(_BinaryScalarUFunc):
-    IR = ops.aten.lt.Scalar
+class LtScalar(_BinaryScalarUFunc, key=ops.aten.lt.Scalar):
     BINARY = operator.lt
