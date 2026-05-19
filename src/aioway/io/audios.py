@@ -10,12 +10,21 @@ from torchcodec import decoders as dec
 
 from aioway.fake import enabled_fake_mode, torch_set_fake_mode_func
 from aioway.schemas import Attr
+from torch.utils import data
 from aioway.tags import SampleRateTag
+from aioway.tags.media import IsStftTag
 
 from ._av import AudioStream
 from ._bases import TorchCompatible
+import torch
 
-__all__ = ["AudioLoader", "AvAudioLoader", "TorchCodecAudioLoader", "AudioData"]
+__all__ = [
+    "AudioLoader",
+    "AudioDataFolder",
+    "AvAudioLoader",
+    "TorchCodecAudioLoader",
+    "AudioData",
+]
 
 
 @dcls.dataclass(frozen=True)
@@ -65,6 +74,65 @@ def encode_with_stft(audio: torch.Tensor, /, n_fft: int) -> torch.Tensor:
         tag.attach(real_result)
 
     return real_result
+
+
+class AudioDataFolder(data.Dataset[torch.Tensor]):
+    def __init__(self, loader: AudioLoader, *files: str) -> None:
+        super().__init__()
+        self._files = files
+        self._loader = loader
+
+        if not self._loader.sample_rate:
+            raise ValueError("Sample rate must be given.")
+
+    def __len__(self) -> int:
+        return len(self._files)
+
+    def __getitem__(self, idx: int) -> torch.Tensor:
+        return self._loader(self._files[idx]).to_tensor()
+
+    def chunk_collate(self, max_len: int):
+        """
+        The collate function that chunks the input and re-batch them.
+
+        Args:
+            max_len: The maximum length in the frame dimension to chunk.
+        """
+
+        def collate(audios: list[torch.Tensor]) -> torch.Tensor:
+            assert all(audio.ndim == 2 for audio in audios)
+            merged = torch.cat(audios, dim=1)
+            batch_size = merged.shape[1] // max_len
+
+            # Drop the last few samples if the size do not match up.
+            merged = merged[:, : batch_size * max_len]
+            merged = merged.view(-1, batch_size, max_len)
+            merged = merged.permute(1, 0, 2)
+            SampleRateTag(sample_rate=self.sample_rate).attach(merged)
+            return merged
+
+        return collate
+
+    def chunk_collate_stft(self, max_len: int, n_fft: int):
+        """
+        Collate into stft (after chunking with `chunk_stft` for simplcity).
+        """
+
+        collate = self.chunk_collate(max_len)
+
+        def do_stft(audios: list[torch.Tensor]) -> torch.Tensor:
+            tensor = collate(audios)
+            stft = encode_with_stft(tensor, n_fft=n_fft)
+            SampleRateTag(sample_rate=self.sample_rate).attach(stft)
+            IsStftTag().attach(stft)
+            return stft
+
+        return do_stft
+
+    @property
+    def sample_rate(self) -> int:
+        assert self._loader.sample_rate
+        return self._loader.sample_rate
 
 
 class AvAudioLoader(AudioLoader):

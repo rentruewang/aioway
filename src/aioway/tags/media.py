@@ -6,6 +6,7 @@ import typing
 from collections import abc as cabc
 
 import torch
+from torch.utils._sympy.value_ranges import ValueRangeError
 
 from aioway._types import dcls_frozen_slots
 from aioway.fake import is_fake_tensor
@@ -13,7 +14,7 @@ from aioway.schemas import DType
 
 from .tags import Tag
 
-__all__ = ["IsTokenizedTag", "IsVideoTag", "IsImageTag", "SampleRateTag"]
+__all__ = ["IsTokenizedTag", "IsVideoTag", "IsImageTag", "SampleRateTag", "IsStftTag"]
 
 
 @dcls_frozen_slots
@@ -80,6 +81,20 @@ class SampleRateTag(Tag):
     def _validate(self, tensor: torch.Tensor) -> None:
         if self.sample_rate <= 0:
             raise ValueError(f"{self.sample_rate} <= 0.")
+
+
+@dcls_frozen_slots
+class IsStftTag(Tag):
+    """
+    Tag the tensor as stft. Useful to mark audio as spectrogram.
+    """
+
+    TAG = "__aioway_is_stft__"
+
+    @typing.override
+    def _validate(self, tensor: torch.Tensor) -> None:
+        # Nothing to vaidate yet.
+        return
 
 
 class NdimInfo(typing.NamedTuple):
