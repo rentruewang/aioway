@@ -56,21 +56,21 @@ class _CallCounter[**P, T]:
     """
 
     def __init__(self, func: cabc.Callable[P, T], /) -> None:
-        self._func = func
+        self.__func = func
         self.__invokes = 0
 
     def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
         with self._increase_call_count():
-            return self._func(*args, **kwargs)
+            return self.__func(*args, **kwargs)
 
     def __repr__(self) -> str:
-        return repr(self._func)
+        return repr(self.__func)
 
     def __str__(self) -> str:
         string_builder = [
-            self._func.__module__,
+            self.__func.__module__,
             ".",
-            self._func.__qualname__,
+            self.__func.__qualname__,
             "[",
             str(self.__invoke_count__),
             "]",
@@ -81,7 +81,7 @@ class _CallCounter[**P, T]:
     @property
     def __func__(self) -> cabc.Callable[P, T]:
         "Returns the original funciton."
-        return self._func
+        return self.__func
 
     @property
     def __invoke_count__(self) -> int:
