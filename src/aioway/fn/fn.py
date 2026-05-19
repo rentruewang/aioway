@@ -22,7 +22,7 @@ _PENDING = object()
 
 
 @typing.runtime_checkable
-class Fn(typing.Protocol):
+class Fn[T = object](typing.Protocol):
     """
     `Fn` is the base class for delayed computation, in a single batch (a single pass).
 
@@ -31,7 +31,7 @@ class Fn(typing.Protocol):
     `Fn.do()` executes the computation, `Fn` base class itself does not make any more assumption.
     """
 
-    def do(self) -> object:
+    def do(self) -> T:
         "Execute the computation."
 
 

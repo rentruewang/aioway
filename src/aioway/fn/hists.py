@@ -7,6 +7,7 @@ import dataclasses as dcls
 import itertools
 import logging
 import typing
+from collections import abc as cabc
 
 import torch
 
@@ -15,14 +16,14 @@ from aioway.decomps import find_nested_tensors
 from aioway.schemas import attr
 
 from .common import replace_tensors_with_attr
-from .fn import TensorInput, cabc
+from .fn import Fn, TensorInput
 
 LOGGER = logging.getLogger(__name__)
 
 __all__ = ["Hist", "HistTensorGraph"]
 
 
-class HashableTensorInput(typing.Hashable, TensorInput, typing.Protocol): ...
+class HashableTensorInput(typing.Hashable, TensorInput, Fn, typing.Protocol): ...
 
 
 @dcls.dataclass(frozen=True)
@@ -37,12 +38,15 @@ class FnResult[F]:
 
     @typing.override
     def __repr__(self) -> str:
-        result = replace_tensors_with_attr(self.result)
-        return f"{self.fn!r} -> {result}"
+        if isinstance(self.result, Exception):
+            return f"{type(self.result).__name__}: {self.result}: {self.fn!r}"
+        else:
+            result = replace_tensors_with_attr(self.result)
+            return f"{self.fn!r} -> {result}"
 
 
 @dcls.dataclass(frozen=True)
-class Hist[T]:
+class Hist[T: Fn]:
     """
     `Hist` is a list storing previous events in order.
 
@@ -66,13 +70,22 @@ class Hist[T]:
     def __iter__(self) -> cabc.Generator[FnResult[T]]:
         yield from self.history
 
-    def append(self, thunk: T, result: object, /) -> None:
+    def __repr__(self) -> str:
+        return repr(self.history)
+
+    def execute(self, thunk: T) -> object:
+        try:
+            result = thunk.do()
+        except Exception as e:
+            self._append(thunk, e)
+            raise
+        else:
+            self._append(thunk, result)
+            return result
+
+    def _append(self, thunk: T, result: object | Exception, /) -> None:
         "Add a new entry in the `History`."
         self.history.append(FnResult(thunk, result))
-
-    def pop(self) -> FnResult[T]:
-        "Drop the last result from the `History`."
-        return self.history.pop()
 
 
 @dcls.dataclass(frozen=True)
@@ -100,8 +113,8 @@ class HistTensorGraph[T: HashableTensorInput](Hist[T]):
     "The mapping from output to thunk that generates it."
 
     @typing.override
-    def append(self, thunk: T, result: object, /) -> None:
-        super().append(thunk, result)
+    def _append(self, thunk: T, result: object, /) -> None:
+        super()._append(thunk, result)
         self._update_ref(thunk, result)
 
     def _update_ref(self, thunk: T, output: object) -> None:

@@ -101,7 +101,7 @@ class Attr:
         if self.requires_grad:
             display.append("grad")
 
-        return "[" + ",".join(map(str, display)) + "]"
+        return "{" + ",".join(map(str, display)) + "}"
 
     def memory(self):
         return self.dtype.itemsize * self.shape.numel()
