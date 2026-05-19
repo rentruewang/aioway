@@ -9,7 +9,6 @@ import typing
 from aioway._torch import (
     is_aten_op,
 )
-from aioway.fake import enabled_fake_mode
 from aioway.fn import TorDisFn
 
 from .fate import Fate, find_fate
@@ -60,9 +59,6 @@ class FateFn:
 
     @classmethod
     def find_fate(cls, thunk: TorDisFn) -> typing.Self:
-        if not enabled_fake_mode():
-            return NotImplemented
-
         LOGGER.debug("Resolving `Fate` object for %s", thunk)
 
         # For now, `Fate` supports aten, because `torchvision`, `torchcodec` rely on real data,

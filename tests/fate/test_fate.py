@@ -1,6 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import operator
+
 import pytest
 import torch
 

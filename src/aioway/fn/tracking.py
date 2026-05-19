@@ -190,7 +190,7 @@ class RouteTorDis(TorDisMode):
         assert isinstance(fn, TorDisFn | FateFn), type(fn)
 
         # Here, `FateFn` would do its magic and overwrite functions.
-        return self.history.execute(thunk)
+        return self.history.execute(fn)
 
 
 @dcls.dataclass

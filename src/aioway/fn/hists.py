@@ -23,17 +23,17 @@ LOGGER = logging.getLogger(__name__)
 __all__ = ["Hist", "HistTensorGraph"]
 
 
-class HashableTensorInput(typing.Hashable, TensorInput, typing.Protocol): ...
+class HashableTensorInput(typing.Hashable, TensorInput, Fn, typing.Protocol): ...
 
 
 @dcls.dataclass(frozen=True)
-class FnResult[T = object]:
+class FnResult[F]:
     "The storage class per item for `FnHistory`."
 
-    fn: Fn[T]
+    fn: F
     "The `Fn` that has been called."
 
-    result: T | Exception
+    result: object
     "The output that `fn` has produced."
 
     @typing.override
@@ -53,7 +53,7 @@ class Hist[T: Fn]:
     The history list stores past thunks in the order that we received.
     """
 
-    history: list[FnResult] = dcls.field(default_factory=list)
+    history: list[FnResult[T]] = dcls.field(default_factory=list)
     """
     The `TorchFn` that has been called, in order.
     """
@@ -64,10 +64,10 @@ class Hist[T: Fn]:
     def __len__(self) -> int:
         return len(self.history)
 
-    def __getitem__(self, idx: int) -> FnResult:
+    def __getitem__(self, idx: int) -> FnResult[T]:
         return self.history[idx]
 
-    def __iter__(self) -> cabc.Generator[FnResult]:
+    def __iter__(self) -> cabc.Generator[FnResult[T]]:
         yield from self.history
 
     def __repr__(self) -> str:

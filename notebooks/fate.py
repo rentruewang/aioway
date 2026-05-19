@@ -33,3 +33,7 @@ with fake_fn() as hists, PrintTorDis().enter():
 # %%
 with fake_fn(), PrintTorDis().enter():
     3 - a
+
+# %%
+with fake_fn(), PrintTorDis().enter():
+    a[a > 0]

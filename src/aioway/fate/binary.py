@@ -9,7 +9,6 @@ from collections import abc as cabc
 import torch
 from torch import ops
 
-from aioway._torch import is_float_tensor
 from aioway._types import dcls_no_repr
 
 from .fate import Fate
@@ -67,6 +66,7 @@ class _BinaryUFunc(Fate, abc.ABC):
         return self._shape.numel()
 
     @functools.cached_property
+    @typing.no_type_check
     def _shape(self) -> torch.Size:
         self_is_tensor = isinstance(self.self, torch.Tensor)
         other_is_tensor = isinstance(self.other, torch.Tensor)

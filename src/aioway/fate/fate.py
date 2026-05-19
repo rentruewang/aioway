@@ -11,8 +11,8 @@ from torch import _ops
 from aioway._keyed import Keyed
 from aioway._types import dcls_no_repr
 from aioway.decomps import find_nested_tensors
-from aioway.renders import render_fcall
 from aioway.fn import TorDisFn
+from aioway.renders import render_fcall
 
 __all__ = ["Fate", "find_fate", "all_fates"]
 
