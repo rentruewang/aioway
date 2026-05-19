@@ -6,33 +6,20 @@ import contextlib as ctxl
 import dataclasses as dcls
 import logging
 import typing
-from collections import abc as cabc
 
 import rich
 from torch import nn
 
-from aioway._common import (
-    is_aten_op,
-    is_prim_op,
-    is_torchcodec_op,
-    is_torchvision_op,
-    replace_tensors,
-)
+from aioway.decomps import replace_tensors
 from aioway.fake import enabled_fake_mode, torch_fake_mode
 
 from .common import replace_tensors_with_attr
 from .hists import Hist, HistTensorGraph
-from .modes import (
-    NnFwdFn,
-    NnFwdMode,
-    NnInitFn,
-    NnInitMode,
-    TorDisFn,
-    TorDisMode,
-    TorFuncFn,
-    TorFuncMode,
-)
-from .op import FateFn, MightFn
+from .modules import NnFwdFn, NnFwdMode, NnInitFn, NnInitMode
+from .tensors import TorDisFn, TorDisMode, TorFuncFn, TorFuncMode
+
+if typing.TYPE_CHECKING:
+    from aioway.fate import FateFn
 
 __all__ = [
     "track_fn",
@@ -48,10 +35,6 @@ __all__ = [
 ]
 
 LOGGER = logging.getLogger(__name__)
-
-
-FateRouter = cabc.Callable[[TorDisFn], FateFn]
-MightRouter = cabc.Callable[[NnInitFn], MightFn]
 
 
 class _HasRichFlagMixin:
@@ -142,44 +125,6 @@ class LogTorchDis(TorDisMode):
         return result
 
 
-def might_in_fake(thunk: NnInitFn):
-    """
-    Route in fake mode to `MightFn`.
-
-    `NotImplemented` is returned when the input does not have a match, or not fake mode.
-    """
-
-    if not enabled_fake_mode():
-        return NotImplemented
-
-    return MightFn.find_might(thunk)
-
-
-def fate_in_fake(thunk: TorDisFn):
-    """
-    Route in fake mode to `FateFn`.
-
-    `NotImplemented` is returned when the input does not have a match, or not fake mode.
-    """
-
-    if not enabled_fake_mode():
-        return NotImplemented
-
-    # For now, `Fate` supports aten, because `torchvision`, `torchcodec` rely on real data,
-    # they do not have a good `Fate` to implement for now.
-    # In those operations, real mode is force enabled right now.
-    # See aioway#204 issue.
-    if is_aten_op(thunk.func):
-        return FateFn.find_fate(thunk)
-
-    if not any(
-        is_op(thunk.func) for is_op in [is_prim_op, is_torchvision_op, is_torchcodec_op]
-    ):
-        raise AssertionError(f"Unknown kind of op: {thunk}")
-
-    return NotImplemented
-
-
 class CloneDispatchOp(TorDisMode):
     @typing.override
     def __call__(self, thunk: TorDisFn, /) -> object:
@@ -205,14 +150,6 @@ class RouteNnInit(NnInitMode):
     @typing.override
     def __call__(self, thunk: NnInitFn, /) -> nn.Module:
         result = thunk.do()
-
-        fn: NnInitFn | MightFn
-
-        if (fn := might_in_fake(thunk)) is NotImplemented:
-            fn = thunk
-
-        assert isinstance(fn, NnInitFn | MightFn)
-
         self.history.append(thunk, result)
         return result
 
@@ -244,9 +181,11 @@ class RouteTorDis(TorDisMode):
     "The history used for tracking."
 
     def __call__(self, thunk: TorDisFn) -> object:
+        from aioway.fate import FateFn
+
         fn: TorDisFn | FateFn
 
-        if (fn := fate_in_fake(thunk)) is NotImplemented:
+        if (fn := FateFn.find_fate(thunk)) is NotImplemented:
             # Cannot find corresponding operator, set it to the input `thunk`.
             fn = thunk
 

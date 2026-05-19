@@ -4,9 +4,9 @@ import typing
 
 from torch import nn
 
-from aioway._common import dcls_no_repr
+from aioway._types import dcls_no_repr
 
-from .might import Might
+from .inits import MessInit
 
 __all__ = [
     "BatchNorm1d",
@@ -19,7 +19,7 @@ __all__ = [
 
 
 @dcls_no_repr
-class _BaseNorm(Might):
+class _BaseNorm(MessInit):
     "Base normalization layer for shared code of batch norm and instance norm."
 
     KEY: typing.ClassVar[type[nn.Module]] = NotImplemented

@@ -3,19 +3,21 @@
 "The module containing `Fate` interface, the implementation for fake aten operations."
 
 import abc
-import re
+import dataclasses as dcls
 import typing
 
 from torch import _ops
 
-from aioway._common import dcls_no_repr, find_nested_tensors
-from aioway.op import Op
+from aioway._keyed import Keyed
+from aioway._types import dcls_no_repr
+from aioway.decomps import find_nested_tensors
+from aioway.renders import render_fcall
 
 __all__ = ["Fate", "find_fate", "all_fates"]
 
 
 @dcls_no_repr
-class Fate(Op[_ops.OpOverload], abc.ABC):
+class Fate(Keyed[_ops.OpOverload], abc.ABC):
     """
     `Fate` stands for [f]ake [ate]n. Or [fa]ke [te]nsor. Or a tensor's [fate] (how it behaves).
 
@@ -26,6 +28,13 @@ class Fate(Op[_ops.OpOverload], abc.ABC):
 
     KEY: typing.ClassVar[_ops.OpOverload] = NotImplemented
 
+    @typing.override
+    def __repr__(self) -> str:
+        return render_fcall("fate::" + self._name(), **dcls.asdict(self))
+
+    def do(self) -> typing.Any:
+        return self.KEY(**dcls.asdict(self))
+
     @abc.abstractmethod
     def ok(self) -> bool:
         """
@@ -33,11 +42,6 @@ class Fate(Op[_ops.OpOverload], abc.ABC):
         """
 
         raise NotImplementedError
-
-    @typing.override
-    @classmethod
-    def name(cls) -> str:
-        return "fate::" + _camel_to_snake(cls.__name__)
 
     @abc.abstractmethod
     def cost(self) -> int:
@@ -63,8 +67,8 @@ def find_fate(op: _ops.OpOverload, *args: typing.Any, **kwargs: typing.Any) -> F
             continue
 
         return fate
-
-    return NotImplemented
+    else:
+        return NotImplemented
 
 
 @typing.no_type_check
@@ -73,10 +77,3 @@ def all_fates():
     Get the registry for the fates.
     """
     return list(Fate.impls())
-
-
-_CAMEL_CASE_REGEX = re.compile(r"(?<!^)(?=[A-Z])")
-
-
-def _camel_to_snake(name: str) -> str:
-    return re.sub(_CAMEL_CASE_REGEX, "_", name).lower()

@@ -10,7 +10,7 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway._common import tdict_rename
+from aioway._torch import tdict_rename
 from aioway.schemas import AttrSet
 
 from .streams import Stream

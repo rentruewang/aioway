@@ -11,7 +11,8 @@ from collections import abc as cabc
 
 import torch
 
-from aioway._common import find_nested_tensors, render_fcall
+from aioway.decomps import find_nested_tensors
+from aioway.renders import render_fcall
 
 __all__ = ["Fn", "TensorInput", "Thunk", "TorchThunk"]
 

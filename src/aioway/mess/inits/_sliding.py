@@ -7,9 +7,10 @@ import typing
 
 from torch import nn
 
-from aioway._common import dcls_no_repr, is_tuple_of
+from aioway._types import dcls_no_repr
+from aioway._typing import is_tuple_of
 
-from .might import Might
+from .inits import MessInit
 
 __all__ = [
     "Conv1d",
@@ -101,20 +102,20 @@ class _BaseConvWeights(abc.ABC):
 
 
 @dcls_no_repr
-class _BaseConv(_BaseSliding, _BaseConvWeights, Might):
+class _BaseConv(_BaseSliding, _BaseConvWeights, MessInit):
     def __post_init__(self) -> None:
         _BaseSliding.__post_init__(self)
         _BaseConvWeights.__post_init__(self)
 
 
 @dcls_no_repr
-class _BaseAvgPool(_BaseAvgSliding, Might):
+class _BaseAvgPool(_BaseAvgSliding, MessInit):
     def __post_init__(self) -> None:
         _BaseAvgSliding.__post_init__(self)
 
 
 @dcls_no_repr
-class _BaseMaxPool(_BaseSliding, Might):
+class _BaseMaxPool(_BaseSliding, MessInit):
     return_indices: bool = False
     """
     If `True`, will return the max indices along with the outputs.
