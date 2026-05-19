@@ -26,3 +26,4 @@ def test_invoke_count_recursive():
 
     assert counts == list(range(1, 11))
     assert history == list(reversed(range(1, 11)))
+    assert recursive_function.__invoke_count__ == 0

@@ -42,6 +42,11 @@ class AudioLoader(abc.ABC):
     Result is tensor [num_channels, num_frames].
     """
 
+    sample_rate: int | None = None
+    """
+    The sample rate to choose. If `None` use the audio's default.
+    """
+
     @abc.abstractmethod
     def __call__(self, fname: str | pathlib.Path, /) -> AudioData:
         raise NotImplementedError
@@ -67,7 +72,7 @@ class AvAudioLoader(AudioLoader):
 
     @typing.override
     def __call__(self, fname: str | pathlib.Path, /) -> AudioData:
-        stream = AudioStream(fname)
+        stream = AudioStream(fname, sample_rate=self.sample_rate)
 
         # Get the metadata for fake mode to work.
         info = stream.info()
@@ -96,9 +101,6 @@ class TorchCodecAudioLoader(AudioLoader):
     because there aren't any good way to overwrite torch codecs to enable fake mode.
     This is due to limitations in `torchcodecs` as they use custom `torch.ops`.
     """
-
-    sample_rate: int | None = None
-    "The targetting sample rate to load. If `None`, the default is used."
 
     @typing.override
     def __call__(self, fname: str | pathlib.Path, /) -> AudioData:
