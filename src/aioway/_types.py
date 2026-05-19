@@ -57,7 +57,7 @@ class _CallCounter[**P, T]:
 
     def __init__(self, func: cabc.Callable[P, T], /) -> None:
         self._func = func
-        self._num_invokes = 0
+        self.__invokes = 0
 
     def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
         with self._increase_call_count():
@@ -66,10 +66,10 @@ class _CallCounter[**P, T]:
     @ctxl.contextmanager
     def _increase_call_count(self):
         try:
-            self._num_invokes += 1
+            self.__invokes += 1
             yield
         finally:
-            self._num_invokes -= 1
+            self.__invokes -= 1
 
     def __repr__(self) -> str:
         return repr(self._func)
@@ -94,7 +94,7 @@ class _CallCounter[**P, T]:
     @property
     def __invoke_count__(self) -> int:
         "The number of times this function is being invoked."
-        return self._num_invokes
+        return self.__invokes
 
 
 track_call_count = _CallCounter
