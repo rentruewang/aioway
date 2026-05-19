@@ -12,6 +12,8 @@ from collections import abc as cabc
 import torch
 from torch import nn
 
+from aioway._types import track_call_count
+
 from ._on_off import OnOffCtx, OnOffStack
 from .fn import Thunk, TorchThunk
 
@@ -33,12 +35,15 @@ INITS: OnOffStack[NnInitMode] = OnOffStack()
 "`NnInitMode` that is currently entered."
 
 
+@track_call_count
 def module_fwd(module: nn.Module, /, *args, **kwargs) -> typing.Any:
     """
     Call the `nn.Module`. This would execute all the modes at the outermost module.
     `aioway` functions must call this function to call `nn.Module`.
 
     For nested modules (fields of modules), use `register_*_hook` from `torch`.
+
+    This function is recursive, so call counts are tracked to aid debugging.
     """
 
     if not isinstance(module, nn.Module):
@@ -47,12 +52,15 @@ def module_fwd(module: nn.Module, /, *args, **kwargs) -> typing.Any:
     return _invoke_rec(FORWARDS, NnFwdFn, module, args, kwargs)
 
 
+@track_call_count
 def module_init(init: type[nn.Module], /, *args, **kwargs) -> nn.Module:
     """
     Initialize the `nn.Module`. This would execute all the modes at the outermost module.
     `aioway` functions must call this function to initalize `nn.Module`.
 
     For nested modules (fields of modules), use `register_*_hook` from `torch`.
+
+    This function is recursive, so call counts are tracked to aid debugging.
     """
 
     if not isinstance(init, type) or not issubclass(init, nn.Module):
