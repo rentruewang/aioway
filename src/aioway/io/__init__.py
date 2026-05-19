@@ -4,3 +4,4 @@ from .audios import *
 from .images import *
 from .texts import *
 from .videos import *
+from .collates import *
