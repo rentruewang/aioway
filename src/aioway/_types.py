@@ -75,7 +75,7 @@ class _CallCounter[**P, T]:
         return repr(self._func)
 
     def __str__(self) -> str:
-        return f"{self._func.__module__}.{self._func.__qualname__}"
+        return f"{self._func.__module__}.{self._func.__qualname__}(...)"
 
     @property
     def __func__(self) -> cabc.Callable[P, T]:
