@@ -73,7 +73,14 @@ def _set_threads(stream: av.AudioStream | av.VideoStream, /):
 class AudioStream(_AvStream[AudioStreamInfo]):
     "The audio stream which is a light wrapper around `av.open` utilities."
 
+    def __init__(
+        self, fname: str | pathlib.Path, /, sample_rate: int | None = None
+    ) -> None:
+        super().__init__(fname)
+        self._sample_rate = sample_rate
+
     @typing.override
+    @functools.cache
     def info(self) -> AudioStreamInfo:
         stream = self.audio_stream
         duration = stream.duration
@@ -87,13 +94,28 @@ class AudioStream(_AvStream[AudioStreamInfo]):
 
     @typing.override
     def numpy(self):
+
         chunks: list[np.ndarray] = []
         for frame in self.container.decode(self.audio_stream):
-            arr = frame.to_ndarray()
-            assert arr.ndim == 2
-            chunks.append(arr)
+            for sampled in self._resample(frame):
+                arr = sampled.to_ndarray()
+                assert arr.ndim == 2
+                chunks.append(arr)
 
         return np.concat(chunks, axis=1)
+
+    def _resample(self, frame: av.AudioFrame):
+        # No need for resample, but need to convert to list for API.
+        if self.sample_rate == self.info().sample_rate:
+            yield frame
+
+        else:
+            resampler = av.AudioResampler(rate=self._sample_rate)
+            yield from resampler.resample(frame)
+
+    @functools.cached_property
+    def sample_rate(self):
+        return self._sample_rate or self.info().sample_rate
 
 
 class VideoStream(_AvStream[VideoStreamInfo]):
