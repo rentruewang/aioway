@@ -9,33 +9,15 @@ from torch import nn
 
 from aioway.renders import camel_to_snake, render_fcall
 
-__all__ = ["Mess", "MessInit", "MessFwd", "mess_init_dcls", "mess_fwd_dcls"]
+__all__ = ["Mess", "find_mess", "list_mess"]
 
 _MESS_REGISTRY: dict[type[nn.Module], Mess] = {}
-
-
-@typing.dataclass_transform(frozen_default=True)
-def mess_fwd_dcls(cls):
-    "Decorator of dataclass for `MessFwd`."
-    return dcls.dataclass(frozen=True, repr=False)(cls)
 
 
 @typing.dataclass_transform(frozen_default=True)
 def mess_init_dcls(cls):
     "Decorator of dataclass for `MessInit`."
     return dcls.dataclass(frozen=True, repr=False)(cls)
-
-
-@mess_fwd_dcls
-class MessFwd(abc.ABC):
-    """
-    `MessFwd` contains info about how a module's runtime signature looks like.
-    """
-
-    def __repr__(self) -> str:
-        return render_fcall(
-            "mess_fwd::" + camel_to_snake(type(self).__name__), **dcls.asdict(self)
-        )
 
 
 @mess_init_dcls
@@ -50,6 +32,24 @@ class MessInit(abc.ABC):
     def __repr__(self) -> str:
         return render_fcall(
             "mess_init::" + camel_to_snake(type(self).__name__), **dcls.asdict(self)
+        )
+
+
+@typing.dataclass_transform(frozen_default=True)
+def mess_fwd_dcls(cls):
+    "Decorator of dataclass for `MessInit`."
+    return dcls.dataclass(frozen=True, repr=False)(cls)
+
+
+@mess_fwd_dcls
+class MessFwd(abc.ABC):
+    """
+    `MessFwd` contains info about how a module's runtime signature looks like.
+    """
+
+    def __repr__(self) -> str:
+        return render_fcall(
+            "mess_fwd::" + camel_to_snake(type(self).__name__), **dcls.asdict(self)
         )
 
 
@@ -96,3 +96,7 @@ def find_mess(nn_type: type[nn.Module]) -> Mess:
     """
 
     return _MESS_REGISTRY.get(nn_type, NotImplemented)
+
+
+def list_mess():
+    return _MESS_REGISTRY
