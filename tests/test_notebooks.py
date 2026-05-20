@@ -13,5 +13,5 @@ def test_notebook(notebook: pathlib.Path):
 
 
 def test_notebook_is_clean(notebook: pathlib.Path):
-    if result := sp.call(["nox", "-rs", "nb_check", "--", str(notebook)]):
+    if sp.call(["nox", "-rs", "nb_check", "--", str(notebook)]):
         raise AssertionError(f"{notebook} is not clean.")
