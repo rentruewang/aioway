@@ -44,16 +44,17 @@ def formatting(session: nox.Session):
 
 
 @nox.session
-def clean(session: nox.Session):
-    "Call `git clean`, but exclude venv if present."
+def nb_clean(session: nox.Session):
+    "Call `nb-clean`, but exclude venv if present."
 
-    command = "git", "clean", "-fdx"
+    env(session).pdm_run("nb-clean", "clean", *session.posargs)
 
-    if VENV is not None and (venv := pathlib.Path(VENV)).exists():
-        relative = venv.relative_to(ROOT)
-        command = *command, "-e", str(relative)
 
-    session.run(*command, external=True)
+@nox.session
+def nb_check(session: nox.Session):
+    "Call `nb-clean`, but exclude venv if present."
+
+    env(session).pdm_run("nb-clean", "check", *session.posargs)
 
 
 @nox.session

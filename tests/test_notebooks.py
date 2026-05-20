@@ -2,18 +2,16 @@
 
 import pathlib
 import subprocess as sp
-import sys
+import sys, papermill as pm
 
 
 def test_notebook(notebook: pathlib.Path):
-    result = sp.run(
-        [sys.executable, str(notebook)],
-        capture_output=True,
-        text=True,
-    )
+    output_notebook = notebook.with_suffix(".out.ipynb")
 
-    assert result.returncode == 0, (
-        f"process failed for {notebook}\n"
-        f"stdout:\n{result.stdout}\n"
-        f"stderr:\n{result.stderr}"
-    )
+    # Execute the notebook (raises pm.PapermillExecutionError if a cell fails)
+    pm.execute_notebook(input_path=notebook, output_path=str(output_notebook))
+
+
+def test_notebook_is_clean(notebook: pathlib.Path):
+    if result := sp.call(["nox", "-rs", "nb_check", "--", str(notebook)]):
+        raise AssertionError(f"{notebook} is not clean.")
