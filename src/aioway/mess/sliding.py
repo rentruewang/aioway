@@ -19,8 +19,7 @@ _PADDING = frozenset(["zeros", "reflect", "replicate", "circular"])
 
 
 @mess_init_dcls
-class _BaseAvgSliding(abc.ABC):
-    KEY: typing.ClassVar[type[nn.Module]] = NotImplemented
+class _BaseAvgSliding(MessInit, abc.ABC):
     NDIM: typing.ClassVar[int]
 
     _: dcls.KW_ONLY
@@ -39,6 +38,11 @@ class _BaseAvgSliding(abc.ABC):
         _ = _cast_ndim_int(self.NDIM, self.kernel_size)
         _ = _cast_ndim_int(self.NDIM, self.stride)
         _ = _cast_ndim_int(self.NDIM, self.padding)
+
+    @classmethod
+    @typing.override
+    def _cls_name(cls) -> str:
+        return f"{cls.__name__}{cls.NDIM}"
 
 
 @mess_init_dcls

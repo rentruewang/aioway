@@ -3,10 +3,14 @@
 from torch import nn
 
 from .fwds import LossFwd
-from .inits import LossInit
-from .mess import Mess
+from .mess import Mess, MessInit, mess_init_dcls
 
 __all__ = []
+
+
+@mess_init_dcls
+class LossInit(MessInit):
+    "Base layer for `Loss` layers, which does not accept arguments."
 
 
 _ = Mess(nn_type=nn.L1Loss, init=LossInit, fwd=LossFwd)

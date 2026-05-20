@@ -1,5 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+"Since forward signatures are less varied, they are defined in this shared module."
+
 import abc
 
 import torch

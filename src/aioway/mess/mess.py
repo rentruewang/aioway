@@ -31,8 +31,12 @@ class MessInit(abc.ABC):
 
     def __repr__(self) -> str:
         return render_fcall(
-            "mess_init::" + camel_to_snake(type(self).__name__), **dcls.asdict(self)
+            "mess_init::" + camel_to_snake(self._cls_name()), **dcls.asdict(self)
         )
+
+    @classmethod
+    def _cls_name(cls) -> str:
+        return cls.__name__
 
 
 @typing.dataclass_transform(frozen_default=True)
