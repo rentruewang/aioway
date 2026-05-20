@@ -3,6 +3,7 @@
 
 import abc
 import dataclasses as dcls
+import textwrap
 import typing
 
 from torch import nn
@@ -104,6 +105,20 @@ class Mess:
     def __post_init__(self) -> None:
         # Log `self` in the registry.
         _MESS_REGISTRY[self.nn_type] = self
+
+    @typing.override
+    def __repr__(self) -> str:
+        nn_type = self.nn_type.__name__
+        init = self.init.__qualname__
+        fwd = self.fwd.__qualname__
+        string = f"""
+            Mess(
+                nn_type=nn.{nn_type},
+                init=mess_init::{init},
+                fwd=mess_fwd::{fwd},
+            )
+        """
+        return textwrap.dedent(string.strip("\n"))
 
     def module(self, *args, **kwargs) -> nn.Module:
         return self.init(*args, **kwargs).init(self.nn_type)

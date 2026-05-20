@@ -47,9 +47,9 @@ def format(session: nox.Session):
 @nox.session
 def format_check(session: nox.Session):
     "Nox `formatting` command. Calls `autoflake`, `isort`, `black`, in that order."
-    autoflake(session)
-    isort(session)
-    black(session)
+    autoflake_check(session)
+    isort_check(session)
+    black_check(session)
     nb_check(session)
 
 
