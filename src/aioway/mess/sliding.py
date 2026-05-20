@@ -110,7 +110,7 @@ def _conv_init(ndim: int):
 def _avg_pool_init(ndim: int):
     @mess_init_dcls
     class AvgPoolInit(_BaseAvgSliding, MessInit):
-        NIMD = ndim
+        NDIM = ndim
 
         def __post_init__(self) -> None:
             _BaseAvgSliding.__post_init__(self)

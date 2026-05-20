@@ -20,83 +20,97 @@ VENV = os.getenv("VIRTUAL_ENV")
 @nox.session
 def publish(session: nox.Session):
     "Nox `publish` command. Calls `pdm publish`."
-    commands(session).publish()
+    env(session).pdm_publish()
 
 
 @nox.session
 def build(session: nox.Session):
     "Nox `build` command. Calls `pdm build`."
-    commands(session).build()
+    env(session).pdm_build()
 
 
 @nox.session
-def testing(session: nox.Session):
+def test(session: nox.Session):
     "Nox `testing` command. Calls `pytest` command. Runs in multiple python versions (if supported)."
-    commands(session).test(*session.posargs)
+    env(session).pdm_run("pytest", *session.posargs)
 
 
 @nox.session
-def formatting(session: nox.Session):
+def format(session: nox.Session):
     "Nox `formatting` command. Calls `autoflake`, `isort`, `black`, in that order."
     autoflake(session)
     isort(session)
     black(session)
+    nb_clean(session)
+
+
+@nox.session
+def format_check(session: nox.Session):
+    "Nox `formatting` command. Calls `autoflake`, `isort`, `black`, in that order."
+    autoflake(session)
+    isort(session)
+    black(session)
+    nb_check(session)
 
 
 @nox.session
 def nb_clean(session: nox.Session):
-    "Call `nb-clean`, but exclude venv if present."
-
-    env(session).pdm_run("nb-clean", "clean", *session.posargs)
+    "Call `nb-clean clean`."
+    env(session).pdm_run("nb-clean", "clean", "notebooks")
 
 
 @nox.session
 def nb_check(session: nox.Session):
-    "Call `nb-clean`, but exclude venv if present."
-
-    env(session).pdm_run("nb-clean", "check", *session.posargs)
+    "Call `nb-clean check`."
+    env(session).pdm_run("nb-clean", "check", "notebooks")
 
 
 @nox.session
 def autoflake(session: nox.Session):
     "Nox `autoflake` command. Calls `autoflake` command."
-    commands(session).autoflake()
+    env(session).pdm_run("autoflake", ".")
+
+
+@nox.session
+def autoflake_check(session: nox.Session):
+    "Nox `autoflake` command. Calls `autoflake` command."
+    env(session).pdm_run("autoflake", "--check", ".")
 
 
 @nox.session
 def isort(session: nox.Session):
     "Nox `isort` command. Calls `isort` command."
-    commands(session).isort()
+    env(session).pdm_run("isort", ".")
+
+
+@nox.session
+def isort_check(session: nox.Session):
+    "Nox `isort` command. Calls `isort` command."
+    env(session).pdm_run("isort", "--check", ".")
 
 
 @nox.session
 def black(session: nox.Session):
     "Nox `black` command. Calls `black` command."
-    commands(session).black()
+    env(session).pdm_run("black", ".")
 
 
 @nox.session
-def mypy(session: nox.Session):
-    "Nox `mypy` command. Calls `mypy` command."
-    commands(session).mypy()
+def black_check(session: nox.Session):
+    "Nox `black` command. Calls `black` command."
+    env(session).pdm_run("black", "--check", ".")
 
 
 @nox.session
-def typing(session: nox.Session):
-    "Nox `typing` command. Calls `mypy` command."
-    mypy(session)
+def type(session: nox.Session):
+    "Nox `type` command. Calls `mypy` command."
+    env(session).pdm_run("mypy", "--install-types", "--non-interactive", "src")
 
 
 @functools.cache
 def env(session: nox.Session):
     "Global singleton for github."
     return _Environment(session)
-
-
-@functools.cache
-def commands(session: nox.Session):
-    "Global singleton for commands."
-    return _Commands(session)
 
 
 @dcls.dataclass(frozen=True)
@@ -184,46 +198,6 @@ class _Environment:
 
     def _run(self, *args: str):
         _ = self.session.run_install(*args, external=True)
-
-
-@dcls.dataclass(frozen=True)
-class _Commands:
-    session: nox.Session
-
-    def __post_init__(self):
-        _ = self.env
-
-    def build(self):
-        "`pdm build` command."
-        self.env.pdm_build()
-
-    def publish(self):
-        "`pdm publish` command."
-        self.env.pdm_publish()
-
-    def test(self, *args: str):
-        "`pytest` command."
-        self.env.pdm_run("pytest", *args)
-
-    def autoflake(self):
-        "`autoflake` command."
-        self.env.pdm_run("autoflake", ".")
-
-    def isort(self):
-        "`isort` command."
-        self.env.pdm_run("isort", ".")
-
-    def black(self):
-        "`black` command."
-        self.env.pdm_run("black", ".")
-
-    def mypy(self):
-        "`mypy` command."
-        self.env.pdm_run("mypy", "--install-types", "--non-interactive", "src")
-
-    @property
-    def env(self):
-        return env(self.session)
 
 
 def checking_if(condition: str):

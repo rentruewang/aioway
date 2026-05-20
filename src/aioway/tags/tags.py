@@ -3,19 +3,23 @@
 "Extra information about the tensors."
 
 import abc
+import dataclasses as dcls
 import re
 import typing
 
 import torch
 
-from aioway._types import dcls_frozen_slots
-
-__all__ = ["Tag", "extract_tags"]
+__all__ = ["Tag", "tags_dcls", "extract_tags"]
 
 _TAG_NAME = re.compile(r"^__aioway_[a-zA-Z0-9_]+__$")
 
 
-@dcls_frozen_slots
+@typing.dataclass_transform(frozen_default=True)
+def tags_dcls(cls):
+    return dcls.dataclass(frozen=True, slots=True)(cls)
+
+
+@tags_dcls
 class Tag(abc.ABC):
     """
     The base class for tags. A tag describes a `torch.Tensor`,

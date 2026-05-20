@@ -2,70 +2,47 @@
 
 from torch import nn
 
-from .inits import MessInit
+from .fwds import InputFwd
+from .mess import Mess, MessInit, mess_init_dcls
 
-__all__ = [
-    "ReLU",
-    "ReLU6",
-    "CELU",
-    "GELU",
-    "Sigmoid",
-    "Tanh",
-    "Softmin",
-    "Softmax",
-    "LogSoftmax",
-]
+__all__ = []
 
 
-class ReLU(MessInit):
-    "Applies the rectified linear unit function element-wise."
-
-    KEY = nn.ReLU
+@mess_init_dcls
+class ActiveInit(MessInit): ...
 
 
-class ReLU6(MessInit):
-    "Applies the ReLU6 function element-wise."
-
-    KEY = nn.ReLU6
+_ = Mess(nn_type=nn.ReLU, init=ActiveInit, fwd=InputFwd)
+"Applies the rectified linear unit function element-wise."
 
 
-class CELU(MessInit):
-    "Applies the CELU function element-wise."
-
-    KEY = nn.CELU
+_ = Mess(nn_type=nn.ReLU6, init=ActiveInit, fwd=InputFwd)
+"Applies the ReLU6 function element-wise."
 
 
-class GELU(MessInit):
-    "Applies the GELU function element-wise."
-
-    KEY = nn.GELU
+_ = Mess(nn_type=nn.CELU, init=ActiveInit, fwd=InputFwd)
+"Applies the CELU function element-wise."
 
 
-class Sigmoid(MessInit):
-    "Applies the Sigmoid function element-wise."
-
-    KEY = nn.Sigmoid
+_ = Mess(nn_type=nn.GELU, init=ActiveInit, fwd=InputFwd)
+"Applies the GELU function element-wise."
 
 
-class Tanh(MessInit):
-    "Applies the Tanh function element-wise."
-
-    KEY = nn.Tanh
+_ = Mess(nn_type=nn.Sigmoid, init=ActiveInit, fwd=InputFwd)
+"Applies the Sigmoid function element-wise."
 
 
-class Softmin(MessInit):
-    "Applies the Softmin function to an n-dimensional input Tensor."
-
-    KEY = nn.Softmin
+_ = Mess(nn_type=nn.Tanh, init=ActiveInit, fwd=InputFwd)
+"Applies the Tanh function element-wise."
 
 
-class Softmax(MessInit):
-    "Applies the Softmax function to an n-dimensional input Tensor."
-
-    KEY = nn.Softmax
+_ = Mess(nn_type=nn.Softmin, init=ActiveInit, fwd=InputFwd)
+"Applies the Softmin function to an n-dimensional input Tensor."
 
 
-class LogSoftmax(MessInit):
-    "Applies the LogSoftmax function to an n-dimensional input Tensor."
+_ = Mess(nn_type=nn.Softmax, init=ActiveInit, fwd=InputFwd)
+"Applies the Softmax function to an n-dimensional input Tensor."
 
-    KEY = nn.LogSoftmax
+
+_ = Mess(nn_type=nn.LogSoftmax, init=ActiveInit, fwd=InputFwd)
+"Applies the LogSoftmax function to an n-dimensional input Tensor."

@@ -4,16 +4,16 @@ import typing
 
 from torch import nn
 
-from aioway._types import dcls_no_repr
 from aioway.fn import NnInitFn
 
-from .inits import MessInit
+from .fwds import InputFwd
+from .mess import Mess, MessInit, mess_init_dcls
 
-__all__ = ["Sequential"]
+__all__ = []
 
 
-@dcls_no_repr
-class Sequential(MessInit):
+@mess_init_dcls
+class SequentialInit(MessInit):
     """
     The wrapper for `nn.Sequential`.
 
@@ -21,8 +21,6 @@ class Sequential(MessInit):
     and there is no easy way of making that into a dataclass,
     we must overwrite `.do` because the default is `KEY(**dcls.asdict(self))`.
     """
-
-    KEY = nn.Sequential
 
     modules: tuple[nn.Module, ...]
     """
@@ -34,7 +32,10 @@ class Sequential(MessInit):
         self.modules = args
 
     @typing.override
-    def do(self) -> nn.Module:
+    def init(self, module: type[nn.Module]) -> nn.Module:
         # Create `nn.Sequential` instance with `NnInitFn` is the best way
         # to ensure that the modes are invoked properly.
-        return NnInitFn(func=self.KEY, args=self.modules, kwargs={}).do()
+        return NnInitFn(func=module, args=self.modules, kwargs={}).do()
+
+
+_ = Mess(nn_type=nn.Sequential, init=SequentialInit, fwd=InputFwd)

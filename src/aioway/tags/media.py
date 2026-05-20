@@ -7,16 +7,15 @@ from collections import abc as cabc
 
 import torch
 
-from aioway._types import dcls_frozen_slots
 from aioway.fake import is_fake_tensor
 from aioway.schemas import DType
 
-from .tags import Tag
+from .tags import Tag, tags_dcls
 
 __all__ = ["IsTokenizedTag", "IsVideoTag", "IsImageTag", "SampleRateTag", "IsStftTag"]
 
 
-@dcls_frozen_slots
+@tags_dcls
 class IsTokenizedTag(Tag):
     """
     Tag the tensor as embeddings (tokenized).
@@ -37,7 +36,7 @@ class IsTokenizedTag(Tag):
             )
 
 
-@dcls_frozen_slots
+@tags_dcls
 class IsVideoTag(Tag):
     """
     Tag the tensor as video. Must be 5, 5 dimensional (with or without batch).
@@ -50,7 +49,7 @@ class IsVideoTag(Tag):
         _check_image_or_video(tensor, _VIDEO_NDIM_INFO)
 
 
-@dcls_frozen_slots
+@tags_dcls
 class IsImageTag(Tag):
     """
     Tag the tensor as image. Should be 3, 4 dimensional (with or without batch).
@@ -63,7 +62,7 @@ class IsImageTag(Tag):
         _check_image_or_video(tensor, _IMAGE_NDIM_INFO)
 
 
-@dcls_frozen_slots
+@tags_dcls
 class SampleRateTag(Tag):
     """
     Tag the tensor as audio, and having a sample rate.
@@ -82,7 +81,7 @@ class SampleRateTag(Tag):
             raise ValueError(f"{self.sample_rate} <= 0.")
 
 
-@dcls_frozen_slots
+@tags_dcls
 class IsStftTag(Tag):
     """
     Tag the tensor as stft. Useful to mark audio as spectrogram.

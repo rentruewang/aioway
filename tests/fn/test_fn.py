@@ -14,7 +14,6 @@ from aioway.fn import (
     TorDisFn,
     TorFuncFn,
 )
-from aioway.mess import MessInit
 
 
 def _fn_cls():
@@ -25,7 +24,6 @@ def _fn_cls():
     yield NnFwdFn
 
     yield Fate
-    yield MessInit
 
 
 def _input_cls():

@@ -9,9 +9,7 @@ import typing
 
 import torch
 
-from aioway._types import dcls_frozen_slots
-
-from .tags import Tag
+from .tags import Tag, tags_dcls
 
 __all__ = ["DimTag", "DimInfo"]
 
@@ -47,7 +45,7 @@ class DimInfo(enum.StrEnum):
     """
 
 
-@dcls_frozen_slots
+@tags_dcls
 class DimTag(Tag):
     TAG = "__aioway_dim_tag__"
 

@@ -7,17 +7,26 @@ import typing
 
 from torch import nn
 
+from aioway.fn import NnInitFn
 from aioway.renders import camel_to_snake, render_fcall
 
-__all__ = ["Mess", "find_mess", "list_mess"]
+__all__ = [
+    "Mess",
+    "MessInit",
+    "MessFwd",
+    "mess_init_dcls",
+    "mess_fwd_dcls",
+    "find_mess",
+    "list_mess",
+]
 
 _MESS_REGISTRY: dict[type[nn.Module], Mess] = {}
 
 
-@typing.dataclass_transform(frozen_default=True)
+@typing.dataclass_transform(frozen_default=False)
 def mess_init_dcls(cls):
     "Decorator of dataclass for `MessInit`."
-    return dcls.dataclass(frozen=True, repr=False)(cls)
+    return dcls.dataclass(frozen=False, repr=False)(cls)
 
 
 @mess_init_dcls
@@ -33,6 +42,13 @@ class MessInit(abc.ABC):
         return render_fcall(
             "mess_init::" + camel_to_snake(self._cls_name()), **dcls.asdict(self)
         )
+
+    def init(self, module: type[nn.Module]) -> nn.Module:
+        """
+        The initialization function, given `self` as config for `module` type.
+        """
+
+        return NnInitFn(func=module, args=(), kwargs=dcls.asdict(self)).do()
 
     @classmethod
     def _cls_name(cls) -> str:
@@ -88,6 +104,9 @@ class Mess:
     def __post_init__(self) -> None:
         # Log `self` in the registry.
         _MESS_REGISTRY[self.nn_type] = self
+
+    def module(self, *args, **kwargs) -> nn.Module:
+        return self.init(*args, **kwargs).init(self.nn_type)
 
 
 def find_mess(nn_type: type[nn.Module]) -> Mess:

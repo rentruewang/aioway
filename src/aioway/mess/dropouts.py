@@ -1,16 +1,15 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import typing
 
 from torch import nn
 
-from .inits import MessInit
+from .fwds import InputFwd
+from .mess import Mess, MessInit
 
-__all__ = ["Dropout", "Dropout1d", "Dropout2d", "Dropout3d"]
+__all__ = []
 
 
-class _BaseDropout(MessInit):
-    KEY: typing.ClassVar[type[nn.Module]] = NotImplemented
+class BaseDropout(MessInit):
 
     p: float = 0.5
     "Probability of an element to be zeroed. Default: 0.5."
@@ -19,34 +18,26 @@ class _BaseDropout(MessInit):
     "If set to True, will do this operation in-place. Default: `False`."
 
 
-class Dropout(_BaseDropout):
-    """
-    During training, randomly zeroes some of the elements
-    of the input tensor with probability `p`.
-    """
-
-    KEY = nn.Dropout
+_ = Mess(nn_type=nn.Dropout, init=BaseDropout, fwd=InputFwd)
+"""
+During training, randomly zeroes some of the elements
+of the input tensor with probability `p`.
+"""
 
 
-class Dropout1d(_BaseDropout):
-    """
-    Randomly zero out entire channels (1D feature map).
-    """
-
-    KEY = nn.Dropout1d
+_ = Mess(nn_type=nn.Dropout1d, init=BaseDropout, fwd=InputFwd)
+"""
+Randomly zero out entire channels (1D feature map).
+"""
 
 
-class Dropout2d(_BaseDropout):
-    """
-    Randomly zero out entire channels (2D feature map).
-    """
-
-    KEY = nn.Dropout2d
+_ = Mess(nn_type=nn.Dropout2d, init=BaseDropout, fwd=InputFwd)
+"""
+Randomly zero out entire channels (2D feature map).
+"""
 
 
-class Dropout3d(_BaseDropout):
-    """
-    Randomly zero out entire channels (3D feature map).
-    """
-
-    KEY = nn.Dropout3d
+_ = Mess(nn_type=nn.Dropout3d, init=BaseDropout, fwd=InputFwd)
+"""
+Randomly zero out entire channels (3D feature map).
+"""

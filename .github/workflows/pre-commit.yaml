@@ -14,7 +14,7 @@ jobs:
           cache: true
 
       - name: 🏃 Formatting
-        run: pip install nox[pbs] && nox -rs formatting
+        run: pip install nox[pbs] && nox -rs format_check
 
   type:
     name: 👨‍⚕️ Type Checking
@@ -29,4 +29,4 @@ jobs:
           cache: true
 
       - name: 🏃 Type checking
-        run: pip install nox[pbs] && nox -rs typing
+        run: pip install nox[pbs] && nox -rs type

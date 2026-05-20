@@ -41,7 +41,7 @@ pre-commit = [
     "black[jupyter]>=26",
     "isort>=8",
     "mypy>=1",
-    "nb-clean>=4.0.1",
+    "nb-clean>=4",
     "pre-commit>=4",
 ]
 tests = [
@@ -52,7 +52,7 @@ tests = [
     "pytest-timeout>=2",
     "pytest-testmon>=2",
     "pytest-sugar>=1",
-    "better-exceptions>=0",
+    "better-exceptions>=0.3",
     "coverage>=7",
     "papermill>=2.7.0",
     "gitpython>=3.1.50",

@@ -1,20 +1,16 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import typing
 
 from torch import nn
 
-from aioway._types import dcls_no_repr
+from .fwds import InputFwd
+from .mess import Mess, MessInit, mess_init_dcls
 
-from .inits import MessInit
-
-__all__ = ["Embedding"]
+__all__ = []
 
 
-@dcls_no_repr
-class _BaseEmbedding(MessInit):
-    KEY: typing.ClassVar[type[nn.Module]] = NotImplemented
-
+@mess_init_dcls
+class BaseEmbedding(MessInit):
     num_embeddings: int
     "The size of the dictionary of embeddings."
 
@@ -29,20 +25,14 @@ class _BaseEmbedding(MessInit):
             raise ValueError(f"{self.embedding_dim=} <= 0.")
 
 
-@dcls_no_repr
-class Embedding(_BaseEmbedding):
-    """
-    A simple lookup table that stores embeddings of a fixed dictionary and size.
-    """
-
-    KEY = nn.Embedding
+_ = Mess(nn_type=nn.Embedding, init=BaseEmbedding, fwd=InputFwd)
+"""
+A simple lookup table that stores embeddings of a fixed dictionary and size.
+"""
 
 
-@dcls_no_repr
-class EmbeddingBag(_BaseEmbedding):
-    """
-    Compute sums or means of 'bags' of embeddings,
-    without instantiating the intermediate embeddings.
-    """
-
-    KEY = nn.EmbeddingBag
+_ = Mess(nn_type=nn.EmbeddingBag, init=BaseEmbedding, fwd=InputFwd)
+"""
+Compute sums or means of 'bags' of embeddings,
+without instantiating the intermediate embeddings.
+"""
