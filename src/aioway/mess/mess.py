@@ -1,18 +1,59 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 
+import abc
 import dataclasses as dcls
+import typing
 
 from torch import nn
 
-from .fwds import MessFwd
-from .inits import MessInit
+from aioway.renders import camel_to_snake, render_fcall
 
-__all__ = ["Mess"]
+__all__ = ["Mess", "MessInit", "MessFwd", "mess_init_dcls", "mess_fwd_dcls"]
 
 _MESS_REGISTRY: dict[type[nn.Module], Mess] = {}
 
 
+@typing.dataclass_transform(frozen_default=True)
+def mess_fwd_dcls(cls):
+    "Decorator of dataclass for `MessFwd`."
+    return dcls.dataclass(frozen=True, repr=False)(cls)
+
+
+@typing.dataclass_transform(frozen_default=True)
+def mess_init_dcls(cls):
+    "Decorator of dataclass for `MessInit`."
+    return dcls.dataclass(frozen=True, repr=False)(cls)
+
+
+@mess_fwd_dcls
+class MessFwd(abc.ABC):
+    """
+    `MessFwd` contains info about how a module's runtime signature looks like.
+    """
+
+    def __repr__(self) -> str:
+        return render_fcall(
+            "mess_fwd::" + camel_to_snake(type(self).__name__), **dcls.asdict(self)
+        )
+
+
+@mess_init_dcls
+class MessInit(abc.ABC):
+    """
+    `MessInit` is a preview of how an `nn.Module` would be initialized.
+    It is the init part of `Mess`.
+
+    It provides metadata as to what `nn.Module` arguments are valid or not.
+    """
+
+    def __repr__(self) -> str:
+        return render_fcall(
+            "mess_init::" + camel_to_snake(type(self).__name__), **dcls.asdict(self)
+        )
+
+
+@typing.final
 @dcls.dataclass(frozen=True, slots=True)
 class Mess:
     """

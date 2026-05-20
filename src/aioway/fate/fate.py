@@ -16,7 +16,11 @@ from aioway.renders import camel_to_snake, render_fcall
 
 __all__ = ["Fate", "fate_dcls", "find_fate", "all_fates"]
 
-fate_dcls = dcls.dataclass(repr=False)
+
+@typing.dataclass_transform()
+def fate_dcls(cls):
+    "Decorator of dataclass for `Fate`."
+    return dcls.dataclass(repr=False)(cls)
 
 
 @fate_dcls

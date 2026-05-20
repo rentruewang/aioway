@@ -1,105 +1,83 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from .inits import MessInit
+import torch
+from torch import nn
 
-_REDUCTION = frozenset(["none", "mean", "sum"])
+from .mess import Mess, MessFwd, MessInit, mess_fwd_dcls, mess_init_dcls
 
-
-@dcls_no_repr
-class _ReducibleLoss(MessInit):
-    """
-    Creates a criterion that measures the mean absolute error (MAE)
-    between each element in the input x and target y
-    """
-
-    KEY: typing.ClassVar[type[nn.Module]] = NotImplemented
+__all__ = []
 
 
-@dcls_no_repr
-class L1Loss(_ReducibleLoss):
-    """
-    Creates a criterion that measures the mean absolute error (MAE)
-    between each element in the input x and target y
-    """
-
-    KEY = nn.L1Loss
+@mess_init_dcls
+class LossInit(MessInit): ...
 
 
-@dcls_no_repr
-class MSELoss(_ReducibleLoss):
-    """
-    Creates a criterion that measures the mean squared error (squared L2 norm)
-    between each element in the input x and target y
-    """
+@mess_fwd_dcls
+class LossFwd(MessFwd):
 
-    KEY = nn.MSELoss
+    input: torch.Tensor
+    "Any dimension of tensor."
 
-
-@dcls_no_repr
-class CrossEntropyLoss(_ReducibleLoss):
-    """
-    This criterion computes the cross entropy loss between input logits and target.
-    """
-
-    KEY = nn.CrossEntropyLoss
+    target: torch.Tensor
+    "Same shape as the `input`."
 
 
-@dcls_no_repr
-class CTCLoss(_ReducibleLoss):
-    """
-    The Connectionist Temporal Classification loss.
-    """
+L1_LOSS = Mess(nn_type=nn.L1Loss, init=LossInit, fwd=LossFwd)
+"""
+Creates a criterion that measures the mean absolute error (MAE)
+between each element in the input x and target y
+"""
 
-    KEY = nn.CTCLoss
-
-
-@dcls_no_repr
-class NLLLoss(_ReducibleLoss):
-    """
-    The negative log likelihood loss.
-    It is useful to train a classification problem with C classes.
-    """
-
-    KEY = nn.NLLLoss
+MSE_LOSS = Mess(nn_type=nn.MSELoss, init=LossInit, fwd=LossFwd)
+"""
+Creates a criterion that measures the mean squared error (squared L2 norm)
+between each element in the input x and target y
+"""
 
 
-@dcls_no_repr
-class KLDivLoss(_ReducibleLoss):
-    """
-    The Kullback-Leibler divergence loss.
-    """
+CROSS_ENTROPY_LOSS = Mess(nn_type=nn.CrossEntropyLoss, init=LossInit, fwd=LossFwd)
+"""
+This criterion computes the cross entropy loss between input logits and target.
+"""
 
-    KEY = nn.KLDivLoss
-
-
-@dcls_no_repr
-class BCELoss(_ReducibleLoss):
-    """
-    Creates a criterion that measures the Binary Cross Entropy between the target and the input probabilities.
-    """
-
-    KEY = nn.BCELoss
+CTC_LOSS = Mess(nn_type=nn.CTCLoss, init=LossInit, fwd=LossFwd)
+"""
+The Connectionist Temporal Classification loss.
+"""
 
 
-@dcls_no_repr
-class BCEWithLogitsLoss(_ReducibleLoss):
-    """
-    This loss combines a Sigmoid layer and the BCELoss in one single class.
-    This version is more numerically stable than using a plain Sigmoid followed by a BCELoss as,
-    by combining the operations into one layer,
-    we take advantage of the log-sum-exp trick for numerical stability.
-    """
-
-    KEY = nn.BCEWithLogitsLoss
+NLL_LOSS = Mess(nn_type=nn.NLLLoss, init=LossInit, fwd=LossFwd)
+"""
+The negative log likelihood loss.
+It is useful to train a classification problem with C classes.
+"""
 
 
-@dcls_no_repr
-class SmoothL1Loss(_ReducibleLoss):
-    """
-    Creates a criterion that uses a squared term
-    if the absolute element-wise error falls below beta and an L1 term otherwise.
-    It is less sensitive to outliers than torch.nn.MSELoss and in some cases
-    prevents exploding gradients (e.g. see the paper Fast R-CNN by Ross Girshick).
-    """
+KL_DIV_LOSS = Mess(nn_type=nn.KLDivLoss, init=LossInit, fwd=LossFwd)
+"""
+The Kullback-Leibler divergence loss.
+"""
 
-    KEY = nn.SmoothL1Loss
+
+BCE_LOSS = Mess(nn_type=nn.BCELoss, init=LossInit, fwd=LossFwd)
+"""
+Creates a criterion that measures the Binary Cross Entropy between the target and the input probabilities.
+"""
+
+
+BCE_WITH_LOGITS_LOSS = Mess(nn_type=nn.BCEWithLogitsLoss, init=LossInit, fwd=LossFwd)
+"""
+This loss combines a Sigmoid layer and the BCELoss in one single class.
+This version is more numerically stable than using a plain Sigmoid followed by a BCELoss as,
+by combining the operations into one layer,
+we take advantage of the log-sum-exp trick for numerical stability.
+"""
+
+
+SMOOTH_L1_LOSS = Mess(nn_type=nn.SmoothL1Loss, init=LossInit, fwd=LossFwd)
+"""
+Creates a criterion that uses a squared term
+if the absolute element-wise error falls below beta and an L1 term otherwise.
+It is less sensitive to outliers than torch.nn.MSELoss and in some cases
+prevents exploding gradients (e.g. see the paper Fast R-CNN by Ross Girshick).
+"""

@@ -2,4 +2,5 @@
 
 from .fwds import *
 from .inits import *
+from .losses import *
 from .mess import *
