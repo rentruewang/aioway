@@ -1,7 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import pathlib
-import subprocess as sp
 
 import papermill as pm
 
