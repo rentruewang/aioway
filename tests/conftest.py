@@ -2,8 +2,9 @@
 
 import pathlib
 import random
+import typing
 
-import pathspec
+import git
 import pytest
 import torch
 from numpy import random as npr
@@ -14,18 +15,26 @@ from aioway.fn import fake_fn, track_fn
 from .fake import batch_sizes, cpu_and_maybe_cuda
 
 _PROJECT_ROOT = pathlib.Path(__file__).parent.parent.resolve()
+_REPO = git.Repo(_PROJECT_ROOT)
 _MEDIA_DIR = _PROJECT_ROOT / "media"
 _NOTEBOOKS_DIR = _PROJECT_ROOT / "notebooks"
 _GITIGNORE = _PROJECT_ROOT / ".gitignore"
 
 
-def gitignore_glob(path: pathlib.Path, pattern: str):
-    assert _GITIGNORE.exists()
-    spec = pathspec.PathSpec.from_lines("gitwildmatch", _GITIGNORE.open("r"))
+@typing.no_type_check
+def _get_git_files(folder: pathlib.Path):
+    for item in _REPO.tree().traverse():
+        if item.type != "blob":
+            continue
 
-    for f in path.rglob(pattern):
-        if not spec.match_file(f):
-            yield f
+        if (path := _PROJECT_ROOT / item.path).is_relative_to(folder):
+            yield path
+
+
+def _get_git_ipynb(folder: pathlib.Path):
+    for file in _get_git_files(folder):
+        if file.suffix == ".ipynb":
+            yield file
 
 
 @pytest.fixture(scope="module")
@@ -45,7 +54,8 @@ def media():
 def _notebooks():
     assert _NOTEBOOKS_DIR.exists()
     assert _NOTEBOOKS_DIR.is_dir()
-    yield from gitignore_glob(_NOTEBOOKS_DIR, "*.py")
+
+    yield from _get_git_ipynb(_NOTEBOOKS_DIR)
 
 
 @pytest.fixture(scope="module", params=_notebooks(), ids=lambda path: path.name)
