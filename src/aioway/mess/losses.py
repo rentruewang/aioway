@@ -1,36 +1,22 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-
-from torch import nn
-
-from aioway._types import dcls_no_repr
-
 from .inits import MessInit
-
-__all__ = [
-    "L1Loss",
-    "MSELoss",
-    "CrossEntropyLoss",
-    "CTCLoss",
-    "NLLLoss",
-    "KLDivLoss",
-    "BCELoss",
-    "BCEWithLogitsLoss",
-    "SmoothL1Loss",
-]
 
 _REDUCTION = frozenset(["none", "mean", "sum"])
 
 
-class _ReducibleLossInit(MessInit):
+@dcls_no_repr
+class _ReducibleLoss(MessInit):
     """
     Creates a criterion that measures the mean absolute error (MAE)
     between each element in the input x and target y
     """
 
+    KEY: typing.ClassVar[type[nn.Module]] = NotImplemented
+
 
 @dcls_no_repr
-class L1LossInit(_ReducibleLoss):
+class L1Loss(_ReducibleLoss):
     """
     Creates a criterion that measures the mean absolute error (MAE)
     between each element in the input x and target y
@@ -40,7 +26,7 @@ class L1LossInit(_ReducibleLoss):
 
 
 @dcls_no_repr
-class MSELossInit(_ReducibleLoss):
+class MSELoss(_ReducibleLoss):
     """
     Creates a criterion that measures the mean squared error (squared L2 norm)
     between each element in the input x and target y
@@ -50,7 +36,7 @@ class MSELossInit(_ReducibleLoss):
 
 
 @dcls_no_repr
-class CrossEntropyLossInit(_ReducibleLoss):
+class CrossEntropyLoss(_ReducibleLoss):
     """
     This criterion computes the cross entropy loss between input logits and target.
     """
@@ -59,7 +45,7 @@ class CrossEntropyLossInit(_ReducibleLoss):
 
 
 @dcls_no_repr
-class CTCLossInit(_ReducibleLoss):
+class CTCLoss(_ReducibleLoss):
     """
     The Connectionist Temporal Classification loss.
     """
@@ -68,7 +54,7 @@ class CTCLossInit(_ReducibleLoss):
 
 
 @dcls_no_repr
-class NLLLossInit(_ReducibleLoss):
+class NLLLoss(_ReducibleLoss):
     """
     The negative log likelihood loss.
     It is useful to train a classification problem with C classes.
@@ -78,7 +64,7 @@ class NLLLossInit(_ReducibleLoss):
 
 
 @dcls_no_repr
-class KLDivLossInit(_ReducibleLoss):
+class KLDivLoss(_ReducibleLoss):
     """
     The Kullback-Leibler divergence loss.
     """
@@ -87,7 +73,7 @@ class KLDivLossInit(_ReducibleLoss):
 
 
 @dcls_no_repr
-class BCELossInit(_ReducibleLoss):
+class BCELoss(_ReducibleLoss):
     """
     Creates a criterion that measures the Binary Cross Entropy between the target and the input probabilities.
     """
@@ -96,7 +82,7 @@ class BCELossInit(_ReducibleLoss):
 
 
 @dcls_no_repr
-class BCEWithLogitsLossInit(_ReducibleLoss):
+class BCEWithLogitsLoss(_ReducibleLoss):
     """
     This loss combines a Sigmoid layer and the BCELoss in one single class.
     This version is more numerically stable than using a plain Sigmoid followed by a BCELoss as,
@@ -108,7 +94,7 @@ class BCEWithLogitsLossInit(_ReducibleLoss):
 
 
 @dcls_no_repr
-class SmoothL1LossInit(_ReducibleLoss):
+class SmoothL1Loss(_ReducibleLoss):
     """
     Creates a criterion that uses a squared term
     if the absolute element-wise error falls below beta and an L1 term otherwise.

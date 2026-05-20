@@ -38,7 +38,7 @@ build-backend = "setuptools.build_meta"
 [dependency-groups]
 pre-commit = [
     "autoflake>=2",
-    "black>=26",
+    "black[jupyter]>=26",
     "isort>=8",
     "mypy>=1",
     "nb-clean>=4.0.1",

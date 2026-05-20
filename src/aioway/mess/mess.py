@@ -1,18 +1,19 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import typing
+
+import dataclasses as dcls
 
 from torch import nn
-
-from aioway._types import dcls_no_repr
 
 from .fwds import MessFwd
 from .inits import MessInit
 
 __all__ = ["Mess"]
 
+_MESS_REGISTRY: dict[type[nn.Module], Mess] = {}
 
-@dcls_no_repr
+
+@dcls.dataclass(frozen=True, slots=True)
 class Mess:
     """
     `Mess` is the runtime information for `nn.Module`,
@@ -22,6 +23,11 @@ class Mess:
 
     It carries both a `MessInit` type and a `MessFwd` type,
     for the signatures of initialization time / run time respectively.
+    """
+
+    nn_type: type[nn.Module]
+    """
+    The `nn.Module` type that has the init signature `init` and forward signature `fwd`.
     """
 
     init: type[MessInit]
@@ -34,25 +40,18 @@ class Mess:
     The runtime signature of the `nn.Module`.
     """
 
-    @classmethod
-    def find(cls, nn_type: type[nn.Module]) -> typing.Self:
-        """
-        Perform a search for both `MessInit` and `MessFwd` on `nn_type`.
-        If either returns `NotImplemented`, `NotImplemented` is returned.
-        Or else return a `Mess` which contains both types.
-        """
+    def __post_init__(self) -> None:
+        # Log `self` in the registry.
+        _MESS_REGISTRY[self.nn_type] = self
 
-        # Right now, both `MessInit` / `MessFwd` should have distinct key,
-        # so just return the 1st.
 
-        for init_type in MessInit.find(nn_type):
-            break
-        else:
-            return NotImplemented
+def find_mess(nn_type: type[nn.Module]) -> Mess:
+    """
+    Find the `Mess` instance that is previously initialized.
+    It carries information on both `MessInit` and `MessFwd`,
+    and their corresponding `nn_type`.
 
-        for fwd_type in MessFwd.find(nn_type):
-            break
-        else:
-            return NotImplemented
+    If the `Mess` is not found, `NotImplemented` is returned.
+    """
 
-        return cls(init=init_type, fwd=fwd_type)
+    return _MESS_REGISTRY.get(nn_type, NotImplemented)
