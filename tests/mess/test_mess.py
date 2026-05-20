@@ -6,6 +6,7 @@ import pytest
 from torch import nn
 
 from aioway.mess import Mess, MessInit
+from aioway.mess.mess import find_mess
 from aioway.renders import render_fcall
 
 
@@ -68,27 +69,40 @@ def _module_opts():
     params=_module_opts(),
     ids=lambda x: render_fcall(x.module.__name__, **x.options),
 )
-def mess_init(request: pytest.FixtureRequest) -> MessInit:
-    cls, kwargs = request.param
-    return Mess.find(cls).init(**kwargs)
+def module_opts(request: pytest.FixtureRequest) -> _ModuleOpts:
+    return request.param
 
 
-def test_mess_init(mess_init: MessInit):
-    assert isinstance(mess_init, MessInit)
-    assert repr(mess_init).startswith("mess_init::")
+@pytest.fixture
+def mess(module_opts: _ModuleOpts) -> Mess:
+    cls, _ = module_opts
+    return find_mess(cls)
 
 
-def test_mess_init_do(mess_init: MessInit):
-    module = mess_init.do()
+@pytest.fixture
+def opts(module_opts: _ModuleOpts):
+    _, opts = module_opts
+    return opts
+
+
+def test_mess(mess: Mess):
+    assert isinstance(mess, Mess)
+
+
+def test_mess_init(mess: Mess):
+    init = mess.init
+    assert issubclass(init, MessInit)
+
+
+def test_init_module(mess: Mess, opts: dict[str, typing.Any]):
+    module = mess.module(**opts)
     assert isinstance(module, nn.Module)
+    assert isinstance(module, mess.nn_type)
 
 
 def test_sequential():
-    from aioway.mess.inits._containers import Sequential
-
-    seq = Mess.find(nn.Sequential).init(
+    seq = find_mess(nn.Sequential).module(
         nn.Linear(1, 2), nn.Linear(2, 3), nn.Linear(3, 4)
     )
-    assert isinstance(seq, MessInit)
-    assert isinstance(seq, Sequential)
-    assert len(seq.modules) == 3
+    assert isinstance(seq, nn.Sequential)
+    assert len(seq) == 3

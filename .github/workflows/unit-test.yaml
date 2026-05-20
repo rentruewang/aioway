@@ -16,7 +16,7 @@ jobs:
           cache: true
 
       - name: 🧪 Test with pytest
-        run: pip install nox[pbs] && nox -rs testing
+        run: pip install nox[pbs] && nox -rs test
 
   build:
     name: 👷 Build

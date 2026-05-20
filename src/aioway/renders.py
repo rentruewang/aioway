@@ -2,6 +2,8 @@
 
 "Print the objects to the terminal in a nice way."
 
+import functools
+import re
 import types
 import typing
 from collections import abc as cabc
@@ -105,3 +107,12 @@ def render_torch_func_name(func: cabc.Callable[..., typing.Any]) -> str:
 
     # Don't know what this is. Just use `__qualname__`.
     return func.__qualname__
+
+
+def camel_to_snake(name: str) -> str:
+    return re.sub(_camel_case_regex(), "_", name).lower()
+
+
+@functools.cache
+def _camel_case_regex():
+    return re.compile(r"(?<!^)(?=[A-Z])")

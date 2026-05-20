@@ -6,14 +6,12 @@ import typing
 import torch
 from torch import ops
 
-from aioway._types import dcls_no_repr
-
-from .fate import Fate
+from .fate import Fate, fate_dcls
 
 __all__ = ["BooleanMasking", "IntSelect"]
 
 
-@dcls_no_repr
+@fate_dcls
 class _GetItem(Fate, abc.ABC):
     self: torch.Tensor
     indices: list[torch.Tensor]
@@ -30,7 +28,7 @@ class _GetItem(Fate, abc.ABC):
         return self.do().numel()
 
 
-@dcls_no_repr
+@fate_dcls
 class BooleanMasking(_GetItem):
     KEY = ops.aten.index.Tensor
 
@@ -42,7 +40,7 @@ class BooleanMasking(_GetItem):
         return self.self
 
 
-@dcls_no_repr
+@fate_dcls
 class IntSelect(_GetItem):
     KEY = ops.aten.index.Tensor
 

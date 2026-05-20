@@ -5,45 +5,7 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-__all__ = [
-    "dcls_no_eq",
-    "dcls_no_repr",
-    "dcls_frozen_no_repr",
-    "dcls_frozen_slots",
-    "dcls_no_eq_no_repr",
-    "track_call_count",
-    "Stack",
-]
-
-
-@typing.dataclass_transform(eq_default=False)
-def dcls_no_eq[T: type](cls: T) -> T:
-    result: typing.Any = dcls.dataclass(eq=False)(cls)
-    return result
-
-
-@typing.dataclass_transform(eq_default=False, frozen_default=True)
-def dcls_frozen_slots[T: type](cls: T) -> T:
-    result: typing.Any = dcls.dataclass(frozen=True, slots=True)(cls)
-    return result
-
-
-@typing.dataclass_transform(eq_default=True)
-def dcls_no_repr[T: type](cls: T) -> T:
-    result: typing.Any = dcls.dataclass(repr=False)(cls)
-    return result
-
-
-@typing.dataclass_transform(eq_default=True, frozen_default=True)
-def dcls_frozen_no_repr[T: type](cls: T) -> T:
-    result: typing.Any = dcls.dataclass(repr=False, frozen=True)(cls)
-    return result
-
-
-@typing.dataclass_transform(eq_default=False)
-def dcls_no_eq_no_repr[T: type](cls: T) -> T:
-    result: typing.Any = dcls.dataclass(eq=False, repr=False)(cls)
-    return result
+__all__ = ["track_call_count", "Stack"]
 
 
 class _CallCounter[**P, T]:
@@ -77,6 +39,17 @@ class _CallCounter[**P, T]:
             "(...)",
         ]
         return "".join(string_builder)
+
+    def __get__(self, instance, owner):
+        # If accessed from the class, return the wrapper itself
+        if instance is None:
+            return self
+
+        @type(self)
+        def bounded_method(*args, **kwargs):
+            return self.__func__(instance, *args, **kwargs)
+
+        return bounded_method
 
     @property
     def __func__(self) -> cabc.Callable[P, T]:
