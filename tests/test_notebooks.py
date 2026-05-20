@@ -2,7 +2,8 @@
 
 import pathlib
 import subprocess as sp
-import sys, papermill as pm
+
+import papermill as pm
 
 
 def test_notebook(notebook: pathlib.Path):

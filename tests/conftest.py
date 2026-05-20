@@ -4,9 +4,9 @@ import pathlib
 import random
 import typing
 
+import git
 import pytest
 import torch
-import git
 from numpy import random as npr
 from rich import traceback
 
