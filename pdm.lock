@@ -5,7 +5,7 @@
 groups = ["default", "build", "debugging", "networkx", "pre-commit", "tests"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:11d2dd93d92e039562330c1a8b3fec287e2e3fd92ceeae04d595d26191d0ab7a"
+content_hash = "sha256:0d1061f03c1889daedb37a3ac77fff3194258a0fbf0e33dd7cb2c928c8f7b266"
 
 [[metadata.targets]]
 requires_python = ">=3.14,<3.15"

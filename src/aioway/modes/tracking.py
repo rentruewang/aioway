@@ -181,10 +181,11 @@ class RouteTorDis(TorDisMode):
     def __call__(self, thunk: TorDisFn) -> object:
         from aioway.fate import FateFn
 
-        fn: TorDisFn | FateFn
+        if (found := FateFn.find_fate(thunk)) is not None:
+            fn = found
 
-        if (fn := FateFn.find_fate(thunk)) is NotImplemented:
-            # Cannot find corresponding operator, set it to the input `thunk`.
+        # Cannot find corresponding operator, set it to the input `thunk`.
+        else:
             fn = thunk
 
         assert isinstance(fn, TorDisFn | FateFn), type(fn)

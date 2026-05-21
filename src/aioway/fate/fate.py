@@ -110,11 +110,11 @@ class Fate(abc.ABC):
         return cls.KEY is not NotImplemented and not inspect.isabstract(cls)
 
 
-def find_fate(dispatch: TorDisFn) -> Fate:
+def find_fate(dispatch: TorDisFn, /) -> Fate | None:
     """
     Try finding a `Fate` operator with the thunk, and then wrap into `FateFn`.
 
-    Returns `NotImplemented` if a candidate is not found.
+    Returns `None` if a candidate is not found.
     """
 
     for sub_type in Fate.find(dispatch.func):
@@ -123,7 +123,7 @@ def find_fate(dispatch: TorDisFn) -> Fate:
 
         return fate
     else:
-        return NotImplemented
+        return None
 
 
 @typing.no_type_check
