@@ -6,12 +6,12 @@ import dataclasses as dcls
 import logging
 import typing
 
-from aioway._torch import (
-    is_aten_op,
-)
-from aioway.fn import TorDisFn
+from aioway._torch import is_aten_op
 
 from .fate import Fate, find_fate
+
+if typing.TYPE_CHECKING:
+    from aioway.modes import TorDisFn
 
 __all__ = ["FateFn"]
 
@@ -58,22 +58,23 @@ class FateFn:
         return self.original.kwargs
 
     @classmethod
-    def find_fate(cls, thunk: TorDisFn) -> typing.Self:
+    def find_fate(cls, thunk: TorDisFn) -> typing.Self | None:
         LOGGER.debug("Resolving `Fate` object for %s", thunk)
 
-        # For now, `Fate` supports aten, because `torchvision`, `torchcodec` rely on real data,
+        # For now, `Fate` only supports aten,
+        # because `torchvision`, `torchcodec` rely on real data,
         # they do not have a good `Fate` to implement for now.
         # In those operations, real mode is force enabled right now.
         # See aioway#204 issue.
         if not is_aten_op(thunk.func):
             LOGGER.debug("%s is not aten.", thunk)
-            return NotImplemented
+            return None
 
         fate = find_fate(thunk)
 
-        if fate is NotImplemented:
+        if fate is None:
             LOGGER.debug("Fate for %s not found.", thunk)
-            return NotImplemented
+            return None
 
         else:
             LOGGER.debug("Fate for %s found: %s.", thunk, fate)

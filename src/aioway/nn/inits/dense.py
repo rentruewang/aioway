@@ -2,24 +2,27 @@
 
 from torch import nn
 
-from .fwds import InputFwd
-from .mess import Mess, MessInit, mess_init_dcls
+from .inits import NnInit, nn_init_dcls
 
-__all__ = []
-
-
-@mess_init_dcls
-class IdentityInit(MessInit): ...
+__all__ = ["Identity", "Linear", "Bilinear"]
 
 
-_ = Mess(nn_type=nn.Identity, init=IdentityInit, fwd=InputFwd)
-"""
-A placeholder identity operator that is argument-insensitive.
-"""
+@nn_init_dcls
+class Identity(NnInit):
+    """
+    A placeholder identity operator that is argument-insensitive.
+    """
+
+    NN = nn.Identity
 
 
-@mess_init_dcls
-class LinearInit(MessInit):
+@nn_init_dcls
+class Linear(NnInit):
+    """
+    Apply the transformation A @ x + b.
+    """
+
+    NN = nn.Linear
 
     in_features: int
     "The size of each input sample, must be > 0."
@@ -38,8 +41,13 @@ class LinearInit(MessInit):
             raise ValueError(f"{self.out_features=} <= 0.")
 
 
-@mess_init_dcls
-class BilinearInit(MessInit):
+@nn_init_dcls
+class Bilinear(NnInit):
+    """
+    Apply the transformation x1 @ A @ x2 + b.
+    """
+
+    NN = nn.Bilinear
 
     in1_features: int
     "The size of each first input sample, must be > 0."
@@ -62,14 +70,3 @@ class BilinearInit(MessInit):
 
         if self.out_features <= 0:
             raise ValueError(f"{self.out_features=} <= 0.")
-
-
-_ = Mess(nn_type=nn.Linear, init=LinearInit, fwd=InputFwd)
-"""
-Apply the transformation A @ x + b.
-"""
-
-_ = Mess(nn_type=nn.Bilinear, init=BilinearInit, fwd=InputFwd)
-"""
-Apply the transformation x1 @ A @ x2 + b.
-"""

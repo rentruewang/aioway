@@ -10,7 +10,7 @@ from collections import abc as cabc
 
 import torch
 
-from aioway.fake import torch_fake_mode
+from aioway._torch import torch_fake_mode
 
 from .devices import Device, DeviceLike
 from .dtypes import DType, DTypeLike

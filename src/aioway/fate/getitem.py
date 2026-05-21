@@ -12,7 +12,7 @@ __all__ = ["BooleanMasking", "IntSelect"]
 
 
 @fate_dcls
-class _GetItem(Fate, abc.ABC):
+class _BaseGetItem(Fate, abc.ABC):
     self: torch.Tensor
     indices: list[torch.Tensor]
 
@@ -29,7 +29,7 @@ class _GetItem(Fate, abc.ABC):
 
 
 @fate_dcls
-class BooleanMasking(_GetItem):
+class BooleanMasking(_BaseGetItem):
     KEY = ops.aten.index.Tensor
 
     def ok(self) -> bool:
@@ -41,7 +41,7 @@ class BooleanMasking(_GetItem):
 
 
 @fate_dcls
-class IntSelect(_GetItem):
+class IntSelect(_BaseGetItem):
     KEY = ops.aten.index.Tensor
 
     def ok(self):

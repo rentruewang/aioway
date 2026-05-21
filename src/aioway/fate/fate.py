@@ -11,14 +11,17 @@ from collections import abc as cabc
 from torch import _ops
 
 from aioway.decomps import find_nested_tensors
-from aioway.fn import TorDisFn
 from aioway.renders import camel_to_snake, render_fcall
+
+if typing.TYPE_CHECKING:
+    from aioway.modes import TorDisFn
 
 __all__ = ["Fate", "fate_dcls", "find_fate", "all_fates"]
 
 
 @typing.dataclass_transform()
-def fate_dcls(cls):
+@typing.no_type_check
+def fate_dcls(cls, /):
     "Decorator of dataclass for `Fate`."
     return dcls.dataclass(repr=False)(cls)
 
@@ -110,11 +113,11 @@ class Fate(abc.ABC):
         return cls.KEY is not NotImplemented and not inspect.isabstract(cls)
 
 
-def find_fate(dispatch: TorDisFn) -> Fate:
+def find_fate(dispatch: TorDisFn, /) -> Fate | None:
     """
     Try finding a `Fate` operator with the thunk, and then wrap into `FateFn`.
 
-    Returns `NotImplemented` if a candidate is not found.
+    Returns `None` if a candidate is not found.
     """
 
     for sub_type in Fate.find(dispatch.func):
@@ -123,7 +126,7 @@ def find_fate(dispatch: TorDisFn) -> Fate:
 
         return fate
     else:
-        return NotImplemented
+        return None
 
 
 @typing.no_type_check

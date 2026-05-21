@@ -13,10 +13,10 @@ import torch
 
 from aioway._torch import is_leaf_has_grad
 from aioway.decomps import find_nested_tensors
+from aioway.fn import Fn, TensorInput
 from aioway.schemas import attr
 
 from .common import replace_tensors_with_attr
-from .fn import Fn, TensorInput
 
 LOGGER = logging.getLogger(__name__)
 

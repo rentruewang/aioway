@@ -13,9 +13,9 @@ import torch
 from torch import nn
 
 from aioway._types import track_call_count
+from aioway.fn import Thunk, TorchThunk
 
 from ._on_off import OnOffCtx, OnOffStack
-from .fn import Thunk, TorchThunk
 
 __all__ = [
     "NnFwdFn",

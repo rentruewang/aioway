@@ -9,17 +9,27 @@ from torch import nn
 
 from aioway._typing import is_tuple_of
 
-from .fwds import InputFwd
-from .mess import Mess, MessInit, mess_init_dcls
+from .inits import NnInit, nn_init_dcls
 
-__all__ = []
+__all__ = [
+    "Conv1d",
+    "Conv2d",
+    "Conv3d",
+    "MaxPool1d",
+    "MaxPool2d",
+    "MaxPool3d",
+    "AvgPool1d",
+    "AvgPool2d",
+    "AvgPool3d",
+]
 
 _PADDING = frozenset(["zeros", "reflect", "replicate", "circular"])
 "Valid padding values."
 
 
-@mess_init_dcls
-class _BaseAvgSliding(MessInit, abc.ABC):
+@nn_init_dcls
+class _BaseAvgSliding(abc.ABC):
+    NN: typing.ClassVar[type[nn.Module]] = NotImplemented
     NDIM: typing.ClassVar[int]
 
     _: dcls.KW_ONLY
@@ -39,13 +49,8 @@ class _BaseAvgSliding(MessInit, abc.ABC):
         _ = _cast_ndim_int(self.NDIM, self.stride)
         _ = _cast_ndim_int(self.NDIM, self.padding)
 
-    @classmethod
-    @typing.override
-    def _cls_name(cls) -> str:
-        return f"{cls.__name__}{cls.NDIM}"
 
-
-@mess_init_dcls
+@nn_init_dcls
 class _BaseSliding(_BaseAvgSliding, abc.ABC):
     _: dcls.KW_ONLY
 
@@ -57,7 +62,7 @@ class _BaseSliding(_BaseAvgSliding, abc.ABC):
         _ = _cast_ndim_int(self.NDIM, self.dilation)
 
 
-@mess_init_dcls
+@nn_init_dcls
 class _BaseConvWeights(abc.ABC):
     _: dcls.KW_ONLY
 
@@ -95,96 +100,119 @@ class _BaseConvWeights(abc.ABC):
             raise ValueError(f"{self.padding_mode=!r} should be one of {_PADDING}.")
 
 
-def _conv_init(ndim: int):
-    @mess_init_dcls
-    class ConvInit(_BaseSliding, _BaseConvWeights, MessInit):
-        NDIM = ndim
-
-        def __post_init__(self) -> None:
-            _BaseSliding.__post_init__(self)
-            _BaseConvWeights.__post_init__(self)
-
-    return ConvInit
+@nn_init_dcls
+class _BaseConv(_BaseSliding, _BaseConvWeights, NnInit):
+    def __post_init__(self) -> None:
+        _BaseSliding.__post_init__(self)
+        _BaseConvWeights.__post_init__(self)
 
 
-def _avg_pool_init(ndim: int):
-    @mess_init_dcls
-    class AvgPoolInit(_BaseAvgSliding, MessInit):
-        NDIM = ndim
-
-        def __post_init__(self) -> None:
-            _BaseAvgSliding.__post_init__(self)
-
-    return AvgPoolInit
+@nn_init_dcls
+class _BaseAvgPool(_BaseAvgSliding, NnInit):
+    def __post_init__(self) -> None:
+        _BaseAvgSliding.__post_init__(self)
 
 
-def _max_pool_init(ndim: int):
-    @mess_init_dcls
-    class MaxPoolInit(_BaseSliding, MessInit):
-        NDIM = ndim
-        return_indices: bool = False
-        """
-        If `True`, will return the max indices along with the outputs.
-        Useful for `torch.nn.MaxUnpool*d` later
-        """
+@nn_init_dcls
+class _BaseMaxPool(_BaseSliding, NnInit):
+    return_indices: bool = False
+    """
+    If `True`, will return the max indices along with the outputs.
+    Useful for `torch.nn.MaxUnpool*d` later
+    """
 
-        def __post_init__(self) -> None:
-            _BaseSliding.__post_init__(self)
-
-    return MaxPoolInit
+    def __post_init__(self) -> None:
+        _BaseSliding.__post_init__(self)
 
 
-_ = Mess(nn_type=nn.Conv1d, init=_conv_init(1), fwd=InputFwd)
-"""
-Applies a 1D convolution over an input signal composed of several input planes.
-"""
+@nn_init_dcls
+class Conv1d(_BaseConv):
+    """
+    Applies a 1D convolution over an input signal composed of several input planes.
+    """
+
+    NN = nn.Conv1d
+    NDIM = 1
 
 
-_ = Mess(nn_type=nn.Conv2d, init=_conv_init(2), fwd=InputFwd)
-"""
-Applies a 2D convolution over an input signal composed of several input planes.
-"""
+@nn_init_dcls
+class Conv2d(_BaseConv):
+    """
+    Applies a 2D convolution over an input signal composed of several input planes.
+    """
+
+    NN = nn.Conv2d
+    NDIM = 2
 
 
-_ = Mess(nn_type=nn.Conv3d, init=_conv_init(3), fwd=InputFwd)
-"""
-Applies a 3D convolution over an input signal composed of several input planes.
-"""
+@nn_init_dcls
+class Conv3d(_BaseConv):
+    """
+    Applies a 3D convolution over an input signal composed of several input planes.
+    """
 
-_ = Mess(nn_type=nn.MaxPool1d, init=_max_pool_init(1), fwd=InputFwd)
-"""
-Applies a 1D max pooling over an input signal composed of several input planes.
-"""
-
-
-_ = Mess(nn_type=nn.MaxPool2d, init=_max_pool_init(2), fwd=InputFwd)
-"""
-Applies a 2D max pooling over an input signal composed of several input planes.
-"""
+    NN = nn.Conv3d
+    NDIM = 3
 
 
-_ = Mess(nn_type=nn.MaxPool3d, init=_max_pool_init(3), fwd=InputFwd)
-"""
-Applies a 3D max pooling over an input signal composed of several input planes.
-"""
+@nn_init_dcls
+class MaxPool1d(_BaseMaxPool):
+    """
+    Applies a 1D max pooling over an input signal composed of several input planes.
+    """
+
+    NN = nn.MaxPool1d
+    NDIM = 1
 
 
-_ = Mess(nn_type=nn.AvgPool1d, init=_avg_pool_init(1), fwd=InputFwd)
-"""
-Applies a 1D average pooling over an input signal composed of several input planes.
-"""
+@nn_init_dcls
+class MaxPool2d(_BaseMaxPool):
+    """
+    Applies a 2D max pooling over an input signal composed of several input planes.
+    """
+
+    NN = nn.MaxPool2d
+    NDIM = 2
 
 
-_ = Mess(nn_type=nn.AvgPool2d, init=_avg_pool_init(2), fwd=InputFwd)
-"""
-Applies a 2D average pooling over an input signal composed of several input planes.
-"""
+@nn_init_dcls
+class MaxPool3d(_BaseMaxPool):
+    """
+    Applies a 3D max pooling over an input signal composed of several input planes.
+    """
+
+    NN = nn.MaxPool3d
+    NDIM = 3
 
 
-_ = Mess(nn_type=nn.AvgPool3d, init=_avg_pool_init(3), fwd=InputFwd)
-"""
-Applies a 3D average pooling over an input signal composed of several input planes.
-"""
+@nn_init_dcls
+class AvgPool1d(_BaseAvgPool):
+    """
+    Applies a 1D average pooling over an input signal composed of several input planes.
+    """
+
+    NN = nn.AvgPool1d
+    NDIM = 1
+
+
+@nn_init_dcls
+class AvgPool2d(_BaseAvgPool):
+    """
+    Applies a 2D average pooling over an input signal composed of several input planes.
+    """
+
+    NN = nn.AvgPool2d
+    NDIM = 2
+
+
+@nn_init_dcls
+class AvgPool3d(_BaseAvgPool):
+    """
+    Applies a 3D average pooling over an input signal composed of several input planes.
+    """
+
+    NN = nn.AvgPool3d
+    NDIM = 3
 
 
 def _cast_ndim_int(ndim: int, val: int | tuple[int, ...]) -> tuple[int, ...]:
