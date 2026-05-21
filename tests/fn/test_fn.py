@@ -3,8 +3,8 @@
 import pytest
 
 from aioway.fate import Fate, FateFn
-from aioway.modes import HistTensorGraph, NnFwdFn, NnInitFn, TorDisFn, TorFuncFn
 from aioway.fn import Fn, TensorInput, TorchThunk
+from aioway.modes import HistTensorGraph, NnFwdFn, NnInitFn, TorDisFn, TorFuncFn
 
 
 def _fn_cls():
