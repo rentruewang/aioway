@@ -11,7 +11,7 @@ from collections import abc as cabc
 from torch import _ops
 
 from aioway.decomps import find_nested_tensors
-from aioway.fn import TorDisFn
+from aioway.modes import TorDisFn
 from aioway.renders import camel_to_snake, render_fcall
 
 __all__ = ["Fate", "fate_dcls", "find_fate", "all_fates"]

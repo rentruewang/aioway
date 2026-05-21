@@ -5,7 +5,7 @@ import torch
 from torch import nn
 
 from aioway.fake import enabled_fake_mode, torch_fake_mode
-from aioway.fn import fake_fn, module_fwd, module_init, track_fn
+from aioway.modes import fake_fn, module_fwd, module_init, track_fn
 
 
 @pytest.fixture

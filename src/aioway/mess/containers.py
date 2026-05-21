@@ -4,7 +4,7 @@ import typing
 
 from torch import nn
 
-from aioway.fn import NnInitFn
+from aioway.modes import NnInitFn
 
 from .fwds import InputFwd
 from .mess import Mess, MessInit, mess_init_dcls

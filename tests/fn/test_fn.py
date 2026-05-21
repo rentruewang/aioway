@@ -1,19 +1,10 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-
 import pytest
 
 from aioway.fate import Fate, FateFn
-from aioway.fn import (
-    Fn,
-    HistTensorGraph,
-    NnFwdFn,
-    NnInitFn,
-    TensorInput,
-    TorchThunk,
-    TorDisFn,
-    TorFuncFn,
-)
+from aioway.modes import HistTensorGraph, NnFwdFn, NnInitFn, TorDisFn, TorFuncFn
+from aioway.fn import Fn, TensorInput, TorchThunk
 
 
 def _fn_cls():

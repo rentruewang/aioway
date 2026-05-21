@@ -9,7 +9,7 @@ import typing
 from aioway._torch import (
     is_aten_op,
 )
-from aioway.fn import TorDisFn
+from aioway.modes import TorDisFn
 
 from .fate import Fate, find_fate
 

@@ -8,7 +8,7 @@ import typing
 
 from torch import nn
 
-from aioway.fn import NnInitFn
+from aioway.modes import NnInitFn
 from aioway.renders import camel_to_snake, render_fcall
 
 __all__ = [
