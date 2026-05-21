@@ -9,7 +9,7 @@ import torch
 from torch.utils import data
 from torchcodec import decoders as dec
 
-from aioway.fake import enabled_fake_mode, torch_set_fake_mode_func
+from aioway._torch import enabled_fake_mode, torch_set_fake_mode_func
 from aioway.schemas import Attr
 from aioway.tags import SampleRateTag
 from aioway.tags.media import IsStftTag
