@@ -6,12 +6,12 @@ import dataclasses as dcls
 import logging
 import typing
 
-from aioway._torch import (
-    is_aten_op,
-)
-from aioway.modes import TorDisFn
+from aioway._torch import is_aten_op
 
 from .fate import Fate, find_fate
+
+if typing.TYPE_CHECKING:
+    from aioway.modes import TorDisFn
 
 __all__ = ["FateFn"]
 

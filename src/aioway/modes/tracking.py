@@ -10,16 +10,14 @@ import typing
 import rich
 from torch import nn
 
-from aioway._torch import enabled_fake_mode, torch_fake_mode
+from aioway._torch import current_fake_mode, torch_fake_mode
 from aioway.decomps import replace_tensors
+from aioway.fate import FateFn
 
 from .common import replace_tensors_with_attr
 from .hists import Hist, HistTensorGraph
 from .modules import NnFwdFn, NnFwdMode, NnInitFn, NnInitMode
 from .tensors import TorDisFn, TorDisMode, TorFuncFn, TorFuncMode
-
-if typing.TYPE_CHECKING:
-    from aioway.fate import FateFn
 
 __all__ = [
     "track_fn",
@@ -131,7 +129,7 @@ class CloneDispatchOp(TorDisMode):
         result = thunk.do()
 
         # In fake mode, clone the tensor to prevent `FakeTensor` reuse. Should be cheap.
-        if enabled_fake_mode():
+        if current_fake_mode():
             result = replace_tensors(result, lambda tensor: tensor.clone())
 
         return result
@@ -179,7 +177,7 @@ class RouteTorDis(TorDisMode):
     "The history used for tracking."
 
     def __call__(self, thunk: TorDisFn) -> object:
-        from aioway.fate import FateFn
+        fn: FateFn | TorDisFn
 
         if (found := FateFn.find_fate(thunk)) is not None:
             fn = found

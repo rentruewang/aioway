@@ -10,7 +10,7 @@ from PIL import Image as image
 from torchvision import io as vio
 from torchvision.transforms import v2 as tt
 
-from aioway._torch import enabled_fake_mode, torch_set_fake_mode_func
+from aioway._torch import current_fake_mode, torch_set_fake_mode_func
 from aioway.schemas import AttrLike, attr
 from aioway.tags import IsImageTag
 
@@ -82,7 +82,7 @@ class PillowImageLoader(ImageLoader):
 
     @typing.override
     def load_img(self, fname: str | pathlib.Path, /) -> torch.Tensor:
-        if enabled_fake_mode():
+        if current_fake_mode():
             return self._real_load_img(fname)
 
         else:

@@ -18,7 +18,8 @@ __all__ = ["Fate", "fate_dcls", "find_fate", "all_fates"]
 
 
 @typing.dataclass_transform()
-def fate_dcls(cls):
+@typing.no_type_check
+def fate_dcls(cls, /):
     "Decorator of dataclass for `Fate`."
     return dcls.dataclass(repr=False)(cls)
 

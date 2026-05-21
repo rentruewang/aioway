@@ -19,7 +19,7 @@ __all__ = [
     "is_real_tensor",
     "to_fake_tensor",
     "to_fake_tensordict",
-    "enabled_fake_mode",
+    "current_fake_mode",
     "torch_real_mode",
 ]
 
@@ -65,7 +65,7 @@ def is_fake_tensor(tensor: object) -> typing.TypeIs[ft.FakeTensor]:
     return isinstance(tensor, ft.FakeTensor)
 
 
-def enabled_fake_mode() -> ft.FakeTensorMode | None:
+def current_fake_mode() -> ft.FakeTensorMode | None:
     """
     Get the current fake mode, is available.
 
