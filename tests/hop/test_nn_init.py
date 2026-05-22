@@ -6,8 +6,8 @@ import pytest
 from torch import nn
 
 from aioway._utils import render_fcall
-from aioway.hop import NnInit, Sequential, find_nn_init
 from aioway.modes import NnInitFn
+from aioway.op import NnInit, Sequential, find_nn_init
 
 
 class _ModuleOpts(typing.NamedTuple):
