@@ -3,17 +3,16 @@
 "The operator base class."
 
 import abc
-import torch
 
 __all__ = []
 
 
-class Op(abc.ABC):
+class Hop(abc.ABC):
     """
-    `Op` stands for [op]erator, or [o]peration [p]review.
+    `Op` stands for [h]igh level [op]erator, or [h]igh level [o]peration [p]review.
     It is essentailly an unevaluated expression that supports inspection.
     """
 
     @abc.abstractmethod
-    def do(self) -> torch.Tensor:
+    def do(self) -> object:
         raise NotImplementedError
