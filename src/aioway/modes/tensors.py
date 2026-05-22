@@ -14,7 +14,7 @@ from torch import _ops, overrides
 from torch.utils import _python_dispatch as pyd
 
 from aioway._torch import is_aten_op, is_prim_op
-from aioway.fn import TorchThunk
+from aioway.fn import TorchThunk, torch_thunk_dcls
 
 from ._on_off import OnOffCtx, OnOffStack
 from .common import render_function_body_prefix
@@ -30,7 +30,8 @@ DISPATCHES: OnOffStack[TorDisMode] = OnOffStack()
 "`TorDisMode` that is currently entered."
 
 
-@dcls.dataclass(match_args=False)
+@typing.final
+@torch_thunk_dcls
 class TorFuncFn(TorchThunk[cabc.Callable[..., typing.Any]]):
     """
     `TorFuncFn` is the thunk capturing the function calls initiated by `torch`.
@@ -50,7 +51,8 @@ class TorFuncFn(TorchThunk[cabc.Callable[..., typing.Any]]):
         )
 
 
-@dcls.dataclass(match_args=False)
+@typing.final
+@torch_thunk_dcls
 class TorDisFn(TorchThunk[_ops.OpOverload]):
     """
     `TorDisFn` is the thunk capturing the function calls initiated by `torch`.

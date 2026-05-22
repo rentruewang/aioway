@@ -13,7 +13,7 @@ import torch
 
 from aioway._utils import find_nested_tensors, render_fcall
 
-__all__ = ["Fn", "TensorInput", "Thunk", "TorchThunk"]
+__all__ = ["Fn", "TensorInput", "Thunk", "TorchThunk", "torch_thunk_dcls"]
 
 LOGGER = logging.getLogger(__name__)
 _PENDING = object()
@@ -159,7 +159,12 @@ class Thunk:
         return self.__result is not _PENDING
 
 
-@dcls.dataclass(match_args=False)
+@typing.dataclass_transform()
+def torch_thunk_dcls(cls: type):
+    return dcls.dataclass(match_args=False)(cls)
+
+
+@torch_thunk_dcls
 class TorchThunk[T: cabc.Callable[..., typing.Any]](abc.ABC):
     """
     `BaseFn` is a really basic `Fn` that acts as a base class,
