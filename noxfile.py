@@ -1,6 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import contextlib as ctxl
+import functools
 import os
 import pathlib
 import subprocess as sp
@@ -65,15 +66,11 @@ def nox_cmd(func: cabc.Callable[[], None]) -> cabc.Callable[[], None]:
     allowing you to get the current session in a global function `_current_session()`.
     """
 
+    @functools.wraps(func)
     def wrapper(session: nox.Session):
         with enter_session(session):
             setup_env()
             func()
-
-    wrapper.__doc__ = func.__doc__
-    wrapper.__name__ = func.__name__
-    wrapper.__qualname__ = func.__qualname__
-    wrapper.__annotations__ = func.__annotations__
 
     _ = nox.session(wrapper)
 
