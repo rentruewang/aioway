@@ -226,7 +226,8 @@ def pdm_build():
 
 
 def pdm_publish():
-    pdm_update_deps("sync")
+    # Use install + git reset for maximum flexibility.
+    pdm_update_deps("install")
 
     # Remove all uncommitted changes s.t. it doesn't mess with builds.
     if in_github():
