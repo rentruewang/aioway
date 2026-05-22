@@ -3,4 +3,5 @@
 "The common utils package."
 
 from .decomps import *
+from .renders import *
 from .torch import *

@@ -5,9 +5,9 @@ import typing
 import pytest
 from torch import nn
 
+from aioway._utils import render_fcall
 from aioway.modes import NnInitFn
 from aioway.nn import NnInit, Sequential, find_nn_init
-from aioway.renders import render_fcall
 
 
 class _ModuleOpts(typing.NamedTuple):

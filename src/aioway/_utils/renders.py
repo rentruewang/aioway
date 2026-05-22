@@ -19,6 +19,7 @@ __all__ = [
     "print_subclass_tree",
     "render_class_syntax",
     "render_torch_func_name",
+    "camel_to_snake",
 ]
 
 type FunctionLike = str | cabc.Callable[..., typing.Any]
