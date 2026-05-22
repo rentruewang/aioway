@@ -126,7 +126,7 @@ def nb_check():
 
 
 def _nb_clean(cmd: str):
-    pdm_run("git", "clean", "-fdX", "notebooks")
+    run("git", "clean", "-fdX", "notebooks")
     pdm_run("nb-clean", cmd, "notebooks")
 
 
