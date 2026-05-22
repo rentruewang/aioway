@@ -46,6 +46,14 @@ class TensorInput(typing.Protocol):
         raise NotImplementedError
 
 
+@typing.runtime_checkable
+class TensorNode(TensorInput, Fn, typing.Protocol):
+    f"""
+    `TensorNode` have both tensor output (`.do()`) and tensor inputs (`.inputs()`).
+    The output itself does not need to be tensor, but must decompose (only) into tensors.
+    """
+
+
 class Thunk:
     """
     The thunk for any function, handles both pretty printing and storing the result.
