@@ -7,8 +7,8 @@ import typing
 
 from torch import nn
 
+from aioway._utils import render_fcall
 from aioway.modes import NnInitFn
-from aioway.renders import render_fcall
 
 __all__ = ["NnInit", "find_nn_init"]
 

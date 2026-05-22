@@ -7,7 +7,7 @@ import typing
 
 from torch import nn
 
-from aioway._typing import is_tuple_of
+from aioway._utils import is_tuple_of
 
 from .inits import NnInit, nn_init_dcls
 
