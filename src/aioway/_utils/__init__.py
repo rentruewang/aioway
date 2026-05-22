@@ -2,4 +2,5 @@
 
 "The common utils package."
 
+from .decomps import *
 from .torch import *
