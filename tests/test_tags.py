@@ -1,10 +1,8 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import typing
-
 import pytest
 import tensordict as td
-import torch
+import torch, dataclasses as dcls
 
 from aioway.tags import DimTag, extract_tags
 
@@ -26,9 +24,16 @@ def _invalid_tags():
     yield "tppix", torch.randn(3, 3)
 
 
-class TensorAndTag(typing.NamedTuple):
+@dcls.dataclass
+class TensorAndTag:
     tag: str
     tensor: torch.Tensor
+
+    def __post_init__(self):
+        # Copy because the tensors were generated in the collect phase,
+        # so if we don't copy they won't be reinitialized,
+        # which messes with our tag detection logic
+        self.tensor = self.tensor.clone()
 
 
 @pytest.fixture(params=_valid_tags())
