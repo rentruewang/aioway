@@ -56,7 +56,6 @@ def _current_session() -> nox.Session:
 
 
 def run(*cmd: str) -> None:
-    setup_env()
     _ = _current_session().run_always(*cmd, external=True)
 
 
