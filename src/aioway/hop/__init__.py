@@ -1,3 +1,4 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from .inits import *
+from .hop import *
+from .nn import *

@@ -22,7 +22,7 @@ _GITIGNORE = _PROJECT_ROOT / ".gitignore"
 
 
 @typing.no_type_check
-def _get_git_files(folder: pathlib.Path):
+def git_files(folder: pathlib.Path):
     for item in _REPO.tree().traverse():
         if item.type != "blob":
             continue
@@ -32,7 +32,7 @@ def _get_git_files(folder: pathlib.Path):
 
 
 def _get_git_ipynb(folder: pathlib.Path):
-    for file in _get_git_files(folder):
+    for file in git_files(folder):
         if file.suffix == ".ipynb":
             yield file
 
