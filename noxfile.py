@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import dataclasses as dcls
+import contextlib as ctxl
 import functools
 import os
 import pathlib
@@ -16,188 +16,234 @@ ROOT = pathlib.Path(__file__).parent
 VENV = os.getenv("VIRTUAL_ENV")
 "The venv folder if we are in venv."
 
+_session: nox.Session | None = None
+"The global session to simplfy code."
 
-@nox.session
-def publish(session: nox.Session):
+_setup_is_done: bool = False
+"If the `setup_env` is called."
+
+
+def setup_env():
+    "Setup environment."
+
+    global _setup_is_done
+
+    if _setup_is_done:
+        return
+
+    if in_github():
+        _github_cleanup()
+        run("pdm", "config", "python.use_venv", "true")
+
+    _install_ffmpeg()
+
+    _setup_is_done = True
+
+
+@ctxl.contextmanager
+def enter_session(session: nox.Session):
+    global _session
+
+    prev, _session = _session, session
+    try:
+        yield session
+    finally:
+        _session = prev
+
+
+def _current_session() -> nox.Session:
+    assert _session is not None
+    return _session
+
+
+def run(*cmd: str) -> None:
+    _ = _current_session().run_always(*cmd, external=True)
+
+
+def nox_cmd(func: cabc.Callable[[], None]) -> cabc.Callable[[], None]:
+    """
+    The command that wraps a `nox.Session`,
+    allowing you to get the current session in a global function `_current_session()`.
+    """
+
+    @functools.wraps(func)
+    def wrapper(session: nox.Session):
+        with enter_session(session):
+            setup_env()
+            func()
+
+    _ = nox.session(wrapper)
+
+    return func
+
+
+@nox_cmd
+def publish():
     "Nox `publish` command. Calls `pdm publish`."
-    env(session).pdm_publish()
+    pdm_publish()
 
 
-@nox.session
-def build(session: nox.Session):
+@nox_cmd
+def build():
     "Nox `build` command. Calls `pdm build`."
-    env(session).pdm_build()
+    pdm_build()
 
 
-@nox.session
-def test(session: nox.Session):
+@nox_cmd
+def test():
     "Nox `testing` command. Calls `pytest` command. Runs in multiple python versions (if supported)."
-    env(session).pdm_run("pytest", *session.posargs)
+    pdm_run("pytest", *_current_session().posargs)
 
 
-@nox.session
-def format(session: nox.Session):
+@nox_cmd
+def format():
     "Nox `formatting` command. Calls `autoflake`, `isort`, `black`, in that order."
-    autoflake(session)
-    isort(session)
-    black(session)
-    nb_clean(session)
+    autoflake()
+    isort()
+    black()
+    nb_clean()
 
 
-@nox.session
-def format_check(session: nox.Session):
+@nox_cmd
+def format_check():
     "Nox `formatting` command. Calls `autoflake`, `isort`, `black`, in that order."
-    autoflake_check(session)
-    isort_check(session)
-    black_check(session)
-    nb_check(session)
+    autoflake_check()
+    isort_check()
+    black_check()
+    nb_check()
 
 
-@nox.session
-def nb_clean(session: nox.Session):
+@nox_cmd
+def nb_clean():
     "Call `nb-clean clean`."
-    env(session).pdm_run("nb-clean", "clean", "notebooks")
+    _nb_clean("clean")
 
 
-@nox.session
-def nb_check(session: nox.Session):
+@nox_cmd
+def nb_check():
     "Call `nb-clean check`."
-    env(session).pdm_run("nb-clean", "check", "notebooks")
+    _nb_clean("check")
 
 
-@nox.session
-def autoflake(session: nox.Session):
+def _nb_clean(cmd: str):
+    run("git", "clean", "-fdX", "notebooks")
+    pdm_run("nb-clean", cmd, "notebooks")
+
+
+@nox_cmd
+def autoflake():
     "Nox `autoflake` command. Calls `autoflake` command."
-    env(session).pdm_run("autoflake", ".")
+    pdm_run("autoflake", ".")
 
 
-@nox.session
-def autoflake_check(session: nox.Session):
+@nox_cmd
+def autoflake_check():
     "Nox `autoflake` command. Calls `autoflake` command."
-    env(session).pdm_run("autoflake", "--check", ".")
+    pdm_run("autoflake", "--check", ".")
 
 
-@nox.session
-def isort(session: nox.Session):
+@nox_cmd
+def isort():
     "Nox `isort` command. Calls `isort` command."
-    env(session).pdm_run("isort", ".")
+    pdm_run("isort", ".")
 
 
-@nox.session
-def isort_check(session: nox.Session):
+@nox_cmd
+def isort_check():
     "Nox `isort` command. Calls `isort` command."
-    env(session).pdm_run("isort", "--check", ".")
+    pdm_run("isort", "--check", ".")
 
 
-@nox.session
-def black(session: nox.Session):
+@nox_cmd
+def black():
     "Nox `black` command. Calls `black` command."
-    env(session).pdm_run("black", ".")
+    pdm_run("black", ".")
 
 
-@nox.session
-def black_check(session: nox.Session):
+@nox_cmd
+def black_check():
     "Nox `black` command. Calls `black` command."
-    env(session).pdm_run("black", "--check", ".")
+    pdm_run("black", "--check", ".")
 
 
-@nox.session
-def type(session: nox.Session):
+@nox_cmd
+def type():
     "Nox `type` command. Calls `mypy` command."
-    env(session).pdm_run("mypy", "--install-types", "--non-interactive", "src")
+    pdm_run("mypy", "--install-types", "--non-interactive", "src")
 
 
-@functools.cache
-def env(session: nox.Session):
-    "Global singleton for github."
-    return _Environment(session)
+def _github_cleanup():
+    # Does nothing outside of GitHub Actions.
+    if not in_github():
+        return
+
+    _remove_unwanted_files()
+    _log_storage_usage()
 
 
-@dcls.dataclass(frozen=True)
-class _Environment:
-    "The manager for setting up github."
+def _remove_unwanted_files() -> None:
+    "Remove the files GitHub Actions pre-installed."
 
-    session: nox.Session
-    "The nox session to use."
+    print("Removing files we did not ask for...")
 
-    def __post_init__(self) -> None:
-        "Setup environment."
+    for folder in [
+        "/usr/local/lib/android",
+        "/usr/share/dotnet",
+        "/usr/local/.ghcup",
+    ]:
+        run("sudo", "rm", "-rf", folder)
 
-        self._github_cleanup()
+    run("docker", "system", "prune", "-af", "--volumes")
 
-        if in_github():
-            self._run("pdm", "config", "python.use_venv", "true")
 
-        self._install_ffmpeg()
+def _log_storage_usage() -> None:
+    "Log how much usage is currently being used by GitHub Actions."
+    print("Investigating how much storage is used in GitHub Actions...")
 
-    def _github_cleanup(self):
+    run("df", "-h")
 
-        # Does nothing outside of GitHub Actions.
-        if not in_github():
-            return
 
-        self._remove_unwanted_files()
-        self._log_storage_usage()
+def _install_ffmpeg() -> None:
+    if ffmpeg_is_installed():
+        return
 
-    def _remove_unwanted_files(self) -> None:
-        "Remove the files GitHub Actions pre-installed."
+    # Install since it's not installed yet.
+    match sys.platform:
+        case "darwin":
+            run("brew", "install", "ffmpeg")
+        case "linux":
+            run("sudo", "apt-get", "install", "ffmpeg")
+        case _:
+            raise RuntimeError(f"Platform {sys.platform} is not supported yet.")
 
-        print("Removing files we did not ask for...")
 
-        for folder in [
-            "/usr/local/lib/android",
-            "/usr/share/dotnet",
-            "/usr/local/.ghcup",
-        ]:
-            self._run("sudo", "rm", "-rf", folder)
+def pdm_build():
+    pdm_update_deps()
+    run("pdm", "build")
 
-        self._run("docker", "system", "prune", "-af", "--volumes")
 
-    def _log_storage_usage(self) -> None:
-        "Log how much usage is currently being used by GitHub Actions."
-        print("Investigating how much storage is used in GitHub Actions...")
+def pdm_publish():
+    # Use install + git reset for maximum flexibility.
+    pdm_update_deps("install")
 
-        self._run("df", "-h")
+    # Remove all uncommitted changes s.t. it doesn't mess with builds.
+    if in_github():
+        run("git", "reset", "--hard", "HEAD")
 
-    def _install_ffmpeg(self) -> None:
-        if ffmpeg_is_installed():
-            return
+    run("pdm", "publish")
 
-        # Install since it's not installed yet.
-        match sys.platform:
-            case "darwin":
-                self._run("brew", "install", "ffmpeg")
-            case "linux":
-                self._run("sudo", "apt-get", "install", "ffmpeg")
-            case _:
-                raise RuntimeError(f"Platform {sys.platform} is not supported yet.")
 
-    def pdm_build(self):
-        self.pdm_update_deps()
-        self._run("pdm", "build")
+def pdm_run(*args: str):
+    pdm_update_deps()
+    run("pdm", "run", *args)
 
-    def pdm_publish(self):
-        self.pdm_update_deps("install")
 
-        # Remove all uncommitted changes s.t. it doesn't mess with builds.
-        if in_github():
-            _ = self._run("git", "reset", "--hard", "HEAD")
+def pdm_update_deps(command: str = "sync") -> None:
+    # Don't repeatedly reinstall locally.
+    if not in_github():
+        return
 
-        self._run("pdm", "publish")
-
-    def pdm_run(self, *args: str):
-        self.pdm_update_deps()
-        self._run("pdm", "run", *args)
-
-    def pdm_update_deps(self, command: str = "sync") -> None:
-        # Don't repeatedly reinstall locally.
-        if not in_github():
-            return
-
-        self.session.run_install("pdm", command, "-G:all")
-
-    def _run(self, *args: str):
-        _ = self.session.run_install(*args, external=True)
+    run("pdm", command, "-G:all")
 
 
 def checking_if(condition: str):
