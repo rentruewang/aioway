@@ -9,7 +9,7 @@ import typing
 import numpy as np
 import tensordict as td
 
-from aioway._typing import is_list_of
+from aioway._utils import is_list_of
 from aioway.schemas import AttrSet, attr_set
 
 from .frames import Frame

@@ -6,7 +6,7 @@ import dataclasses as dcls
 import logging
 import typing
 
-from aioway._utils import is_aten_op
+from aioway._torch import is_aten_op
 
 from .fate import Fate, find_fate
 

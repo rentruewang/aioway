@@ -8,7 +8,7 @@ import dataclasses as dcls
 import logging
 import typing
 
-from aioway._types import Stack
+from aioway._utils import Stack
 
 __all__ = ["OnOffCtx", "OnOffStack"]
 

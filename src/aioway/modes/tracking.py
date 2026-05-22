@@ -10,7 +10,8 @@ import typing
 import rich
 from torch import nn
 
-from aioway._utils import current_fake_mode, replace_tensors, torch_fake_mode
+from aioway._torch import current_fake_mode, torch_fake_mode
+from aioway._utils import replace_tensors
 from aioway.fate import FateFn
 
 from .common import replace_tensors_with_attr

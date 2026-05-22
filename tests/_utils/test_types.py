@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from aioway._types import track_call_count
+from aioway._utils import track_call_count
 
 
 @track_call_count
