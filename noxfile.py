@@ -71,7 +71,7 @@ def nox_cmd(func: cabc.Callable[[], None]) -> cabc.Callable[[], None]:
             func()
 
     wrapper.__doc__ = func.__doc__
-    wrapper.__name__ = func.__qualname__
+    wrapper.__name__ = func.__name__
     wrapper.__qualname__ = func.__qualname__
     wrapper.__annotations__ = func.__annotations__
 
