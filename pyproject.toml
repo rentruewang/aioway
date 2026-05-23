@@ -8,12 +8,24 @@ requires-python = ">=3.14,<3.15"
 readme = "README.md"
 license = {text = "Apache-2.0"}
 dynamic = ["version"]
-dependencies = ["numpy>=2.4.3", "pandas>=3.0.1", "rich>=14.3.3", "tensordict>=0.11.0", "torch==2.10.*", "torchvision>=0.25.0", "torchcodec==0.10.*", "pillow>=12.2.0", "av>=17.0.1"]
+dependencies = [
+    "numpy>=2",
+    "pandas>=3",
+    "torch==2.10.*",
+    "tensordict>=0.11",
+    "torchvision>=0.25",
+    "torchcodec==0.10.*",
+    "rich>=14",
+    "pillow>=12",
+    "av>=17",
+    "transformers>=5",
+    "tokenizers>=0.22",
+]
 
 [project.optional-dependencies]
 networkx = [
-    "networkx>=3.6",
-    "matplotlib>=3.10.9",
+    "networkx>=3",
+    "matplotlib>=3",
 ]
 
 [build-system]
@@ -25,38 +37,40 @@ build-backend = "setuptools.build_meta"
 
 [dependency-groups]
 pre-commit = [
-    "autoflake>=2.3.3",
-    "black>=26.3.0",
-    "isort>=8.0.1",
-    "mypy>=1.19.1",
-    "pre-commit>=4.5.1",
+    "autoflake>=2",
+    "black[jupyter]>=26",
+    "isort>=8",
+    "mypy>=1",
+    "nb-clean>=4",
+    "pre-commit>=4",
 ]
 tests = [
-    "pytest>=9.0.2",
-    "pytest-cov>=7.0.0",
-    "pytest-randomly>=4.0.1",
-    "pytest-xdist>=3.8.0",
-    "pytest-timeout>=2.4.0",
-    "pytest-testmon>=2.2.0",
-    "better-exceptions>=0.3.3",
-    "coverage>=7.13.4",
-    "pathspec>=1.1.1",
+    "pytest>=9",
+    "pytest-cov>=7",
+    "pytest-randomly>=4",
+    "pytest-xdist>=3",
+    "pytest-timeout>=2",
+    "pytest-testmon>=2",
+    "pytest-sugar>=1",
+    "better-exceptions>=0.3",
+    "coverage>=7",
+    "papermill>=2.7.0",
+    "gitpython>=3.1.50",
 ]
 debugging = [
-    "ipython>=9.11.0",
-    "jupyter>=1.1.1",
-    "jupyterlab>=4.5.7",
-    "jupytext>=1.19.1",
-    "pyinstrument>=5.1.2",
-    "matplotlib>=3.10.9",
+    "ipython>=9",
+    "jupyter>=1",
+    "jupyterlab>=4",
+    "pyinstrument>=5",
+    "matplotlib>=3",
 ]
 build = [
-    "build>=1.4.0",
-    "ninja>=1.13.0",
-    "pip>=26.0.1",
-    "setuptools>=82.0.1",
-    "setuptools-scm>=9.2.2",
-    "nox[pbs]>=2026.2.9",
+    "build>=1",
+    "ninja>=1",
+    "pip>=26",
+    "setuptools>=81",
+    "setuptools-scm>=9",
+    "nox[pbs]>=2026",
 ]
 
 [tool.autoflake]

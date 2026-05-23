@@ -10,14 +10,14 @@ from collections import abc as cabc
 
 import torch
 
-from aioway.fake import torch_fake_mode
+from aioway._torch import torch_fake_mode
 
 from .devices import Device, DeviceLike
 from .dtypes import DType, DTypeLike
 from .layouts import Layout, LayoutLike
 from .shapes import Shape, ShapeLike
 
-__all__ = ["Attr", "attr"]
+__all__ = ["Attr", "attr", "AttrLike"]
 
 
 LOGGER = logging.getLogger(__name__)
@@ -101,7 +101,7 @@ class Attr:
         if self.requires_grad:
             display.append("grad")
 
-        return "[" + ",".join(map(str, display)) + "]"
+        return "{" + ",".join(map(str, display)) + "}"
 
     def memory(self):
         return self.dtype.itemsize * self.shape.numel()

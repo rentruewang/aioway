@@ -1,5 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import abc
 import dataclasses as dcls
 import pathlib
 import typing
@@ -9,17 +10,41 @@ from PIL import Image as image
 from torchvision import io as vio
 from torchvision.transforms import v2 as tt
 
-from aioway.fake import torch_enable_fake_mode_func
-from aioway.schemas import attr
+from aioway._torch import current_fake_mode, torch_set_fake_mode_func
+from aioway.schemas import AttrLike, attr
+from aioway.tags import IsImageTag
 
-from .io import ImageLoader
+from ._bases import TorchCompatible
 
 __all__ = [
+    "ImageLoader",
     "ComposedImageLoader",
     "PillowImageLoader",
-    "FakePillowImageLoader",
     "TvioImageLoader",
+    "ImageData",
 ]
+
+
+@dcls.dataclass(frozen=True)
+class ImageData(TorchCompatible):
+    image: torch.Tensor
+
+    @typing.override
+    def to_tensor(self) -> torch.Tensor:
+        IsImageTag().attach(self.image)
+        return self.image
+
+
+@dcls.dataclass
+class ImageLoader(abc.ABC):
+    "The image loader API. Converts from a file name `fname` to a tensor."
+
+    def __call__(self, fname: str | pathlib.Path, /) -> ImageData:
+        return ImageData(self.load_img(fname))
+
+    @abc.abstractmethod
+    def load_img(self, fname: str | pathlib.Path, /) -> torch.Tensor:
+        raise NotImplementedError
 
 
 @dcls.dataclass
@@ -57,24 +82,24 @@ class PillowImageLoader(ImageLoader):
 
     @typing.override
     def load_img(self, fname: str | pathlib.Path, /) -> torch.Tensor:
-        img = image.open(fname)
-        return self.transform(img)
+        if current_fake_mode():
+            return self._real_load_img(fname)
 
+        else:
+            return self._real_load_img(fname)
 
-@dcls.dataclass
-class FakePillowImageLoader(ImageLoader):
-    @typing.override
-    def load_img(self, fname: str | pathlib.Path, /) -> torch.Tensor:
-        img = image.open(fname)
+    def _real_load_img(self, fname: str | pathlib.Path, /) -> torch.Tensor:
+        with image.open(fname) as img:
+            transform = tt.PILToTensor()
+            return transform(img)
 
-        # Convert to `uint8` as a hack, because we don't support it in our dtypes.
-        return attr(
-            {
+    def _fake_load_img(self, fname: str | pathlib.Path, /) -> torch.Tensor:
+        with image.open(fname) as img:
+            attr_dict: AttrLike = {
                 "shape": [len(img.mode), img.width, img.height],
-                "device": "cpu",
                 "dtype": "uint8",
             }
-        ).to_fake_tensor()
+            return attr(attr_dict).to_fake_tensor()
 
 
 @dcls.dataclass
@@ -90,11 +115,11 @@ class TvioImageLoader(ImageLoader):
 
     @typing.override
     def load_img(self, fname: str | pathlib.Path):
-        reader = self._read_normalized if self.norm else self._read_image
+        reader = self._load_normalized if self.norm else self._load_image
         return reader(fname)
 
-    @torch_enable_fake_mode_func(False)
-    def _read_image(self, fname: str | pathlib.Path):
+    @torch_set_fake_mode_func(False)
+    def _load_image(self, fname: str | pathlib.Path):
         fname_path = pathlib.Path(fname)
         fname_str = str(fname_path)
 
@@ -114,5 +139,5 @@ class TvioImageLoader(ImageLoader):
             case _:
                 raise ValueError(f"Does not support {fname_path.suffix} files.")
 
-    def _read_normalized(self, fname: str | pathlib.Path):
-        return self._read_image(fname).float() / 255
+    def _load_normalized(self, fname: str | pathlib.Path):
+        return self._load_image(fname).float() / 255

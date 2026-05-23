@@ -3,20 +3,29 @@
 "The module containing `Fate` interface, the implementation for fake aten operations."
 
 import abc
-import re
+import dataclasses as dcls
+import inspect
 import typing
 from collections import abc as cabc
 
 from torch import _ops
 
-from aioway._common import dcls_no_repr, find_nested_tensors
-from aioway.op import Op
+from aioway._utils import camel_to_snake, find_nested_tensors, render_fcall
 
-__all__ = ["Fate", "find_fate", "all_fates"]
+if typing.TYPE_CHECKING:
+    from aioway.modes import TorchDispFn
+
+__all__ = ["Fate", "fate_dcls", "find_fate", "all_fates"]
 
 
-@dcls_no_repr
-class Fate(Op[_ops.OpOverload], abc.ABC):
+@typing.dataclass_transform()
+def fate_dcls(cls, /):
+    "Decorator of dataclass for `Fate`."
+    return dcls.dataclass(repr=False)(cls)
+
+
+@fate_dcls
+class Fate(abc.ABC):
     """
     `Fate` stands for [f]ake [ate]n. Or [fa]ke [te]nsor. Or a tensor's [fate] (how it behaves).
 
@@ -26,6 +35,18 @@ class Fate(Op[_ops.OpOverload], abc.ABC):
     """
 
     KEY: typing.ClassVar[_ops.OpOverload] = NotImplemented
+    """
+    The `torch.ops.aten.*` operator that maps to the current `Fate`.
+    Roughly 200 in total (we don't support that many yet).
+    If `NotImplemented`, this class is considered abstract.
+    """
+
+    @typing.override
+    def __repr__(self) -> str:
+        return render_fcall("fate::" + self._name(), **dcls.asdict(self))
+
+    def do(self) -> typing.Any:
+        return self.KEY(**dcls.asdict(self))
 
     @abc.abstractmethod
     def ok(self) -> bool:
@@ -34,11 +55,6 @@ class Fate(Op[_ops.OpOverload], abc.ABC):
         """
 
         raise NotImplementedError
-
-    @typing.override
-    @classmethod
-    def name(cls) -> str:
-        return "fate::" + _camel_to_snake(cls.__name__)
 
     @abc.abstractmethod
     def cost(self) -> int:
@@ -51,21 +67,69 @@ class Fate(Op[_ops.OpOverload], abc.ABC):
     def inputs(self):
         yield from find_nested_tensors(self)
 
+    @classmethod
+    def find(cls, key: _ops.OpOverload) -> cabc.Generator[type[typing.Self]]:
+        """
+        Recursively find the class tagged `key` in the subclass.
 
-def find_fate(op: _ops.OpOverload, *args: typing.Any, **kwargs: typing.Any) -> Fate:
+        This function iterates over the subclass by doing a DFS traversal.
+        This has the benefit of being able to query new classes on the fly,
+        while not maintaining a global dictionary.
+
+        If this ends up being too slow, we'll change to a mapping-based method.
+
+        Yields:
+            All the subclasses with the `key` as key.
+            Only concrete classes are considered.
+        """
+
+        for sub in cls.impls():
+            if sub.KEY == key:
+                yield sub
+
+    @classmethod
+    def impls(cls) -> cabc.Generator[type[typing.Self]]:
+        """
+        Walk the subclass tree, and get all the concrete subclasses that `Op` has.
+
+        Yields:
+            Subclasses if they are concrete (has `cls.is_concrete()` is `True`).
+        """
+
+        for sub in cls.__subclasses__():
+            if sub.is_concrete():
+                yield sub
+
+            yield from sub.impls()
+
+    @classmethod
+    def _name(cls):
+        return camel_to_snake(cls.__qualname__)
+
+    @classmethod
+    def is_concrete(cls) -> bool:
+        """
+        Check if the class can be initialized and found in registry.
+        """
+
+        # Concrete in class var and concrete in methods.
+        return cls.KEY is not NotImplemented and not inspect.isabstract(cls)
+
+
+def find_fate(dispatch: TorchDispFn, /) -> Fate | None:
     """
     Try finding a `Fate` operator with the thunk, and then wrap into `FateFn`.
 
-    Returns `NotImplemented` if a candidate is not found.
+    Returns `None` if a candidate is not found.
     """
 
-    for sub_type in Fate.find(op):
-        if not (fate := sub_type(*args, **kwargs)).ok():
+    for sub_type in Fate.find(dispatch.func):
+        if not (fate := sub_type(*dispatch.args, **dispatch.kwargs)).ok():
             continue
 
         return fate
-
-    return NotImplemented
+    else:
+        return None
 
 
 @typing.no_type_check
@@ -73,19 +137,4 @@ def all_fates():
     """
     Get the registry for the fates.
     """
-    return list(_iter_fate(Fate))
-
-
-def _iter_fate(cls: type[Fate]) -> cabc.Generator[type[Fate]]:
-    for sub in cls.__subclasses__():
-        if sub.is_concrete():
-            yield sub
-
-        yield from _iter_fate(sub)
-
-
-_CAMEL_CASE_REGEX = re.compile(r"(?<!^)(?=[A-Z])")
-
-
-def _camel_to_snake(name: str) -> str:
-    return re.sub(_CAMEL_CASE_REGEX, "_", name).lower()
+    return list(Fate.impls())

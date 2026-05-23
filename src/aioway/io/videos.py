@@ -1,19 +1,96 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import os
+import abc
+import dataclasses as dcls
+import pathlib
+import typing
 
 import torch
 from torchcodec import decoders as dec
 
-from aioway.fake import torch_enable_fake_mode_func
+from aioway._torch import current_fake_mode, torch_set_fake_mode_func
+from aioway._utils import num_threads
+from aioway.schemas import Attr
+from aioway.tags import IsVideoTag
 
-__all__ = ["read_video_from_path"]
+from ._av import VideoStream
+from ._bases import TorchCompatible
+
+__all__ = ["VideoLoader", "AvVideoLoader", "TorchCodecVideoLoader", "VideoData"]
 
 
-@torch_enable_fake_mode_func(False)
-def read_video_from_path(fname: os.PathLike[str], threads: int = 1) -> torch.Tensor:
-    "Read and decode videos from path."
+@dcls.dataclass(frozen=True)
+class VideoData(TorchCompatible):
+    data: torch.Tensor
+    "The tensor decoded from the video."
 
-    decoder = dec.VideoDecoder(str(fname), num_ffmpeg_threads=threads)
-    samples = decoder[:]
-    return samples
+    @typing.override
+    def to_tensor(self) -> torch.Tensor:
+
+        IsVideoTag().attach(self.data)
+        return self.data
+
+
+@dcls.dataclass
+class VideoLoader(abc.ABC):
+    """
+    The video loader API. Load the data into a 4D tensor.
+    """
+
+    def __call__(self, fname: str | pathlib.Path, /) -> VideoData:
+        video = self.load_video(fname)
+        return VideoData(video)
+
+    @abc.abstractmethod
+    def load_video(self, fname: str | pathlib.Path, /) -> torch.Tensor:
+        raise NotImplementedError
+
+
+class AvVideoLoader(VideoLoader):
+    "Load the video with `av` library."
+
+    @typing.override
+    def load_video(self, fname: str | pathlib.Path, /) -> torch.Tensor:
+        stream = VideoStream(fname)
+
+        # Get the metadata for fake mode to work.
+        info = stream.info()
+
+        # Create a fake tensor of float32 in fake mode.
+        if current_fake_mode():
+            tensor = Attr.parse(
+                shape=[info.num_frames, 3, info.width, info.height], dtype=torch.float32
+            ).to_fake_tensor()
+
+        else:
+            array = stream.numpy()
+            assert array.ndim == 4
+            assert array.shape[1] == 3
+            tensor = torch.from_numpy(array)
+
+        return tensor
+
+
+class TorchCodecVideoLoader(VideoLoader):
+    """
+    Load the video from a path with `torchcodec` library.
+
+    Note that similar to `TorchCodecAudioLoader`, even during fake mode,
+    the video is still loaded in memory as `torch.Tensor`,
+    because there aren't any good way to overwrite torch codecs to enable fake mode.
+    This is due to limitations in `torchcodecs` as they use custom `torch.ops`.
+    """
+
+    threads: int = num_threads(8)
+    """
+    Number of `ffmpeg` threads to use.
+    """
+
+    @typing.override
+    @torch_set_fake_mode_func(False)
+    def load_video(self, fname: str | pathlib.Path, /) -> torch.Tensor:
+        "Read and decode videos from path."
+
+        decoder = dec.VideoDecoder(str(fname), num_ffmpeg_threads=self.threads)
+        samples = decoder[:]
+        return samples

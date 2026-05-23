@@ -20,22 +20,27 @@ def loader(request: pytest.FixtureRequest):
     return request.param
 
 
+def _read_audio(audio: pathlib.Path, loader: AudioLoader):
+    result = loader(audio)
+    return result.to_tensor()
+
+
 def test_read_audio(example_audio: pathlib.Path, loader: AudioLoader, maybe_fake_mode):
-    audio = loader(example_audio)
+    audio = _read_audio(example_audio, loader)
     assert isinstance(audio, torch.Tensor)
 
 
 def test_read_audio_tags(
     example_audio: pathlib.Path, loader: AudioLoader, maybe_fake_mode
 ):
-    audio = loader(example_audio)
+    audio = _read_audio(example_audio, loader)
     assert SampleRateTag.extract(audio) is not None
 
 
 def test_read_audio_stft(
     example_audio: pathlib.Path, loader: AudioLoader, maybe_fake_mode
 ):
-    audio = loader(example_audio)
+    audio = _read_audio(example_audio, loader)
     stft = encode_with_stft(audio, 20)
     assert isinstance(stft, torch.Tensor)
     assert SampleRateTag.extract(stft) == SampleRateTag.extract(audio)

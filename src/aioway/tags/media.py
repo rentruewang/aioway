@@ -2,62 +2,67 @@
 
 "Extra information about the tensors."
 
+import typing
+from collections import abc as cabc
+
 import torch
 
-from aioway._common import dcls_frozen_slots_no_eq
-from aioway.fake import is_fake_tensor
+from aioway._torch import is_fake_tensor
 from aioway.schemas import DType
 
-from .tags import Tag
+from .tags import Tag, tags_dcls
 
-__all__ = ["IsImageTag", "SampleRateTag"]
+__all__ = ["IsTokenizedTag", "IsVideoTag", "IsImageTag", "SampleRateTag", "IsStftTag"]
 
 
-@dcls_frozen_slots_no_eq
+@tags_dcls
+class IsTokenizedTag(Tag):
+    """
+    Tag the tensor as embeddings (tokenized).
+    """
+
+    TAG = "__aioway_is_tokenized__"
+
+    tokenizer: str
+    """
+    The name of the tokenizer used to construct the tensor.
+    """
+
+    @typing.override
+    def _validate(self, tensor: torch.Tensor) -> None:
+        if (family := DType.parse(tensor.dtype).family) != "int":
+            raise ValueError(
+                f"Tokenized result has dtype family: '{family}', not 'int'."
+            )
+
+
+@tags_dcls
+class IsVideoTag(Tag):
+    """
+    Tag the tensor as video. Must be 5, 5 dimensional (with or without batch).
+    """
+
+    TAG = "__aioway_is_video__"
+
+    @typing.override
+    def _validate(self, tensor: torch.Tensor) -> None:
+        _check_image_or_video(tensor, _VIDEO_NDIM_INFO)
+
+
+@tags_dcls
 class IsImageTag(Tag):
     """
-    Tag the tensor as image. Should be 4 dimensional.
+    Tag the tensor as image. Should be 3, 4 dimensional (with or without batch).
     """
 
     TAG = "__aioway_is_image__"
 
-    def __post_init__(self) -> None:
-        super().__post_init__()
-
-        self._check_ndim()
-        self._check_value()
-
-    def _check_ndim(self):
-        if self.tensor.ndim not in [3, 4]:
-            raise ValueError(
-                f"The tensor has ndim={self.tensor.ndim}!=3,4. Should be [B]CWH."
-            )
-
-    def _check_value(self):
-        dtype = DType.parse(self.tensor.dtype)
-
-        if dtype == torch.uint8:
-            return
-
-        # If fake mode then ok.
-        if dtype.is_floating_point and is_fake_tensor(self.tensor):
-            return
-
-        def is_0_to_1():
-            return (
-                torch.all(0 <= self.tensor).item() and torch.all(self.tensor < 1).item()
-            )
-
-        if dtype.is_floating_point and is_0_to_1():
-            return
-
-        raise ValueError(
-            f"The tensor with {dtype=} is not valid! "
-            "Should be an uint8 tensor, or a floating point tensor with 0-1 values."
-        )
+    @typing.override
+    def _validate(self, tensor: torch.Tensor) -> None:
+        _check_image_or_video(tensor, _IMAGE_NDIM_INFO)
 
 
-@dcls_frozen_slots_no_eq
+@tags_dcls
 class SampleRateTag(Tag):
     """
     Tag the tensor as audio, and having a sample rate.
@@ -70,8 +75,62 @@ class SampleRateTag(Tag):
     The sample rate. Must be positive.
     """
 
-    def __post_init__(self):
-        super().__post_init__()
-
+    @typing.override
+    def _validate(self, tensor: torch.Tensor) -> None:
         if self.sample_rate <= 0:
             raise ValueError(f"{self.sample_rate} <= 0.")
+
+
+@tags_dcls
+class IsStftTag(Tag):
+    """
+    Tag the tensor as stft. Useful to mark audio as spectrogram.
+    """
+
+    TAG = "__aioway_is_stft__"
+
+    @typing.override
+    def _validate(self, tensor: torch.Tensor) -> None:
+        # Nothing to vaidate yet.
+        return
+
+
+class NdimInfo(typing.NamedTuple):
+    "The video / image ndim related info."
+
+    valid_ndims: cabc.Sequence[int]
+    "The valid ndims."
+
+    channels: str
+    "The names for the channels."
+
+
+_IMAGE_NDIM_INFO = NdimInfo(valid_ndims=[3, 4], channels="[N]CHW")
+_VIDEO_NDIM_INFO = NdimInfo(valid_ndims=[4, 5], channels="[N]CTHW")
+
+
+def _check_image_or_video(tensor: torch.Tensor, info: NdimInfo):
+    if tensor.ndim not in info.valid_ndims:
+        raise ValueError(
+            f"The tensor has ndim={tensor.ndim}. Should be {info.channels}."
+        )
+
+    dtype = DType.parse(tensor.dtype)
+
+    if dtype == torch.uint8:
+        return
+
+    # If fake mode then ok.
+    if dtype.is_floating_point and is_fake_tensor(tensor):
+        return
+
+    def is_0_to_1():
+        return torch.all(0 <= tensor).item() and torch.all(tensor < 1).item()
+
+    if dtype.is_floating_point and is_0_to_1():
+        return
+
+    raise ValueError(
+        f"The tensor with {dtype=} is not valid! "
+        "Should be an uint8 tensor, or a floating point tensor with 0-1 values."
+    )
