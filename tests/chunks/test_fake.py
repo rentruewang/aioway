@@ -5,7 +5,7 @@ import tensordict as td
 import torch
 from numpy import random as np_rand
 
-from aioway.specs import Attr, AttrSet
+from aioway.specs import Attr
 from tests.fake import batch_sizes, chunk_ok, cpu_and_maybe_cuda
 
 
@@ -26,7 +26,7 @@ def chunk(device: str, batch: int) -> td.TensorDict:
 
 @pytest.fixture
 def schema():
-    return AttrSet.from_values(
+    return dict[str, Attr].from_values(
         f1d=Attr.parse(
             device="cpu",
             shape=[1],

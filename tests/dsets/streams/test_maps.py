@@ -18,7 +18,7 @@ from aioway.dsets import (
     Stream,
     StreamState,
 )
-from aioway.specs import AttrSet
+from aioway.specs import Attr
 
 
 @dcls.dataclass
@@ -40,7 +40,7 @@ class SaveLastMapStream(MapStream):
         return batch
 
     @property
-    def attrs(self) -> AttrSet:
+    def attrs(self) -> dict[str, Attr]:
         return self.source.attrs
 
     @property

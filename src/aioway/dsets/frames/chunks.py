@@ -4,13 +4,14 @@
 
 import dataclasses as dcls
 import functools
+import json
 import typing
 
 import numpy as np
 import tensordict as td
 
 from aioway._utils import is_list_of
-from aioway.specs import AttrSet, attr_set
+from aioway.specs import Attr, attr_set
 
 from .frames import Frame
 
@@ -40,7 +41,7 @@ class TdFrame(Frame):
 
     @property
     @typing.override
-    def attrs(self) -> AttrSet:
+    def attrs(self) -> dict[str, Attr]:
         return attr_set(self.data)
 
 
@@ -114,15 +115,18 @@ class TdListFrame(Frame):
 
     @property
     @typing.override
-    def attrs(self) -> AttrSet:
+    def attrs(self) -> dict[str, Attr]:
         return self._attrs
 
     @functools.cached_property
     def _attrs(self):
-        attrs = {attr_set(chunk) for chunk in self._list}
+        attrs = [attr_set(chunk) for chunk in self._list]
+        num_unique_attrs = {
+            json.dumps({key: val.__getstate__() for key, val in schema.items()})
+            for schema in attrs
+        }
 
-        if len(attrs) == 1:
-            [attr] = attrs
-            return attr
+        if len(num_unique_attrs) == 1:
+            return attrs[0]
 
         raise ValueError("`td.TensorDict` should convert to the same attrs.")

@@ -17,7 +17,7 @@ from .dtypes import DType, DTypeLike
 from .layouts import Layout, LayoutLike
 from .shapes import Shape, ShapeLike
 
-__all__ = ["Attr", "attr", "AttrLike"]
+__all__ = ["Attr", "AttrLike", "attr", "attr_set"]
 
 
 LOGGER = logging.getLogger(__name__)
@@ -189,6 +189,10 @@ def attr(item: AttrLike, /) -> Attr:
     raise TypeError(
         f"Do not know how to handle {item=}, {type(item)=}, because it is malformed."
     )
+
+
+def attr_set(mapping: cabc.Mapping[str, AttrLike], /) -> dict[str, Attr]:
+    return {key: attr(tensor) for key, tensor in mapping.items()}
 
 
 @typing.no_type_check
