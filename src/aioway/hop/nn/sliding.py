@@ -9,7 +9,7 @@ from torch import nn
 
 from aioway._utils import is_tuple_of
 
-from .inits import NnInit, nn_init_dcls
+from .modules import NnInit, nn_init_dcls
 
 __all__ = [
     "Conv1d",

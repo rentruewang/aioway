@@ -4,7 +4,7 @@ import typing
 
 from torch import nn
 
-from .inits import NnInit, nn_init_dcls
+from .modules import NnInit, nn_init_dcls
 
 __all__ = ["Embedding"]
 

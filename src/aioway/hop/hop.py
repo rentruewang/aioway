@@ -11,6 +11,12 @@ from collections import abc as cabc
 __all__ = ["Hop", "HopDag"]
 
 
+@typing.dataclass_transform(frozen_default=True, kw_only_default=True)
+def hop_dcls(cls):
+    return dcls.dataclass(frozen=True, kw_only=True)(cls)
+
+
+@hop_dcls
 class Hop(abc.ABC):
     """
     `Hop` stands for [h]igh level [op]erator, or [h]igh level [o]peration [p]review.
