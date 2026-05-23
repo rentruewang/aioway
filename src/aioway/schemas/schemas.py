@@ -27,6 +27,10 @@ class Schema:
     tags: dict[str, Tag]
     "The tags attached to the `torch.Tensor`."
 
+    def __post_init__(self):
+        for tag in self.tags.values():
+            tag.check_attr(self.attr)
+
     @property
     def shape(self) -> Shape:
         return self.attr.shape
