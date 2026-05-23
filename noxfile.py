@@ -101,7 +101,6 @@ def format():
     autoflake()
     isort()
     black()
-    nb_clean()
 
 
 @nox_cmd
@@ -110,24 +109,6 @@ def format_check():
     autoflake_check()
     isort_check()
     black_check()
-    nb_check()
-
-
-@nox_cmd
-def nb_clean():
-    "Call `nb-clean clean`."
-    _nb_clean("clean")
-
-
-@nox_cmd
-def nb_check():
-    "Call `nb-clean check`."
-    _nb_clean("check")
-
-
-def _nb_clean(cmd: str):
-    run("git", "clean", "-fdX", "notebooks")
-    pdm_run("nb-clean", cmd, "notebooks")
 
 
 @nox_cmd

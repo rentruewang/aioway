@@ -22,18 +22,38 @@ _GITIGNORE = _PROJECT_ROOT / ".gitignore"
 
 
 @typing.no_type_check
-def git_files(folder: pathlib.Path):
+def _file_paths():
     for item in _REPO.tree().traverse():
         if item.type != "blob":
             continue
 
-        if (path := _PROJECT_ROOT / item.path).is_relative_to(folder):
+        yield item.path
+
+    for path in _REPO.untracked_files:
+        yield path
+
+    for item in _REPO.index.diff("HEAD"):
+        yield item.a_path
+
+
+def file_paths():
+    for fp in _file_paths():
+        path = pathlib.Path(fp)
+        if path.exists():
             yield path
 
 
-def _get_git_ipynb(folder: pathlib.Path):
+def git_files(folder: pathlib.Path):
+    files = set(file_paths())
+
+    for path in files:
+        if path.is_relative_to(folder):
+            yield path
+
+
+def python_git_files(folder: pathlib.Path):
     for file in git_files(folder):
-        if file.suffix == ".ipynb":
+        if file.suffix == ".py":
             yield file
 
 
@@ -55,7 +75,7 @@ def _notebooks():
     assert _NOTEBOOKS_DIR.exists()
     assert _NOTEBOOKS_DIR.is_dir()
 
-    yield from _get_git_ipynb(_NOTEBOOKS_DIR)
+    yield from python_git_files(_NOTEBOOKS_DIR)
 
 
 @pytest.fixture(scope="module", params=_notebooks(), ids=lambda path: path.name)

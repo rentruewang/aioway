@@ -41,7 +41,6 @@ pre-commit = [
     "black[jupyter]>=26",
     "isort>=8",
     "mypy>=1",
-    "nb-clean>=4",
     "pre-commit>=4",
 ]
 tests = [
@@ -61,6 +60,7 @@ debugging = [
     "ipython>=9",
     "jupyter>=1",
     "jupyterlab>=4",
+    "jupytext>=1.19",
     "pyinstrument>=5",
     "matplotlib>=3",
 ]
