@@ -7,7 +7,7 @@ import pathlib
 import torch
 import transformers
 
-from aioway.tags import IsTokenizedTag
+from aioway.schemas import IsTokenizedTag
 
 from ._bases import TorchCompatible
 
@@ -47,7 +47,7 @@ class TokenizerLoader:
         return _tokenizer(self.name)
 
 
-@functools.cache
+@functools.lru_cache(maxsize=1)
 def _tokenizer(name: str):
     """
     Load the tokenizer, and cache it in the LRU cache.

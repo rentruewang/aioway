@@ -5,7 +5,7 @@ import typing
 from collections import abc as cabc
 
 from aioway._utils import render_fcall, render_torch_func_name, replace_tensors
-from aioway.schemas import attr
+from aioway.schemas import Attr
 
 __all__ = [
     "replace_tensors_with_attr",
@@ -16,7 +16,7 @@ __all__ = [
 
 @typing.no_type_check
 def replace_tensors_with_attr[T](obj: T) -> T:
-    return replace_tensors(obj, attr)
+    return replace_tensors(obj, Attr.parse)
 
 
 def render_tensor_func_short(func: str, args, kwargs) -> str:
