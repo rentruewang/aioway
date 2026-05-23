@@ -9,6 +9,8 @@ import typing
 
 import torch
 
+from ..attrs import Attr
+
 __all__ = ["Tag", "tags_dcls", "extract_tags"]
 
 _TAG_NAME = re.compile(r"^__aioway_[a-zA-Z0-9_]+__$")
@@ -46,11 +48,28 @@ class Tag(abc.ABC):
                 f"Tag name should be of the format `__aioway_*__`. Got '{cls.TAG}'."
             )
 
-    @abc.abstractmethod
-    def _validate(self, tensor: torch.Tensor) -> None:
+    @typing.final
+    def __post_init__(self):
+        # Validate `self`. The reason this is marked `@typing.final` is
+        # because it can be easy to forget to call `super().__post_init__()`.
+
+        self.check_self()
+
+    def check_self(self) -> None:
         """
-        Execute additional validation for subclasses. Subclasses can override this,
-        and raise an error if `self` is not valid or cannot attach to `tensor`.
+        Validate the data of the tags on its own (not in relation to the `torch.Tensor`).
+        """
+
+    def check_attr(self, attr: Attr, /) -> None:
+        """
+        Validate the static aspect of the given `torch.Tensor`.
+        Raise an error if `self` cannot attach to tensor with `attr`.
+        """
+
+    def check_data(self, tensor: torch.Tensor, /) -> None:
+        """
+        Validate if `self` can be attached to the given `torch.Tensor`.
+        Raise an error if `self` is not valid or cannot attach to `tensor`.
         """
 
     def attach(self, tensor: torch.Tensor, /, overwrite: bool = True) -> None:
@@ -61,7 +80,8 @@ class Tag(abc.ABC):
         raise a `ValueError` and do not set the attribute.
         """
 
-        self._validate(tensor)
+        self.check_attr(Attr.parse(tensor))
+        self.check_data(tensor)
 
         if not overwrite and hasattr(tensor, self.TAG):
             raise ValueError(f"`{self.TAG}` already exists on {tensor=}.")

@@ -7,8 +7,7 @@ import functools
 import re
 import typing
 
-import torch
-
+from ..attrs import Attr
 from .tags import Tag, tags_dcls
 
 __all__ = ["DimTag", "DimInfo"]
@@ -56,12 +55,14 @@ class DimTag(Tag):
     """
 
     @typing.override
-    def _validate(self, tensor: torch.Tensor) -> None:
-        if len(self.tags) != (ndim := tensor.ndim):
+    def check_attr(self, attr: Attr) -> None:
+        if len(self.tags) != (ndim := attr.ndim):
             raise ValueError(
                 f"The {self.tags=} dimensions do not match the tensor's {ndim=}."
             )
 
+    @typing.override
+    def check_self(self) -> None:
         if not _valid_dim_tag(self.tags):
             raise ValueError("The dimension tags are not valid.")
 

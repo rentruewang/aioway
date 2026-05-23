@@ -8,8 +8,8 @@ from collections import abc as cabc
 import torch
 
 from aioway._torch import is_fake_tensor
-from aioway.schemas import DType
 
+from ..attrs import Attr, DType
 from .tags import Tag, tags_dcls
 
 __all__ = ["IsTokenizedTag", "IsVideoTag", "IsImageTag", "SampleRateTag", "IsStftTag"]
@@ -29,10 +29,10 @@ class IsTokenizedTag(Tag):
     """
 
     @typing.override
-    def _validate(self, tensor: torch.Tensor) -> None:
-        if (family := DType.parse(tensor.dtype).family) != "int":
+    def check_attr(self, attr: Attr) -> None:
+        if attr.dtype.family != "int":
             raise ValueError(
-                f"Tokenized result has dtype family: '{family}', not 'int'."
+                f"Tokenized result has dtype family: '{attr.dtype.family}', not 'int'."
             )
 
 
@@ -45,7 +45,7 @@ class IsVideoTag(Tag):
     TAG = "__aioway_is_video__"
 
     @typing.override
-    def _validate(self, tensor: torch.Tensor) -> None:
+    def check_data(self, tensor: torch.Tensor) -> None:
         _check_image_or_video(tensor, _VIDEO_NDIM_INFO)
 
 
@@ -58,7 +58,7 @@ class IsImageTag(Tag):
     TAG = "__aioway_is_image__"
 
     @typing.override
-    def _validate(self, tensor: torch.Tensor) -> None:
+    def check_data(self, tensor: torch.Tensor) -> None:
         _check_image_or_video(tensor, _IMAGE_NDIM_INFO)
 
 
@@ -76,7 +76,7 @@ class SampleRateTag(Tag):
     """
 
     @typing.override
-    def _validate(self, tensor: torch.Tensor) -> None:
+    def check_self(self) -> None:
         if self.sample_rate <= 0:
             raise ValueError(f"{self.sample_rate} <= 0.")
 
@@ -88,11 +88,6 @@ class IsStftTag(Tag):
     """
 
     TAG = "__aioway_is_stft__"
-
-    @typing.override
-    def _validate(self, tensor: torch.Tensor) -> None:
-        # Nothing to vaidate yet.
-        return
 
 
 class NdimInfo(typing.NamedTuple):

@@ -126,6 +126,10 @@ class Attr:
                 requires_grad=self.requires_grad,
             )
 
+    @property
+    def ndim(self) -> int:
+        return self.shape.ndim
+
     @classmethod
     def build(
         cls,
