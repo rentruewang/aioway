@@ -1,31 +1,12 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import dataclasses as dcls
+import typing
 
 import pytest
 import torch
 
 from aioway._utils import find_nested_tensors
-
-
-@pytest.fixture
-def a():
-    return torch.tensor([3])
-
-
-@pytest.fixture
-def b():
-    return torch.tensor([4])
-
-
-@pytest.fixture
-def c():
-    return torch.tensor([5, 6, 7])
-
-
-@pytest.fixture
-def d():
-    return torch.tensor([8, 9])
 
 
 @dcls.dataclass(frozen=True)
@@ -34,11 +15,63 @@ class NestedTensors:
     dicts: dict[str, list[torch.Tensor]]
 
 
-@pytest.fixture
-def nested(a, b, c, d):
-    return NestedTensors([a], {"b": [b], "cd": [c, d]})
+@dcls.dataclass(frozen=True)
+class NotNestedTensors:
+    lists: list[typing.Any]
+    dicts: dict[str, typing.Any]
 
 
-def test_find_nested_tensors(nested, a, b, c, d):
+def _nested():
+    a = torch.tensor([3])
+    b = torch.tensor([4])
+    c = torch.tensor([5, 6, 7])
+    d = torch.tensor([8, 9])
+
+    yield a
+    yield b
+    yield c
+    yield d
+    yield a, b, c, d
+    yield {"a": a, "b": b}
+    yield [a, (b,), [c, d]]
+
+    nt = NestedTensors([a], {"b": [b], "cd": [c, d]})
+    yield nt
+    yield [nt, {"nt": nt}]
+
+
+@pytest.fixture(params=_nested())
+def nested(request):
+    return request.param
+
+
+def _not_nested():
+    a = torch.tensor([3])
+    b = torch.tensor([4])
+    c = torch.tensor([5, 6, 7])
+    d = torch.tensor([8, 9])
+
+    yield [1]
+    yield {"a": a, "b": 1}
+    nnt = NotNestedTensors([a, b, c, 1], {"g": 4})
+    yield [nnt]
+
+
+@pytest.fixture(params=_not_nested())
+def not_nested(request):
+    return request.param
+
+
+def test_nested_pure(nested):
     result = set(find_nested_tensors(nested))
-    assert result == {a, b, c, d}
+    assert all(isinstance(t, torch.Tensor) for t in result)
+
+
+def test_nested_impure(not_nested):
+    result = set(find_nested_tensors(not_nested))
+    assert all(isinstance(t, torch.Tensor) for t in result)
+
+
+def test_nested_impure_fail(not_nested):
+    with pytest.raises(ValueError):
+        _ = set(find_nested_tensors(nested, only_tensors=True))

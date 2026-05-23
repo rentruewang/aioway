@@ -1,8 +1,10 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import dataclasses as dcls
+
 import pytest
 import tensordict as td
-import torch, dataclasses as dcls
+import torch
 
 from aioway.tags import DimTag, extract_tags
 
