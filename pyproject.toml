@@ -98,7 +98,7 @@ module = [
 ]
 ignore_missing_imports = true
 
-[tool.pytest.ini_options]
+[tool.pytest]
 addopts = [
     "-v",
     "--ff",
@@ -108,4 +108,7 @@ addopts = [
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",
+]
+testpaths = [
+    "tests",
 ]

@@ -10,6 +10,8 @@ from numpy import typing as npt
 
 from aioway._utils import is_list_of, is_tuple_of
 
+from ._bases import TorchAttrBase
+
 __all__ = ["ShapeLike", "Shape"]
 
 LOGGER = logging.getLogger(__name__)
@@ -26,7 +28,7 @@ _is_tuple_of_int = is_tuple_of(int)
 _is_list_of_int = is_list_of(int)
 
 
-class Shape(cabc.Sequence[int]):
+class Shape(TorchAttrBase[torch.Size], cabc.Sequence[int]):
     """
     `Shape` represents a regular (non-jagged) array's dimensions,
     must be a `tuple` like object, and `tuple` would be used on it.
@@ -34,25 +36,22 @@ class Shape(cabc.Sequence[int]):
     Right now, it represents the shape of a `Tensor` **outside** the batch dimension.
     """
 
-    def __init__(self, dims: torch.Size) -> None:
-        self._dims: torch.Size = dims
-        """
-        The `torch.Size` that backs the `Shape`.
-        """
+    __match_args__ = ("shape",)
+    TYPE = torch.Size
 
     def __getstate__(self) -> object:
-        return tuple(self._dims)
+        return tuple(self._data)
 
     def __hash__(self):
-        return hash(tuple(self._dims))
+        return hash(tuple(self._data))
 
-    def __repr__(self) -> str:
-        return "(" + "x".join(map(str, self._dims)) + ")"
+    def __str__(self) -> str:
+        return "(" + "x".join(map(str, self._data)) + ")"
 
     @typing.no_type_check
     def __eq__(self, other: object) -> bool:
         if isinstance(other, Shape):
-            return self._dims == other._dims
+            return self._data == other._data
 
         if isinstance(other, np.ndarray):
             return other.ndim == 1 and self == other.tolist()
@@ -63,12 +62,12 @@ class Shape(cabc.Sequence[int]):
             or _is_tuple_of_int(other)
             or _is_list_of_int(other)
         ):
-            return self._dims == tuple(other)
+            return self._data == tuple(other)
 
         return NotImplemented
 
     def __len__(self) -> int:
-        return len(self._dims)
+        return len(self._data)
 
     @typing.overload
     def __getitem__(self, idx: int) -> int: ...
@@ -80,18 +79,18 @@ class Shape(cabc.Sequence[int]):
     def __getitem__(self, idx):
         match idx:
             case int():
-                return self._dims[idx]
+                return self._data[idx]
             case slice():
-                return type(self)(self._dims[idx])
+                return type(self)(self._data[idx])
             case _:
                 raise TypeError(type(idx))
 
     @typing.override
     def __iter__(self) -> cabc.Iterator[int]:
-        return iter(self._dims)
+        return iter(self._data)
 
     def __array__(self):
-        return np.array(self._dims)
+        return np.array(self._data)
 
     def exceeds(self, other: typing.Self):
         if self.ndim != other.ndim:
@@ -103,7 +102,7 @@ class Shape(cabc.Sequence[int]):
         return (lhs > rhs).any().item()
 
     def unsqueeze(self, dim: int):
-        dims = list(self._dims)
+        dims = list(self._data)
         dims.insert(dim, 1)
         return self.parse(dims)
 
@@ -131,11 +130,15 @@ class Shape(cabc.Sequence[int]):
         other = Shape.parse(other)
 
         try:
-            result = np.broadcast_shapes(self._dims, other._dims)
+            result = np.broadcast_shapes(self._data, other._data)
         except ValueError as ve:
             raise ValueError(f"{self=} and {other=} cannot be broadcasted together.")
 
         return Shape.parse(*result)
+
+    @property
+    def shape(self):
+        return self._data
 
     @property
     def ndim(self) -> int:
@@ -149,14 +152,7 @@ class Shape(cabc.Sequence[int]):
         Number of elements in a shape.
         """
 
-        return self._dims.numel()
-
-    def unwrap(self) -> torch.Size:
-        """
-        Convert to `torch` equivalent.
-        """
-
-        return self._dims
+        return self._data.numel()
 
     @typing.overload
     @classmethod

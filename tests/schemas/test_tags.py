@@ -53,8 +53,8 @@ def test_valid_tags(valid_tags: TensorAndTag):
 
 
 def test_invalid_tags(invalid_tags: TensorAndTag):
-    tag = DimTag(invalid_tags.tag)
     with pytest.raises(ValueError):
+        tag = DimTag(invalid_tags.tag)
         tag.attach(invalid_tags.tensor)
 
 
