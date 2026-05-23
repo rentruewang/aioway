@@ -1,5 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+"A collecion of schema and tensordict utilities."
+
 import tensordict as td
 
 __all__ = ["tdict_rename", "tdict_all_equal"]

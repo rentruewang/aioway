@@ -10,7 +10,7 @@ from collections import abc as cabc
 
 import tensordict as td
 
-from aioway.specs import Attr
+from aioway.schemas import AttrDict
 
 from ..dsets import Dataset, DatasetViewTypes
 
@@ -91,7 +91,7 @@ class Stream(cabc.Iterator[td.TensorDict], Dataset, abc.ABC):
 
     @property
     @abc.abstractmethod
-    def attrs(self) -> dict[str, Attr]:
+    def attrs(self) -> AttrDict:
         """
         The schema for the current `Stream`.
         """

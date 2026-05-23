@@ -11,7 +11,7 @@ import tensordict as td
 from torch.utils import data
 
 from aioway._utils import is_list_of
-from aioway.specs import Attr
+from aioway.schemas import AttrDict
 
 from ..dsets import Dataset, DatasetColumnView, DatasetSelectView, DatasetViewTypes
 
@@ -102,7 +102,7 @@ class Frame(Dataset, data.Dataset[td.TensorDict], abc.ABC):
 
     @property
     @abc.abstractmethod
-    def attrs(self) -> dict[str, Attr]:
+    def attrs(self) -> AttrDict:
         "The schema of the current frame."
 
         raise NotImplementedError

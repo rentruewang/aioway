@@ -8,7 +8,7 @@ import typing
 import tensordict as td
 import torch
 
-from aioway.specs import Attr
+from aioway.schemas import AttrDict
 
 from .sources import CacheStream
 from .streams import Stream, StreamState
@@ -39,7 +39,7 @@ class ZipStream(Stream):
 
     @property
     @typing.override
-    def attrs(self) -> dict[str, Attr]:
+    def attrs(self) -> AttrDict:
         return self.left.attrs | self.right.attrs
 
     @typing.override
@@ -96,7 +96,7 @@ class NestedLoopJoinStream(Stream):
 
     @property
     @typing.override
-    def attrs(self) -> dict[str, Attr]:
+    def attrs(self) -> AttrDict:
         return self.left.attrs | self.right.attrs
 
     @typing.override

@@ -5,7 +5,6 @@
 import abc
 import dataclasses as dcls
 import functools
-import json
 import logging
 import math
 import typing
@@ -15,7 +14,7 @@ import tensordict as td
 from torch.utils import data
 
 from aioway._utils import is_list_of
-from aioway.specs import Attr, attr_set
+from aioway.schemas import AttrDict
 
 from ..frames import Frame
 from .streams import Stream
@@ -126,7 +125,7 @@ class CacheStream(BoundedStream):
 
     @property
     @typing.override
-    def attrs(self) -> dict[str, Attr]:
+    def attrs(self) -> AttrDict:
         return self.stream.attrs
 
 
@@ -152,18 +151,14 @@ class ListStream(BoundedStream):
 
     @property
     @typing.override
-    def attrs(self) -> dict[str, Attr]:
+    def attrs(self) -> AttrDict:
         return self._schema
 
     @functools.cached_property
-    def _schema(self) -> dict[str, Attr]:
-        schemas = [attr_set(chunk) for chunk in self.sequence]
-        schemas_hash = {
-            json.dumps({key: attr.__getstate__() for key, attr in schema.items()})
-            for schema in schemas
-        }
+    def _schema(self) -> AttrDict:
+        schemas = [AttrDict.parse(chunk) for chunk in self.sequence]
 
-        if len(schemas_hash) == 1:
+        if len({*schemas}) == 1:
             return schemas[0]
 
         raise ValueError("Chunks should have the same schema.")
@@ -237,7 +232,7 @@ class FrameStream(Stream):
 
     @property
     @typing.override
-    def attrs(self) -> dict[str, Attr]:
+    def attrs(self) -> AttrDict:
         return self.frame.attrs
 
     @functools.cached_property

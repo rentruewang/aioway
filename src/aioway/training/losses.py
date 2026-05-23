@@ -5,7 +5,7 @@ import typing
 import torch
 from torch import nn
 
-from aioway.specs import Shape, attr
+from aioway.schemas import Attr, Shape
 
 __all__ = ["loss_func"]
 
@@ -19,7 +19,7 @@ def loss_func(input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
     Route the input and attr to their loss with simple heuristics.
     """
 
-    input_attr, target_attr = map(attr, [input, target])
+    input_attr, target_attr = map(Attr.parse, [input, target])
     input_shape, target_shape = input_attr.shape, target_attr.shape
     input_dtype, target_dtype = input_attr.dtype, target_attr.dtype
     input_family, target_family = input_dtype.family, target_dtype.family

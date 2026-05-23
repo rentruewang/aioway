@@ -11,7 +11,7 @@ import tensordict as td
 import torch
 
 from aioway._torch import tdict_rename
-from aioway.specs import Attr
+from aioway.schemas import AttrDict
 
 from .streams import Stream
 
@@ -109,7 +109,7 @@ class ApplyStream(MapStream):
     Compute the output of `__next__` based on the input.
     """
 
-    schema: cabc.Callable[[dict[str, Attr]], dict[str, Attr]]
+    schema: cabc.Callable[[AttrDict], AttrDict]
     "Map the schema."
 
     @typing.override
@@ -118,7 +118,7 @@ class ApplyStream(MapStream):
 
     @property
     @typing.override
-    def attrs(self) -> dict[str, Attr]:
+    def attrs(self) -> AttrDict:
         return self.schema(self.source.attrs)
 
 
@@ -154,7 +154,7 @@ class FuncFilterStream(MapStream):
 
     @property
     @typing.override
-    def attrs(self) -> dict[str, Attr]:
+    def attrs(self) -> AttrDict:
         return self.source.attrs
 
 
@@ -175,10 +175,8 @@ class ProjectStream(MapStream):
 
     @property
     @typing.override
-    def attrs(self) -> dict[str, Attr]:
-        return {
-            key: val for key, val in self.source.attrs.items() if key in self.subset
-        }
+    def attrs(self) -> AttrDict:
+        return self.attrs.select(*self.subset)
 
 
 @dcls.dataclass(frozen=True)
@@ -198,5 +196,5 @@ class RenameStream(MapStream):
 
     @property
     @typing.override
-    def attrs(self) -> dict[str, Attr]:
+    def attrs(self) -> AttrDict:
         return self.source.attrs.rename(**self.renames)

@@ -2,6 +2,7 @@
 
 "Schema is a collection of metadata describing the 'type' of data."
 
+import collections
 import dataclasses as dcls
 import json
 import logging
@@ -17,10 +18,13 @@ from .dtypes import DType, DTypeLike
 from .layouts import Layout, LayoutLike
 from .shapes import Shape, ShapeLike
 
-__all__ = ["Attr", "AttrLike", "attr", "attr_set"]
+__all__ = ["Attr", "AttrLike", "AttrDict"]
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+type AttrLike = Attr | AttrLikeDict | torch.Tensor
 
 
 @dcls.dataclass(frozen=True, eq=False)
@@ -67,11 +71,12 @@ class Attr:
         return True
 
     @typing.override
+    @typing.no_type_check
     def __eq__(self, other: object, /) -> bool:
         if isinstance(other, Attr):
             return self.__getstate__() == other.__getstate__()
 
-        if parsed := _is_attr_dict(other):
+        if parsed := self._try_parse_attr_like_dict(other):
             return self == parsed
 
         return NotImplemented
@@ -120,7 +125,7 @@ class Attr:
             )
 
     @classmethod
-    def parse(
+    def build(
         cls,
         dtype: DTypeLike,
         shape: ShapeLike,
@@ -151,10 +156,27 @@ class Attr:
         )
 
     @classmethod
+    def parse(cls, item: AttrLike, /) -> Attr:
+        "The convenient constructor function for `Attr` to convert from similar types."
+
+        if isinstance(item, Attr):
+            return item
+
+        if isinstance(item, torch.Tensor):
+            return cls.from_tensor(item)
+
+        if (attr := cls._try_parse_attr_like_dict(item)) is not None:
+            return attr
+
+        raise TypeError(
+            f"Do not know how to handle {item=}, {type(item)=}, because it is malformed."
+        )
+
+    @classmethod
     def from_tensor(cls, tensor: torch.Tensor, /) -> typing.Self:
         "Parse the `torch.Tensor`'s `Attr` representation"
 
-        return cls.parse(
+        return cls.build(
             device=tensor.device,
             shape=tensor.shape,
             dtype=tensor.dtype,
@@ -162,8 +184,27 @@ class Attr:
             requires_grad=tensor.requires_grad,
         )
 
+    @classmethod
+    def _try_parse_attr_like_dict(cls, item: AttrLikeDict) -> typing.Self | None:
 
-class AttrDict(typing.TypedDict):
+        if not isinstance(item, cabc.Mapping):
+            return None
+
+        try:
+            attr = cls.build(
+                dtype=item["dtype"],
+                shape=item["shape"],
+                device=item.get("device", "cpu"),
+                layout=item.get("layout", torch.strided),
+                requires_grad=item.get("requires_grad", False),
+            )
+        except Exception:
+            return None
+        else:
+            return attr
+
+
+class AttrLikeDict(typing.TypedDict):
     shape: ShapeLike
     dtype: DTypeLike
     device: typing.NotRequired[DeviceLike]
@@ -171,45 +212,41 @@ class AttrDict(typing.TypedDict):
     layout: typing.NotRequired[LayoutLike]
 
 
-type AttrLike = Attr | AttrDict | torch.Tensor
+class AttrDict(collections.UserDict[str, Attr]):
+    """
+    `AttrDict` is a `dict[str, Attr]` with additional utilities.
+    """
+
+    def __hash__(self):
+        return hash(json.dumps({key: val.__getstate__() for key, val in self.items()}))
+
+    def rename(self, **renames: str) -> typing.Self:
+        """
+        Renames the current `AttrDict`.
+        """
+
+        return type(self)({renames.get(key, key): val for key, val in self.items()})
+
+    def select(self, *cols: str, strict: bool = False) -> typing.Self:
+        """
+        Select subset of columns in the `AttrDict`.
+        If `strict`, all keys should be present, or `KeyValue` would be raised.
+        """
+
+        result = type(self)({key: val for key, val in self.items() if key in cols})
+
+        if strict and len(result) != len(cols):
+            not_found = [col for col in cols if col not in result]
+            raise KeyError(
+                f"These keys: {not_found} are not found, which is disallowed in strict mode."
+            )
+
+        return result
+
+    @classmethod
+    def parse(cls, mapping: cabc.Mapping[str, AttrLike], /) -> typing.Self:
+        return cls({key: Attr.parse(tensor) for key, tensor in mapping.items()})
 
 
-def attr(item: AttrLike, /) -> Attr:
-    "The convenient constructor function for `Attr` to convert from similar types."
-
-    if isinstance(item, Attr):
-        return item
-
-    if isinstance(item, torch.Tensor):
-        return Attr.from_tensor(item)
-
-    if (attr := _is_attr_dict(item)) is not None:
-        return attr
-
-    raise TypeError(
-        f"Do not know how to handle {item=}, {type(item)=}, because it is malformed."
-    )
-
-
-def attr_set(mapping: cabc.Mapping[str, AttrLike], /) -> dict[str, Attr]:
-    return {key: attr(tensor) for key, tensor in mapping.items()}
-
-
-@typing.no_type_check
-def _is_attr_dict(item: object) -> Attr | None:
-
-    if not isinstance(item, cabc.Mapping):
-        return None
-
-    try:
-        attr = Attr.parse(
-            dtype=item["dtype"],
-            shape=item["shape"],
-            device=item.get("device", "cpu"),
-            layout=item.get("layout", torch.strided),
-            requires_grad=item.get("requires_grad", False),
-        )
-    except Exception:
-        return None
-    else:
-        return attr
+def attr_dict(mapping: cabc.Mapping[str, AttrLike], /) -> AttrDict:
+    return AttrDict.parse(mapping)

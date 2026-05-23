@@ -11,7 +11,7 @@ from torchvision import io as vio
 from torchvision.transforms import v2 as tt
 
 from aioway._torch import current_fake_mode, torch_set_fake_mode_func
-from aioway.specs import AttrLike, IsImageTag, attr
+from aioway.schemas import Attr, AttrLike, IsImageTag
 
 from ._bases import TorchCompatible
 
@@ -94,11 +94,11 @@ class PillowImageLoader(ImageLoader):
 
     def _fake_load_img(self, fname: str | pathlib.Path, /) -> torch.Tensor:
         with image.open(fname) as img:
-            attr_dict: AttrLike = {
+            mapping: AttrLike = {
                 "shape": [len(img.mode), img.width, img.height],
                 "dtype": "uint8",
             }
-            return attr(attr_dict).to_fake_tensor()
+            return Attr.parse(mapping).to_fake_tensor()
 
 
 @dcls.dataclass
