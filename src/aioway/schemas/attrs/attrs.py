@@ -9,6 +9,7 @@ import logging
 import typing
 from collections import abc as cabc
 
+import tensordict as td
 import torch
 
 from aioway._torch import torch_fake_mode
@@ -113,15 +114,16 @@ class Attr:
 
     def to_fake_tensor(self):
         """
-        Generate a random tensor.
-        This should be used under fake mode.
+        Generate a random tensor. This should be used under fake mode.
         """
 
         with torch_fake_mode():
-            return (
-                torch.zeros(self.shape.unwrap())
-                .to(self.device.torch())
-                .to(self.dtype.torch())
+            return torch.zeros(
+                self.shape.torch(),
+                dtype=self.dtype.torch(),
+                device=self.device.torch(),
+                layout=self.layout.torch(),
+                requires_grad=self.requires_grad,
             )
 
     @classmethod
@@ -220,6 +222,28 @@ class AttrDict(collections.UserDict[str, Attr]):
     def __hash__(self):
         return hash(json.dumps({key: val.__getstate__() for key, val in self.items()}))
 
+    @property
+    def dtype(self) -> DType | None:
+        """
+        Get the dtype of the attributes.
+        Like `td.TensorDict.dtype`, this is `None` when the types are not homogenious.
+        """
+
+        if len(dt := {attr.dtype for attr in self.values()}) != 1:
+            return None
+
+        # Get the only one.
+        return next(iter(dt))
+
+    @property
+    def requires_grad(self) -> bool:
+        """
+        The `requires_grad`-ness of the `td.TensorDict`.
+        It's `True` if any of the attributes is `True`.
+        """
+
+        return any(attr.requires_grad for attr in self.values())
+
     def rename(self, **renames: str) -> typing.Self:
         """
         Renames the current `AttrDict`.
@@ -242,6 +266,12 @@ class AttrDict(collections.UserDict[str, Attr]):
             )
 
         return result
+
+    def to_fake_tensordict(self) -> td.TensorDict:
+        with torch_fake_mode():
+            return td.TensorDict(
+                {key: attr.to_fake_tensor() for key, attr in self.items()}
+            )
 
     @classmethod
     def parse(cls, mapping: cabc.Mapping[str, AttrLike], /) -> typing.Self:

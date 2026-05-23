@@ -9,7 +9,7 @@ from collections import abc as cabc
 
 import torch
 
-from .attrs import Attr
+from .attrs import Attr, Device, DType, Layout, Shape
 from .tags import Tag, extract_tags
 
 __all__ = ["Schema", "SchemaDict"]
@@ -26,6 +26,26 @@ class Schema:
 
     tags: dict[str, Tag]
     "The tags attached to the `torch.Tensor`."
+
+    @property
+    def shape(self) -> Shape:
+        return self.attr.shape
+
+    @property
+    def dtype(self) -> DType:
+        return self.attr.dtype
+
+    @property
+    def device(self) -> Device:
+        return self.attr.device
+
+    @property
+    def layout(self) -> Layout:
+        return self.attr.layout
+
+    @property
+    def requires_grad(self) -> bool:
+        return self.attr.requires_grad
 
     @classmethod
     def from_tensor(cls, tensor: torch.Tensor, /) -> typing.Self:
