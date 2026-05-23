@@ -4,13 +4,14 @@
 
 import abc
 import dataclasses as dcls
-import types
+import re
 import typing
-from collections import abc as cabc
 
 import torch
 
-__all__ = ["Tag", "tags_dcls", "TagsDict"]
+__all__ = ["Tag", "tags_dcls", "extract_tags"]
+
+_TAG_NAME = re.compile(r"^__aioway_[a-zA-Z0-9_]+__$")
 
 
 @typing.dataclass_transform(frozen_default=True)
@@ -39,6 +40,12 @@ class Tag(abc.ABC):
     The name of the tag. Must be of the format `__aioway_*__`.
     """
 
+    def __init_subclass__(cls) -> None:
+        if not _TAG_NAME.fullmatch(cls.TAG):
+            raise ValueError(
+                f"Tag name should be of the format `__aioway_*__`. Got '{cls.TAG}'."
+            )
+
     @abc.abstractmethod
     def _validate(self, tensor: torch.Tensor) -> None:
         """
@@ -54,13 +61,11 @@ class Tag(abc.ABC):
         raise a `ValueError` and do not set the attribute.
         """
 
-        if (tags_dict := TagsDict.extract(tensor)) is None:
-            raise AttributeError("You must set ")
+        self._validate(tensor)
 
         if not overwrite and hasattr(tensor, self.TAG):
             raise ValueError(f"`{self.TAG}` already exists on {tensor=}.")
 
-        self._validate(tensor)
         setattr(tensor, self.TAG, self)
 
     @classmethod
@@ -69,92 +74,30 @@ class Tag(abc.ABC):
         Get the tag currently stored on the `tensor`.
         """
 
-        if (tag_dict := TagsDict.extract(tensor)) is None:
+        if (tag := getattr(tensor, cls.TAG, None)) is None:
             return None
 
-        if (result := tag_dict.get(cls)) is None:
-            return None
+        if not isinstance(tag, cls):
+            raise TypeError(f"The tag {tag} is of type {type(tag)}, expected {cls}.")
 
-        if not isinstance(result, cls):
-            raise AssertionError(f"Wrong tag extracted {result}!")
-
-        return result
+        return tag
 
 
-@typing.final
-class TagsDict(cabc.MutableMapping[type[Tag], Tag]):
+def extract_tags(tensor: torch.Tensor, /) -> dict[str, Tag]:
     """
-    `TagsDict` is the dict storing all the tags, attached to a `torch.Tensor`.
+    Extract all the tags on the `torch.Tensor`.
+
+    This assumes that no one else uses the `__aioway_*__` namespace. Hopefully.
     """
 
-    __FIELD: typing.ClassVar[str] = "__aioway_tags__"
+    tag_names = [attr_name for attr_name in dir(tensor) if _TAG_NAME.match(attr_name)]
+    return {name: _get_tag(tensor, name) for name in tag_names}
 
-    def __init__(
-        self, mapping: cabc.Mapping[type[Tag], Tag] = types.MappingProxyType({}), /
-    ):
-        self.__mapping: dict[type[Tag], Tag] = dict(mapping)
-        """
-        The underlying mapping storing the data.
-        """
 
-    @typing.override
-    def __repr__(self) -> str:
-        return repr(self.__mapping)
+def _get_tag(tensor: torch.Tensor, tag_name: str, /) -> Tag:
+    if isinstance(attr := getattr(tensor, tag_name, None), Tag):
+        return attr
 
-    @typing.override
-    def __len__(self) -> int:
-        return len(self.__mapping)
-
-    @typing.override
-    def __getitem__(self, key: type[Tag], /) -> Tag:
-        self.__check_key(key)
-        val = self.__mapping[key]
-        self.__check_val(val)
-        return val
-
-    @typing.override
-    def __setitem__(self, key: type[Tag], val: Tag, /) -> None:
-        self.__check_key(key)
-        self.__check_val(val)
-
-        self.__mapping[key] = val
-
-    @typing.override
-    def __delitem__(self, key: type[Tag], /) -> None:
-        self.__check_key(key)
-        del self.__mapping[key]
-
-    @typing.override
-    def __iter__(self) -> cabc.Iterator[type[Tag]]:
-        yield from self.__mapping
-
-    @typing.override
-    def __contains__(self, key: object, /) -> bool:
-        return key in self.__mapping
-
-    def __check_key(self, key: type[Tag]):
-        if not isinstance(key, type) and issubclass(key, Tag):
-            raise KeyError(f"The {key=} should be a subtype of `Tag`.")
-
-    def __check_val(self, val: Tag):
-        if not isinstance(val, Tag):
-            raise ValueError(f"The value extracted: {val} is not a `Tag`.")
-
-    def attach(self, tensor: torch.Tensor, *, overwrite: bool = False):
-        """
-        Attach `self` onto the `tensor`.
-        If not `overwrite`, raise an error if tag already exists.
-        """
-
-        if not overwrite and hasattr(tensor, self.__FIELD):
-            raise AttributeError(f"`{self.__FIELD}` already exists!")
-
-        setattr(tensor, self.__FIELD, self)
-
-    @classmethod
-    def extract(cls, tensor: torch.Tensor) -> typing.Self | None:
-        """
-        Extract the tag dict if exists, or else `None`.
-        """
-
-        return getattr(tensor, cls.__FIELD, None)
+    raise AttributeError(
+        f"The attribute '{tag_name}' is either not found or not a tag."
+    )

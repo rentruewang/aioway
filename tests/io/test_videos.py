@@ -5,9 +5,8 @@ import pathlib
 import pytest
 import torch
 
-from aioway.io import TorchCodecVideoLoader, VideoLoader
-from aioway.io.videos import AvVideoLoader
-from aioway.specs.media import IsVideoTag
+from aioway.io import AvVideoLoader, TorchCodecVideoLoader, VideoLoader
+from aioway.specs import IsVideoTag
 
 
 def _loader():
