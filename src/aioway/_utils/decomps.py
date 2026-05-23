@@ -9,7 +9,6 @@ from collections import abc as cabc
 
 import numpy as np
 import pandas as pd
-import tensordict as td
 import torch
 
 __all__ = [
@@ -27,16 +26,10 @@ __all__ = [
 ]
 
 DECOMP_BLOCK_ITEMS = None, NotImplemented, ..., True, False
-DECOMP_BLOCK_TYPES = (
-    int,
-    float,
-    bool,
-    str,
-    np.ndarray,
-    pd.DataFrame,
-    torch.Tensor,
-    td.TensorDict,
-)
+"The default instances to block. You could modify this."
+
+DECOMP_BLOCK_TYPES = int, float, bool, str, np.ndarray, pd.DataFrame
+"The default types to block. You could modify this."
 
 
 def replace_tensors(
@@ -95,7 +88,7 @@ def _ids_of(seq: cabc.Sequence[typing.Any]) -> list[int]:
 
 
 def default_stop_decompose(obj: object) -> bool:
-    # Using `id` because we want to compare with `is` but `in` uses `==`.
+    # Using `id` or else `np.NDArray` would be use `==`, which returns non `bool`.
     return id(obj) in _ids_of(DECOMP_BLOCK_ITEMS) or isinstance(obj, DECOMP_BLOCK_TYPES)
 
 

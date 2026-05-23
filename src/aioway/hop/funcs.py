@@ -11,11 +11,11 @@ from aioway._utils import is_list_of
 
 from .hop import Hop, hop_dcls
 
-__all__ = ["CatHop"]
+__all__ = ["CatHop", "StackHop"]
 
 
 @hop_dcls
-class _CatStackFunc(Hop):
+class _CatStackFunc(Hop[torch.Tensor]):
     FUNCTION: cabc.Callable[..., torch.Tensor]
     """
     Either `torch.cat` or `torch.stack` or something like those.

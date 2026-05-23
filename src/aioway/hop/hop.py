@@ -17,7 +17,7 @@ def hop_dcls(cls):
 
 
 @hop_dcls
-class Hop(abc.ABC):
+class Hop[T = object](abc.ABC):
     """
     `Hop` stands for [h]igh level [op]erator, or [h]igh level [o]peration [p]review.
     It is essentailly an unevaluated expression that supports inspection.
@@ -35,7 +35,7 @@ class Hop(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def do(self) -> object:
+    def do(self) -> T:
         """
         Evaluates the current operator and outputs the results.
         The object must be decomposed into pure tensors (no extra items e.g. primitives).

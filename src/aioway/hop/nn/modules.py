@@ -13,7 +13,7 @@ from aioway.modes import NnInitFn
 
 from ..hop import Hop, hop_dcls
 
-__all__ = ["NnInit", "find_nn_init"]
+__all__ = ["NnInit", "find_nn_init", "build_nn_hop"]
 
 _NN_INITS: dict[type[nn.Module], type[NnInit]] = {}
 
