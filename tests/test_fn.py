@@ -4,6 +4,7 @@ import pytest
 
 from aioway.fate import Fate, FateFn
 from aioway.fn import Fn, TensorInput, TorchThunk
+from aioway.hop import Hop
 from aioway.modes import HistTensorGraph, NnFwdFn, NnInitFn, TorchDispFn, TorchFuncFn
 
 
@@ -15,6 +16,7 @@ def _fn_cls():
     yield NnFwdFn
 
     yield Fate
+    yield Hop
 
 
 def _input_cls():

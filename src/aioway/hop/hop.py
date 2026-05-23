@@ -3,21 +3,15 @@
 "The operator base class."
 
 import abc
-import collections
 import dataclasses as dcls
 import graphlib
 import typing
 from collections import abc as cabc
 
-import torch
-
-from aioway._utils.decomps import find_nested_tensors
-from aioway.fn import Fn
-
-__all__ = []
+__all__ = ["Hop", "HopDag"]
 
 
-class Hop(Fn, abc.ABC):
+class Hop(abc.ABC):
     """
     `Hop` stands for [h]igh level [op]erator, or [h]igh level [o]peration [p]review.
     It is essentailly an unevaluated expression that supports inspection.
@@ -28,6 +22,10 @@ class Hop(Fn, abc.ABC):
 
     @abc.abstractmethod
     def deps(self) -> cabc.Iterator[Hop]:
+        """
+        The dependent `Hop`s.
+        """
+
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -50,13 +48,25 @@ class HopDag:
     "The topologically sorted `Hop`s list."
 
     @classmethod
-    def from_hops(cls, hops: cabc.Iterable[Hop]) -> typing.Self:
-        hashes = [hash(hop) for hop in hops]
-        hop_to_tensors: dict[int, list[torch.Tensor]] = collections.defaultdict(list)
-        for hop in hops:
-            hop_to_tensors[hash(hop)].extend(find_nested_tensors(hop))
-        tensors = [list(find_nested_tensors(hop)) for hop in hops]
-        topo_sorter = graphlib.TopologicalSorter()
-        topo_sorter
+    def from_output_hops(cls, outputs: cabc.Iterable[Hop]) -> typing.Self:
+        visited: set[Hop] = set()
+        for hop in outputs:
+            _collect_hops_rec(hop, visited)
 
-        raise NotImplementedError
+        # Format `graphlib.TopologicalSorter` expects: `{node: node.inputs}`.
+        hop_graph = {hop: list(hop.deps()) for hop in visited}
+
+        topo_sorter = graphlib.TopologicalSorter(hop_graph)
+        topo_sorter.prepare()
+        ordered_hop_list = list(topo_sorter.static_order())
+
+        return cls(ordered_hop_list)
+
+
+def _collect_hops_rec(hop: Hop, visited: set[Hop]) -> None:
+    if hop in visited:
+        return
+
+    visited.add(hop)
+    for dep in hop.deps():
+        _collect_hops_rec(dep, visited)
