@@ -12,7 +12,7 @@ import tensordict as td
 
 from aioway.specs import AttrSet
 
-from ..datasets import Dataset, DatasetViewTypes
+from ..dsets import Dataset, DatasetViewTypes
 
 __all__ = ["Stream", "StreamState", "Stream", "Stream", "Stream"]
 

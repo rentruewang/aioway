@@ -9,7 +9,7 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from ..datasets import DatasetColumnView, DatasetSelectView
+from ..dsets import DatasetColumnView, DatasetSelectView
 from .streams import Stream
 
 __all__ = ["StreamColumnView", "StreamSelectView"]

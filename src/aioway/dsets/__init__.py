@@ -2,6 +2,6 @@
 
 "Datasets represent a collection of `Chunk`s / computation of them."
 
-from .datasets import *
+from .dsets import *
 from .frames import *
 from .streams import *

@@ -2,7 +2,7 @@
 
 import pytest
 
-from aioway.datasets import (
+from aioway.dsets import (
     Frame,
     FrameStream,
     FrameStreamLoader,
