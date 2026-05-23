@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"A `Space` is a constraint on `Schema`, used by a `Hop`."
+"A `Space` is a constraint on `Schema`, used by an `Algo` to constrain `Hop`."
 
 import abc
 import dataclasses as dcls
@@ -44,6 +44,8 @@ class AnySpace(Space):
 
 @space_dcls
 class DiscreteSpace(Space):
+    "Discrete space that allows for arbitrary integers."
+
     ndim: int
     """
     The number of dimensions of a discrete space. Must be >= 0.
@@ -51,4 +53,18 @@ class DiscreteSpace(Space):
 
     @typing.override
     def __contains__(self, schema: Schema, /) -> bool:
-        raise NotImplementedError
+        return schema.shape.ndim == self.ndim and schema.dtype.family == "int"
+
+
+@space_dcls
+class ContinuousSpace(Space):
+    "Continuous space that allows for arbitrary floating point numbers."
+
+    ndim: int
+    """
+    The number of dimensions of a discrete space. Must be >= 0.
+    """
+
+    @typing.override
+    def __contains__(self, schema: Schema, /) -> bool:
+        return schema.shape.ndim == self.ndim and schema.dtype.is_floating_point
