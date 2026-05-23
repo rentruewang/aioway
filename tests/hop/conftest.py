@@ -6,8 +6,8 @@ import pytest
 from torch import nn
 
 from aioway._utils import render_fcall
+from aioway.hop import NnInit, find_nn_init
 from aioway.modes import NnInitFn
-from aioway.nn import NnInit, Sequential, find_nn_init
 
 
 class _ModuleOpts(typing.NamedTuple):
@@ -74,9 +74,14 @@ def module_opts(request: pytest.FixtureRequest) -> _ModuleOpts:
 
 
 @pytest.fixture
-def nn_init(module_opts: _ModuleOpts):
+def module_thunk(module_opts: _ModuleOpts):
     cls, opts = module_opts
-    result = find_nn_init(NnInitFn(func=cls, args=(), kwargs=opts))
+    return NnInitFn(func=cls, args=(), kwargs=opts)
+
+
+@pytest.fixture
+def nn_init(module_thunk: NnInitFn) -> NnInit:
+    result = find_nn_init(module_thunk)
     assert result
     return result
 
@@ -85,26 +90,3 @@ def nn_init(module_opts: _ModuleOpts):
 def opts(module_opts: _ModuleOpts):
     _, opts = module_opts
     return opts
-
-
-def test_nn_init(nn_init: NnInit):
-    assert isinstance(nn_init, NnInit)
-
-
-def test_nn_init_module(nn_init: NnInit):
-    module = nn_init.do()
-    assert isinstance(module, nn.Module)
-
-
-def test_sequential():
-    seq_init = find_nn_init(
-        NnInitFn(
-            func=nn.Sequential,
-            args=(nn.Linear(1, 2), nn.Linear(2, 3), nn.Linear(3, 4)),
-            kwargs={},
-        )
-    )
-    assert seq_init
-    assert isinstance(seq_init, Sequential)
-    assert isinstance(seq_init.do(), nn.Sequential)
-    assert len(seq_init.modules) == 3

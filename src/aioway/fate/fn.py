@@ -11,7 +11,7 @@ from aioway._torch import is_aten_op
 from .fate import Fate, find_fate
 
 if typing.TYPE_CHECKING:
-    from aioway.modes import TorDisFn
+    from aioway.modes import TorchDispFn
 
 __all__ = ["FateFn"]
 
@@ -33,8 +33,8 @@ class FateFn:
     The `Fate` object that ends up being selected.
     """
 
-    original: TorDisFn
-    "The original `TorDisFn` from which the `Fate` is translated."
+    original: TorchDispFn
+    "The original `TorchDispFn` from which the `Fate` is translated."
 
     def __repr__(self) -> str:
         return repr(self.fate)
@@ -58,7 +58,7 @@ class FateFn:
         return self.original.kwargs
 
     @classmethod
-    def find_fate(cls, thunk: TorDisFn) -> typing.Self | None:
+    def find_fate(cls, thunk: TorchDispFn) -> typing.Self | None:
         LOGGER.debug("Resolving `Fate` object for %s", thunk)
 
         # For now, `Fate` only supports aten,

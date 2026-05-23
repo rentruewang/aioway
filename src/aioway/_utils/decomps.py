@@ -9,7 +9,6 @@ from collections import abc as cabc
 
 import numpy as np
 import pandas as pd
-import tensordict as td
 import torch
 
 __all__ = [
@@ -27,16 +26,10 @@ __all__ = [
 ]
 
 DECOMP_BLOCK_ITEMS = None, NotImplemented, ..., True, False
-DECOMP_BLOCK_TYPES = (
-    int,
-    float,
-    bool,
-    str,
-    np.ndarray,
-    pd.DataFrame,
-    torch.Tensor,
-    td.TensorDict,
-)
+"The default instances to block. You could modify this."
+
+DECOMP_BLOCK_TYPES = int, float, bool, str, np.ndarray, pd.DataFrame
+"The default types to block. You could modify this."
 
 
 def replace_tensors(
@@ -95,6 +88,7 @@ def _ids_of(seq: cabc.Sequence[typing.Any]) -> list[int]:
 
 
 def default_stop_decompose(obj: object) -> bool:
+    # Using `id` or else `np.NDArray` would be use `==`, which returns non `bool`.
     return id(obj) in _ids_of(DECOMP_BLOCK_ITEMS) or isinstance(obj, DECOMP_BLOCK_TYPES)
 
 
@@ -143,6 +137,17 @@ class Decomposer:
     Steps to decompose the container object encountered.
     """
 
+    strict: bool = False
+    """
+    All sub items must be handled by one of:
+
+    1. The `.target` type check.
+    2. The `.stop` criterion.
+    3. One of the `.steps` decomposer.
+
+    Or else a `ValueError` is raised.
+    """
+
     def __post_init__(self):
         if not isinstance(self.target, DecomposeCheck):
             raise TypeError(f"{self.target=} is not callable.")
@@ -175,20 +180,29 @@ class Decomposer:
             # Assume each decomposition is mutually exclusive.
             return
 
+        # Only unhandled input would reach here. If `.strict`, raise `ValueError`.
+        if self.strict:
+            raise ValueError(f"The object {obj=} is not handled.")
 
-def find_and_filter(obj, types: type | tuple[type, ...], /):
+
+def find_and_filter(obj, types: type | tuple[type, ...], /, strict: bool = False):
     "Decompose the object based on the desired type."
 
-    finder = Decomposer(target=lambda t: isinstance(t, types))
+    finder = Decomposer(target=lambda t: isinstance(t, types), strict=strict)
     yield from finder(obj)
 
 
-def find_nested_tensors(obj: object) -> cabc.Iterator[torch.Tensor]:
+def find_nested_tensors(
+    obj: object, *, only_tensors: bool = False
+) -> cabc.Iterator[torch.Tensor]:
     """
     Find and unpack tensors from containers.
+
+    If `only_tensors` is `True`, raies an error
+    if `obj` cannot be decomposed into purely tensors.
     """
 
-    yield from find_and_filter(obj, torch.Tensor)
+    yield from find_and_filter(obj, torch.Tensor, strict=only_tensors)
 
 
 def _dataclass_as_dict(obj: object):

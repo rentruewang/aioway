@@ -102,6 +102,7 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 addopts = [
+    "-v",
     "--ff",
     "--nf",
     "--import-mode=importlib",

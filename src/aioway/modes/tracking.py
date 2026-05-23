@@ -17,17 +17,17 @@ from aioway.fate import FateFn
 from .common import replace_tensors_with_attr
 from .hists import Hist, HistTensorGraph
 from .modules import NnFwdFn, NnFwdMode, NnInitFn, NnInitMode
-from .tensors import TorDisFn, TorDisMode, TorFuncFn, TorFuncMode
+from .tensors import TorchDispFn, TorchDispMode, TorchFuncFn, TorchFuncMode
 
 __all__ = [
     "track_fn",
     "fake_fn",
-    "PrintTorFunc",
-    "PrintTorDis",
+    "PrintTorchFunc",
+    "PrintTorchDisp",
     "LogTorchFunc",
     "LogTorchDis",
-    "RouteTorDis",
-    "RouteTorFunc",
+    "RouteTorchDisp",
+    "RouteTorchFunc",
     "PrintNnInit",
     "PrintNnFwd",
 ]
@@ -57,24 +57,24 @@ class PrintNnFwd(NnFwdMode):
         return result
 
 
-class PrintTorFunc(_HasRichFlagMixin, TorFuncMode):
+class PrintTorchFunc(_HasRichFlagMixin, TorchFuncMode):
     @typing.override
-    def __call__(self, thunk: TorFuncFn, /) -> object:
-        return _TThunkPrinter(rich=self._rich)(thunk)
+    def __call__(self, thunk: TorchFuncFn, /) -> object:
+        return _TorchThunkPrinter(rich=self._rich)(thunk)
 
 
-class PrintTorDis(_HasRichFlagMixin, TorDisMode):
+class PrintTorchDisp(_HasRichFlagMixin, TorchDispMode):
     @typing.override
-    def __call__(self, thunk: TorDisFn, /) -> object:
-        return _TThunkPrinter(rich=self._rich)(thunk)
+    def __call__(self, thunk: TorchDispFn, /) -> object:
+        return _TorchThunkPrinter(rich=self._rich)(thunk)
 
 
 @dcls.dataclass(frozen=True)
-class _TThunkPrinter:
+class _TorchThunkPrinter:
     rich: bool
     "Use rich for printing."
 
-    def __call__(self, thunk: TorFuncFn | TorDisFn) -> object:
+    def __call__(self, thunk: TorchFuncFn | TorchDispFn) -> object:
         self.print("invoke", thunk)
         result = thunk.do()
         self.print("return", thunk, "->", replace_tensors_with_attr(result))
@@ -86,7 +86,7 @@ class _TThunkPrinter:
 
 
 @dcls.dataclass
-class LogTorchFunc(TorFuncMode):
+class LogTorchFunc(TorchFuncMode):
     """
     Log every call to function mode.
     """
@@ -98,14 +98,14 @@ class LogTorchFunc(TorFuncMode):
     "The logger to log to. Default to the one in the current module."
 
     @typing.override
-    def __call__(self, thunk: TorFuncFn) -> object:
+    def __call__(self, thunk: TorchFuncFn) -> object:
         result = thunk.do()
         self.logger.log(self.level, "%s", thunk)
         return result
 
 
 @dcls.dataclass
-class LogTorchDis(TorDisMode):
+class LogTorchDis(TorchDispMode):
     """
     Log every call to dispatch mode.
     """
@@ -117,15 +117,15 @@ class LogTorchDis(TorDisMode):
     "The logger to log to. Default to the one in the current module."
 
     @typing.override
-    def __call__(self, thunk: TorDisFn) -> object:
+    def __call__(self, thunk: TorchDispFn) -> object:
         result = thunk.do()
         self.logger.log(self.level, "%s", thunk)
         return result
 
 
-class CloneDispatchOp(TorDisMode):
+class CloneDispatchOp(TorchDispMode):
     @typing.override
-    def __call__(self, thunk: TorDisFn, /) -> object:
+    def __call__(self, thunk: TorchDispFn, /) -> object:
         result = thunk.do()
 
         # In fake mode, clone the tensor to prevent `FakeTensor` reuse. Should be cheap.
@@ -168,16 +168,16 @@ class RouteNnFwd(NnFwdMode):
 
 
 @dcls.dataclass
-class RouteTorDis(TorDisMode):
+class RouteTorchDisp(TorchDispMode):
     "The router at the torch dispatch level."
 
-    history: HistTensorGraph[TorDisFn | FateFn] = dcls.field(
+    history: HistTensorGraph[TorchDispFn | FateFn] = dcls.field(
         default_factory=HistTensorGraph
     )
     "The history used for tracking."
 
-    def __call__(self, thunk: TorDisFn) -> object:
-        fn: FateFn | TorDisFn
+    def __call__(self, thunk: TorchDispFn) -> object:
+        fn: FateFn | TorchDispFn
 
         if (found := FateFn.find_fate(thunk)) is not None:
             fn = found
@@ -186,32 +186,32 @@ class RouteTorDis(TorDisMode):
         else:
             fn = thunk
 
-        assert isinstance(fn, TorDisFn | FateFn), type(fn)
+        assert isinstance(fn, TorchDispFn | FateFn), type(fn)
 
         # Here, `FateFn` would do its magic and overwrite functions.
         return self.history.execute(fn)
 
 
 @dcls.dataclass
-class RouteTorFunc(TorFuncMode):
+class RouteTorchFunc(TorchFuncMode):
     """
     Saves the intermediate graph into a `FnHistory` object.
     """
 
-    history: HistTensorGraph[TorFuncFn] = dcls.field(default_factory=HistTensorGraph)
+    history: HistTensorGraph[TorchFuncFn] = dcls.field(default_factory=HistTensorGraph)
     """
     The `HistTensorGraph` instance that would be responsible for tracking history,
     and which provides a graph API to interact with saved tensors.
     """
 
     @typing.override
-    def __call__(self, thunk: TorFuncFn, /) -> object:
+    def __call__(self, thunk: TorchFuncFn, /) -> object:
         return self.history.execute(thunk)
 
 
 class HistoryCollection(typing.NamedTuple):
-    function: HistTensorGraph[TorFuncFn]
-    dispatch: HistTensorGraph[TorDisFn | FateFn]
+    function: HistTensorGraph[TorchFuncFn]
+    dispatch: HistTensorGraph[TorchDispFn | FateFn]
     nn_init: Hist[NnInitFn]
     nn_fwd: Hist[NnFwdFn]
 
@@ -224,8 +224,8 @@ def track_fn():
 
     init = RouteNnInit()
     fwd = RouteNnFwd()
-    dis = RouteTorDis()
-    func = RouteTorFunc()
+    dis = RouteTorchDisp()
+    func = RouteTorchFunc()
 
     with func.enter(), dis.enter(), init.enter(), fwd.enter():
         yield HistoryCollection(

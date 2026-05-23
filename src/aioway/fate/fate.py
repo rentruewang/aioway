@@ -13,13 +13,12 @@ from torch import _ops
 from aioway._utils import camel_to_snake, find_nested_tensors, render_fcall
 
 if typing.TYPE_CHECKING:
-    from aioway.modes import TorDisFn
+    from aioway.modes import TorchDispFn
 
 __all__ = ["Fate", "fate_dcls", "find_fate", "all_fates"]
 
 
 @typing.dataclass_transform()
-@typing.no_type_check
 def fate_dcls(cls, /):
     "Decorator of dataclass for `Fate`."
     return dcls.dataclass(repr=False)(cls)
@@ -36,6 +35,11 @@ class Fate(abc.ABC):
     """
 
     KEY: typing.ClassVar[_ops.OpOverload] = NotImplemented
+    """
+    The `torch.ops.aten.*` operator that maps to the current `Fate`.
+    Roughly 200 in total (we don't support that many yet).
+    If `NotImplemented`, this class is considered abstract.
+    """
 
     @typing.override
     def __repr__(self) -> str:
@@ -112,7 +116,7 @@ class Fate(abc.ABC):
         return cls.KEY is not NotImplemented and not inspect.isabstract(cls)
 
 
-def find_fate(dispatch: TorDisFn, /) -> Fate | None:
+def find_fate(dispatch: TorchDispFn, /) -> Fate | None:
     """
     Try finding a `Fate` operator with the thunk, and then wrap into `FateFn`.
 
