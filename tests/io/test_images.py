@@ -6,7 +6,7 @@ import pytest
 import torch
 
 from aioway.io import ImageLoader, PillowImageLoader, TvioImageLoader
-from aioway.tags import IsImageTag, extract_tags
+from aioway.schemas import IsImageTag, extract_tags
 
 
 def _loaders():

@@ -38,10 +38,9 @@ build-backend = "setuptools.build_meta"
 [dependency-groups]
 pre-commit = [
     "autoflake>=2",
-    "black[jupyter]>=26",
+    "black>=26",
     "isort>=8",
     "mypy>=1",
-    "nb-clean>=4",
     "pre-commit>=4",
 ]
 tests = [
@@ -52,15 +51,14 @@ tests = [
     "pytest-timeout>=2",
     "pytest-testmon>=2",
     "pytest-sugar>=1",
-    "better-exceptions>=0.3",
     "coverage>=7",
-    "papermill>=2.7.0",
-    "gitpython>=3.1.50",
+    "gitpython>=3.1",
 ]
 debugging = [
     "ipython>=9",
     "jupyter>=1",
     "jupyterlab>=4",
+    "jupytext>=1.19",
     "pyinstrument>=5",
     "matplotlib>=3",
 ]

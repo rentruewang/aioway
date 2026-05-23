@@ -14,7 +14,7 @@ import torch
 from aioway._torch import is_leaf_has_grad
 from aioway._utils import find_nested_tensors
 from aioway.fn import Fn, TensorInput
-from aioway.schemas import attr
+from aioway.schemas import Attr
 
 from .common import replace_tensors_with_attr
 
@@ -165,7 +165,7 @@ class HistTensorGraph[T: HashableTensorInput](Hist[T]):
 
     def memory(self) -> int:
         "The total memory consumed by the tensors."
-        return sum(attr(param).memory() for param in self._all_tensors())
+        return sum(Attr.parse(param).memory() for param in self._all_tensors())
 
     def parameters(self):
         for tensor in self._all_tensors():

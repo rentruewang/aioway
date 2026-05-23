@@ -10,9 +10,7 @@ from torch.utils import data
 from torchcodec import decoders as dec
 
 from aioway._torch import current_fake_mode, torch_set_fake_mode_func
-from aioway.schemas import Attr
-from aioway.tags import SampleRateTag
-from aioway.tags.media import IsStftTag
+from aioway.schemas import Attr, IsStftTag, SampleRateTag
 
 from ._av import AudioStream
 from ._bases import TorchCompatible
@@ -145,7 +143,7 @@ class AvAudioLoader(AudioLoader):
 
         # Create a fake tensor of float32 in fake mode.
         if current_fake_mode():
-            tensor = Attr.parse(
+            tensor = Attr.build(
                 shape=[info.num_channels, info.num_frames], dtype=torch.float32
             ).to_fake_tensor()
 

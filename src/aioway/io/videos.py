@@ -10,8 +10,7 @@ from torchcodec import decoders as dec
 
 from aioway._torch import current_fake_mode, torch_set_fake_mode_func
 from aioway._utils import num_threads
-from aioway.schemas import Attr
-from aioway.tags import IsVideoTag
+from aioway.schemas import Attr, IsVideoTag
 
 from ._av import VideoStream
 from ._bases import TorchCompatible
@@ -58,7 +57,7 @@ class AvVideoLoader(VideoLoader):
 
         # Create a fake tensor of float32 in fake mode.
         if current_fake_mode():
-            tensor = Attr.parse(
+            tensor = Attr.build(
                 shape=[info.num_frames, 3, info.width, info.height], dtype=torch.float32
             ).to_fake_tensor()
 
