@@ -7,7 +7,7 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-from aioway.schemas import Attr, AttrSet
+from aioway.specs import Attr, AttrSet
 
 __all__ = ["Dataset", "DatasetColumnView", "DatasetSelectView", "DatasetViewTypes"]
 

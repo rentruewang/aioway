@@ -18,7 +18,7 @@ from aioway.datasets import (
     Stream,
     StreamState,
 )
-from aioway.schemas import AttrSet
+from aioway.specs import AttrSet
 
 
 @dcls.dataclass

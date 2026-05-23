@@ -4,7 +4,7 @@ import pytest
 import tensordict as td
 import torch
 
-from aioway.schemas import Attr, AttrSet, attr
+from aioway.specs import Attr, AttrSet, attr
 
 
 @pytest.fixture

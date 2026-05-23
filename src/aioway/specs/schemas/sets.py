@@ -13,11 +13,11 @@ import tensordict as td
 import torch
 
 from aioway._utils import is_dict_of_str_to, is_list_of
-from aioway.schemas import LayoutLike
 
 from .attrs import Attr, attr
 from .devices import DeviceLike
 from .dtypes import DTypeLike
+from .layouts import LayoutLike
 from .shapes import ShapeLike
 
 __all__ = ["AttrSet", "AttrSetLike", "attr_set"]

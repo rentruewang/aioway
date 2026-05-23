@@ -11,7 +11,7 @@ import tensordict as td
 from torch.utils import data
 
 from aioway._utils import is_list_of
-from aioway.schemas import AttrSet
+from aioway.specs import AttrSet
 
 from ..datasets import Dataset, DatasetColumnView, DatasetSelectView, DatasetViewTypes
 

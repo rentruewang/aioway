@@ -5,7 +5,7 @@ import tensordict as td
 import torch
 from numpy import random as np_rand
 
-from aioway.schemas import Attr, AttrSet
+from aioway.specs import Attr, AttrSet
 from tests.fake import batch_sizes, chunk_ok, cpu_and_maybe_cuda
 
 

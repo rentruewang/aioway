@@ -11,7 +11,7 @@ import tensordict as td
 import torch
 
 from aioway._torch import tdict_rename
-from aioway.schemas import AttrSet
+from aioway.specs import AttrSet
 
 from .streams import Stream
 

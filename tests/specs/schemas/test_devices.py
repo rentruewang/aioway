@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from aioway.schemas import Device
+from aioway.specs import Device
 
 
 def _cpus():

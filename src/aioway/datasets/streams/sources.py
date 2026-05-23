@@ -14,7 +14,7 @@ import tensordict as td
 from torch.utils import data
 
 from aioway._utils import is_list_of
-from aioway.schemas import AttrSet, attr_set
+from aioway.specs import AttrSet, attr_set
 
 from ..frames import Frame
 from .streams import Stream

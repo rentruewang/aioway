@@ -10,7 +10,7 @@ from collections import abc as cabc
 
 import tensordict as td
 
-from aioway.schemas import AttrSet
+from aioway.specs import AttrSet
 
 from ..datasets import Dataset, DatasetViewTypes
 

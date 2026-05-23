@@ -8,7 +8,7 @@ import typing
 import tensordict as td
 import torch
 
-from aioway.schemas import AttrSet
+from aioway.specs import AttrSet
 
 from .sources import CacheStream
 from .streams import Stream, StreamState
