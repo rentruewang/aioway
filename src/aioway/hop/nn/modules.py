@@ -60,7 +60,7 @@ class NnInit(abc.ABC):
             An `NnModuleHop` instance that uses the `input` as input and `.do()` as module.
         """
 
-        return NnModuleHop(module=self.do(), input=input)
+        return NnHop(module=self.do(), input=input)
 
 
 def find_nn_init(thunk: NnInitFn, /) -> NnInit | None:
@@ -75,8 +75,19 @@ def find_nn_init(thunk: NnInitFn, /) -> NnInit | None:
     return nn_init_type(*thunk.args, **thunk.kwargs)
 
 
+def build_nn_hop(thunk: NnInitFn, input: Hop) -> Hop | None:
+    """
+    Build a high level operator from the `thunk` with `input` as input.
+    """
+
+    if (nn_init := find_nn_init(thunk)) is None:
+        return None
+
+    return nn_init.apply_hop(input)
+
+
 @hop_dcls
-class NnModuleHop(Hop):
+class NnHop(Hop):
     """
     The `nn.Module` high level operator.
     """
