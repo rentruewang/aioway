@@ -52,8 +52,7 @@ tests = [
     "pytest-testmon>=2",
     "pytest-sugar>=1",
     "coverage>=7",
-    "papermill>=2.7.0",
-    "gitpython>=3.1.50",
+    "gitpython>=3.1",
 ]
 debugging = [
     "ipython>=9",

@@ -1,12 +1,16 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import pathlib
-
-import papermill as pm
+import importlib
+from importlib import util as impu
 
 
 def test_notebook(notebook: pathlib.Path):
-    output_notebook = notebook.with_suffix(".out.ipynb")
+    module_name = notebook.with_suffix("").name
 
-    # Execute the notebook (raises pm.PapermillExecutionError if a cell fails)
-    pm.execute_notebook(input_path=notebook, output_path=str(output_notebook))
+    # Perform an import on the notebook (which are pypercent files), and execute it.
+    spec = impu.spec_from_file_location(f"notebooks.{module_name}", notebook)
+    assert spec
+    assert spec.loader
+    module = impu.module_from_spec(spec)
+    spec.loader.exec_module(module)

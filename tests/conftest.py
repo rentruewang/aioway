@@ -33,13 +33,14 @@ def _file_paths():
         yield path
 
     for item in _REPO.index.diff("HEAD"):
-        yield item.a_path
+        a_path = item.a_path
+        assert a_path
+        yield a_path
 
 
 def file_paths():
     for fp in _file_paths():
-        path = pathlib.Path(fp)
-        if path.exists():
+        if (path := pathlib.Path(fp).resolve()).exists():
             yield path
 
 
