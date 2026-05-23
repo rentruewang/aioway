@@ -7,7 +7,7 @@ import torch
 
 from aioway.io import TokenizerLoader
 from aioway.specs import DType
-from aioway.tags.media import IsTokenizedTag
+from aioway.specs.media import IsTokenizedTag
 
 
 def _tokenizers():

@@ -11,8 +11,7 @@ from torchvision import io as vio
 from torchvision.transforms import v2 as tt
 
 from aioway._torch import current_fake_mode, torch_set_fake_mode_func
-from aioway.specs import AttrLike, attr
-from aioway.tags import IsImageTag
+from aioway.specs import AttrLike, IsImageTag, attr
 
 from ._bases import TorchCompatible
 

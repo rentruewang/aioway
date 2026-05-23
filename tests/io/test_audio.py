@@ -7,7 +7,7 @@ import torch
 
 from aioway.io import AudioLoader, AvAudioLoader, TorchCodecAudioLoader
 from aioway.io.audios import encode_with_stft
-from aioway.tags import SampleRateTag
+from aioway.specs import SampleRateTag
 
 
 def _loaders():
