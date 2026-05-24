@@ -12,7 +12,7 @@ from collections import abc as cabc
 import torch
 
 from aioway._torch import is_leaf_has_grad
-from aioway._utils import find_nested_tensors, Dag, TupleDagNode
+from aioway._utils import Dag, find_nested_tensors
 from aioway.fn import Fn, TensorInput
 from aioway.schemas import Attr
 
