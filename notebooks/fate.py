@@ -12,8 +12,6 @@
 #     name: python3
 # ---
 
-import networkx as nx
-
 # %%
 import torch
 
@@ -38,8 +36,7 @@ with fake_fn() as hists, PrintTorchDisp().enter():
     f = d + b
     g = e + f
 
-
-nx.draw(hists.dispatch.dag().networkx())
+hists.dispatch.dag()
 
 # %%
 with fake_fn(), PrintTorchDisp().enter():

@@ -2,7 +2,6 @@
 
 "A simple DAG that renders itself and converts to `networkx`."
 
-import abc
 import dataclasses as dcls
 import functools
 import graphlib
@@ -11,56 +10,28 @@ from collections import abc as cabc
 
 import numpy as np
 
-__all__ = ["Dag", "DagNode", "TupleDagNode"]
+__all__ = ["Dag", "DagNode"]
 
 
-class DagNode[T](typing.Protocol):
+@dcls.dataclass(frozen=True, slots=True)
+class DagNode[T]:
     """
     `DagNode` is an interface that
     """
 
-    @abc.abstractmethod
-    def item(self) -> T:
-        "The underlying data that is being stored by this `DagNode`."
-
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def deps(self) -> cabc.Iterator[DagNode[T]]:
-        """
-        The dependent nodes of this `DagNode`.
-        """
-
-        raise NotImplementedError
-
-
-@dcls.dataclass(frozen=True, slots=True)
-class TupleDagNode[T](DagNode[T]):
-    """
-    `ListDagNode` is a convenient implementation for `DagNode`.
-    """
-
     data: T
     """
-    The data stored by the `DagNode`..
+    The underlying data.
     """
 
-    parents: tuple[DagNode[T], ...]
+    deps: list[int]
     """
-    The parents (dependencies) of this `ListDagNode`.
+    List of parent indices.
     """
-
-    @typing.override
-    def item(self) -> T:
-        return self.data
-
-    @typing.override
-    def deps(self) -> cabc.Iterator[DagNode[T]]:
-        yield from self.parents
 
 
 @dcls.dataclass(frozen=True)
-class Dag[T]:
+class Dag[T: cabc.Hashable]:
     """
     `Dag` is a DAG of `DagNode`s, ordered in the linear sense.
 
@@ -68,12 +39,11 @@ class Dag[T]:
     Using `from_*` classmethod instead of the constructors would topo sort the data.
     """
 
-    nodes: cabc.Sequence[DagNode[T]]
+    nodes: list[DagNode[T]]
     "The topologically sorted `T`s list."
 
     def __post_init__(self) -> None:
         self._verify_sorted()
-        self._verify_unique()
 
     def __len__(self) -> int:
         return len(self.nodes)
@@ -84,6 +54,9 @@ class Dag[T]:
     def __iter__(self):
         for node in self.nodes:
             yield node
+
+    def deps_of(self, idx: int) -> list[int]:
+        return self.nodes[idx].deps
 
     @property
     def num_inputs(self):
@@ -101,10 +74,7 @@ class Dag[T]:
         num_outputs = np.zeros(len(self), dtype=int)
 
         for node_idx, node in enumerate(self.nodes):
-            for dep in node.deps():
-                assert node_idx == self._node_index[node]
-                dep_idx = self._node_index[dep]
-
+            for dep_idx in node.deps:
                 num_inputs[node_idx] += 1
                 num_outputs[dep_idx] += 1
 
@@ -113,65 +83,35 @@ class Dag[T]:
         num_outputs.flags.writeable = False
         return num_inputs, num_outputs
 
-    def _verify_unique(self) -> None:
-        values = [node.item() for node in self.nodes]
-
-        if len(values) != len({*values}):
-            raise ValueError("The values should be unique!")
-
     def _verify_sorted(self) -> None:
-        node_to_idx = self._node_index
-
         for idx, node in enumerate(self.nodes):
-            for dep in node.deps():
-                if node_to_idx[dep] < idx:
+            for dep_idx in node.deps:
+                if dep_idx < idx:
                     continue
 
-                raise AssertionError("The given array is not sorted.")
+                elif dep_idx == idx:
+                    raise ValueError(f"Self reference link detected on {idx=}.")
 
-    @functools.cached_property
-    def _node_index(self):
-        return {key: idx for idx, key in enumerate(self)}
-
-    def networkx(self):
-        "Convert the graph to `nx.DiGraph`, using data dependencies as link."
-
-        import networkx as nx
-
-        graph: nx.Graph[T] = nx.Graph()
-
-        for node in self.nodes:
-            node_item = node.item()
-            graph.add_node(node_item)
-
-            for dep in node.deps():
-                dep_item = dep.item()
-                _ = graph.add_edge(dep_item, node_item)
-
-        return graph
+                else:
+                    raise ValueError(f"At {idx=}, {dep_idx=} is greater.")
 
     @classmethod
-    def from_outputs(cls, outputs: cabc.Iterable[DagNode[T]]) -> typing.Self:
-        visited: set[DagNode[T]] = set()
-        for node in outputs:
-            _collect_dag_nodes_rec(node, visited)
-
-        # Format `graphlib.TopologicalSorter` expects: `{node: node.inputs}`.
-        graph = {node: list(node.deps()) for node in visited}
+    def from_graph(cls, graph: cabc.Mapping[T, cabc.Iterable[T]]) -> typing.Self:
+        """
+        Create a `Dag` from the given `graph`.
+        Uses `graphlib.TopologicalSorter` under the hood.
+        """
 
         topo_sorter = graphlib.TopologicalSorter(graph)
         topo_sorter.prepare()
         ordered_list = list(topo_sorter.static_order())
 
-        return cls(ordered_list)
+        item_idx = {item: idx for idx, item in enumerate(ordered_list)}
+        dag_list: list[DagNode[T]] = []
 
+        for item in ordered_list:
+            dag_list.append(
+                DagNode(data=item, deps=[item_idx[dep] for dep in graph[item]])
+            )
 
-def _collect_dag_nodes_rec[T](node: DagNode[T], visited: set[DagNode[T]]) -> None:
-    "Collect the nodes from DAG recursively."
-
-    if node in visited:
-        return
-
-    visited.add(node)
-    for dep in node.deps():
-        _collect_dag_nodes_rec(dep, visited)
+        return cls(dag_list)
