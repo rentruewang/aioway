@@ -18,10 +18,10 @@ if typing.TYPE_CHECKING:
 __all__ = ["Fate", "fate_dcls", "find_fate", "all_fates"]
 
 
-@typing.dataclass_transform()
+@typing.dataclass_transform(frozen_default=True)
 def fate_dcls(cls, /):
     "Decorator of dataclass for `Fate`."
-    return dcls.dataclass(repr=False)(cls)
+    return dcls.dataclass(repr=False, frozen=True)(cls)
 
 
 @fate_dcls

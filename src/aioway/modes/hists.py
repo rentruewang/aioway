@@ -4,7 +4,6 @@
 
 import collections
 import dataclasses as dcls
-import itertools
 import logging
 import typing
 from collections import abc as cabc
@@ -12,7 +11,7 @@ from collections import abc as cabc
 import torch
 
 from aioway._torch import is_leaf_has_grad
-from aioway._utils import find_nested_tensors
+from aioway._utils import Dag, TupleDagNode, find_nested_tensors
 from aioway.fn import Fn, TensorInput
 from aioway.schemas import Attr
 
@@ -128,24 +127,44 @@ class HistTensorGraph[T: HashableTensorInput](Hist[T]):
         for input_tensor in thunk.inputs():
             self.input_to_thunk_list[input_tensor].append(thunk)
 
-    def networkx(self):
-        "Convert the graph to `nx.DiGraph`, using data dependencies as link."
+    def dag(self) -> Dag[T]:
+        "Conver the graph to a `Dag` for inspection and debugging."
 
-        import networkx as nx
+        thunk_idxs = {thunk.fn: idx for idx, thunk in enumerate(self.history)}
+        nodes: list[TupleDagNode[T]] = []
 
-        graph: nx.DiGraph[T] = nx.DiGraph()
-        graph.add_nodes_from(hist.fn for hist in self.history)
+        for entry in self.history:
+            nodes.append(
+                self.__get_dag_thunk(
+                    thunk=entry.fn,
+                    thunk_idxs=thunk_idxs,
+                    nodes=nodes,
+                )
+            )
 
-        ins = self.input_to_thunk_list
+        return Dag.from_outputs(nodes)
+
+    def __get_dag_thunk(
+        self, *, thunk: T, thunk_idxs: dict[T, int], nodes: list[TupleDagNode[T]]
+    ):
         outs = self.output_to_thunk_list
+        input_indices: list[int] = []
 
-        tensors = set(ins.keys()).intersection(outs.keys())
+        # From input -> someone's output -> map to thunk itself -> index.
+        def input_idxs():
+            for tensor in thunk.inputs():
+                for input_fn in outs[tensor]:
+                    idx = thunk_idxs[input_fn]
+                    yield idx
 
-        for tensor in tensors:
-            for out_thunk, in_thunk in itertools.product(outs[tensor], ins[tensor]):
-                _ = graph.add_edge(out_thunk, in_thunk)
+        # Since `history` is by definition a topologically sorted array,
+        # the dependencies would always have smaller index (won't index OOB).
+        for in_idx in input_idxs():
+            assert in_idx < len(nodes)
+            input_indices.append(in_idx)
 
-        return graph
+        deps = tuple(nodes[idx] for idx in input_indices)
+        return TupleDagNode(thunk, deps)
 
     def inputs(self) -> set[torch.Tensor]:
         """
