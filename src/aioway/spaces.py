@@ -5,7 +5,7 @@
 import abc
 import dataclasses as dcls
 import typing
-
+from gymnasium import spaces as gs
 from .schemas import Schema
 
 __all__ = ["space_dcls", "Space", "AnySpace"]
