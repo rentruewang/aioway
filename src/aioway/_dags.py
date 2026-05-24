@@ -59,6 +59,7 @@ class TupleDagNode[T](DagNode[T]):
         yield from self.parents
 
 
+@dcls.dataclass(frozen=True, slots=True)
 class Dag[T: cabc.Hashable]:
     """
     `Dag` is a DAG of `DagNode`s, ordered in the linear sense.
@@ -66,14 +67,14 @@ class Dag[T: cabc.Hashable]:
     Prefer using the `from_*` classmethod instead of the constructors.
     """
 
-    def __init__(self, ordered: cabc.Sequence[DagNode[T]]) -> None:
-        self._ordered_list: cabc.Sequence[DagNode[T]] = ordered
-        "The topologically sorted `T`s list."
+    nodes: cabc.Sequence[DagNode[T]]
+    "The topologically sorted `T`s list."
 
+    def __post_init__(self) -> None:
         self._verify_sorted()
 
     def __len__(self) -> int:
-        return len(self._ordered_list)
+        return len(self.nodes)
 
     @typing.overload
     def __getitem__(self, idx: int) -> T: ...
@@ -82,16 +83,16 @@ class Dag[T: cabc.Hashable]:
     @typing.no_type_check
     def __getitem__(self, idx):
         if isinstance(idx, int):
-            return self._ordered_list[idx].item()
+            return self.nodes[idx].item()
 
         if isinstance(idx, slice):
-            sliced = self._ordered_list[idx]
+            sliced = self.nodes[idx]
             return [node.item() for node in sliced]
 
         raise IndexError(f"Unhandled {idx=}.")
 
     def __iter__(self):
-        for node in self._ordered_list:
+        for node in self.nodes:
             yield node.item()
 
     @property
@@ -109,7 +110,7 @@ class Dag[T: cabc.Hashable]:
         num_inputs = np.zeros(len(self), dtype=int)
         num_outputs = np.zeros(len(self), dtype=int)
 
-        for node_idx, node in enumerate(self._ordered_list):
+        for node_idx, node in enumerate(self.nodes):
             for dep in node.deps():
                 assert node_idx == self._node_index[node]
                 dep_idx = self._node_index[dep]
@@ -125,7 +126,7 @@ class Dag[T: cabc.Hashable]:
     def _verify_sorted(self):
         item_to_idx = self._node_index
 
-        for idx, node in enumerate(self._ordered_list):
+        for idx, node in enumerate(self.nodes):
             for dep in node.deps():
                 if item_to_idx[dep] < idx:
                     continue
@@ -134,7 +135,7 @@ class Dag[T: cabc.Hashable]:
 
     @functools.cached_property
     def _node_index(self):
-        return {key: idx for idx, key in enumerate(self._ordered_list)}
+        return {key: idx for idx, key in enumerate(self.nodes)}
 
     @classmethod
     def from_output(cls, outputs: cabc.Iterable[DagNode[T]]) -> typing.Self:
