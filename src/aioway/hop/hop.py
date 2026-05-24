@@ -4,11 +4,10 @@
 
 import abc
 import dataclasses as dcls
-import graphlib
 import typing
 from collections import abc as cabc
 
-__all__ = ["Hop", "HopDag"]
+__all__ = ["Hop"]
 
 
 @typing.dataclass_transform(frozen_default=True, kw_only_default=True)
@@ -42,37 +41,3 @@ class Hop[T = object](abc.ABC):
         """
 
         raise NotImplementedError
-
-
-@dcls.dataclass(frozen=True)
-class HopDag:
-    """
-    `HopDag` is a DAG of `Hop`s, ordered in the linear sense.
-    """
-
-    hops: cabc.Sequence[Hop]
-    "The topologically sorted `Hop`s list."
-
-    @classmethod
-    def from_output_hops(cls, outputs: cabc.Iterable[Hop]) -> typing.Self:
-        visited: set[Hop] = set()
-        for hop in outputs:
-            _collect_hops_rec(hop, visited)
-
-        # Format `graphlib.TopologicalSorter` expects: `{node: node.inputs}`.
-        hop_graph = {hop: list(hop.deps()) for hop in visited}
-
-        topo_sorter = graphlib.TopologicalSorter(hop_graph)
-        topo_sorter.prepare()
-        ordered_hop_list = list(topo_sorter.static_order())
-
-        return cls(ordered_hop_list)
-
-
-def _collect_hops_rec(hop: Hop, visited: set[Hop]) -> None:
-    if hop in visited:
-        return
-
-    visited.add(hop)
-    for dep in hop.deps():
-        _collect_hops_rec(dep, visited)
