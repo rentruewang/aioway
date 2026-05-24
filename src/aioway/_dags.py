@@ -4,11 +4,14 @@
 
 import abc
 import dataclasses as dcls
+import functools
 import graphlib
 import typing
 from collections import abc as cabc
 
-__all__ = ["Dag", "DagNode", "ListDagNode"]
+import numpy as np
+
+__all__ = ["Dag", "DagNode", "TupleDagNode"]
 
 
 class DagNode[T](typing.Protocol):
@@ -32,7 +35,7 @@ class DagNode[T](typing.Protocol):
 
 
 @dcls.dataclass(frozen=True, slots=True)
-class ListDagNode[T](DagNode[T]):
+class TupleDagNode[T](DagNode[T]):
     """
     `ListDagNode` is a convenient implementation for `DagNode`.
     """
@@ -42,7 +45,7 @@ class ListDagNode[T](DagNode[T]):
     The data stored by the `DagNode`..
     """
 
-    parents: list[DagNode[T]]
+    parents: tuple[DagNode[T], ...]
     """
     The parents (dependencies) of this `ListDagNode`.
     """
@@ -58,7 +61,7 @@ class ListDagNode[T](DagNode[T]):
 
 class Dag[T: cabc.Hashable]:
     """
-    `HopDag` is a DAG of `Hop`s, ordered in the linear sense.
+    `Dag` is a DAG of `DagNode`s, ordered in the linear sense.
 
     Prefer using the `from_*` classmethod instead of the constructors.
     """
@@ -72,22 +75,66 @@ class Dag[T: cabc.Hashable]:
     def __len__(self) -> int:
         return len(self._ordered_list)
 
-    def __getitem__(self, idx: int) -> T:
-        return self._ordered_list[idx].item()
+    @typing.overload
+    def __getitem__(self, idx: int) -> T: ...
+    @typing.overload
+    def __getitem__(self, idx: slice) -> list[T]: ...
+    @typing.no_type_check
+    def __getitem__(self, idx):
+        if isinstance(idx, int):
+            return self._ordered_list[idx].item()
+
+        if isinstance(idx, slice):
+            sliced = self._ordered_list[idx]
+            return [node.item() for node in sliced]
+
+        raise IndexError(f"Unhandled {idx=}.")
 
     def __iter__(self):
         for node in self._ordered_list:
             yield node.item()
 
+    @property
+    def num_inputs(self):
+        i, _ = self._num_inputs_outputs
+        return i
+
+    @property
+    def num_outputs(self):
+        _, o = self._num_inputs_outputs
+        return o
+
+    @functools.cached_property
+    def _num_inputs_outputs(self):
+        num_inputs = np.zeros(len(self), dtype=int)
+        num_outputs = np.zeros(len(self), dtype=int)
+
+        for node_idx, node in enumerate(self._ordered_list):
+            for dep in node.deps():
+                assert node_idx == self._node_index[node]
+                dep_idx = self._node_index[dep]
+
+                num_inputs[node_idx] += 1
+                num_outputs[dep_idx] += 1
+
+        # Make them immutable.
+        num_inputs.flags.writeable = False
+        num_outputs.flags.writeable = False
+        return num_inputs, num_outputs
+
     def _verify_sorted(self):
-        item_to_idx = {key: idx for idx, key in enumerate(self)}
+        item_to_idx = self._node_index
 
         for idx, node in enumerate(self._ordered_list):
             for dep in node.deps():
-                if item_to_idx[dep.item()] < idx:
+                if item_to_idx[dep] < idx:
                     continue
 
                 raise AssertionError("The given array is not sorted.")
+
+    @functools.cached_property
+    def _node_index(self):
+        return {key: idx for idx, key in enumerate(self._ordered_list)}
 
     @classmethod
     def from_output(cls, outputs: cabc.Iterable[DagNode[T]]) -> typing.Self:
