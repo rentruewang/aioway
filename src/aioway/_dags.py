@@ -59,7 +59,7 @@ class TupleDagNode[T](DagNode[T]):
         yield from self.parents
 
 
-@dcls.dataclass(frozen=True, slots=True)
+@dcls.dataclass(frozen=True)
 class Dag[T: cabc.Hashable]:
     """
     `Dag` is a DAG of `DagNode`s, ordered in the linear sense.
@@ -76,19 +76,8 @@ class Dag[T: cabc.Hashable]:
     def __len__(self) -> int:
         return len(self.nodes)
 
-    @typing.overload
-    def __getitem__(self, idx: int) -> DagNode[T]: ...
-    @typing.overload
-    def __getitem__(self, idx: slice) -> typing.Self: ...
-    @typing.no_type_check
-    def __getitem__(self, idx):
-        if isinstance(idx, int):
-            return self.nodes[idx]
-
-        if isinstance(idx, slice):
-            return type(self)(self.nodes[idx])
-
-        raise IndexError(f"Unhandled {idx=}.")
+    def __getitem__(self, idx: int) -> DagNode[T]:
+        return self.nodes[idx]
 
     def __iter__(self):
         for node in self.nodes:
@@ -123,11 +112,11 @@ class Dag[T: cabc.Hashable]:
         return num_inputs, num_outputs
 
     def _verify_sorted(self):
-        item_to_idx = self._node_index
+        node_to_idx = self._node_index
 
         for idx, node in enumerate(self.nodes):
             for dep in node.deps():
-                if item_to_idx[dep] < idx:
+                if node_to_idx[dep] < idx:
                     continue
 
                 raise AssertionError("The given array is not sorted.")

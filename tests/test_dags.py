@@ -17,4 +17,4 @@ def dag():
 def test_dag(dag: Dag[int]):
     assert dag[0].item() == 1
     assert dag[3].item() == 4
-    assert {node.item() for node in dag[1:3]} == {2, 3}
+    assert {dag[1].item(), dag[2].item()} == {2, 3}
