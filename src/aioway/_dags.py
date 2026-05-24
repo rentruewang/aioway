@@ -77,23 +77,22 @@ class Dag[T: cabc.Hashable]:
         return len(self.nodes)
 
     @typing.overload
-    def __getitem__(self, idx: int) -> T: ...
+    def __getitem__(self, idx: int) -> DagNode[T]: ...
     @typing.overload
-    def __getitem__(self, idx: slice) -> list[T]: ...
+    def __getitem__(self, idx: slice) -> typing.Self: ...
     @typing.no_type_check
     def __getitem__(self, idx):
         if isinstance(idx, int):
-            return self.nodes[idx].item()
+            return self.nodes[idx]
 
         if isinstance(idx, slice):
-            sliced = self.nodes[idx]
-            return [node.item() for node in sliced]
+            return type(self)(self.nodes[idx])
 
         raise IndexError(f"Unhandled {idx=}.")
 
     def __iter__(self):
         for node in self.nodes:
-            yield node.item()
+            yield node
 
     @property
     def num_inputs(self):
@@ -135,7 +134,7 @@ class Dag[T: cabc.Hashable]:
 
     @functools.cached_property
     def _node_index(self):
-        return {key: idx for idx, key in enumerate(self.nodes)}
+        return {key: idx for idx, key in enumerate(self)}
 
     @classmethod
     def from_output(cls, outputs: cabc.Iterable[DagNode[T]]) -> typing.Self:
