@@ -2,7 +2,7 @@
 
 import pytest
 
-from aioway._dags import Dag, TupleDagNode
+from aioway.dags import Dag, TupleDagNode
 
 
 @pytest.fixture

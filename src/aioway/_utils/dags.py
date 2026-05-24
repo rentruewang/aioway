@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"The utilties around DAGs."
+"A simple DAG that renders itself and converts to `networkx`."
 
 import abc
 import dataclasses as dcls
@@ -64,7 +64,8 @@ class Dag[T: cabc.Hashable]:
     """
     `Dag` is a DAG of `DagNode`s, ordered in the linear sense.
 
-    Prefer using the `from_*` classmethod instead of the constructors.
+    If calling the constructor directly, the `nodes` must be ordered linearly already.
+    Using `from_*` classmethod instead of the constructors would topo sort the data.
     """
 
     nodes: cabc.Sequence[DagNode[T]]
@@ -72,6 +73,7 @@ class Dag[T: cabc.Hashable]:
 
     def __post_init__(self) -> None:
         self._verify_sorted()
+        self._verify_unique()
 
     def __len__(self) -> int:
         return len(self.nodes)
@@ -111,7 +113,13 @@ class Dag[T: cabc.Hashable]:
         num_outputs.flags.writeable = False
         return num_inputs, num_outputs
 
-    def _verify_sorted(self):
+    def _verify_unique(self) -> None:
+        values = [node.item() for node in self.nodes]
+
+        if len(values) != len({*values}):
+            raise ValueError("The values should be unique!")
+
+    def _verify_sorted(self) -> None:
         node_to_idx = self._node_index
 
         for idx, node in enumerate(self.nodes):
@@ -125,8 +133,25 @@ class Dag[T: cabc.Hashable]:
     def _node_index(self):
         return {key: idx for idx, key in enumerate(self)}
 
+    def networkx(self):
+        "Convert the graph to `nx.DiGraph`, using data dependencies as link."
+
+        import networkx as nx
+
+        graph: nx.Graph[T] = nx.Graph()
+
+        for node in self.nodes:
+            node_item = node.item()
+            graph.add_node(node_item)
+
+            for dep in node.deps():
+                dep_item = dep.item()
+                _ = graph.add_edge(dep_item, node_item)
+
+        return graph
+
     @classmethod
-    def from_output(cls, outputs: cabc.Iterable[DagNode[T]]) -> typing.Self:
+    def from_outputs(cls, outputs: cabc.Iterable[DagNode[T]]) -> typing.Self:
         visited: set[DagNode[T]] = set()
         for node in outputs:
             _collect_dag_nodes_rec(node, visited)

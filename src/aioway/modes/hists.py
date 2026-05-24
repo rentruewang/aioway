@@ -12,7 +12,7 @@ from collections import abc as cabc
 import torch
 
 from aioway._torch import is_leaf_has_grad
-from aioway._utils import find_nested_tensors
+from aioway._utils import find_nested_tensors, Dag, TupleDagNode
 from aioway.fn import Fn, TensorInput
 from aioway.schemas import Attr
 
@@ -127,6 +127,9 @@ class HistTensorGraph[T: HashableTensorInput](Hist[T]):
         # Update input.
         for input_tensor in thunk.inputs():
             self.input_to_thunk_list[input_tensor].append(thunk)
+
+    def dag(self) -> Dag:
+        raise NotImplementedError
 
     def networkx(self):
         "Convert the graph to `nx.DiGraph`, using data dependencies as link."
