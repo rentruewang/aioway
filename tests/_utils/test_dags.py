@@ -2,7 +2,7 @@
 
 import pytest
 
-from aioway.dags import Dag, TupleDagNode
+from aioway._utils import Dag, TupleDagNode
 
 
 @pytest.fixture
@@ -11,7 +11,7 @@ def dag():
     b = TupleDagNode(2, (a,))
     c = TupleDagNode(3, (a,))
     d = TupleDagNode(4, (a, c))
-    return Dag.from_output([a, b, c, d])
+    return Dag.from_outputs([a, b, c, d])
 
 
 def test_dag(dag: Dag[int]):

@@ -60,7 +60,7 @@ class TupleDagNode[T](DagNode[T]):
 
 
 @dcls.dataclass(frozen=True)
-class Dag[T: cabc.Hashable]:
+class Dag[T]:
     """
     `Dag` is a DAG of `DagNode`s, ordered in the linear sense.
 
