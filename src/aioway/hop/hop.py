@@ -7,6 +7,8 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
+from aioway.fn import TorchThunk
+
 __all__ = ["Hop"]
 
 
@@ -16,7 +18,7 @@ def hop_dcls(cls):
 
 
 @hop_dcls
-class Hop[T = object](abc.ABC):
+class Hop[T: TorchThunk[typing.Any] = TorchThunk[typing.Any]](abc.ABC):
     """
     `Hop` stands for [h]igh level [op]erator, or [h]igh level [o]peration [p]review.
     It is essentailly an unevaluated expression that supports inspection.

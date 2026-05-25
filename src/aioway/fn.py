@@ -13,7 +13,7 @@ import torch
 
 from aioway._utils import find_nested_tensors, render_fcall
 
-__all__ = ["Fn", "TensorInput", "Thunk", "TorchThunk", "torch_thunk_dcls"]
+__all__ = ["Fn", "TensorInput", "Thunk", "TorchThunk", "torch_thunk_dcls", "NodeFn"]
 
 LOGGER = logging.getLogger(__name__)
 _PENDING = object()
@@ -175,7 +175,7 @@ def torch_thunk_dcls(cls: type):
 @torch_thunk_dcls
 class TorchThunk[T: cabc.Callable[..., typing.Any]](abc.ABC):
     """
-    `BaseFn` is a really basic `Fn` that acts as a base class,
+    `TorchThunk` is a really basic `Fn` that acts as a base class,
     with some `torch` utilities.
     """
 
@@ -206,3 +206,40 @@ class TorchThunk[T: cabc.Callable[..., typing.Any]](abc.ABC):
     def inputs(self):
         yield from find_nested_tensors(self.args)
         yield from find_nested_tensors(self.kwargs)
+
+
+class NodeFn[T: cabc.Callable[..., typing.Any]](abc.ABC):
+    """
+    `TorchThunk` is a really basic `Fn` that acts as a base class,
+    with some `torch` utilities.
+    """
+
+    TYPE: typing.ClassVar[type[T]]
+    "The type of `self.func`. Used for filtering."
+
+    _: dcls.KW_ONLY
+
+    func: T
+    "The function to call. Must be callable.."
+
+    args: tuple[typing.Any, ...]
+    "The positional args."
+
+    kwargs: dict[str, typing.Any]
+    "The keyword arguments."
+
+    def __post_init__(self):
+        if not callable(self.func):
+            raise TypeError(f"{self.func=} is not callable.")
+
+        if not isinstance(self.args, tuple):
+            raise TypeError(f"{self.args=} is not a tuple.")
+
+        if not isinstance(self.kwargs, dict):
+            raise TypeError(f"{self.kwargs=} is not a dict.")
+
+    def do(self) -> object:
+        # args =
+        raise NotImplementedError
+
+        return self.func(*self.args, **self.kwargs)
