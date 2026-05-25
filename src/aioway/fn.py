@@ -12,8 +12,17 @@ from collections import abc as cabc
 import torch
 
 from aioway._utils import find_nested_tensors, render_fcall
+from aioway._utils.decomps import decomp_flatten, decomp_replace
 
-__all__ = ["Fn", "TensorInput", "Thunk", "TorchThunk", "torch_thunk_dcls"]
+__all__ = [
+    "Fn",
+    "TensorInput",
+    "Thunk",
+    "TorchThunk",
+    "thunk_dcls",
+    "NodeFn",
+    "NodeThunk",
+]
 
 LOGGER = logging.getLogger(__name__)
 _PENDING = object()
@@ -168,14 +177,14 @@ class Thunk:
 
 
 @typing.dataclass_transform()
-def torch_thunk_dcls(cls: type):
+def thunk_dcls(cls: type):
     return dcls.dataclass(match_args=False)(cls)
 
 
-@torch_thunk_dcls
+@thunk_dcls
 class TorchThunk[T: cabc.Callable[..., typing.Any]](abc.ABC):
     """
-    `BaseFn` is a really basic `Fn` that acts as a base class,
+    `TorchThunk` is a really basic `Fn` that acts as a base class,
     with some `torch` utilities.
     """
 
@@ -206,3 +215,67 @@ class TorchThunk[T: cabc.Callable[..., typing.Any]](abc.ABC):
     def inputs(self):
         yield from find_nested_tensors(self.args)
         yield from find_nested_tensors(self.kwargs)
+
+
+@thunk_dcls
+class NodeFn[T = object](abc.ABC):
+    """
+    A `NodeFn` is a `Fn` that has `NodeFn` dependencies.
+    """
+
+    @abc.abstractmethod
+    def deps(self) -> cabc.Iterator[NodeFn[T]]:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def do(self) -> T:
+        raise NotImplementedError
+
+    @classmethod
+    @abc.abstractmethod
+    def _node_type(cls) -> type[NodeFn]:
+        "The type of `self.func`. Used for filtering."
+
+        raise NotImplementedError
+
+
+@thunk_dcls
+class NodeThunk(NodeFn, abc.ABC):
+    """
+    `TorchThunk` is a really basic `Fn` that acts as a base class,
+    with some `torch` utilities.
+    """
+
+    _: dcls.KW_ONLY
+
+    func: cabc.Callable[..., object]
+    "The function to call. Must be callable.."
+
+    args: tuple[typing.Any, ...]
+    "The positional args."
+
+    kwargs: dict[str, typing.Any]
+    "The keyword arguments."
+
+    def __post_init__(self):
+        if not callable(self.func):
+            raise TypeError(f"{self.func=} is not callable.")
+
+        if not isinstance(self.args, tuple):
+            raise TypeError(f"{self.args=} is not a tuple.")
+
+        if not isinstance(self.kwargs, dict):
+            raise TypeError(f"{self.kwargs=} is not a dict.")
+
+    @typing.override
+    def deps(self):
+        yield from decomp_flatten(self.args, self._node_type())
+        yield from decomp_flatten(self.kwargs, self._node_type())
+
+    @typing.override
+    def do(self) -> object:
+        args = decomp_replace(self.args, self._node_type(), lambda node: node.do())
+        kwargs = decomp_replace(self.kwargs, self._node_type(), lambda node: node.do())
+        assert isinstance(args, cabc.Sequence)
+        assert isinstance(kwargs, cabc.Mapping)
+        return self.func(*args, **kwargs)
