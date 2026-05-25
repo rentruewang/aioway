@@ -109,7 +109,7 @@ class NnHopInit(HopInit):
         # Initialize here, cost will be tracked outside.
         module = self.nn_init.do()
 
-        return NnHopFwd(func=module, args=(self.input,), kwargs={})
+        return NnHopFwd(func=module, args=(self.input.do(),), kwargs={})
 
 
 @thunk_dcls

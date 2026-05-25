@@ -44,9 +44,19 @@ class HopInit(NodeFn, abc.ABC):
 
         raise NotImplementedError
 
+    @classmethod
+    @typing.override
+    def _node_type(cls):
+        return HopInit
+
 
 @thunk_dcls
 class HopFwd(NodeFn, abc.ABC):
     """
     `HopFwd` is the node that would be evaluated during run time.
     """
+
+    @classmethod
+    @typing.override
+    def _node_type(cls):
+        return HopFwd

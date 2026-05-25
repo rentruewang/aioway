@@ -5,18 +5,28 @@ import torch
 from torch import nn
 
 from aioway.hop import HopInit, NnHopFwd, TensorHopInit, build_nn_hop
+from aioway.modes.modules import NnInitFn
 
 
 @pytest.fixture
-def hop():
+def tensor_init():
     return TensorHopInit(tensor=torch.randn(100, 30))
 
 
-def test_hop(module_thunk, hop: TensorHopInit):
-    result = build_nn_hop(module_thunk, hop)
+def test_hop(module_thunk, tensor_init: TensorHopInit):
+    result = build_nn_hop(module_thunk, tensor_init)
     assert isinstance(result, HopInit)
 
     fwd = result.do()
     assert isinstance(fwd, NnHopFwd)
 
     assert all(isinstance(param, nn.Parameter) for param in fwd.parameters())
+
+
+def test_hop_linear(tensor_init: TensorHopInit):
+    linear = build_nn_hop(NnInitFn(nn.Linear, args=(30, 31), kwargs={}), tensor_init)
+    assert linear
+
+    result = linear.do().do()
+    assert isinstance(result, torch.Tensor)
+    assert result.shape == (100, 31)

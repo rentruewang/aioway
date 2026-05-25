@@ -231,16 +231,20 @@ class NodeFn[T = object](abc.ABC):
     def do(self) -> T:
         raise NotImplementedError
 
+    @classmethod
+    @abc.abstractmethod
+    def _node_type(cls) -> type[NodeFn]:
+        "The type of `self.func`. Used for filtering."
+
+        raise NotImplementedError
+
 
 @thunk_dcls
-class NodeThunk(NodeFn):
+class NodeThunk(NodeFn, abc.ABC):
     """
     `TorchThunk` is a really basic `Fn` that acts as a base class,
     with some `torch` utilities.
     """
-
-    TYPE: typing.ClassVar[type[NodeThunk]]
-    "The type of `self.func`. Used for filtering."
 
     _: dcls.KW_ONLY
 
@@ -265,13 +269,13 @@ class NodeThunk(NodeFn):
 
     @typing.override
     def deps(self):
-        yield from decomp_flatten(self.args, self.TYPE)
-        yield from decomp_flatten(self.kwargs, self.TYPE)
+        yield from decomp_flatten(self.args, self._node_type())
+        yield from decomp_flatten(self.kwargs, self._node_type())
 
     @typing.override
     def do(self) -> object:
-        args = decomp_replace(self.args, self.TYPE, NodeThunk.do)
-        kwargs = decomp_replace(self.kwargs, self.TYPE, NodeThunk.do)
+        args = decomp_replace(self.args, self._node_type(), lambda node: node.do())
+        kwargs = decomp_replace(self.kwargs, self._node_type(), lambda node: node.do())
         assert isinstance(args, cabc.Sequence)
         assert isinstance(kwargs, cabc.Mapping)
         return self.func(*args, **kwargs)
