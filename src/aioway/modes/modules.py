@@ -106,7 +106,7 @@ def _invoke_rec[T: NnModeOnOff[typing.Any, typing.Any]](
     # And go to the previous `if not stack` shortcut.
     # For this to work, `mode(thunk)` must call `_invoke_rec` indirectly,
     # therefore you must call `module_fwd` / `module_init`,
-    # or using `.do()` on `NnFwdFn` / `NnInitFn` does the same thing.
+    # or using `.__do__()` on `NnFwdFn` / `NnInitFn` does the same thing.
     with stack.borrow() as mode:
 
         if mode.on:
@@ -155,8 +155,11 @@ class NnFwdFn(TorchThunk[nn.Module]):
         return id(self)
 
     @typing.override
-    def do(self) -> object:
+    def __do__(self) -> object:
         return module_fwd(self.func, *self.args, **self.kwargs)
+
+    def fwd(self) -> object:
+        return self.__do__()
 
     def load_state_dict(
         self,
@@ -208,8 +211,11 @@ class NnInitFn(TorchThunk[type[nn.Module]]):
             raise TypeError(f"{self.func} should be a subclass of `nn.Module`.")
 
     @typing.override
-    def do(self) -> nn.Module:
+    def __do__(self) -> nn.Module:
         return module_init(self.func, *self.args, **self.kwargs)
+
+    def init(self) -> nn.Module:
+        return self.__do__()
 
 
 class NnInitMode(NnModeOnOff[NnInitFn, nn.Module], abc.ABC):

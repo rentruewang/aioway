@@ -36,13 +36,15 @@ class HopInit(NodeFn, abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def do(self) -> HopFwd:
+    def __do__(self) -> HopFwd:
+        raise NotImplementedError
+
+    def init(self):
         """
-        Evaluates the current operator and outputs the results.
-        The object must be decomposed into pure tensors (no extra items e.g. primitives).
+        Perform initialize and output a `HopFwd` object.
         """
 
-        raise NotImplementedError
+        return self.__do__()
 
     @classmethod
     @typing.override
