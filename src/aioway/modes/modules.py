@@ -13,7 +13,7 @@ import torch
 from torch import nn
 
 from aioway._utils import track_call_count
-from aioway.fn import Thunk, TorchThunk, torch_thunk_dcls
+from aioway.fn import Thunk, TorchThunk, thunk_dcls
 
 from ._on_off import OnOffCtx, OnOffStack
 
@@ -140,7 +140,7 @@ class NnModeOnOff[T, V = object](OnOffCtx, abc.ABC):
 
 
 @typing.final
-@torch_thunk_dcls
+@thunk_dcls
 class NnFwdFn(TorchThunk[nn.Module]):
     """
     `NnFwdFn` represents the module calls.
@@ -190,7 +190,7 @@ class NnFwdMode(NnModeOnOff[NnFwdFn], abc.ABC):
 
 
 @typing.final
-@torch_thunk_dcls
+@thunk_dcls
 class NnInitFn(TorchThunk[type[nn.Module]]):
     """
     `NnInitFn` are used to initialize `nn.Module`s.

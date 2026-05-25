@@ -12,8 +12,17 @@ from collections import abc as cabc
 import torch
 
 from aioway._utils import find_nested_tensors, render_fcall
+from aioway._utils.decomps import decomp_flatten, decomp_replace
 
-__all__ = ["Fn", "TensorInput", "Thunk", "TorchThunk", "torch_thunk_dcls", "NodeFn"]
+__all__ = [
+    "Fn",
+    "TensorInput",
+    "Thunk",
+    "TorchThunk",
+    "thunk_dcls",
+    "NodeFn",
+    "NodeThunk",
+]
 
 LOGGER = logging.getLogger(__name__)
 _PENDING = object()
@@ -168,11 +177,11 @@ class Thunk:
 
 
 @typing.dataclass_transform()
-def torch_thunk_dcls(cls: type):
+def thunk_dcls(cls: type):
     return dcls.dataclass(match_args=False)(cls)
 
 
-@torch_thunk_dcls
+@thunk_dcls
 class TorchThunk[T: cabc.Callable[..., typing.Any]](abc.ABC):
     """
     `TorchThunk` is a really basic `Fn` that acts as a base class,
@@ -208,18 +217,34 @@ class TorchThunk[T: cabc.Callable[..., typing.Any]](abc.ABC):
         yield from find_nested_tensors(self.kwargs)
 
 
-class NodeFn[T: cabc.Callable[..., typing.Any]](abc.ABC):
+@thunk_dcls
+class NodeFn[T = object](abc.ABC):
+    """
+    A `NodeFn` is a `Fn` that has `NodeFn` dependencies.
+    """
+
+    @abc.abstractmethod
+    def deps(self) -> cabc.Iterator[NodeFn[T]]:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def do(self) -> T:
+        raise NotImplementedError
+
+
+@thunk_dcls
+class NodeThunk(NodeFn):
     """
     `TorchThunk` is a really basic `Fn` that acts as a base class,
     with some `torch` utilities.
     """
 
-    TYPE: typing.ClassVar[type[T]]
+    TYPE: typing.ClassVar[type[NodeThunk]]
     "The type of `self.func`. Used for filtering."
 
     _: dcls.KW_ONLY
 
-    func: T
+    func: cabc.Callable[..., object]
     "The function to call. Must be callable.."
 
     args: tuple[typing.Any, ...]
@@ -238,8 +263,15 @@ class NodeFn[T: cabc.Callable[..., typing.Any]](abc.ABC):
         if not isinstance(self.kwargs, dict):
             raise TypeError(f"{self.kwargs=} is not a dict.")
 
-    def do(self) -> object:
-        # args =
-        raise NotImplementedError
+    @typing.override
+    def deps(self):
+        yield from decomp_flatten(self.args, self.TYPE)
+        yield from decomp_flatten(self.kwargs, self.TYPE)
 
-        return self.func(*self.args, **self.kwargs)
+    @typing.override
+    def do(self) -> object:
+        args = decomp_replace(self.args, self.TYPE, NodeThunk.do)
+        kwargs = decomp_replace(self.kwargs, self.TYPE, NodeThunk.do)
+        assert isinstance(args, cabc.Sequence)
+        assert isinstance(kwargs, cabc.Mapping)
+        return self.func(*args, **kwargs)

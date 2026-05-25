@@ -2,16 +2,21 @@
 
 import pytest
 import torch
+from torch import nn
 
-from aioway.hop import TensorHop, build_nn_hop
-from aioway.hop.hop import Hop
+from aioway.hop import HopInit, NnHopFwd, TensorHopInit, build_nn_hop
 
 
 @pytest.fixture
 def hop():
-    return TensorHop(tensor=torch.randn(100, 30))
+    return TensorHopInit(tensor=torch.randn(100, 30))
 
 
-def test_hop_from_nn_init(module_thunk, hop: TensorHop):
+def test_hop(module_thunk, hop: TensorHopInit):
     result = build_nn_hop(module_thunk, hop)
-    assert isinstance(result, Hop)
+    assert isinstance(result, HopInit)
+
+    fwd = result.do()
+    assert isinstance(fwd, NnHopFwd)
+
+    assert all(isinstance(param, nn.Parameter) for param in fwd.parameters())

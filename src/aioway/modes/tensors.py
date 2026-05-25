@@ -14,7 +14,7 @@ from torch import _ops, overrides
 from torch.utils import _python_dispatch as pyd
 
 from aioway._torch import is_aten_op, is_prim_op
-from aioway.fn import TorchThunk, torch_thunk_dcls
+from aioway.fn import TorchThunk, thunk_dcls
 
 from ._on_off import OnOffCtx, OnOffStack
 from .common import render_function_body_prefix
@@ -31,7 +31,7 @@ DISPATCHES: OnOffStack[TorchDispMode] = OnOffStack()
 
 
 @typing.final
-@torch_thunk_dcls
+@thunk_dcls
 class TorchFuncFn(TorchThunk[cabc.Callable[..., typing.Any]]):
     """
     `TorchFuncFn` is the thunk capturing the function calls initiated by `torch`.
@@ -52,7 +52,7 @@ class TorchFuncFn(TorchThunk[cabc.Callable[..., typing.Any]]):
 
 
 @typing.final
-@torch_thunk_dcls
+@thunk_dcls
 class TorchDispFn(TorchThunk[_ops.OpOverload]):
     """
     `TorchDispFn` is the thunk capturing the function calls initiated by `torch`.

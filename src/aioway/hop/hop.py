@@ -1,26 +1,26 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"The operator base class."
+"The [h]igh level [o]peration [p]review class."
 
 import abc
 import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-from aioway.fn import TorchThunk
+from aioway.fn import NodeFn, thunk_dcls
 
-__all__ = ["Hop"]
-
-
-@typing.dataclass_transform(frozen_default=True, kw_only_default=True)
-def hop_dcls(cls):
-    return dcls.dataclass(frozen=True, kw_only=True)(cls)
+__all__ = ["HopInit", "HopFwd"]
 
 
-@hop_dcls
-class Hop[T: TorchThunk[typing.Any] = TorchThunk[typing.Any]](abc.ABC):
+@typing.dataclass_transform(kw_only_default=True)
+def hop_init_dcls(cls):
+    return dcls.dataclass(match_args=True, kw_only=True)(cls)
+
+
+@hop_init_dcls
+class HopInit(NodeFn, abc.ABC):
     """
-    `Hop` stands for [h]igh level [op]erator, or [h]igh level [o]peration [p]review.
+    `HopInit` stands for [h]igh level [o]peration [p]review node.
     It is essentailly an unevaluated expression that supports inspection.
     """
 
@@ -28,7 +28,7 @@ class Hop[T: TorchThunk[typing.Any] = TorchThunk[typing.Any]](abc.ABC):
         return id(self)
 
     @abc.abstractmethod
-    def deps(self) -> cabc.Iterator[Hop]:
+    def deps(self) -> cabc.Iterator[HopInit]:
         """
         The dependent `Hop`s.
         """
@@ -36,10 +36,17 @@ class Hop[T: TorchThunk[typing.Any] = TorchThunk[typing.Any]](abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def do(self) -> T:
+    def do(self) -> HopFwd:
         """
         Evaluates the current operator and outputs the results.
         The object must be decomposed into pure tensors (no extra items e.g. primitives).
         """
 
         raise NotImplementedError
+
+
+@thunk_dcls
+class HopFwd(NodeFn, abc.ABC):
+    """
+    `HopFwd` is the node that would be evaluated during run time.
+    """

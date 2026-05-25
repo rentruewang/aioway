@@ -8,13 +8,33 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from .hop import Hop, hop_dcls
+from aioway.fn import thunk_dcls
 
-__all__ = ["TensorHop", "TensorListHop", "TensorDictHop"]
+from .hop import HopFwd, HopInit, hop_init_dcls
+
+__all__ = ["TensorHopInit", "TensorListHopInit", "TensorDictHopInit"]
 
 
-@hop_dcls
-class TensorHop(Hop[torch.Tensor]):
+@thunk_dcls
+class TensorHopFwd[T](HopFwd):
+    """
+    The `HopFwd` subclass for `torch.Tensor`s.
+    """
+
+    data: T
+
+    @typing.override
+    def deps(self):
+        return
+        yield
+
+    @typing.override
+    def do(self) -> T:
+        return self.data
+
+
+@hop_init_dcls
+class TensorHopInit(HopInit):
     """
     The `Hop` backed by a `torch.Tensor`.
     """
@@ -22,17 +42,17 @@ class TensorHop(Hop[torch.Tensor]):
     tensor: torch.Tensor
 
     @typing.override
-    def do(self) -> torch.Tensor:
-        return self.tensor
+    def do(self):
+        return TensorHopFwd(self.tensor)
 
     @typing.override
-    def deps(self) -> cabc.Iterator[Hop]:
+    def deps(self) -> cabc.Iterator[HopInit]:
         return
         yield
 
 
-@hop_dcls
-class TensorListHop(Hop[list[torch.Tensor]]):
+@hop_init_dcls
+class TensorListHopInit(HopInit):
     """
     The `Hop` backed by a `torch.Tensor`.
     """
@@ -41,17 +61,17 @@ class TensorListHop(Hop[list[torch.Tensor]]):
     "The list of tensor that backs the `Hop`."
 
     @typing.override
-    def do(self) -> list[torch.Tensor]:
-        return self.tensors
+    def do(self):
+        return TensorHopFwd(self.tensors)
 
     @typing.override
-    def deps(self) -> cabc.Iterator[Hop]:
+    def deps(self) -> cabc.Iterator[HopInit]:
         return
         yield
 
 
-@hop_dcls
-class TensorDictHop(Hop[td.TensorDict]):
+@hop_init_dcls
+class TensorDictHopInit(HopInit):
     """
     The `Hop` backed by a `torch.Tensor`.
     """
@@ -62,10 +82,10 @@ class TensorDictHop(Hop[td.TensorDict]):
     """
 
     @typing.override
-    def do(self) -> td.TensorDict:
-        return self.tdict
+    def do(self):
+        return TensorHopFwd[td.TensorDict](self.tdict)
 
     @typing.override
-    def deps(self) -> cabc.Iterator[Hop]:
+    def deps(self) -> cabc.Iterator[HopInit]:
         return
         yield
