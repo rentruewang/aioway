@@ -11,7 +11,7 @@ import torch
 
 from ..attrs import Attr
 
-__all__ = ["Tag", "tags_dcls", "extract_tags"]
+__all__ = ["Tag", "tags_dcls", "attach_tags", "extract_tags"]
 
 _TAG_NAME = re.compile(r"^__aioway_[a-zA-Z0-9_]+__$")
 
@@ -101,6 +101,11 @@ class Tag(abc.ABC):
             raise TypeError(f"The tag {tag} is of type {type(tag)}, expected {cls}.")
 
         return tag
+
+
+def attach_tags(tensor: torch.Tensor, *tags: Tag) -> None:
+    for tag in tags:
+        tag.attach(tensor)
 
 
 def extract_tags(tensor: torch.Tensor, /) -> dict[str, Tag]:

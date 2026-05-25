@@ -5,7 +5,7 @@
 groups = ["default", "build", "debugging", "networkx", "pre-commit", "tests"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:5df7db1195fb3b685868781c794ae2d37993119d744f5850a2350d9c8b838515"
+content_hash = "sha256:b46187d232c48db548c2fc8fb9cbd36601b110b2ca010d3ed49bc017bb054783"
 
 [[metadata.targets]]
 requires_python = ">=3.14,<3.15"
@@ -756,16 +756,6 @@ files = [
 ]
 
 [[package]]
-name = "farama-notifications"
-version = "0.0.6"
-summary = "Notifications for all Farama Foundation maintained libraries."
-groups = ["default"]
-files = [
-    {file = "farama_notifications-0.0.6-py3-none-any.whl", hash = "sha256:f84839188efa1ce5bb361c2a84881b2dc2c0d0d7fb661ff00421820170930935"},
-    {file = "farama_notifications-0.0.6.tar.gz", hash = "sha256:b19acac4bb41d76e59e03394b5dd165f4761c86fa327f56307a35cbee3b60158"},
-]
-
-[[package]]
 name = "fastjsonschema"
 version = "2.21.2"
 summary = "Fastest Python implementation of JSON schema"
@@ -865,23 +855,6 @@ dependencies = [
 files = [
     {file = "gitpython-3.1.50-py3-none-any.whl", hash = "sha256:d352abe2908d07355014abdd21ddf798c2a961469239afec4962e9da884858f9"},
     {file = "gitpython-3.1.50.tar.gz", hash = "sha256:80da2d12504d52e1f998772dc5baf6e553f8d2fcfe1fcc226c9d9a2ee3372dcc"},
-]
-
-[[package]]
-name = "gymnasium"
-version = "1.3.0"
-requires_python = ">=3.10"
-summary = "A standard API for reinforcement learning and a diverse set of reference environments (formerly Gym)."
-groups = ["default"]
-dependencies = [
-    "cloudpickle>=1.2.0",
-    "farama-notifications>=0.0.1",
-    "numpy>=1.21.0",
-    "typing-extensions>=4.3.0",
-]
-files = [
-    {file = "gymnasium-1.3.0-py3-none-any.whl", hash = "sha256:6b8c159a8540dcbcb221722d7efda24d78ebbcbc3bd2ea1c2611aa2a34471fc2"},
-    {file = "gymnasium-1.3.0.tar.gz", hash = "sha256:6939e86e835d6b71b6ba6bfd360487420876deafc79bfb7bacba83a7c446bcf3"},
 ]
 
 [[package]]
