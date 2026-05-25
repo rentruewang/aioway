@@ -21,6 +21,10 @@ class FuncHopFwd(NodeThunk, HopFwd):
     The `HopFwd` implementation for functions.
     """
 
+    @typing.override
+    def fwd(self) -> object:
+        return super().__do__()
+
 
 @hop_init_dcls
 class _CatStackHopInit(HopInit):
@@ -38,7 +42,7 @@ class _CatStackHopInit(HopInit):
     "The list of `Hop` that would evaluate each to a `torch.Tensor`."
 
     @typing.override
-    def __do__(self):
+    def init(self):
         tensors = [i.init() for i in self.inputs]
 
         if not is_list_of(torch.Tensor)(tensors):

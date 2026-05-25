@@ -243,9 +243,6 @@ class NodeFn[T = object](abc.ABC):
     def __do__(self) -> T:
         raise NotImplementedError
 
-    def fwd(self):
-        return self.__do__()
-
     @classmethod
     @abc.abstractmethod
     def _node_type(cls) -> type[NodeFn]:

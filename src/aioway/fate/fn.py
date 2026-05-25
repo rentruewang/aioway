@@ -39,11 +39,12 @@ class FateFn:
     def __repr__(self) -> str:
         return repr(self.fate)
 
+    @typing.final
     def __do__(self) -> object:
-        return self.fate()
+        return self()
 
     def __call__(self):
-        return self.__do__()
+        return self.fate()
 
     def inputs(self):
         yield from self.fate.inputs()

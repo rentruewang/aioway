@@ -45,11 +45,12 @@ class Fate(abc.ABC):
     def __repr__(self) -> str:
         return render_fcall("fate::" + self._name(), **dcls.asdict(self))
 
+    @typing.final
     def __do__(self) -> typing.Any:
-        return self.KEY(**dcls.asdict(self))
+        return self()
 
     def __call__(self):
-        return self.__do__()
+        return self.KEY(**dcls.asdict(self))
 
     @abc.abstractmethod
     def ok(self) -> bool:

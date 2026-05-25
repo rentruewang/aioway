@@ -35,16 +35,17 @@ class HopInit(NodeFn, abc.ABC):
 
         raise NotImplementedError
 
-    @abc.abstractmethod
+    @typing.final
     def __do__(self) -> HopFwd:
-        raise NotImplementedError
+        return self.init()
 
+    @abc.abstractmethod
     def init(self):
         """
         Perform initialize and output a `HopFwd` object.
         """
 
-        return self.__do__()
+        raise NotImplementedError
 
     @classmethod
     @typing.override
@@ -57,6 +58,14 @@ class HopFwd(NodeFn, abc.ABC):
     """
     `HopFwd` is the node that would be evaluated during run time.
     """
+
+    @typing.final
+    def __do__(self):
+        return self.fwd()
+
+    @abc.abstractmethod
+    def fwd(self) -> object:
+        return self.__do__()
 
     @classmethod
     @typing.override

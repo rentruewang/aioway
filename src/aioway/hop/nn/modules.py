@@ -49,11 +49,12 @@ class NnInit(abc.ABC):
     def __repr__(self) -> str:
         return render_fcall("nn_init::" + type(self).__qualname__, **dcls.asdict(self))
 
-    def __do__(self) -> nn.Module:
-        return NnInitFn(func=self.NN, args=(), kwargs=dcls.asdict(self)).init()
+    @typing.final
+    def __do__(self):
+        return self.init()
 
     def init(self) -> nn.Module:
-        return self.__do__()
+        return NnInitFn(func=self.NN, args=(), kwargs=dcls.asdict(self)).init()
 
     def apply_hop(self, input: HopInit):
         """
@@ -106,7 +107,7 @@ class NnHopInit(HopInit):
     def deps(self) -> cabc.Iterator[HopInit]:
         yield self.input
 
-    def __do__(self) -> NnHopFwd:
+    def init(self) -> NnHopFwd:
         "Pass the input to the module and returns the output."
 
         # Initialize here, cost will be tracked outside.
@@ -124,6 +125,10 @@ class NnHopFwd(NodeThunk, HopFwd):
 
     func: nn.Module
     "`NnHopFwd` stores the module."
+
+    @typing.override
+    def fwd(self) -> object:
+        return super().__do__()
 
     def parameters(self):
         "Pass forward the `.parameters()` of modules."
