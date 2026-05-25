@@ -11,7 +11,7 @@ from collections import abc as cabc
 import torch
 
 from aioway._torch import is_leaf_has_grad
-from aioway._utils import Dag, TupleDagNode, find_nested_tensors
+from aioway._utils import Dag, find_nested_tensors
 from aioway.fn import Fn, TensorInput
 from aioway.schemas import Attr
 
@@ -130,41 +130,19 @@ class HistTensorGraph[T: HashableTensorInput](Hist[T]):
     def dag(self) -> Dag[T]:
         "Conver the graph to a `Dag` for inspection and debugging."
 
-        thunk_idxs = {thunk.fn: idx for idx, thunk in enumerate(self.history)}
-        nodes: list[TupleDagNode[T]] = []
+        graph = self._thunk_graph()
+        return Dag.from_graph(graph)
 
-        for entry in self.history:
-            nodes.append(
-                self.__get_dag_thunk(
-                    thunk=entry.fn,
-                    thunk_idxs=thunk_idxs,
-                    nodes=nodes,
-                )
-            )
-
-        return Dag.from_outputs(nodes)
-
-    def __get_dag_thunk(
-        self, *, thunk: T, thunk_idxs: dict[T, int], nodes: list[TupleDagNode[T]]
-    ):
+    def _thunk_graph(self):
         outs = self.output_to_thunk_list
-        input_indices: list[int] = []
 
-        # From input -> someone's output -> map to thunk itself -> index.
-        def input_idxs():
+        # From input -> someone's output -> map to thunk itself.
+        def input_thunks(thunk: T):
             for tensor in thunk.inputs():
-                for input_fn in outs[tensor]:
-                    idx = thunk_idxs[input_fn]
-                    yield idx
+                for input_thunk in outs[tensor]:
+                    yield input_thunk
 
-        # Since `history` is by definition a topologically sorted array,
-        # the dependencies would always have smaller index (won't index OOB).
-        for in_idx in input_idxs():
-            assert in_idx < len(nodes)
-            input_indices.append(in_idx)
-
-        deps = tuple(nodes[idx] for idx in input_indices)
-        return TupleDagNode(thunk, deps)
+        return {entry.fn: list(input_thunks(entry.fn)) for entry in self.history}
 
     def inputs(self) -> set[torch.Tensor]:
         """

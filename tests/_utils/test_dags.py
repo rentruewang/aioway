@@ -2,19 +2,15 @@
 
 import pytest
 
-from aioway._utils import Dag, TupleDagNode
+from aioway._utils import Dag
 
 
 @pytest.fixture
 def dag():
-    a = TupleDagNode(1, ())
-    b = TupleDagNode(2, (a,))
-    c = TupleDagNode(3, (a,))
-    d = TupleDagNode(4, (a, c))
-    return Dag.from_outputs([a, b, c, d])
+    return Dag.from_graph({1: [], 2: [1], 3: [1], 4: [1, 3]})
 
 
 def test_dag(dag: Dag[int]):
-    assert dag[0].item() == 1
-    assert dag[3].item() == 4
-    assert {dag[1].item(), dag[2].item()} == {2, 3}
+    assert dag[0].data == 1
+    assert dag[3].data == 4
+    assert {dag[1].data, dag[2].data} == {2, 3}

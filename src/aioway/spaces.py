@@ -6,9 +6,12 @@ import abc
 import dataclasses as dcls
 import typing
 
-from .schemas import Schema
+import torch
 
-__all__ = ["space_dcls", "Space", "AnySpace"]
+from aioway._torch.fake import is_fake_tensor
+from aioway.schemas import Schema
+
+__all__ = ["Space", "AnySpace", "SchemaSpace"]
 
 
 @typing.dataclass_transform(frozen_default=True)
@@ -18,53 +21,49 @@ def space_dcls(cls):
 
 @space_dcls
 class Space(abc.ABC):
-    """
-    The base class for `Space`.
-    """
+    "Mostly a wrapper around a `gymnasium.Space` or items looking like those."
+
+    def __contains__(self, x: Schema | torch.Tensor, /) -> bool:
+        if isinstance(x, Schema):
+            x = x.to_fake_tensor()
+
+        if isinstance(x, torch.Tensor):
+            return self._contains_tensor(x)
+
+        raise TypeError(f"Unsupported {type(x)=}.")
 
     @abc.abstractmethod
-    def __contains__(self, schema: Schema, /) -> bool:
-        """
-        If a `schema` lies in a `Space`, `in` would be `True`.
-        """
-
+    def _contains_tensor(self, x: torch.Tensor) -> bool:
         raise NotImplementedError
 
 
 @space_dcls
 class AnySpace(Space):
-    """
-    No constraint on the input `Schema`.
-    """
-
     @typing.override
-    def __contains__(self, schema: Schema, /) -> bool:
+    def _contains_tensor(self, x: torch.Tensor) -> bool:
         return True
 
 
 @space_dcls
-class DiscreteSpace(Space):
-    "Discrete space that allows for arbitrary integers."
+class SchemaSpace(Space):
+    """
+    The space inspired by `gym.Box`. Only supports the ndarray version,
+    """
 
-    ndim: int
-    """
-    The number of dimensions of a discrete space. Must be >= 0.
-    """
+    schema: Schema
+    low: float = -float("inf")
+    high: float = float("inf")
+
+    def __post_init__(self):
+        if self.low > self.high:
+            raise ValueError(f"{self.low=} > {self.high=}.")
 
     @typing.override
-    def __contains__(self, schema: Schema, /) -> bool:
-        return schema.shape.ndim == self.ndim and schema.dtype.family == "int"
+    def _contains_tensor(self, x: torch.Tensor) -> bool:
+        if Schema.from_tensor(x) != self.schema:
+            return False
 
+        if is_fake_tensor(x):
+            return True
 
-@space_dcls
-class ContinuousSpace(Space):
-    "Continuous space that allows for arbitrary floating point numbers."
-
-    ndim: int
-    """
-    The number of dimensions of a discrete space. Must be >= 0.
-    """
-
-    @typing.override
-    def __contains__(self, schema: Schema, /) -> bool:
-        return schema.shape.ndim == self.ndim and schema.dtype.is_floating_point
+        return bool(torch.all(x >= self.low)) and bool(torch.all(x <= self.high))
