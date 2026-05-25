@@ -74,7 +74,7 @@ class Hist[T: Fn]:
 
     def execute(self, thunk: T) -> object:
         try:
-            result = thunk.do()
+            result = thunk.__do__()
         except Exception as e:
             self._append(thunk, e)
             raise

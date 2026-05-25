@@ -12,7 +12,7 @@ def test_nn_init(nn_init: NnInit):
 
 
 def test_nn_init_module(nn_init: NnInit):
-    module = nn_init.do()
+    module = nn_init.init()
     assert isinstance(module, nn.Module)
 
 
@@ -26,5 +26,5 @@ def test_sequential():
     )
     assert seq_init
     assert isinstance(seq_init, Sequential)
-    assert isinstance(seq_init.do(), nn.Sequential)
+    assert isinstance(seq_init.init(), nn.Sequential)
     assert len(seq_init.modules) == 3

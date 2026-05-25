@@ -36,11 +36,20 @@ class Fn[T = object](typing.Protocol):
 
     It stands for [f]unction [n]ode, or short for function.
 
-    `Fn.do()` executes the computation, `Fn` base class itself does not make any more assumption.
+    `Fn.__do__()` executes the computation, `Fn` base class itself does not make any more assumption.
+
+    Note that `.__do__()` should really not be called by users,
+    subclasses should define a canonical public function that calls `.__do__()`
+    for the shared utility, or else `.__do__()` would be everywhere and clutter the code.
     """
 
-    def do(self) -> T:
-        "Execute the computation."
+    def __do__(self) -> T:
+        """
+        Execute the computation. Subclass should choose an alias
+        instead of having `__do__` as public API because `Fn` is pervasive in `aioway`.
+        """
+
+        raise NotImplementedError
 
 
 @typing.runtime_checkable
@@ -58,7 +67,7 @@ class TensorInput(typing.Protocol):
 @typing.runtime_checkable
 class TensorNode(TensorInput, Fn, typing.Protocol):
     f"""
-    `TensorNode` have both tensor output (`.do()`) and tensor inputs (`.inputs()`).
+    `TensorNode` have both tensor output (`.__do__()`) and tensor inputs (`.inputs()`).
     The output itself does not need to be tensor, but must decompose (only) into tensors.
     """
 
@@ -113,7 +122,7 @@ class Thunk:
 
         return NotImplemented
 
-    def do(self) -> object:
+    def __do__(self) -> object:
         """
         Call and cache the function.
         """
@@ -209,8 +218,11 @@ class TorchThunk[T: cabc.Callable[..., typing.Any]](abc.ABC):
         if not isinstance(self.kwargs, dict):
             raise TypeError(f"{self.kwargs=} is not a dict.")
 
-    def do(self) -> object:
+    def __do__(self) -> object:
         return self.func(*self.args, **self.kwargs)
+
+    def evaluate(self):
+        return self.__do__()
 
     def inputs(self):
         yield from find_nested_tensors(self.args)
@@ -228,8 +240,11 @@ class NodeFn[T = object](abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def do(self) -> T:
+    def __do__(self) -> T:
         raise NotImplementedError
+
+    def fwd(self):
+        return self.__do__()
 
     @classmethod
     @abc.abstractmethod
@@ -273,9 +288,13 @@ class NodeThunk(NodeFn, abc.ABC):
         yield from decomp_flatten(self.kwargs, self._node_type())
 
     @typing.override
-    def do(self) -> object:
-        args = decomp_replace(self.args, self._node_type(), lambda node: node.do())
-        kwargs = decomp_replace(self.kwargs, self._node_type(), lambda node: node.do())
+    def __do__(self) -> object:
+        def call_do(fn: Fn):
+            return fn.__do__()
+
+        args = decomp_replace(self.args, self._node_type(), call_do)
+        kwargs = decomp_replace(self.kwargs, self._node_type(), call_do)
         assert isinstance(args, cabc.Sequence)
         assert isinstance(kwargs, cabc.Mapping)
+
         return self.func(*args, **kwargs)

@@ -49,16 +49,19 @@ class NnInit(abc.ABC):
     def __repr__(self) -> str:
         return render_fcall("nn_init::" + type(self).__qualname__, **dcls.asdict(self))
 
-    def do(self) -> nn.Module:
-        return NnInitFn(func=self.NN, args=(), kwargs=dcls.asdict(self)).do()
+    def __do__(self) -> nn.Module:
+        return NnInitFn(func=self.NN, args=(), kwargs=dcls.asdict(self)).init()
+
+    def init(self) -> nn.Module:
+        return self.__do__()
 
     def apply_hop(self, input: HopInit):
         """
         Apply the `NnInit` on the input `Hop` operator.
-        This operation calls `.do()` under the hood and initailizes a `nn.Module`.
+        Create an `Fn` that when called `.init()`, will initialize an `nn.Module`.
 
         Returns:
-            An `NnModuleHop` instance that uses the `input` as input and `.do()` as module.
+            An `NnHopInit` instance that uses the `input` as input and `self` as module.
         """
 
         return NnHopInit(nn_init=self, input=input)
@@ -94,7 +97,7 @@ class NnHopInit(HopInit):
     """
 
     nn_init: NnInit
-    "The `nn.Module` instance that takes in `input.do()` as input."
+    "The `nn.Module` instance that takes in `input.init()` as input."
 
     input: HopInit
     "The input `Hop`, must output in a way that `module` accepts."
@@ -103,13 +106,13 @@ class NnHopInit(HopInit):
     def deps(self) -> cabc.Iterator[HopInit]:
         yield self.input
 
-    def do(self) -> NnHopFwd:
+    def __do__(self) -> NnHopFwd:
         "Pass the input to the module and returns the output."
 
         # Initialize here, cost will be tracked outside.
-        module = self.nn_init.do()
+        module = self.nn_init.init()
 
-        return NnHopFwd(func=module, args=(self.input.do(),), kwargs={})
+        return NnHopFwd(func=module, args=(self.input.init(),), kwargs={})
 
 
 @thunk_dcls
