@@ -18,7 +18,7 @@ class Sequential(NnInit):
 
     Since the API of `nn.Sequential` takes in `*nn.Module`s,
     and there is no easy way of making that into a dataclass,
-    we must overwrite `.do` because the default is `NN(**dcls.asdict(self))`.
+    we must overwrite `.__do__` because the default is `NN(**dcls.asdict(self))`.
     """
 
     NN = nn.Sequential
