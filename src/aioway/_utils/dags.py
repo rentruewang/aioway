@@ -37,6 +37,14 @@ class Dag[T]:
     nodes: cabc.Sequence[DagNode[T]]
     "The list of nodes after topological sorting."
 
+    def __post_init__(self):
+        for node_idx, node in enumerate(self.nodes):
+            for dep in node.deps:
+                if self._lookup_node_idx(dep) < node_idx:
+                    continue
+
+                raise ValueError("The given nodes is not sorted!")
+
     @property
     def items(self) -> list[T]:
         "Get the underlying items."
