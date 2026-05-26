@@ -28,8 +28,12 @@ class HopInit(abc.ABC):
     def __hash__(self) -> int:
         return id(self)
 
-    @abc.abstractmethod
+    @typing.final
     def __call__(self) -> HopFwd:
+        return self.init()
+
+    @abc.abstractmethod
+    def init(self) -> HopFwd:
         raise NotImplementedError
 
     @typing.final

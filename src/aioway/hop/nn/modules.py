@@ -99,7 +99,8 @@ class NnHopInit(HopInit):
     input: HopInit
     "The input `Hop`, must output in a way that `module` accepts."
 
-    def __call__(self) -> NnHopFwd:
+    @typing.override
+    def init(self) -> NnHopFwd:
         "Pass the input to the module and returns the output."
 
         # Initialize here, cost will be tracked outside.

@@ -45,7 +45,7 @@ class _CatStackHopInit(HopInit):
     "The list of `Hop` that would evaluate each to a `torch.Tensor`."
 
     @typing.override
-    def __call__(self):
+    def init(self) -> FuncHopFwd:
         tensors = [i() for i in self.inputs]
 
         if not is_list_of(torch.Tensor)(tensors):

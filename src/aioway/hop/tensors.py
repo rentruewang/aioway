@@ -36,7 +36,7 @@ class TensorHopInit(HopInit):
     tensor: torch.Tensor
 
     @typing.override
-    def __call__(self):
+    def init(self):
         return TensorHopFwd(self.tensor)
 
 
@@ -50,7 +50,7 @@ class TensorListHopInit(HopInit):
     "The list of tensor that backs the `Hop`."
 
     @typing.override
-    def __call__(self):
+    def init(self):
         return TensorHopFwd(self.tensors)
 
 
@@ -66,5 +66,5 @@ class TensorDictHopInit(HopInit):
     """
 
     @typing.override
-    def __call__(self):
+    def init(self):
         return TensorHopFwd[td.TensorDict](self.tdict)
