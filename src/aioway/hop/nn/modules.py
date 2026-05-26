@@ -50,9 +50,9 @@ class NnInit(Fn, abc.ABC):
 
     @typing.final
     def __call__(self) -> nn.Module:
-        return self.build()
+        return self.init_nn()
 
-    def build(self) -> nn.Module:
+    def init_nn(self) -> nn.Module:
         thunk = NnInitFn(func=self.NN, args=(), kwargs=dcls.asdict(self))
         return thunk()
 
