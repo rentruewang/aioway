@@ -33,7 +33,7 @@ class Sequential(NnInit):
         self.modules = args
 
     @typing.override
-    def __call__(self) -> nn.Module:
+    def build(self) -> nn.Module:
         # Create `nn.Sequential` instance with `NnInitFn` is the best way
         # to ensure that the modes are invoked properly.
         thunk = NnInitFn(func=self.NN, args=self.modules, kwargs={})

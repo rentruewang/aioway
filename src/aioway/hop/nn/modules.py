@@ -48,7 +48,11 @@ class NnInit(Fn, abc.ABC):
     def __repr__(self) -> str:
         return render_fcall("nn_init::" + type(self).__qualname__, **dcls.asdict(self))
 
+    @typing.final
     def __call__(self) -> nn.Module:
+        return self.build()
+
+    def build(self) -> nn.Module:
         thunk = NnInitFn(func=self.NN, args=(), kwargs=dcls.asdict(self))
         return thunk()
 
