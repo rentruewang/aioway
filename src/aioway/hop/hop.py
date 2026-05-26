@@ -7,8 +7,8 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
+from aioway._fn import Fn, thunk_dcls
 from aioway._utils.decomps import decomp_flatten
-from aioway.fn import Fn, thunk_dcls
 
 __all__ = ["HopInit", "HopFwd"]
 
@@ -29,8 +29,8 @@ class HopInit(Fn, abc.ABC):
         return id(self)
 
     @typing.final
-    def __do__(self) -> HopFwd:
-        return self.init()
+    def __call__(self) -> HopFwd:
+        raise NotImplementedError
 
     @typing.final
     def deps(self) -> cabc.Iterator[HopInit]:
@@ -58,13 +58,9 @@ class HopFwd(Fn, abc.ABC):
     def __hash__(self):
         return id(self)
 
-    @typing.final
-    def __do__(self) -> object:
-        return self.fwd()
-
     @abc.abstractmethod
-    def fwd(self) -> object:
-        return self.__do__()
+    def __call__(self) -> object:
+        raise NotImplementedError
 
     @typing.final
     def deps(self) -> cabc.Iterator[HopFwd]:

@@ -6,8 +6,8 @@ import dataclasses as dcls
 import logging
 import typing
 
+from aioway._fn import Fn
 from aioway._torch import is_aten_op
-from aioway.fn import Fn
 
 from .fate import Fate, find_fate
 
@@ -39,11 +39,6 @@ class FateFn(Fn):
 
     def __repr__(self) -> str:
         return repr(self.fate)
-
-    @typing.final
-    @typing.override
-    def __do__(self) -> object:
-        return self()
 
     def __call__(self):
         return self.fate()

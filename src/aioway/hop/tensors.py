@@ -7,7 +7,7 @@ import typing
 import tensordict as td
 import torch
 
-from aioway.fn import thunk_dcls
+from aioway._fn import thunk_dcls
 
 from .hop import HopFwd, HopInit, hop_init_dcls
 

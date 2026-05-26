@@ -11,9 +11,9 @@ from collections import abc as cabc
 
 import torch
 
+from aioway._fn import Fn, TensorInput
 from aioway._torch import is_leaf_has_grad
 from aioway._utils import find_nested_tensors
-from aioway.fn import Fn, TensorInput
 from aioway.schemas import Attr
 
 from .common import replace_tensors_with_attr
@@ -24,6 +24,14 @@ __all__ = ["Hist", "HistTensorGraph"]
 
 
 class HashableTensorInput(typing.Hashable, TensorInput, Fn, typing.Protocol): ...
+
+
+@typing.runtime_checkable
+class TensorNode(TensorInput, Fn, typing.Protocol):
+    f"""
+    `TensorNode` have both tensor output (`__call__()`) and tensor inputs (`.inputs()`).
+    The output itself does not need to be tensor, but must decompose (only) into tensors.
+    """
 
 
 @dcls.dataclass(frozen=True)
@@ -75,7 +83,7 @@ class Hist[T: Fn]:
 
     def execute(self, thunk: T) -> object:
         try:
-            result = thunk.__do__()
+            result = thunk()
         except Exception as e:
             self._append(thunk, e)
             raise

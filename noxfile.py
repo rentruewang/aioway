@@ -91,13 +91,13 @@ def build():
 
 @nox_cmd
 def test():
-    "Nox `testing` command. Calls `pytest` command. Runs in multiple python versions (if supported)."
+    "Nox `test` command. Calls `pytest` command. Runs in multiple python versions (if supported)."
     pdm_run("pytest", *_current_session().posargs)
 
 
 @nox_cmd
 def format():
-    "Nox `formatting` command. Calls `autoflake`, `isort`, `black`, in that order."
+    "Nox `format` command. Calls `autoflake`, `isort`, `black`, in that order."
     autoflake()
     isort()
     black()
@@ -105,7 +105,7 @@ def format():
 
 @nox_cmd
 def format_check():
-    "Nox `formatting` command. Calls `autoflake`, `isort`, `black`, in that order."
+    "Nox `format_check` command. Calls `autoflake`, `isort`, `black`, in that order."
     autoflake_check()
     isort_check()
     black_check()
@@ -113,43 +113,43 @@ def format_check():
 
 @nox_cmd
 def autoflake():
-    "Nox `autoflake` command. Calls `autoflake` command."
+    "Nox `autoflake` command. Calls `autoflake`."
     pdm_run("autoflake", ".")
 
 
 @nox_cmd
 def autoflake_check():
-    "Nox `autoflake` command. Calls `autoflake` command."
+    "Nox `autoflake_check` command. Calls `autoflake --check`."
     pdm_run("autoflake", "--check", ".")
 
 
 @nox_cmd
 def isort():
-    "Nox `isort` command. Calls `isort` command."
+    "Nox `isort` command. Calls `isort`."
     pdm_run("isort", ".")
 
 
 @nox_cmd
 def isort_check():
-    "Nox `isort` command. Calls `isort` command."
+    "Nox `isort_check` command. Calls `isort --check`."
     pdm_run("isort", "--check", ".")
 
 
 @nox_cmd
 def black():
-    "Nox `black` command. Calls `black` command."
+    "Nox `black` command. Calls `black`."
     pdm_run("black", ".")
 
 
 @nox_cmd
 def black_check():
-    "Nox `black` command. Calls `black` command."
+    "Nox `black_check` command. Calls `black --check`."
     pdm_run("black", "--check", ".")
 
 
 @nox_cmd
 def type():
-    "Nox `type` command. Calls `mypy` command."
+    "Nox `type` command. Calls `mypy`."
     pdm_run("mypy", "--install-types", "--non-interactive", "src")
 
 

@@ -7,8 +7,8 @@ import typing
 
 from torch import nn
 
+from aioway._fn import Fn, thunk_dcls
 from aioway._utils import render_fcall
-from aioway.fn import Fn, thunk_dcls
 from aioway.modes import NnInitFn
 
 from ..hop import HopFwd, HopInit, hop_init_dcls
@@ -48,11 +48,8 @@ class NnInit(Fn, abc.ABC):
     def __repr__(self) -> str:
         return render_fcall("nn_init::" + type(self).__qualname__, **dcls.asdict(self))
 
-    @typing.final
-    def __do__(self) -> nn.Module:
-        return self.init()
-
-    def init(self) -> nn.Module:
+    @abc.abstractmethod
+    def __call__(self) -> nn.Module:
         return NnInitFn(func=self.NN, args=(), kwargs=dcls.asdict(self)).init()
 
     def apply_hop(self, input: HopInit):
@@ -135,12 +132,12 @@ class NnHopFwd(HopFwd):
         self.kwargs = kwargs
 
     @typing.override
-    def fwd(self) -> object:
-        def maybe_do(fn):
-            if isinstance(fn, Fn):
-                return fn.__do__()
+    def __call__(self) -> object:
+        def maybe_do(item):
+            if isinstance(item, Fn):
+                return item()
             else:
-                return fn
+                return item
 
         args = [maybe_do(arg) for arg in self.args]
         kwargs = {key: maybe_do(arg) for key, arg in self.kwargs.items()}

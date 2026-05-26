@@ -7,8 +7,8 @@ from collections import abc as cabc
 
 import torch
 
+from aioway._fn import thunk_dcls
 from aioway._utils import is_list_of
-from aioway.fn import thunk_dcls
 
 from .hop import HopFwd, HopInit, hop_init_dcls
 
@@ -22,12 +22,11 @@ class FuncHopFwd(HopFwd):
     """
 
     func: cabc.Callable[..., typing.Any]
-    args: tuple
-    kwargs: dict
+    args: tuple[typing.Any, ...]
+    kwargs: dict[str, typing.Any]
 
-    @typing.override
-    def fwd(self) -> object:
-        return super().__do__()
+    def __call__(self) -> object:
+        return self.func(*self.args, **self.kwargs)
 
 
 @hop_init_dcls
