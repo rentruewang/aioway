@@ -18,7 +18,7 @@ class Sequential(NnInit):
 
     Since the API of `nn.Sequential` takes in `*nn.Module`s,
     and there is no easy way of making that into a dataclass,
-    we must overwrite `.__do__` because the default is `NN(**dcls.asdict(self))`.
+    we must overwrite `.__call__` because the default is `NN(**dcls.asdict(self))`.
     """
 
     NN = nn.Sequential
@@ -33,7 +33,8 @@ class Sequential(NnInit):
         self.modules = args
 
     @typing.override
-    def init(self) -> nn.Module:
+    def init_nn(self) -> nn.Module:
         # Create `nn.Sequential` instance with `NnInitFn` is the best way
         # to ensure that the modes are invoked properly.
-        return NnInitFn(func=self.NN, args=self.modules, kwargs={}).init()
+        thunk = NnInitFn(func=self.NN, args=self.modules, kwargs={})
+        return thunk()

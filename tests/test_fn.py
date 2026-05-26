@@ -2,8 +2,8 @@
 
 import pytest
 
+from aioway._fn import Fn, TensorInput, TorchThunk
 from aioway.fate import Fate, FateFn
-from aioway.fn import Fn, TensorInput, TorchThunk
 from aioway.hop import HopInit
 from aioway.modes import HistTensorGraph, NnFwdFn, NnInitFn, TorchDispFn, TorchFuncFn
 

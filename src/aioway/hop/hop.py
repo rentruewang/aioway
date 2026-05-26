@@ -7,8 +7,8 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
+from aioway._fn import Fn, thunk_dcls
 from aioway._utils.decomps import decomp_flatten
-from aioway.fn import Fn, thunk_dcls
 
 __all__ = ["HopInit", "HopFwd"]
 
@@ -19,7 +19,7 @@ def hop_init_dcls(cls):
 
 
 @hop_init_dcls
-class HopInit(Fn, abc.ABC):
+class HopInit(abc.ABC):
     """
     `HopInit` stands for [h]igh level [o]peration [p]review node.
     It is essentailly an unevaluated expression that supports inspection.
@@ -29,8 +29,12 @@ class HopInit(Fn, abc.ABC):
         return id(self)
 
     @typing.final
-    def __do__(self) -> HopFwd:
+    def __call__(self) -> HopFwd:
         return self.init()
+
+    @abc.abstractmethod
+    def init(self) -> HopFwd:
+        raise NotImplementedError
 
     @typing.final
     def deps(self) -> cabc.Iterator[HopInit]:
@@ -39,14 +43,6 @@ class HopInit(Fn, abc.ABC):
         """
 
         yield from decomp_flatten(self, HopInit)
-
-    @abc.abstractmethod
-    def init(self) -> HopFwd:
-        """
-        Perform initialize and output a `HopFwd` object.
-        """
-
-        raise NotImplementedError
 
 
 @thunk_dcls
@@ -59,12 +55,12 @@ class HopFwd(Fn, abc.ABC):
         return id(self)
 
     @typing.final
-    def __do__(self) -> object:
-        return self.fwd()
+    def __call__(self) -> object:
+        return self.forward()
 
     @abc.abstractmethod
-    def fwd(self) -> object:
-        return self.__do__()
+    def forward(self) -> object:
+        raise NotImplementedError
 
     @typing.final
     def deps(self) -> cabc.Iterator[HopFwd]:

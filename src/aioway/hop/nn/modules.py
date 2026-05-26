@@ -7,8 +7,8 @@ import typing
 
 from torch import nn
 
+from aioway._fn import Fn, thunk_dcls
 from aioway._utils import render_fcall
-from aioway.fn import Fn, thunk_dcls
 from aioway.modes import NnInitFn
 
 from ..hop import HopFwd, HopInit, hop_init_dcls
@@ -49,16 +49,17 @@ class NnInit(Fn, abc.ABC):
         return render_fcall("nn_init::" + type(self).__qualname__, **dcls.asdict(self))
 
     @typing.final
-    def __do__(self) -> nn.Module:
-        return self.init()
+    def __call__(self) -> nn.Module:
+        return self.init_nn()
 
-    def init(self) -> nn.Module:
-        return NnInitFn(func=self.NN, args=(), kwargs=dcls.asdict(self)).init()
+    def init_nn(self) -> nn.Module:
+        thunk = NnInitFn(func=self.NN, args=(), kwargs=dcls.asdict(self))
+        return thunk()
 
     def apply_hop(self, input: HopInit):
         """
         Apply the `NnInit` on the input `Hop` operator.
-        Create an `Fn` that when called `.init()`, will initialize an `nn.Module`.
+        Create an `Fn` that when called `.__call__()`, will initialize an `nn.Module`.
 
         Returns:
             An `NnHopInit` instance that uses the `input` as input and `self` as module.
@@ -97,18 +98,19 @@ class NnHopInit(HopInit):
     """
 
     nn_init: NnInit
-    "The `nn.Module` instance that takes in `input.init()` as input."
+    "The `nn.Module` instance that takes in `input()` as input."
 
     input: HopInit
     "The input `Hop`, must output in a way that `module` accepts."
 
+    @typing.override
     def init(self) -> NnHopFwd:
         "Pass the input to the module and returns the output."
 
         # Initialize here, cost will be tracked outside.
-        module = self.nn_init.init()
+        module = self.nn_init()
 
-        return NnHopFwd(module, self.input.init())
+        return NnHopFwd(module, self.input())
 
 
 @thunk_dcls
@@ -135,12 +137,12 @@ class NnHopFwd(HopFwd):
         self.kwargs = kwargs
 
     @typing.override
-    def fwd(self) -> object:
-        def maybe_do(fn):
-            if isinstance(fn, Fn):
-                return fn.__do__()
+    def forward(self) -> object:
+        def maybe_do(item):
+            if isinstance(item, Fn):
+                return item()
             else:
-                return fn
+                return item
 
         args = [maybe_do(arg) for arg in self.args]
         kwargs = {key: maybe_do(arg) for key, arg in self.kwargs.items()}

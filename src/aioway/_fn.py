@@ -27,17 +27,12 @@ class Fn[T = object](typing.Protocol):
 
     It stands for [f]unction [n]ode, or short for function.
 
-    `Fn.__do__()` executes the computation, `Fn` base class itself does not make any more assumption.
-
-    Note that `.__do__()` should really not be called by users,
-    subclasses should define a canonical public function that calls `.__do__()`
-    for the shared utility, or else `.__do__()` would be everywhere and clutter the code.
+    `Fn()` executes the computation, `Fn` base class itself does not make any more assumption.
     """
 
-    def __do__(self) -> T:
+    def __call__(self) -> T:
         """
-        Execute the computation. Subclass should choose an alias
-        instead of having `__do__` as public API because `Fn` is pervasive in `aioway`.
+        Execute the computation.
         """
 
         raise NotImplementedError
@@ -55,15 +50,7 @@ class TensorInput(typing.Protocol):
         raise NotImplementedError
 
 
-@typing.runtime_checkable
-class TensorNode(TensorInput, Fn, typing.Protocol):
-    f"""
-    `TensorNode` have both tensor output (`.__do__()`) and tensor inputs (`.inputs()`).
-    The output itself does not need to be tensor, but must decompose (only) into tensors.
-    """
-
-
-class Thunk(Fn):
+class Thunk:
     """
     The thunk for any function, handles both pretty printing and storing the result.
 
@@ -110,12 +97,7 @@ class Thunk(Fn):
 
         return NotImplemented
 
-    @typing.override
-    def __do__(self) -> object:
-        """
-        Call and cache the function.
-        """
-
+    def __call__(self) -> object:
         return self.func(*self.args, **self.kwargs)
 
     @typing.override
@@ -155,7 +137,7 @@ def thunk_dcls(cls: type):
 
 
 @thunk_dcls
-class TorchThunk[T: cabc.Callable[..., typing.Any]](Fn, abc.ABC):
+class TorchThunk[T: cabc.Callable[..., typing.Any]](abc.ABC):
     """
     `TorchThunk` is a really basic `Fn` that acts as a base class,
     with some `torch` utilities.
@@ -182,12 +164,8 @@ class TorchThunk[T: cabc.Callable[..., typing.Any]](Fn, abc.ABC):
         if not isinstance(self.kwargs, dict):
             raise TypeError(f"{self.kwargs=} is not a dict.")
 
-    @typing.override
-    def __do__(self) -> object:
+    def __call__(self) -> object:
         return self.func(*self.args, **self.kwargs)
-
-    def evaluate(self):
-        return self.__do__()
 
     def inputs(self):
         yield from find_nested_tensors(self.args)
