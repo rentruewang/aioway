@@ -4,8 +4,6 @@
 
 import abc
 import dataclasses as dcls
-import functools
-import graphlib
 import typing
 from collections import abc as cabc
 
@@ -49,11 +47,6 @@ class HopInit(Fn, abc.ABC):
         """
 
         raise NotImplementedError
-
-    @property
-    @typing.override
-    def types(cls):
-        return HopInit
 
 
 @thunk_dcls

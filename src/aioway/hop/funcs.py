@@ -21,6 +21,10 @@ class FuncHopFwd(HopFwd):
     The `HopFwd` implementation for functions.
     """
 
+    func: cabc.Callable[..., typing.Any]
+    args: tuple
+    kwargs: dict
+
     @typing.override
     def fwd(self) -> object:
         return super().__do__()

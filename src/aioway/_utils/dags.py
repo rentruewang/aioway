@@ -5,9 +5,8 @@
 import dataclasses as dcls
 import functools
 import graphlib
-
-from collections import abc as cabc
 import typing
+from collections import abc as cabc
 
 __all__ = ["DagNode", "Dag", "topo_sort"]
 

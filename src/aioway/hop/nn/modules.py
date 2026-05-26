@@ -108,7 +108,7 @@ class NnHopInit(HopInit):
         # Initialize here, cost will be tracked outside.
         module = self.nn_init.init()
 
-        return NnHopFwd(func=module, args=(self.input.init(),), kwargs={})
+        return NnHopFwd(module, self.input.init())
 
 
 @thunk_dcls
@@ -121,9 +121,30 @@ class NnHopFwd(HopFwd):
     func: nn.Module
     "`NnHopFwd` stores the module."
 
+    args: tuple[typing.Any, ...]
+    "The *args arguments."
+
+    kwargs: dict[str, typing.Any]
+    "The **kwargs arguments."
+
+    def __init__(self, func: nn.Module, *args, **kwargs):
+        super().__init__()
+
+        self.func = func
+        self.args = args
+        self.kwargs = kwargs
+
     @typing.override
     def fwd(self) -> object:
-        return super().__do__()
+        def maybe_do(fn):
+            if isinstance(fn, Fn):
+                return fn.__do__()
+            else:
+                return fn
+
+        args = [maybe_do(arg) for arg in self.args]
+        kwargs = {key: maybe_do(arg) for key, arg in self.kwargs.items()}
+        return self.func(*args, **kwargs)
 
     def parameters(self):
         "Pass forward the `.parameters()` of modules."
