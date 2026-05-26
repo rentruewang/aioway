@@ -3,11 +3,13 @@
 "Simple dag utilites."
 
 import dataclasses as dcls
+import functools
 import graphlib
+
 from collections import abc as cabc
 import typing
 
-__all__ = ["DagNode", "topo_sort"]
+__all__ = ["DagNode", "Dag", "topo_sort"]
 
 
 class DagNode[T](typing.NamedTuple):
@@ -27,7 +29,53 @@ class DagNode[T](typing.NamedTuple):
     """
 
 
-def topo_sort[T](graph: cabc.Sequence[DagNode[T]], /) -> list[T]:
+@dcls.dataclass(frozen=True)
+class Dag[T]:
+    """
+    The sorted results of `topo_sort`.
+    """
+
+    nodes: cabc.Sequence[DagNode[T]]
+    "The list of nodes after topological sorting."
+
+    @property
+    def items(self) -> list[T]:
+        "Get the underlying items."
+
+        return [node.key for node in self.nodes]
+
+    def num_inputs(self):
+        ins, _ = self._num_ins_outs
+        return ins
+
+    def num_outputs(self):
+        _, outs = self._num_ins_outs
+        return outs
+
+    @functools.cached_property
+    def _num_ins_outs(self):
+        input_cnt = [0] * len(self.nodes)
+        output_cnt = [0] * len(self.nodes)
+
+        for node_idx, node in enumerate(self.nodes):
+            for dep in node.deps:
+                assert node_idx == self._lookup_node_idx(node.key)
+                dep_idx = self._lookup_node_idx(dep)
+
+                input_cnt[node_idx] += 1
+                output_cnt[dep_idx] += 1
+
+        return tuple(input_cnt), tuple(output_cnt)
+
+    def _lookup_node_idx(self, key: T) -> int:
+        return self._ids_to_idx[id(key)]
+
+    @functools.cached_property
+    def _ids_to_idx(self) -> dict[int, int]:
+        return {id(node.key): idx for idx, node in enumerate(self.nodes)}
+
+
+def topo_sort[T](graph: cabc.Sequence[DagNode[T]], /) -> Dag[T]:
     """
     Create a `Dag` from the given `graph`. Uses `TopologicalSorter` under the hood.
     Used this instead of `TopologicalSorter` when data is not `Hashable`.
@@ -40,7 +88,7 @@ def topo_sort[T](graph: cabc.Sequence[DagNode[T]], /) -> list[T]:
     topo_sorter.prepare()
     ordered_ids = list(topo_sorter.static_order())
 
-    return [deref[i].key for i in ordered_ids]
+    return Dag([deref[i] for i in ordered_ids])
 
 
 def _validate_graph_ids[T](graph: cabc.Sequence[DagNode[T]]) -> dict[int, DagNode[T]]:

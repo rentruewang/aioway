@@ -4,6 +4,7 @@
 
 import abc
 import dataclasses as dcls
+import functools
 import graphlib
 import typing
 from collections import abc as cabc
@@ -42,7 +43,7 @@ class HopInit(Fn, abc.ABC):
         yield from decomp_flatten(self, HopInit)
 
     @abc.abstractmethod
-    def init(self):
+    def init(self) -> HopFwd:
         """
         Perform initialize and output a `HopFwd` object.
         """
@@ -79,30 +80,3 @@ class HopFwd(Fn, abc.ABC):
         """
 
         yield from decomp_flatten(self, HopFwd)
-
-
-@dcls.dataclass
-class HopDag[H: HopInit | HopFwd]:
-    ordered: list[H]
-
-    @classmethod
-    def from_list(cls, items: cabc.Sequence[H]) -> typing.Self:
-        """
-        Convert from a list of `items`.
-        Uses `id` so nodes are all treated as different,
-        even if links and data are all equal.
-        """
-
-        dag_nodes = []
-
-        ids = {id(item): item for item in items}
-
-        graph: dict[int, list[int]] = {}
-        for item in items:
-            dep_ids = [id(dep) for dep in item.deps()]
-            graph[id(item)] = dep_ids
-            assert all(di in ids for di in dep_ids)
-
-        topo_sorter = graphlib.TopologicalSorter(graph)
-        topo_sorter.prepare()
-        return cls([ids[i] for i in topo_sorter.static_order()])
