@@ -25,7 +25,7 @@ class FuncHopFwd(HopFwd):
     args: tuple[typing.Any, ...]
     kwargs: dict[str, typing.Any]
 
-    def __call__(self) -> object:
+    def forward(self) -> object:
         return self.func(*self.args, **self.kwargs)
 
 

@@ -132,7 +132,7 @@ class NnHopFwd(HopFwd):
         self.kwargs = kwargs
 
     @typing.override
-    def __call__(self) -> object:
+    def forward(self) -> object:
         def maybe_do(item):
             if isinstance(item, Fn):
                 return item()

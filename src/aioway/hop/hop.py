@@ -50,8 +50,12 @@ class HopFwd(Fn, abc.ABC):
     def __hash__(self):
         return id(self)
 
-    @abc.abstractmethod
+    @typing.final
     def __call__(self) -> object:
+        return self.forward()
+
+    @abc.abstractmethod
+    def forward(self) -> object:
         raise NotImplementedError
 
     @typing.final

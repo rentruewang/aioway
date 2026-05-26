@@ -23,7 +23,7 @@ class TensorHopFwd[T](HopFwd):
     data: T
 
     @typing.override
-    def __call__(self) -> T:
+    def forward(self) -> T:
         return self.data
 
 
