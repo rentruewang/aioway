@@ -36,4 +36,5 @@ class Sequential(NnInit):
     def __call__(self) -> nn.Module:
         # Create `nn.Sequential` instance with `NnInitFn` is the best way
         # to ensure that the modes are invoked properly.
-        return NnInitFn(func=self.NN, args=self.modules, kwargs={}).init()
+        thunk = NnInitFn(func=self.NN, args=self.modules, kwargs={})
+        return thunk()

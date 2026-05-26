@@ -28,7 +28,7 @@ class HopInit(Fn, abc.ABC):
     def __hash__(self) -> int:
         return id(self)
 
-    @typing.final
+    @abc.abstractmethod
     def __call__(self) -> HopFwd:
         raise NotImplementedError
 
@@ -39,14 +39,6 @@ class HopInit(Fn, abc.ABC):
         """
 
         yield from decomp_flatten(self, HopInit)
-
-    @abc.abstractmethod
-    def init(self) -> HopFwd:
-        """
-        Perform initialize and output a `HopFwd` object.
-        """
-
-        raise NotImplementedError
 
 
 @thunk_dcls

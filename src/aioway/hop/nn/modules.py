@@ -48,14 +48,14 @@ class NnInit(Fn, abc.ABC):
     def __repr__(self) -> str:
         return render_fcall("nn_init::" + type(self).__qualname__, **dcls.asdict(self))
 
-    @abc.abstractmethod
     def __call__(self) -> nn.Module:
-        return NnInitFn(func=self.NN, args=(), kwargs=dcls.asdict(self)).init()
+        thunk = NnInitFn(func=self.NN, args=(), kwargs=dcls.asdict(self))
+        return thunk()
 
     def apply_hop(self, input: HopInit):
         """
         Apply the `NnInit` on the input `Hop` operator.
-        Create an `Fn` that when called `.init()`, will initialize an `nn.Module`.
+        Create an `Fn` that when called `.__call__()`, will initialize an `nn.Module`.
 
         Returns:
             An `NnHopInit` instance that uses the `input` as input and `self` as module.
@@ -94,18 +94,18 @@ class NnHopInit(HopInit):
     """
 
     nn_init: NnInit
-    "The `nn.Module` instance that takes in `input.init()` as input."
+    "The `nn.Module` instance that takes in `input()` as input."
 
     input: HopInit
     "The input `Hop`, must output in a way that `module` accepts."
 
-    def init(self) -> NnHopFwd:
+    def __call__(self) -> NnHopFwd:
         "Pass the input to the module and returns the output."
 
         # Initialize here, cost will be tracked outside.
-        module = self.nn_init.init()
+        module = self.nn_init()
 
-        return NnHopFwd(module, self.input.init())
+        return NnHopFwd(module, self.input())
 
 
 @thunk_dcls

@@ -45,8 +45,8 @@ class _CatStackHopInit(HopInit):
     "The list of `Hop` that would evaluate each to a `torch.Tensor`."
 
     @typing.override
-    def init(self):
-        tensors = [i.init() for i in self.inputs]
+    def __call__(self):
+        tensors = [i() for i in self.inputs]
 
         if not is_list_of(torch.Tensor)(tensors):
             raise TypeError(f"Expected a `list[torch.Tensor]`, but {tensors=}.")
