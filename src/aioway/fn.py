@@ -13,7 +13,7 @@ import torch
 
 from aioway._utils import find_nested_tensors, render_fcall
 
-__all__ = ["Fn", "TensorInput", "Thunk", "TorchThunk", "torch_thunk_dcls"]
+__all__ = ["Fn", "TensorInput", "Thunk", "TorchThunk", "thunk_dcls"]
 
 LOGGER = logging.getLogger(__name__)
 _PENDING = object()
@@ -27,11 +27,20 @@ class Fn[T = object](typing.Protocol):
 
     It stands for [f]unction [n]ode, or short for function.
 
-    `Fn.do()` executes the computation, `Fn` base class itself does not make any more assumption.
+    `Fn.__do__()` executes the computation, `Fn` base class itself does not make any more assumption.
+
+    Note that `.__do__()` should really not be called by users,
+    subclasses should define a canonical public function that calls `.__do__()`
+    for the shared utility, or else `.__do__()` would be everywhere and clutter the code.
     """
 
-    def do(self) -> T:
-        "Execute the computation."
+    def __do__(self) -> T:
+        """
+        Execute the computation. Subclass should choose an alias
+        instead of having `__do__` as public API because `Fn` is pervasive in `aioway`.
+        """
+
+        raise NotImplementedError
 
 
 @typing.runtime_checkable
@@ -49,12 +58,12 @@ class TensorInput(typing.Protocol):
 @typing.runtime_checkable
 class TensorNode(TensorInput, Fn, typing.Protocol):
     f"""
-    `TensorNode` have both tensor output (`.do()`) and tensor inputs (`.inputs()`).
+    `TensorNode` have both tensor output (`.__do__()`) and tensor inputs (`.inputs()`).
     The output itself does not need to be tensor, but must decompose (only) into tensors.
     """
 
 
-class Thunk:
+class Thunk(Fn):
     """
     The thunk for any function, handles both pretty printing and storing the result.
 
@@ -89,9 +98,6 @@ class Thunk:
         self._args = args
         self._kwargs = kwargs
 
-        self.__result: object = _PENDING
-        "If not evaluated, it's pending."
-
     @typing.override
     def __eq__(self, other: object) -> bool:
         if isinstance(other, Thunk):
@@ -104,18 +110,13 @@ class Thunk:
 
         return NotImplemented
 
-    def do(self) -> object:
+    @typing.override
+    def __do__(self) -> object:
         """
         Call and cache the function.
         """
 
-        if self.__result is _PENDING:
-            try:
-                self.__result = self.func(*self.args, **self.kwargs)
-            except Exception as e:
-                raise RuntimeError(f"Thunk: {self!r} evaluation failed.") from e
-
-        return self.__result
+        return self.func(*self.args, **self.kwargs)
 
     @typing.override
     def __repr__(self) -> str:
@@ -145,37 +146,18 @@ class Thunk:
     def __string(self) -> str:
         args, kwargs = self.args, self.kwargs
 
-        fcall = render_fcall(self.func, *args, **kwargs)
-
-        if self.done:
-            fcall += f" -> {self.__result}"
-
-        return fcall
-
-    def result(self) -> object:
-        "Get the result. If not done, an error is raised."
-
-        if self.__result is None:
-            raise RuntimeError("Still waiting for the result!")
-
-        return self.__result
-
-    @property
-    def done(self) -> bool:
-        "Returns if the cache is previously called."
-
-        return self.__result is not _PENDING
+        return render_fcall(self.func, *args, **kwargs)
 
 
 @typing.dataclass_transform()
-def torch_thunk_dcls(cls: type):
+def thunk_dcls(cls: type):
     return dcls.dataclass(match_args=False)(cls)
 
 
-@torch_thunk_dcls
-class TorchThunk[T: cabc.Callable[..., typing.Any]](abc.ABC):
+@thunk_dcls
+class TorchThunk[T: cabc.Callable[..., typing.Any]](Fn, abc.ABC):
     """
-    `BaseFn` is a really basic `Fn` that acts as a base class,
+    `TorchThunk` is a really basic `Fn` that acts as a base class,
     with some `torch` utilities.
     """
 
@@ -200,8 +182,12 @@ class TorchThunk[T: cabc.Callable[..., typing.Any]](abc.ABC):
         if not isinstance(self.kwargs, dict):
             raise TypeError(f"{self.kwargs=} is not a dict.")
 
-    def do(self) -> object:
+    @typing.override
+    def __do__(self) -> object:
         return self.func(*self.args, **self.kwargs)
+
+    def evaluate(self):
+        return self.__do__()
 
     def inputs(self):
         yield from find_nested_tensors(self.args)

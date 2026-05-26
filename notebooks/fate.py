@@ -7,7 +7,7 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.19.3
 #   kernelspec:
-#     display_name: .venv
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
@@ -27,6 +27,16 @@ with torch_fake_mode():
 # %%
 with fake_fn() as hists, PrintTorchDisp().enter():
     a + b
+
+# %%
+with fake_fn() as hists, PrintTorchDisp().enter():
+    c = a + b
+    d = a + c
+    e = a + d
+    f = d + b
+    g = e + f
+
+hists.dispatch
 
 # %%
 with fake_fn(), PrintTorchDisp().enter():

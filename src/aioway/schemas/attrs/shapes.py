@@ -6,7 +6,6 @@ from collections import abc as cabc
 
 import numpy as np
 import torch
-from numpy import typing as npt
 
 from aioway._utils import is_list_of, is_tuple_of
 
@@ -16,9 +15,6 @@ __all__ = ["ShapeLike", "Shape"]
 
 LOGGER = logging.getLogger(__name__)
 
-type _PrimitiveNumber = float | int | bool
-type _IntArrayLike = tuple[int, ...] | list[int] | npt.NDArray[np.int_]
-type ShapeCmpType = Shape | torch.Size | _IntArrayLike | _PrimitiveNumber
 
 type ShapeLike = int | cabc.Iterable[int] | Shape
 "Types convertible to `Shape`s. Note that `int` can be converted as well."

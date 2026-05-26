@@ -4,7 +4,12 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
+import numpy as np
+from numpy import typing as npt
+
 __all__ = [
+    "IntArrayLike",
+    "FloatArrayLike",
     "is_list_of",
     "is_tuple_of",
     "is_seq_of",
@@ -12,6 +17,9 @@ __all__ = [
     "SeqKeysView",
     "SetKeysView",
 ]
+
+type IntArrayLike = tuple[int, ...] | list[int] | npt.NDArray[np.int_]
+type FloatArrayLike = tuple[float, ...] | list[float] | npt.NDArray[np.floating]
 
 
 @typing.no_type_check

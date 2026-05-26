@@ -4,7 +4,7 @@
 
 import collections
 import dataclasses as dcls
-import itertools
+import graphlib
 import logging
 import typing
 from collections import abc as cabc
@@ -75,7 +75,7 @@ class Hist[T: Fn]:
 
     def execute(self, thunk: T) -> object:
         try:
-            result = thunk.do()
+            result = thunk.__do__()
         except Exception as e:
             self._append(thunk, e)
             raise
@@ -128,24 +128,24 @@ class HistTensorGraph[T: HashableTensorInput](Hist[T]):
         for input_tensor in thunk.inputs():
             self.input_to_thunk_list[input_tensor].append(thunk)
 
-    def networkx(self):
-        "Convert the graph to `nx.DiGraph`, using data dependencies as link."
+    def topo_sort(self) -> list[T]:
+        "Sort the tensor graph topologically."
 
-        import networkx as nx
+        graph = self._thunk_graph()
+        topo_sorter = graphlib.TopologicalSorter(graph)
+        topo_sorter.prepare()
+        return list(topo_sorter.static_order())
 
-        graph: nx.DiGraph[T] = nx.DiGraph()
-        graph.add_nodes_from(hist.fn for hist in self.history)
-
-        ins = self.input_to_thunk_list
+    def _thunk_graph(self):
         outs = self.output_to_thunk_list
 
-        tensors = set(ins.keys()).intersection(outs.keys())
+        # From input -> someone's output -> map to thunk itself.
+        def input_thunks(thunk: T):
+            for tensor in thunk.inputs():
+                for input_thunk in outs[tensor]:
+                    yield input_thunk
 
-        for tensor in tensors:
-            for out_thunk, in_thunk in itertools.product(outs[tensor], ins[tensor]):
-                _ = graph.add_edge(out_thunk, in_thunk)
-
-        return graph
+        return {entry.fn: list(input_thunks(entry.fn)) for entry in self.history}
 
     def inputs(self) -> set[torch.Tensor]:
         """

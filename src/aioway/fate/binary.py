@@ -55,7 +55,7 @@ class _BinaryUFunc(Fate, abc.ABC):
         )
 
     @typing.override
-    def do(self) -> torch.Tensor:
+    def __call__(self) -> torch.Tensor:
         return self.BINARY(self.self, self.other * self.alpha)
 
     @typing.final

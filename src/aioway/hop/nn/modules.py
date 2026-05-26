@@ -4,16 +4,16 @@ import abc
 import dataclasses as dcls
 import inspect
 import typing
-from collections import abc as cabc
 
 from torch import nn
 
 from aioway._utils import render_fcall
+from aioway.fn import Fn, thunk_dcls
 from aioway.modes import NnInitFn
 
-from ..hop import Hop, hop_dcls
+from ..hop import HopFwd, HopInit, hop_init_dcls
 
-__all__ = ["NnInit", "find_nn_init", "build_nn_hop"]
+__all__ = ["NnInit", "find_nn_init", "build_nn_hop", "NnHopInit", "NnHopFwd"]
 
 _NN_INITS: dict[type[nn.Module], type[NnInit]] = {}
 
@@ -25,7 +25,7 @@ def nn_init_dcls(cls):
 
 
 @nn_init_dcls
-class NnInit(abc.ABC):
+class NnInit(Fn, abc.ABC):
     """
     `NnInit` records the signature of an `nn.Module` initialization, and creates it.
 
@@ -48,19 +48,23 @@ class NnInit(abc.ABC):
     def __repr__(self) -> str:
         return render_fcall("nn_init::" + type(self).__qualname__, **dcls.asdict(self))
 
-    def do(self) -> nn.Module:
-        return NnInitFn(func=self.NN, args=(), kwargs=dcls.asdict(self)).do()
+    @typing.final
+    def __do__(self) -> nn.Module:
+        return self.init()
 
-    def apply_hop(self, input: Hop):
+    def init(self) -> nn.Module:
+        return NnInitFn(func=self.NN, args=(), kwargs=dcls.asdict(self)).init()
+
+    def apply_hop(self, input: HopInit):
         """
         Apply the `NnInit` on the input `Hop` operator.
-        This operation calls `.do()` under the hood and initailizes a `nn.Module`.
+        Create an `Fn` that when called `.init()`, will initialize an `nn.Module`.
 
         Returns:
-            An `NnModuleHop` instance that uses the `input` as input and `.do()` as module.
+            An `NnHopInit` instance that uses the `input` as input and `self` as module.
         """
 
-        return NnHop(module=self.do(), input=input)
+        return NnHopInit(nn_init=self, input=input)
 
 
 def find_nn_init(thunk: NnInitFn, /) -> NnInit | None:
@@ -75,7 +79,7 @@ def find_nn_init(thunk: NnInitFn, /) -> NnInit | None:
     return nn_init_type(*thunk.args, **thunk.kwargs)
 
 
-def build_nn_hop(thunk: NnInitFn, input: Hop) -> Hop | None:
+def build_nn_hop(thunk: NnInitFn, input: HopInit) -> HopInit | None:
     """
     Build a high level operator from the `thunk` with `input` as input.
     """
@@ -86,23 +90,62 @@ def build_nn_hop(thunk: NnInitFn, input: Hop) -> Hop | None:
     return nn_init.apply_hop(input)
 
 
-@hop_dcls
-class NnHop(Hop):
+@hop_init_dcls
+class NnHopInit(HopInit):
     """
     The `nn.Module` high level operator.
     """
 
-    module: nn.Module
-    "The `nn.Module` instance that takes in `input.do()` as input."
+    nn_init: NnInit
+    "The `nn.Module` instance that takes in `input.init()` as input."
 
-    input: Hop
+    input: HopInit
     "The input `Hop`, must output in a way that `module` accepts."
 
-    @typing.override
-    def deps(self) -> cabc.Iterator[Hop]:
-        yield self.input
-
-    def do(self):
+    def init(self) -> NnHopFwd:
         "Pass the input to the module and returns the output."
 
-        return self.module(self.input)
+        # Initialize here, cost will be tracked outside.
+        module = self.nn_init.init()
+
+        return NnHopFwd(module, self.input.init())
+
+
+@thunk_dcls
+class NnHopFwd(HopFwd):
+    """
+    The `HopFwdNode` subclass for `nn.Module`s.
+    It is a thunk so it has args, kwargs as attributes.
+    """
+
+    func: nn.Module
+    "`NnHopFwd` stores the module."
+
+    args: tuple[typing.Any, ...]
+    "The *args arguments."
+
+    kwargs: dict[str, typing.Any]
+    "The **kwargs arguments."
+
+    def __init__(self, func: nn.Module, *args, **kwargs):
+        super().__init__()
+
+        self.func = func
+        self.args = args
+        self.kwargs = kwargs
+
+    @typing.override
+    def fwd(self) -> object:
+        def maybe_do(fn):
+            if isinstance(fn, Fn):
+                return fn.__do__()
+            else:
+                return fn
+
+        args = [maybe_do(arg) for arg in self.args]
+        kwargs = {key: maybe_do(arg) for key, arg in self.kwargs.items()}
+        return self.func(*args, **kwargs)
+
+    def parameters(self):
+        "Pass forward the `.parameters()` of modules."
+        yield from self.func.parameters()

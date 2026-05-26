@@ -10,7 +10,7 @@ from collections import abc as cabc
 import torch
 
 from .attrs import Attr, Device, DType, Layout, Shape
-from .tags import Tag, extract_tags
+from .tags import Tag, attach_tags, extract_tags
 
 __all__ = ["Schema", "SchemaDict"]
 
@@ -24,7 +24,7 @@ class Schema:
     attr: Attr
     "The attribute of a `torch.Tensor`."
 
-    tags: dict[str, Tag]
+    tags: dict[str, Tag] = dcls.field(default_factory=dict)
     "The tags attached to the `torch.Tensor`."
 
     def __post_init__(self):
@@ -50,6 +50,15 @@ class Schema:
     @property
     def requires_grad(self) -> bool:
         return self.attr.requires_grad
+
+    def to_fake_tensor(self) -> torch.Tensor:
+        """
+        Convert the `Schema` to a `FakeTensor`, adding the tags.
+        """
+
+        tensor = self.attr.to_fake_tensor()
+        attach_tags(tensor, *self.tags.values())
+        return tensor
 
     @classmethod
     def from_tensor(cls, tensor: torch.Tensor, /) -> typing.Self:

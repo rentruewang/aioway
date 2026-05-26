@@ -44,7 +44,7 @@ class _HasRichFlagMixin:
 class PrintNnInit(NnInitMode):
     def __call__(self, thunk: NnInitFn) -> nn.Module:
         print("invoke", thunk)
-        result = thunk.do()
+        result = thunk.init()
         print("return", thunk, "->", result)
         return result
 
@@ -52,7 +52,7 @@ class PrintNnInit(NnInitMode):
 class PrintNnFwd(NnFwdMode):
     def __call__(self, thunk: NnFwdFn) -> object:
         print("invoke", thunk)
-        result = thunk.do()
+        result = thunk.fwd()
         print("return", thunk, "->", replace_tensors_with_attr(result))
         return result
 
@@ -76,7 +76,7 @@ class _TorchThunkPrinter:
 
     def __call__(self, thunk: TorchFuncFn | TorchDispFn) -> object:
         self.print("invoke", thunk)
-        result = thunk.do()
+        result = thunk.evaluate()
         self.print("return", thunk, "->", replace_tensors_with_attr(result))
         return result
 
@@ -99,7 +99,7 @@ class LogTorchFunc(TorchFuncMode):
 
     @typing.override
     def __call__(self, thunk: TorchFuncFn) -> object:
-        result = thunk.do()
+        result = thunk.evaluate()
         self.logger.log(self.level, "%s", thunk)
         return result
 
@@ -118,7 +118,7 @@ class LogTorchDis(TorchDispMode):
 
     @typing.override
     def __call__(self, thunk: TorchDispFn) -> object:
-        result = thunk.do()
+        result = thunk.evaluate()
         self.logger.log(self.level, "%s", thunk)
         return result
 
@@ -126,7 +126,7 @@ class LogTorchDis(TorchDispMode):
 class CloneDispatchOp(TorchDispMode):
     @typing.override
     def __call__(self, thunk: TorchDispFn, /) -> object:
-        result = thunk.do()
+        result = thunk.evaluate()
 
         # In fake mode, clone the tensor to prevent `FakeTensor` reuse. Should be cheap.
         if current_fake_mode():

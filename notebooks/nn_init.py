@@ -34,7 +34,7 @@ nn_init = find_nn_init(
 nn_init
 
 # %%
-module = nn_init.do()
+module = nn_init.init()
 module
 
 # %% [markdown]
