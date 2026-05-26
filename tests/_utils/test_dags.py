@@ -19,4 +19,4 @@ def dag() -> list[int]:
 def test_dag(dag: list[int]):
     assert dag[0] == 1
     assert dag[3] == 4
-    assert {dag[1], dag[2]} == {2, 3}
+    assert set(dag[1:3]) == {2, 3}
