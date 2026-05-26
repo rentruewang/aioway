@@ -8,7 +8,7 @@ from collections import abc as cabc
 import torch
 
 from aioway._utils import is_list_of
-from aioway.fn import NodeThunk, thunk_dcls
+from aioway.fn import thunk_dcls
 
 from .hop import HopFwd, HopInit, hop_init_dcls
 
@@ -16,10 +16,18 @@ __all__ = ["CatHop", "StackHop"]
 
 
 @thunk_dcls
-class FuncHopFwd(NodeThunk, HopFwd):
+class FuncHopFwd(HopFwd):
     """
     The `HopFwd` implementation for functions.
     """
+
+    func: cabc.Callable[..., typing.Any]
+    args: tuple
+    kwargs: dict
+
+    @typing.override
+    def fwd(self) -> object:
+        return super().__do__()
 
 
 @hop_init_dcls
@@ -38,17 +46,13 @@ class _CatStackHopInit(HopInit):
     "The list of `Hop` that would evaluate each to a `torch.Tensor`."
 
     @typing.override
-    def __do__(self):
+    def init(self):
         tensors = [i.init() for i in self.inputs]
 
         if not is_list_of(torch.Tensor)(tensors):
             raise TypeError(f"Expected a `list[torch.Tensor]`, but {tensors=}.")
 
         return FuncHopFwd(func=self.FUNCTION, args=(tensors,), kwargs={"dim": self.dim})
-
-    @typing.override
-    def deps(self) -> cabc.Iterator[HopInit]:
-        yield from self.inputs
 
 
 @hop_init_dcls

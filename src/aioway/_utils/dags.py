@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"A simple DAG that renders itself and converts to `networkx`."
+"Simple dag utilites."
 
 import dataclasses as dcls
 import functools
@@ -8,110 +8,109 @@ import graphlib
 import typing
 from collections import abc as cabc
 
-import numpy as np
-
-__all__ = ["Dag", "DagNode"]
+__all__ = ["DagNode", "Dag", "topo_sort"]
 
 
-@dcls.dataclass(frozen=True, slots=True)
-class DagNode[T]:
+class DagNode[T](typing.NamedTuple):
     """
-    `DagNode` is an interface that
+    `DagNode` essentially is a `key: list[value]` mapping pair,
+    but `key` does not need to be hashable. Each data must have unique `id`.
     """
 
-    data: T
+    key: T
     """
     The underlying data.
     """
 
-    deps: list[int]
+    deps: list[T]
     """
-    List of parent indices.
+    List of parents.
     """
 
 
 @dcls.dataclass(frozen=True)
-class Dag[T: cabc.Hashable]:
+class Dag[T]:
     """
-    `Dag` is a DAG of `DagNode`s, ordered in the linear sense.
-
-    If calling the constructor directly, the `nodes` must be ordered linearly already.
-    Using `from_*` classmethod instead of the constructors would topo sort the data.
+    The sorted results of `topo_sort`.
     """
 
-    nodes: list[DagNode[T]]
-    "The topologically sorted `T`s list."
+    nodes: cabc.Sequence[DagNode[T]]
+    "The list of nodes after topological sorting."
 
-    def __post_init__(self) -> None:
-        self._verify_sorted()
-
-    def __len__(self) -> int:
-        return len(self.nodes)
-
-    def __getitem__(self, idx: int) -> DagNode[T]:
-        return self.nodes[idx]
-
-    def __iter__(self):
-        for node in self.nodes:
-            yield node
-
-    def deps_of(self, idx: int) -> list[int]:
-        return self.nodes[idx].deps
-
-    @property
-    def num_inputs(self):
-        i, _ = self._num_inputs_outputs
-        return i
-
-    @property
-    def num_outputs(self):
-        _, o = self._num_inputs_outputs
-        return o
-
-    @functools.cached_property
-    def _num_inputs_outputs(self):
-        num_inputs = np.zeros(len(self), dtype=int)
-        num_outputs = np.zeros(len(self), dtype=int)
-
+    def __post_init__(self):
         for node_idx, node in enumerate(self.nodes):
-            for dep_idx in node.deps:
-                num_inputs[node_idx] += 1
-                num_outputs[dep_idx] += 1
-
-        # Make them immutable.
-        num_inputs.flags.writeable = False
-        num_outputs.flags.writeable = False
-        return num_inputs, num_outputs
-
-    def _verify_sorted(self) -> None:
-        for idx, node in enumerate(self.nodes):
-            for dep_idx in node.deps:
-                if dep_idx < idx:
+            for dep in node.deps:
+                if self._lookup_node_idx(dep) < node_idx:
                     continue
 
-                elif dep_idx == idx:
-                    raise ValueError(f"Self reference link detected on {idx=}.")
+                raise ValueError("The given nodes is not sorted!")
 
-                else:
-                    raise ValueError(f"At {idx=}, {dep_idx=} is greater.")
+    @property
+    def items(self) -> list[T]:
+        "Get the underlying items."
 
-    @classmethod
-    def from_graph(cls, graph: cabc.Mapping[T, cabc.Iterable[T]]) -> typing.Self:
-        """
-        Create a `Dag` from the given `graph`.
-        Uses `graphlib.TopologicalSorter` under the hood.
-        """
+        return [node.key for node in self.nodes]
 
-        topo_sorter = graphlib.TopologicalSorter(graph)
-        topo_sorter.prepare()
-        ordered_list = list(topo_sorter.static_order())
+    def num_inputs(self):
+        ins, _ = self._num_ins_outs
+        return ins
 
-        item_idx = {item: idx for idx, item in enumerate(ordered_list)}
-        dag_list: list[DagNode[T]] = []
+    def num_outputs(self):
+        _, outs = self._num_ins_outs
+        return outs
 
-        for item in ordered_list:
-            dag_list.append(
-                DagNode(data=item, deps=[item_idx[dep] for dep in graph[item]])
-            )
+    @functools.cached_property
+    def _num_ins_outs(self):
+        input_cnt = [0] * len(self.nodes)
+        output_cnt = [0] * len(self.nodes)
 
-        return cls(dag_list)
+        for node_idx, node in enumerate(self.nodes):
+            for dep in node.deps:
+                assert node_idx == self._lookup_node_idx(node.key)
+                dep_idx = self._lookup_node_idx(dep)
+
+                input_cnt[node_idx] += 1
+                output_cnt[dep_idx] += 1
+
+        return tuple(input_cnt), tuple(output_cnt)
+
+    def _lookup_node_idx(self, key: T) -> int:
+        return self._ids_to_idx[id(key)]
+
+    @functools.cached_property
+    def _ids_to_idx(self) -> dict[int, int]:
+        return {id(node.key): idx for idx, node in enumerate(self.nodes)}
+
+
+def topo_sort[T](graph: cabc.Sequence[DagNode[T]], /) -> Dag[T]:
+    """
+    Create a `Dag` from the given `graph`. Uses `TopologicalSorter` under the hood.
+    Used this instead of `TopologicalSorter` when data is not `Hashable`.
+    """
+
+    deref = _validate_graph_ids(graph)
+
+    sortable_graph = {id(node.key): [id(dep) for dep in node.deps] for node in graph}
+    topo_sorter = graphlib.TopologicalSorter(sortable_graph)
+    topo_sorter.prepare()
+    ordered_ids = list(topo_sorter.static_order())
+
+    return Dag([deref[i] for i in ordered_ids])
+
+
+def _validate_graph_ids[T](graph: cabc.Sequence[DagNode[T]]) -> dict[int, DagNode[T]]:
+    "Validate the graph and return a dictionary used to deref the `id`s."
+
+    # Check if data all have unique ids.
+    data_ids = [id(node.key) for node in graph]
+    data_ids_set = frozenset(data_ids)
+
+    if len(data_ids_set) != len(data_ids):
+        raise ValueError("All data must have unique ids!")
+
+    for node in graph:
+        for dep in node.deps:
+            if id(dep) not in data_ids_set:
+                raise ValueError("Contains dependencies not in the key of `graph`.")
+
+    return {id(node.key): node for node in graph}

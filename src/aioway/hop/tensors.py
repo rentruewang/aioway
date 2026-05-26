@@ -3,7 +3,6 @@
 "The `Hop`s backed by torch tensors."
 
 import typing
-from collections import abc as cabc
 
 import tensordict as td
 import torch
@@ -24,12 +23,7 @@ class TensorHopFwd[T](HopFwd):
     data: T
 
     @typing.override
-    def deps(self):
-        return
-        yield
-
-    @typing.override
-    def __do__(self) -> T:
+    def fwd(self) -> T:
         return self.data
 
 
@@ -42,13 +36,8 @@ class TensorHopInit(HopInit):
     tensor: torch.Tensor
 
     @typing.override
-    def __do__(self):
+    def init(self):
         return TensorHopFwd(self.tensor)
-
-    @typing.override
-    def deps(self) -> cabc.Iterator[HopInit]:
-        return
-        yield
 
 
 @hop_init_dcls
@@ -61,13 +50,8 @@ class TensorListHopInit(HopInit):
     "The list of tensor that backs the `Hop`."
 
     @typing.override
-    def __do__(self):
+    def init(self):
         return TensorHopFwd(self.tensors)
-
-    @typing.override
-    def deps(self) -> cabc.Iterator[HopInit]:
-        return
-        yield
 
 
 @hop_init_dcls
@@ -82,10 +66,5 @@ class TensorDictHopInit(HopInit):
     """
 
     @typing.override
-    def __do__(self):
+    def init(self):
         return TensorHopFwd[td.TensorDict](self.tdict)
-
-    @typing.override
-    def deps(self) -> cabc.Iterator[HopInit]:
-        return
-        yield

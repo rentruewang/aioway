@@ -154,12 +154,12 @@ class NnFwdFn(TorchThunk[nn.Module]):
     def __hash__(self) -> int:
         return id(self)
 
-    @typing.override
+    @typing.final
     def __do__(self) -> object:
-        return module_fwd(self.func, *self.args, **self.kwargs)
+        return self.fwd()
 
     def fwd(self) -> object:
-        return self.__do__()
+        return module_fwd(self.func, *self.args, **self.kwargs)
 
     def load_state_dict(
         self,
@@ -210,12 +210,12 @@ class NnInitFn(TorchThunk[type[nn.Module]]):
         if not isinstance(self.func, type) or not issubclass(self.func, nn.Module):
             raise TypeError(f"{self.func} should be a subclass of `nn.Module`.")
 
-    @typing.override
+    @typing.final
     def __do__(self) -> nn.Module:
-        return module_init(self.func, *self.args, **self.kwargs)
+        return self.init()
 
     def init(self) -> nn.Module:
-        return self.__do__()
+        return module_init(self.func, *self.args, **self.kwargs)
 
 
 class NnInitMode(NnModeOnOff[NnInitFn, nn.Module], abc.ABC):

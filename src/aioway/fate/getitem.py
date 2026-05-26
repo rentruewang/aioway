@@ -16,10 +16,6 @@ class _BaseGetItem(Fate, abc.ABC):
     self: torch.Tensor
     indices: list[torch.Tensor]
 
-    if typing.TYPE_CHECKING:
-        # GetItem has `torch.Tensor` as output.
-        def __do__(self) -> torch.Tensor: ...
-
     def __hash__(self) -> int:
         return id(self)
 
@@ -36,7 +32,7 @@ class BooleanMasking(_BaseGetItem):
         return len(self.indices) == 1 and self.indices[0].dtype == torch.bool
 
     @typing.override
-    def __do__(self) -> torch.Tensor:
+    def __call__(self) -> torch.Tensor:
         return self.self
 
 

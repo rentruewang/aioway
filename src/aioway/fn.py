@@ -12,17 +12,8 @@ from collections import abc as cabc
 import torch
 
 from aioway._utils import find_nested_tensors, render_fcall
-from aioway._utils.decomps import decomp_flatten, decomp_replace
 
-__all__ = [
-    "Fn",
-    "TensorInput",
-    "Thunk",
-    "TorchThunk",
-    "thunk_dcls",
-    "NodeFn",
-    "NodeThunk",
-]
+__all__ = ["Fn", "TensorInput", "Thunk", "TorchThunk", "thunk_dcls"]
 
 LOGGER = logging.getLogger(__name__)
 _PENDING = object()
@@ -72,7 +63,7 @@ class TensorNode(TensorInput, Fn, typing.Protocol):
     """
 
 
-class Thunk:
+class Thunk(Fn):
     """
     The thunk for any function, handles both pretty printing and storing the result.
 
@@ -107,9 +98,6 @@ class Thunk:
         self._args = args
         self._kwargs = kwargs
 
-        self.__result: object = _PENDING
-        "If not evaluated, it's pending."
-
     @typing.override
     def __eq__(self, other: object) -> bool:
         if isinstance(other, Thunk):
@@ -122,18 +110,13 @@ class Thunk:
 
         return NotImplemented
 
+    @typing.override
     def __do__(self) -> object:
         """
         Call and cache the function.
         """
 
-        if self.__result is _PENDING:
-            try:
-                self.__result = self.func(*self.args, **self.kwargs)
-            except Exception as e:
-                raise RuntimeError(f"Thunk: {self!r} evaluation failed.") from e
-
-        return self.__result
+        return self.func(*self.args, **self.kwargs)
 
     @typing.override
     def __repr__(self) -> str:
@@ -163,26 +146,7 @@ class Thunk:
     def __string(self) -> str:
         args, kwargs = self.args, self.kwargs
 
-        fcall = render_fcall(self.func, *args, **kwargs)
-
-        if self.done:
-            fcall += f" -> {self.__result}"
-
-        return fcall
-
-    def result(self) -> object:
-        "Get the result. If not done, an error is raised."
-
-        if self.__result is None:
-            raise RuntimeError("Still waiting for the result!")
-
-        return self.__result
-
-    @property
-    def done(self) -> bool:
-        "Returns if the cache is previously called."
-
-        return self.__result is not _PENDING
+        return render_fcall(self.func, *args, **kwargs)
 
 
 @typing.dataclass_transform()
@@ -191,7 +155,7 @@ def thunk_dcls(cls: type):
 
 
 @thunk_dcls
-class TorchThunk[T: cabc.Callable[..., typing.Any]](abc.ABC):
+class TorchThunk[T: cabc.Callable[..., typing.Any]](Fn, abc.ABC):
     """
     `TorchThunk` is a really basic `Fn` that acts as a base class,
     with some `torch` utilities.
@@ -218,6 +182,7 @@ class TorchThunk[T: cabc.Callable[..., typing.Any]](abc.ABC):
         if not isinstance(self.kwargs, dict):
             raise TypeError(f"{self.kwargs=} is not a dict.")
 
+    @typing.override
     def __do__(self) -> object:
         return self.func(*self.args, **self.kwargs)
 
@@ -227,74 +192,3 @@ class TorchThunk[T: cabc.Callable[..., typing.Any]](abc.ABC):
     def inputs(self):
         yield from find_nested_tensors(self.args)
         yield from find_nested_tensors(self.kwargs)
-
-
-@thunk_dcls
-class NodeFn[T = object](abc.ABC):
-    """
-    A `NodeFn` is a `Fn` that has `NodeFn` dependencies.
-    """
-
-    @abc.abstractmethod
-    def deps(self) -> cabc.Iterator[NodeFn[T]]:
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def __do__(self) -> T:
-        raise NotImplementedError
-
-    def fwd(self):
-        return self.__do__()
-
-    @classmethod
-    @abc.abstractmethod
-    def _node_type(cls) -> type[NodeFn]:
-        "The type of `self.func`. Used for filtering."
-
-        raise NotImplementedError
-
-
-@thunk_dcls
-class NodeThunk(NodeFn, abc.ABC):
-    """
-    `TorchThunk` is a really basic `Fn` that acts as a base class,
-    with some `torch` utilities.
-    """
-
-    _: dcls.KW_ONLY
-
-    func: cabc.Callable[..., object]
-    "The function to call. Must be callable.."
-
-    args: tuple[typing.Any, ...]
-    "The positional args."
-
-    kwargs: dict[str, typing.Any]
-    "The keyword arguments."
-
-    def __post_init__(self):
-        if not callable(self.func):
-            raise TypeError(f"{self.func=} is not callable.")
-
-        if not isinstance(self.args, tuple):
-            raise TypeError(f"{self.args=} is not a tuple.")
-
-        if not isinstance(self.kwargs, dict):
-            raise TypeError(f"{self.kwargs=} is not a dict.")
-
-    @typing.override
-    def deps(self):
-        yield from decomp_flatten(self.args, self._node_type())
-        yield from decomp_flatten(self.kwargs, self._node_type())
-
-    @typing.override
-    def __do__(self) -> object:
-        def call_do(fn: Fn):
-            return fn.__do__()
-
-        args = decomp_replace(self.args, self._node_type(), call_do)
-        kwargs = decomp_replace(self.kwargs, self._node_type(), call_do)
-        assert isinstance(args, cabc.Sequence)
-        assert isinstance(kwargs, cabc.Mapping)
-
-        return self.func(*args, **kwargs)
