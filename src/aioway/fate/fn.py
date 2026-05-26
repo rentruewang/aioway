@@ -7,6 +7,7 @@ import logging
 import typing
 
 from aioway._torch import is_aten_op
+from aioway.fn import Fn
 
 from .fate import Fate, find_fate
 
@@ -20,7 +21,7 @@ LOGGER = logging.getLogger(__name__)
 
 @typing.final
 @dcls.dataclass(frozen=True)
-class FateFn:
+class FateFn(Fn):
     """
     `FateFn` wraps a `Fate` object, which is split out so as to declutter subclasses for `Fn`.
 
@@ -40,6 +41,7 @@ class FateFn:
         return repr(self.fate)
 
     @typing.final
+    @typing.override
     def __do__(self) -> object:
         return self()
 

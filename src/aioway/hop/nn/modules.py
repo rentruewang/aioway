@@ -4,12 +4,11 @@ import abc
 import dataclasses as dcls
 import inspect
 import typing
-from collections import abc as cabc
 
 from torch import nn
 
 from aioway._utils import render_fcall
-from aioway.fn import NodeThunk, thunk_dcls
+from aioway.fn import Fn, thunk_dcls
 from aioway.modes import NnInitFn
 
 from ..hop import HopFwd, HopInit, hop_init_dcls
@@ -26,7 +25,7 @@ def nn_init_dcls(cls):
 
 
 @nn_init_dcls
-class NnInit(abc.ABC):
+class NnInit(Fn, abc.ABC):
     """
     `NnInit` records the signature of an `nn.Module` initialization, and creates it.
 
@@ -50,7 +49,7 @@ class NnInit(abc.ABC):
         return render_fcall("nn_init::" + type(self).__qualname__, **dcls.asdict(self))
 
     @typing.final
-    def __do__(self):
+    def __do__(self) -> nn.Module:
         return self.init()
 
     def init(self) -> nn.Module:
@@ -103,10 +102,6 @@ class NnHopInit(HopInit):
     input: HopInit
     "The input `Hop`, must output in a way that `module` accepts."
 
-    @typing.override
-    def deps(self) -> cabc.Iterator[HopInit]:
-        yield self.input
-
     def init(self) -> NnHopFwd:
         "Pass the input to the module and returns the output."
 
@@ -117,7 +112,7 @@ class NnHopInit(HopInit):
 
 
 @thunk_dcls
-class NnHopFwd(NodeThunk, HopFwd):
+class NnHopFwd(HopFwd):
     """
     The `HopFwdNode` subclass for `nn.Module`s.
     It is a thunk so it has args, kwargs as attributes.

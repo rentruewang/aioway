@@ -36,7 +36,7 @@ with fake_fn() as hists, PrintTorchDisp().enter():
     f = d + b
     g = e + f
 
-hists.dispatch.dag()
+hists.dispatch
 
 # %%
 with fake_fn(), PrintTorchDisp().enter():

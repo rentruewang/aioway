@@ -11,6 +11,7 @@ from collections import abc as cabc
 from torch import _ops
 
 from aioway._utils import camel_to_snake, find_nested_tensors, render_fcall
+from aioway.fn import Fn
 
 if typing.TYPE_CHECKING:
     from aioway.modes import TorchDispFn
@@ -25,7 +26,7 @@ def fate_dcls(cls, /):
 
 
 @fate_dcls
-class Fate(abc.ABC):
+class Fate(Fn, abc.ABC):
     """
     `Fate` stands for [f]ake [ate]n. Or [fa]ke [te]nsor. Or a tensor's [fate] (how it behaves).
 
@@ -46,7 +47,8 @@ class Fate(abc.ABC):
         return render_fcall("fate::" + self._name(), **dcls.asdict(self))
 
     @typing.final
-    def __do__(self) -> typing.Any:
+    @typing.override
+    def __do__(self) -> object:
         return self()
 
     def __call__(self):

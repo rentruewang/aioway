@@ -8,7 +8,7 @@ from collections import abc as cabc
 import torch
 
 from aioway._utils import is_list_of
-from aioway.fn import NodeThunk, thunk_dcls
+from aioway.fn import thunk_dcls
 
 from .hop import HopFwd, HopInit, hop_init_dcls
 
@@ -16,7 +16,7 @@ __all__ = ["CatHop", "StackHop"]
 
 
 @thunk_dcls
-class FuncHopFwd(NodeThunk, HopFwd):
+class FuncHopFwd(HopFwd):
     """
     The `HopFwd` implementation for functions.
     """
@@ -49,10 +49,6 @@ class _CatStackHopInit(HopInit):
             raise TypeError(f"Expected a `list[torch.Tensor]`, but {tensors=}.")
 
         return FuncHopFwd(func=self.FUNCTION, args=(tensors,), kwargs={"dim": self.dim})
-
-    @typing.override
-    def deps(self) -> cabc.Iterator[HopInit]:
-        yield from self.inputs
 
 
 @hop_init_dcls

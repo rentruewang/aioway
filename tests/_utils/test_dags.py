@@ -2,15 +2,21 @@
 
 import pytest
 
-from aioway._utils import Dag
+from aioway._utils import topo_sort, DagNode
 
 
 @pytest.fixture
-def dag():
-    return Dag.from_graph({1: [], 2: [1], 3: [1], 4: [1, 3]})
+def dag() -> list[int]:
+    nodes = [
+        DagNode(1, []),
+        DagNode(2, [1]),
+        DagNode(3, [1]),
+        DagNode(4, [1, 3]),
+    ]
+    return topo_sort(nodes)
 
 
-def test_dag(dag: Dag[int]):
-    assert dag[0].data == 1
-    assert dag[3].data == 4
-    assert {dag[1].data, dag[2].data} == {2, 3}
+def test_dag(dag: list[int]):
+    assert dag[0] == 1
+    assert dag[3] == 4
+    assert {dag[1], dag[2]} == {2, 3}

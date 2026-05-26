@@ -4,6 +4,7 @@
 
 import collections
 import dataclasses as dcls
+import graphlib
 import logging
 import typing
 from collections import abc as cabc
@@ -11,7 +12,7 @@ from collections import abc as cabc
 import torch
 
 from aioway._torch import is_leaf_has_grad
-from aioway._utils import Dag, find_nested_tensors
+from aioway._utils import find_nested_tensors
 from aioway.fn import Fn, TensorInput
 from aioway.schemas import Attr
 
@@ -127,11 +128,13 @@ class HistTensorGraph[T: HashableTensorInput](Hist[T]):
         for input_tensor in thunk.inputs():
             self.input_to_thunk_list[input_tensor].append(thunk)
 
-    def dag(self) -> Dag[T]:
-        "Conver the graph to a `Dag` for inspection and debugging."
+    def topo_sort(self) -> list[T]:
+        "Sort the tensor graph topologically."
 
         graph = self._thunk_graph()
-        return Dag.from_graph(graph)
+        topo_sorter = graphlib.TopologicalSorter(graph)
+        topo_sorter.prepare()
+        return list(topo_sorter.static_order())
 
     def _thunk_graph(self):
         outs = self.output_to_thunk_list
