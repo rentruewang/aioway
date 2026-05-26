@@ -19,7 +19,7 @@ def hop_init_dcls(cls):
 
 
 @hop_init_dcls
-class HopInit(Fn, abc.ABC):
+class HopInit(abc.ABC):
     """
     `HopInit` stands for [h]igh level [o]peration [p]review node.
     It is essentailly an unevaluated expression that supports inspection.

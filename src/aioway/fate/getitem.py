@@ -32,7 +32,7 @@ class BooleanMasking(_BaseGetItem):
         return len(self.indices) == 1 and self.indices[0].dtype == torch.bool
 
     @typing.override
-    def __call__(self) -> torch.Tensor:
+    def forward(self) -> torch.Tensor:
         return self.self
 
 

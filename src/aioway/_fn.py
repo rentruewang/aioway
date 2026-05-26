@@ -98,10 +98,6 @@ class Thunk:
         return NotImplemented
 
     def __call__(self) -> object:
-        """
-        Call and cache the function.
-        """
-
         return self.func(*self.args, **self.kwargs)
 
     @typing.override
