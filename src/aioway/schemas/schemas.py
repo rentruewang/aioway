@@ -24,7 +24,7 @@ class Schema:
     attr: Attr
     "The attribute of a `torch.Tensor`."
 
-    tags: dict[str, Tag]
+    tags: dict[str, Tag] = dcls.field(default_factory=dict)
     "The tags attached to the `torch.Tensor`."
 
     def __post_init__(self):

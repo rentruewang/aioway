@@ -5,6 +5,8 @@ import typing
 from aioway.hop import HopInit, Linear, TensorHopInit
 from aioway.spaces import SchemaSpace, Space
 
+__all__ = ["Builder", "just_linear_builder"]
+
 
 class Builder(typing.Protocol):
     def __call__(self, inputs: list[Space], outputs: list[Space]) -> list[HopInit]:
