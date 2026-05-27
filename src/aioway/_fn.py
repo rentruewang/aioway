@@ -170,3 +170,9 @@ class TorchThunk[T: cabc.Callable[..., typing.Any]](abc.ABC):
     def inputs(self):
         yield from find_nested_tensors(self.args)
         yield from find_nested_tensors(self.kwargs)
+
+    @property
+    def requires_grad(self) -> bool:
+        "Check if any of the inputs requires grad."
+
+        return any(tensor.requires_grad for tensor in self.inputs())

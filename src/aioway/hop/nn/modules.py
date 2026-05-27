@@ -25,7 +25,7 @@ def nn_init_dcls(cls):
 
 
 @nn_init_dcls
-class NnInit(Fn, abc.ABC):
+class NnInit(abc.ABC):
     """
     `NnInit` records the signature of an `nn.Module` initialization, and creates it.
 
