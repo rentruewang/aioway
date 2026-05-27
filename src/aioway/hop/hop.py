@@ -3,13 +3,31 @@
 "The [h]igh level [o]peration [p]review class."
 
 import abc
+import contextlib as ctxl
 import dataclasses as dcls
 import typing
+from collections import abc as cabc
 
 from aioway._fn import thunk_dcls
 from aioway._utils import Dag, DagNode, dcls_asdict, decomp_flatten, topo_sort
 
-__all__ = ["HopInit", "HopFwd"]
+__all__ = [
+    "HopInit",
+    "HopFwd",
+    "HopDag",
+    "HopDagNode",
+    "hop_init_dcls",
+    "cache_hop_init_output",
+    "cache_hop_fwd_output",
+    "hop_init_cache",
+    "hop_fwd_cache",
+]
+
+_hop_init_cache: dict[int, HopFwd] | None = None
+"The cache instance for `HopInit`."
+
+_hop_fwd_cache: dict[int, object] | None = None
+"The cache instance for `HopFwd`."
 
 
 class HopDagNode[T](abc.ABC):
@@ -37,7 +55,7 @@ class HopInit(HopDagNode["HopInit"], abc.ABC):
 
     @typing.final
     def __call__(self) -> HopFwd:
-        return self.init()
+        return _maybe_save_cache(self.init, id(self), _hop_init_cache)
 
     @abc.abstractmethod
     def init(self) -> HopFwd:
@@ -62,7 +80,7 @@ class HopFwd(HopDagNode["HopFwd"], abc.ABC):
 
     @typing.final
     def __call__(self) -> object:
-        return self.forward()
+        return _maybe_save_cache(self.forward, id(self), _hop_fwd_cache)
 
     @abc.abstractmethod
     def forward(self) -> object:
@@ -77,6 +95,54 @@ class HopFwd(HopDagNode["HopFwd"], abc.ABC):
         # Flatten the dict version s.t. we do not include `self`.
         deps = list(decomp_flatten(dcls_asdict(self), HopFwd))
         return DagNode(self, deps)
+
+
+@ctxl.contextmanager
+def cache_hop_init_output():
+    "Turn on caching for `HopInit`."
+    global _hop_init_cache
+    _hop_init_cache = {}
+    try:
+        yield _hop_init_cache
+    finally:
+        _hop_init_cache = None
+
+
+def hop_init_cache():
+    "The active cache for `HopInit`. If `None` caching is off."
+    return _hop_init_cache
+
+
+@ctxl.contextmanager
+def cache_hop_fwd_output():
+    "Turn on caching for `HopFwd`."
+    global _hop_fwd_cache
+    _hop_fwd_cache = {}
+    try:
+        yield _hop_fwd_cache
+    finally:
+        _hop_fwd_cache = None
+
+
+def hop_fwd_cache():
+    "The active cache for `HopFwd`. If `None` caching is off."
+    return _hop_fwd_cache
+
+
+def _maybe_save_cache[T](
+    func: cabc.Callable[[], typing.Any],
+    hash_key: int,
+    cache: dict[int, T] | None = None,
+) -> T:
+    if cache is None:
+        return func()
+
+    if hash_key in cache:
+        return cache[hash_key]
+
+    result = func()
+    cache[hash_key] = result
+    return result
 
 
 @dcls.dataclass
@@ -115,5 +181,5 @@ class HopDag[T: (HopInit, HopFwd)]:
     @classmethod
     def from_list_of_nodes(cls, nodes: list[T]) -> typing.Self:
         dag_nodes = [node.to_dag_node() for node in nodes]
-        dag = topo_sort(dag_nodes)
+        dag: Dag[T] = topo_sort(dag_nodes)
         return cls(dag)
