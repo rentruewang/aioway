@@ -147,8 +147,9 @@ def find_nested_tensors(
     yield from decomp_flatten(obj, torch.Tensor, strict=only_tensors)
 
 
-def dcls_asdict(obj: object):
+def dcls_asdict(obj: object) -> dict[str, typing.Any]:
     "Official `asdict` fail with some custom `__getstate__`s."
+
     assert dcls.is_dataclass(obj), "Only handles dataclass objects."
     fields = dcls.fields(obj)
     return {field.name: getattr(obj, field.name) for field in fields}
