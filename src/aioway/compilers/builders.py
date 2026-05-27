@@ -3,13 +3,14 @@
 import typing
 
 from aioway.hop import HopInit, Linear, TensorHopInit
+from aioway.hop.hop import HopDag
 from aioway.spaces import SchemaSpace, Space
 
 __all__ = ["Builder", "just_linear_builder"]
 
 
 class Builder(typing.Protocol):
-    def __call__(self, inputs: list[Space], outputs: list[Space]) -> list[HopInit]:
+    def __call__(self, inputs: list[Space], outputs: list[Space]) -> HopDag[HopInit]:
         """
         Compiles from a list of input and output spaces.
         Returns `NotImplemented` if the current builder does not support the inputs outputs.
@@ -18,7 +19,7 @@ class Builder(typing.Protocol):
         ...
 
 
-def just_linear_builder(inputs: list[Space], outputs: list[Space]) -> list[HopInit]:
+def just_linear_builder(inputs: list[Space], outputs: list[Space]) -> HopDag[HopInit]:
     try:
         input_schema = _check_linear_io(inputs)
         output_schema = _check_linear_io(outputs)
@@ -32,7 +33,7 @@ def just_linear_builder(inputs: list[Space], outputs: list[Space]) -> list[HopIn
     linear_init = Linear(input_schema.shape[-1], output_schema.shape[-1])
     linear_node = linear_init.apply_hop(input_node)
 
-    return [input_node, linear_node]
+    return HopDag[HopInit].from_list_of_nodes([input_node, linear_node])
 
 
 def _check_linear_io(spaces: list[Space]):

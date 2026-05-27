@@ -1,5 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import numpy as np
 import pytest
 
 from aioway._utils import Dag, DagNode, topo_sort
@@ -27,7 +28,10 @@ def test_dag_inputs_outputs(dag: Dag[int]):
     ins = dag.num_inputs
     outs = dag.num_outputs
 
-    assert ins == (0, 1, 1, 2)
+    assert np.all(ins == [0, 1, 1, 2])
     assert outs[0] == 3
     assert outs[3] == 0
     assert set(outs[1:3]) == {0, 1}
+
+    assert np.all(dag.inputs_idx == [0])
+    assert np.all(dag.outputs_idx == [1, 3])

@@ -7,7 +7,7 @@ import dataclasses as dcls
 import typing
 
 from aioway._fn import thunk_dcls
-from aioway._utils import Dag, DagNode, decomp_flatten, topo_sort
+from aioway._utils import Dag, DagNode, dcls_asdict, decomp_flatten, topo_sort
 
 __all__ = ["HopInit", "HopFwd"]
 
@@ -45,7 +45,8 @@ class HopInit(HopDagNode["HopInit"], abc.ABC):
 
     @typing.override
     def to_dag_node(self) -> DagNode[typing.Self]:
-        deps = list(decomp_flatten(self, HopInit))
+        # Flatten the dict version s.t. we do not include `self`.
+        deps = list(decomp_flatten(dcls_asdict(self), HopInit))
         return DagNode(self, deps)
 
 
@@ -73,7 +74,8 @@ class HopFwd(HopDagNode["HopFwd"], abc.ABC):
         The dependent `Hop`s. It's decomposed from the dataclass members.
         """
 
-        deps = list(decomp_flatten(self, HopFwd))
+        # Flatten the dict version s.t. we do not include `self`.
+        deps = list(decomp_flatten(dcls_asdict(self), HopFwd))
         return DagNode(self, deps)
 
 
@@ -86,11 +88,29 @@ class HopDag[T: (HopInit, HopFwd)]:
     dag: Dag[T]
     "The ordered nodes."
 
+    def __len__(self):
+        return len(self.dag)
+
+    def __iter__(self):
+        yield from self.dag
+
     def __call__(self):
         "Evaluating the `HopInit`/`HopFwd`."
 
         items = self.dag.items
         return [node() for node in items]
+
+    @property
+    def input_nodes(self) -> list[T]:
+        "Get the input nodes."
+
+        return self.dag.inputs_items
+
+    @property
+    def output_nodes(self) -> list[T]:
+        "Get the output nodes."
+
+        return self.dag.outputs_items
 
     @classmethod
     def from_list_of_nodes(cls, nodes: list[T]) -> typing.Self:

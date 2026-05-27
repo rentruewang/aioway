@@ -10,7 +10,7 @@ from collections import abc as cabc
 
 import numpy as np
 
-from aioway._utils import IntArray
+from .typing import IntArray
 
 __all__ = ["DagNode", "Dag", "topo_sort"]
 
@@ -51,6 +51,13 @@ class Dag[T]:
 
     def __len__(self):
         return len(self.nodes)
+
+    def __getitem__(self, idx: int):
+        return self.nodes[idx].key
+
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self[i]
 
     @property
     def items(self) -> list[T]:
