@@ -5,12 +5,19 @@
 import abc
 import dataclasses as dcls
 import typing
-from collections import abc as cabc
 
-from aioway._fn import Fn, thunk_dcls
-from aioway._utils.decomps import decomp_flatten
+from aioway._fn import thunk_dcls
+from aioway._utils import Dag, DagNode, decomp_flatten, topo_sort
 
 __all__ = ["HopInit", "HopFwd"]
+
+
+class HopDagNode[T](abc.ABC):
+    "Defines the `to_dag_node` functionality."
+
+    @abc.abstractmethod
+    def to_dag_node(self: T) -> DagNode[T]:
+        raise NotImplementedError
 
 
 @typing.dataclass_transform(kw_only_default=True)
@@ -19,7 +26,7 @@ def hop_init_dcls(cls):
 
 
 @hop_init_dcls
-class HopInit(abc.ABC):
+class HopInit(HopDagNode["HopInit"], abc.ABC):
     """
     `HopInit` stands for [h]igh level [o]peration [p]review node.
     It is essentailly an unevaluated expression that supports inspection.
@@ -36,22 +43,20 @@ class HopInit(abc.ABC):
     def init(self) -> HopFwd:
         raise NotImplementedError
 
-    @typing.final
-    def deps(self) -> cabc.Iterator[HopInit]:
-        """
-        The dependent `Hop`s. It's decomposed from the dataclass members.
-        """
-
-        yield from decomp_flatten(self, HopInit)
+    @typing.override
+    def to_dag_node(self) -> DagNode[typing.Self]:
+        deps = list(decomp_flatten(self, HopInit))
+        return DagNode(self, deps)
 
 
 @thunk_dcls
-class HopFwd(Fn, abc.ABC):
+class HopFwd(HopDagNode["HopFwd"], abc.ABC):
     """
     `HopFwd` is the node that would be evaluated during run time.
+    It is initialized by `HopInit`.
     """
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return id(self)
 
     @typing.final
@@ -62,10 +67,33 @@ class HopFwd(Fn, abc.ABC):
     def forward(self) -> object:
         raise NotImplementedError
 
-    @typing.final
-    def deps(self) -> cabc.Iterator[HopFwd]:
+    @typing.override
+    def to_dag_node(self) -> DagNode[typing.Self]:
         """
         The dependent `Hop`s. It's decomposed from the dataclass members.
         """
 
-        yield from decomp_flatten(self, HopFwd)
+        deps = list(decomp_flatten(self, HopFwd))
+        return DagNode(self, deps)
+
+
+@dcls.dataclass
+class HopDag[T: (HopInit, HopFwd)]:
+    """
+    The DAG of `HopInit`s or `HopFwd`s.
+    """
+
+    dag: Dag[T]
+    "The ordered nodes."
+
+    def __call__(self):
+        "Evaluating the `HopInit`/`HopFwd`."
+
+        items = self.dag.items
+        return [node() for node in items]
+
+    @classmethod
+    def from_list_of_nodes(cls, nodes: list[T]) -> typing.Self:
+        dag_nodes = [node.to_dag_node() for node in nodes]
+        dag = topo_sort(dag_nodes)
+        return cls(dag)

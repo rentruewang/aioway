@@ -8,6 +8,10 @@ import graphlib
 import typing
 from collections import abc as cabc
 
+import numpy as np
+
+from aioway._utils import IntArray
+
 __all__ = ["DagNode", "Dag", "topo_sort"]
 
 
@@ -45,22 +49,45 @@ class Dag[T]:
 
                 raise ValueError("The given nodes is not sorted!")
 
+    def __len__(self):
+        return len(self.nodes)
+
     @property
     def items(self) -> list[T]:
         "Get the underlying items."
 
         return [node.key for node in self.nodes]
 
-    def num_inputs(self):
+    @property
+    def num_inputs(self) -> IntArray:
         ins, _ = self._num_ins_outs
         return ins
 
-    def num_outputs(self):
+    @property
+    def num_outputs(self) -> IntArray:
         _, outs = self._num_ins_outs
         return outs
 
+    @property
+    def inputs_idx(self) -> IntArray:
+        return np.arange(len(self))[self.num_inputs == 0]
+
+    @property
+    def inputs_items(self) -> list[T]:
+        items = self.items
+        return [items[i] for i in self.inputs_idx]
+
+    @property
+    def outputs_idx(self) -> IntArray:
+        return np.arange(len(self))[self.num_outputs == 0]
+
+    @property
+    def outputs_items(self) -> list[T]:
+        items = self.items
+        return [items[i] for i in self.outputs_idx]
+
     @functools.cached_property
-    def _num_ins_outs(self):
+    def _num_ins_outs(self) -> tuple[IntArray, IntArray]:
         input_cnt = [0] * len(self.nodes)
         output_cnt = [0] * len(self.nodes)
 
@@ -72,7 +99,13 @@ class Dag[T]:
                 input_cnt[node_idx] += 1
                 output_cnt[dep_idx] += 1
 
-        return tuple(input_cnt), tuple(output_cnt)
+        input_cnt_arr = np.array(input_cnt)
+        output_cnt_arr = np.array(output_cnt)
+
+        # Make sure it's not modifiable.
+        input_cnt_arr.flags.writeable = output_cnt_arr.flags.writeable = False
+
+        return input_cnt_arr, output_cnt_arr
 
     def _lookup_node_idx(self, key: T) -> int:
         return self._ids_to_idx[id(key)]

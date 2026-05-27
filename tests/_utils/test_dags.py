@@ -24,8 +24,8 @@ def test_dag_items(dag: Dag[int]):
 
 
 def test_dag_inputs_outputs(dag: Dag[int]):
-    ins = dag.num_inputs()
-    outs = dag.num_outputs()
+    ins = dag.num_inputs
+    outs = dag.num_outputs
 
     assert ins == (0, 1, 1, 2)
     assert outs[0] == 3
