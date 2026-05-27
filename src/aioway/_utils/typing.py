@@ -8,8 +8,12 @@ import numpy as np
 from numpy import typing as npt
 
 __all__ = [
+    "IntArray",
     "IntArrayLike",
+    "FloatArray",
     "FloatArrayLike",
+    "BoolArray",
+    "BoolArrayLike",
     "is_list_of",
     "is_tuple_of",
     "is_seq_of",
@@ -18,8 +22,12 @@ __all__ = [
     "SetKeysView",
 ]
 
-type IntArrayLike = tuple[int, ...] | list[int] | npt.NDArray[np.int_]
-type FloatArrayLike = tuple[float, ...] | list[float] | npt.NDArray[np.floating]
+type IntArray = npt.NDArray[np.int_]
+type IntArrayLike = tuple[int, ...] | list[int] | IntArray
+type FloatArray = npt.NDArray[np.floating]
+type FloatArrayLike = tuple[float, ...] | list[float] | FloatArray
+type BoolArray = npt.NDArray[np.bool_]
+type BoolArrayLike = tuple[bool, ...] | list[bool] | BoolArray
 
 
 @typing.no_type_check

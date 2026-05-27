@@ -2,7 +2,9 @@
 
 "Decomposing objects for inspection and debugging."
 
+import contextlib as ctxl
 import dataclasses as dcls
+import typing
 from collections import abc as cabc
 
 import numpy as np
@@ -13,15 +15,38 @@ __all__ = [
     "replace_tensors",
     "decomp_flatten",
     "find_nested_tensors",
-    "DECOMP_BLOCK_ITEMS",
-    "DECOMP_BLOCK_TYPES",
+    "dcls_asdict",
+    "decomp_block_items",
+    "decomp_block_types",
 ]
 
-DECOMP_BLOCK_ITEMS = None, NotImplemented, ..., True, False
+_decomp_block_items: tuple[typing.Any, ...] = None, NotImplemented, ..., True, False
 "The default instances to block. You could modify this."
 
-DECOMP_BLOCK_TYPES = int, float, bool, str, np.ndarray, pd.DataFrame
+_decomp_block_types: tuple[type, ...] = int, float, bool, str, np.ndarray, pd.DataFrame
 "The default types to block. You could modify this."
+
+
+@ctxl.contextmanager
+def decomp_block_items(*items: typing.Any):
+    global _decomp_block_items
+    prev = _decomp_block_items
+    _decomp_block_items = items
+    try:
+        yield
+    finally:
+        _decomp_block_items = prev
+
+
+@ctxl.contextmanager
+def decomp_block_types(*types: type):
+    global _decomp_block_types
+    prev = _decomp_block_types
+    _decomp_block_types = types
+    try:
+        yield
+    finally:
+        _decomp_block_types = prev
 
 
 def replace_tensors(
@@ -44,11 +69,11 @@ def replace_tensors(
 
 def stop_decompose(obj: object) -> bool:
     # Check if it's those primitives.
-    for item in DECOMP_BLOCK_ITEMS:
+    for item in _decomp_block_items:
         if obj is item:
             return True
 
-    return isinstance(obj, tuple(DECOMP_BLOCK_TYPES))
+    return isinstance(obj, tuple(_decomp_block_types))
 
 
 def decomp_replace(
@@ -73,7 +98,7 @@ def decomp_replace(
         return {key: decomp_replace(elem, types, replace) for key, elem in obj.items()}
 
     if dcls.is_dataclass(obj):
-        obj = _dcls_asdict(obj)
+        obj = dcls_asdict(obj)
         return decomp_replace(obj, types, replace)
 
     return obj
@@ -100,7 +125,7 @@ def decomp_flatten(obj, types: type | tuple[type, ...], /, strict: bool = False)
         return
 
     if dcls.is_dataclass(obj):
-        obj = _dcls_asdict(obj)
+        obj = dcls_asdict(obj)
         yield from decomp_flatten(obj, types, strict=strict)
         return
 
@@ -122,8 +147,9 @@ def find_nested_tensors(
     yield from decomp_flatten(obj, torch.Tensor, strict=only_tensors)
 
 
-def _dcls_asdict(obj: object):
+def dcls_asdict(obj: object) -> dict[str, typing.Any]:
     "Official `asdict` fail with some custom `__getstate__`s."
+
     assert dcls.is_dataclass(obj), "Only handles dataclass objects."
     fields = dcls.fields(obj)
     return {field.name: getattr(obj, field.name) for field in fields}

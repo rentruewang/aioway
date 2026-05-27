@@ -25,3 +25,6 @@ def test_just_linear(input_space: SchemaSpace, output_space: SchemaSpace):
     assert isinstance(linear_node.nn_init, Linear)
     assert linear_node.nn_init.in_features == 5
     assert linear_node.nn_init.out_features == 6
+
+    assert len(built.input_nodes) == 1
+    assert len(built.output_nodes) == 1
