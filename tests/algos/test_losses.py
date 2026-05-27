@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from aioway.training import loss_func
+from aioway.algos import loss_func
 
 
 @pytest.fixture
