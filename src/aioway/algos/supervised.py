@@ -3,10 +3,8 @@
 import abc
 import typing
 
-from aioway.compilers.builders import just_linear_builder
-from aioway.hop.hop import HopDag
-from aioway.hop.nn.losses import MSELoss
-from aioway.hop.nn.modules import NnHopInit
+from aioway.compilers import just_linear_builder
+from aioway.hop import HopDag, MSELoss, NnHopInit
 from aioway.spaces import Space
 
 __all__ = ["SupervisedAlgo"]
