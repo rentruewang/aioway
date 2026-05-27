@@ -5,7 +5,7 @@ import torch
 from torch import nn
 
 from aioway.hop import HopInit, NnHopFwd, TensorHopInit, build_nn_hop
-from aioway.hop.hop import cache_hop_fwd_output, cache_hop_init_output
+from aioway.hop.hop import cache_hop_init_output, hop_cache_on
 from aioway.modes.modules import NnInitFn
 
 
@@ -16,7 +16,7 @@ def tensor_init():
 
 @pytest.fixture
 def hop_cache_on():
-    with cache_hop_init_output(), cache_hop_fwd_output():
+    with cache_hop_init_output(), hop_cache_on():
         yield
 
 

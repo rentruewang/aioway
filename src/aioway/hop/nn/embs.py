@@ -4,6 +4,7 @@ import typing
 
 from torch import nn
 
+from .hop import NnLayerHop
 from .modules import NnInit, nn_init_dcls
 
 __all__ = ["Embedding"]
@@ -12,6 +13,7 @@ __all__ = ["Embedding"]
 @nn_init_dcls
 class _BaseEmbedding(NnInit):
     NN: typing.ClassVar[type[nn.Module]] = NotImplemented
+    HOP = NnLayerHop
 
     num_embeddings: int
     "The size of the dictionary of embeddings."

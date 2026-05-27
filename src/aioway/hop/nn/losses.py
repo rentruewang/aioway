@@ -4,6 +4,7 @@ import typing
 
 from torch import nn
 
+from .hop import NnLossHop
 from .modules import NnInit, nn_init_dcls
 
 __all__ = [
@@ -29,6 +30,7 @@ class _ReducibleLoss(NnInit):
     """
 
     NN: typing.ClassVar[type[nn.Module]] = NotImplemented
+    HOP = NnLossHop
 
 
 @nn_init_dcls
