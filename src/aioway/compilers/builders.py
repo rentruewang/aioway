@@ -2,8 +2,8 @@
 
 import typing
 
-from aioway.hop import HopInit, Linear, TensorHopInit
-from aioway.hop.hop import HopDag
+from aioway.hop import HopDag, HopInit, Linear, TensorHopInit
+from aioway.schemas import Schema
 from aioway.spaces import SchemaSpace, Space
 
 __all__ = ["Builder", "just_linear_builder"]
@@ -36,7 +36,7 @@ def just_linear_builder(inputs: list[Space], outputs: list[Space]) -> HopDag[Hop
     return HopDag[HopInit].from_list_of_nodes([input_node, linear_node])
 
 
-def _check_linear_io(spaces: list[Space]):
+def _check_linear_io(spaces: list[Space]) -> Schema:
     if len(spaces) != 1:
         raise NotImplementedError
 
