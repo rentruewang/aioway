@@ -79,25 +79,25 @@ def nox_cmd(func: cabc.Callable[[], None]) -> cabc.Callable[[], None]:
 
 @nox_cmd
 def publish():
-    "Nox `publish` command. Calls `pdm publish`."
+    "Calls `pdm publish`."
     pdm_publish()
 
 
 @nox_cmd
 def build():
-    "Nox `build` command. Calls `pdm build`."
+    "Calls `pdm build`."
     pdm_build()
 
 
 @nox_cmd
 def test():
-    "Nox `test` command. Calls `pytest` command. Runs in multiple python versions (if supported)."
+    "Calls `pytest *posargs`."
     pdm_run("pytest", *_current_session().posargs)
 
 
 @nox_cmd
 def format():
-    "Nox `format` command. Calls `autoflake`, `isort`, `black`, in that order."
+    "Calls `autoflake`, `isort`, `black`, in that order."
     autoflake()
     isort()
     black()
@@ -105,7 +105,7 @@ def format():
 
 @nox_cmd
 def format_check():
-    "Nox `format_check` command. Calls `autoflake`, `isort`, `black`, in that order."
+    "Calls `autoflake`, `isort`, `black`, in that order."
     autoflake_check()
     isort_check()
     black_check()
@@ -113,43 +113,43 @@ def format_check():
 
 @nox_cmd
 def autoflake():
-    "Nox `autoflake` command. Calls `autoflake`."
+    "Calls `autoflake`."
     pdm_run("autoflake", ".")
 
 
 @nox_cmd
 def autoflake_check():
-    "Nox `autoflake_check` command. Calls `autoflake --check`."
+    "Calls `autoflake --check`."
     pdm_run("autoflake", "--check", ".")
 
 
 @nox_cmd
 def isort():
-    "Nox `isort` command. Calls `isort`."
+    "Calls `isort`."
     pdm_run("isort", ".")
 
 
 @nox_cmd
 def isort_check():
-    "Nox `isort_check` command. Calls `isort --check`."
+    "Calls `isort --check`."
     pdm_run("isort", "--check", ".")
 
 
 @nox_cmd
 def black():
-    "Nox `black` command. Calls `black`."
+    "Calls `black`."
     pdm_run("black", ".")
 
 
 @nox_cmd
 def black_check():
-    "Nox `black_check` command. Calls `black --check`."
+    "Calls `black --check`."
     pdm_run("black", "--check", ".")
 
 
 @nox_cmd
 def type():
-    "Nox `type` command. Calls `mypy`."
+    "Calls `mypy`. Installs necessary type stubs."
     pdm_run("mypy", "--install-types", "--non-interactive", "src")
 
 
