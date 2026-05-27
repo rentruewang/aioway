@@ -9,12 +9,12 @@ from collections import abc as cabc
 from torch import nn
 
 from aioway._utils import render_fcall
-from aioway.hop.hop import Hop
 from aioway.modes import NnInitFn
 
 from ..hop import Hop
+from .hop import NnHop
 
-__all__ = ["NnInit", "find_nn_init", "build_nn_hop", "NnHopInit", "NnHopFwd"]
+__all__ = ["NnInit", "find_nn_init", "build_nn_hop"]
 
 _NN_INITS: dict[cabc.Callable[..., nn.Module], type[NnInit]] = {}
 
@@ -34,7 +34,7 @@ class NnInit(abc.ABC):
     """
 
     NN: typing.ClassVar[cabc.Callable[..., nn.Module]] = NotImplemented
-    HOP: typing.ClassVar[cabc.Callable[..., Hop]] = NotImplemented
+    HOP: typing.ClassVar[cabc.Callable[..., NnHop]] = NotImplemented
 
     def __init_subclass__(cls) -> None:
         # Abstract in terms of `ClassVar`.
@@ -61,13 +61,13 @@ class NnInit(abc.ABC):
         thunk = NnInitFn(func=self.NN, args=(), kwargs=dcls.asdict(self))
         return thunk()
 
-    def hop(self, *args, **kwargs) -> Hop:
+    def apply(self, *args, **kwargs) -> Hop:
         """
         Builds a high level operator with the given `NN` and `HOP` runtime class.
         """
 
         nn_module = self.init_nn()
-        return self.HOP(nn_module, *args, **kwargs)
+        return self.HOP(self, nn_module, *args, **kwargs)
 
 
 def find_nn_init(thunk: NnInitFn, /) -> NnInit | None:
@@ -80,3 +80,10 @@ def find_nn_init(thunk: NnInitFn, /) -> NnInit | None:
         return None
 
     return nn_init_type(*thunk.args, **thunk.kwargs)
+
+
+def build_nn_hop(thunk: NnInitFn, *args, **kwargs):
+    if (nn_init := find_nn_init(thunk)) is None:
+        return None
+
+    return nn_init.apply(*args, **kwargs)

@@ -7,12 +7,12 @@ from aioway.hop import NnInit, Sequential, find_nn_init
 from aioway.modes import NnInitFn
 
 
-def test_nn_init(nn_init: NnInit):
-    assert isinstance(nn_init, NnInit)
+def test_nn_init(layer_nn_init: NnInit):
+    assert isinstance(layer_nn_init, NnInit)
 
 
-def test_nn_init_module(nn_init: NnInit):
-    module = nn_init()
+def test_layer_nn_init_module(layer_nn_init: NnInit):
+    module = layer_nn_init()
     assert isinstance(module, nn.Module)
 
 
