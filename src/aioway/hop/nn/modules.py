@@ -9,6 +9,7 @@ from collections import abc as cabc
 from torch import nn
 
 from aioway._utils import render_fcall
+from aioway._utils import dcls_asdict
 from aioway.modes import NnInitFn
 
 from ..hop import Hop
@@ -51,14 +52,14 @@ class NnInit(abc.ABC):
 
     @typing.override
     def __repr__(self) -> str:
-        return render_fcall("nn_init::" + type(self).__qualname__, **dcls.asdict(self))
+        return render_fcall("nn_init::" + type(self).__qualname__, **dcls_asdict(self))
 
     @typing.final
     def __call__(self) -> nn.Module:
         return self.init_nn()
 
     def init_nn(self) -> nn.Module:
-        thunk = NnInitFn(func=self.NN, args=(), kwargs=dcls.asdict(self))
+        thunk = NnInitFn(func=self.NN, **dcls_asdict(self))
         return thunk()
 
     def apply(self, *args, **kwargs) -> Hop:

@@ -8,7 +8,6 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-from aioway._fn import thunk_dcls
 from aioway._utils import AnyDict, Dag, DagNode, dcls_asdict, decomp_flatten, topo_sort
 
 __all__ = ["Hop", "HopDag", "hop_cache_on", "hop_cache"]
@@ -17,7 +16,12 @@ _hop_cache: AnyDict[Hop] | None = None
 "The cache instance for `Hop`."
 
 
-@thunk_dcls
+@typing.dataclass_transform()
+def hop_dcls(cls: type):
+    return dcls.dataclass(match_args=False)(cls)
+
+
+@hop_dcls
 class Hop(abc.ABC):
     """
     `Hop` is the node that would be evaluated during run time.

@@ -92,7 +92,7 @@ def loss_opts(request: pytest.FixtureRequest) -> _ModuleOpts:
 def layer_thunk(layer_opts: _ModuleOpts):
     "The `NnInitFn` that are layers in `nn.Module`."
     cls, opts = layer_opts
-    return NnInitFn(func=cls, args=(), kwargs=opts)
+    return NnInitFn(cls, **opts)
 
 
 @pytest.fixture
@@ -106,7 +106,7 @@ def layer_nn_init(layer_thunk: NnInitFn) -> NnInit:
 @pytest.fixture
 def loss_thunk(loss_opts: _ModuleOpts):
     cls, opts = loss_opts
-    return NnInitFn(func=cls, args=(), kwargs=opts)
+    return NnInitFn(cls, **opts)
 
 
 @pytest.fixture

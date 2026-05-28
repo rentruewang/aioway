@@ -41,9 +41,7 @@ def test_loss_hop(loss_thunk, tensor_init: TensorHop, maybe_cache_hop):
 
 
 def test_hop_mse(tensor_init: TensorHop, maybe_cache_hop):
-    result = build_nn_hop(
-        NnInitFn(nn.MSELoss, args=(), kwargs={}), tensor_init, tensor_init
-    )
+    result = build_nn_hop(NnInitFn(nn.MSELoss), tensor_init, tensor_init)
 
     assert result
     out = result()
@@ -51,7 +49,7 @@ def test_hop_mse(tensor_init: TensorHop, maybe_cache_hop):
 
 
 def test_hop_linear(tensor_init: TensorHop, maybe_cache_hop):
-    linear = build_nn_hop(NnInitFn(nn.Linear, args=(30, 31), kwargs={}), tensor_init)
+    linear = build_nn_hop(NnInitFn(nn.Linear, 30, 31), tensor_init)
     assert linear
 
     result = linear()

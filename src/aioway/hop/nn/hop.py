@@ -5,9 +5,7 @@ import typing
 
 from torch import nn
 
-from aioway._fn import thunk_dcls
-
-from ..hop import Hop
+from ..hop import Hop, hop_dcls
 
 if typing.TYPE_CHECKING:
     from .modules import NnInit
@@ -15,13 +13,13 @@ if typing.TYPE_CHECKING:
 __all__ = ["NnHop", "NnLayerHop", "NnLossHop"]
 
 
-@thunk_dcls
+@hop_dcls
 class NnHop(Hop, abc.ABC):
     config: NnInit
     "The config used to initialize the `Hop`."
 
 
-@thunk_dcls
+@hop_dcls
 class NnLayerHop(NnHop):
     """
     The `Hop` subclass for normal layers in `nn.Module`s.
@@ -43,7 +41,7 @@ class NnLayerHop(NnHop):
         yield from self.module.parameters()
 
 
-@thunk_dcls
+@hop_dcls
 class NnLossHop(NnHop):
     """
     The `Hop` subclass for loss functions that are `nn.Module`s.

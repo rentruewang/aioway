@@ -12,8 +12,8 @@ from collections import abc as cabc
 import torch
 from torch import nn
 
-from aioway._fn import Thunk, TorchThunk, thunk_dcls
-from aioway._utils import track_call_count
+from aioway._fn import Thunk, TorchThunk
+from aioway._utils import render_fcall, render_torch_func_name, track_call_count
 
 from ._on_off import OnOffCtx, OnOffStack
 
@@ -78,7 +78,7 @@ def module_init(init: cabc.Callable[..., nn.Module], /, *args, **kwargs) -> nn.M
 
 def _invoke_rec[T: NnModeOnOff[typing.Any, typing.Any]](
     stack: OnOffStack[T],
-    fn_type: type[TorchThunk[typing.Any]],
+    fn_type: type[TorchThunk],
     call: cabc.Callable[..., typing.Any],
     args: tuple[typing.Any, ...],
     kwargs: dict[str, typing.Any],
@@ -110,7 +110,7 @@ def _invoke_rec[T: NnModeOnOff[typing.Any, typing.Any]](
     with stack.borrow() as mode:
 
         if mode.on:
-            thunk = fn_type(func=call, args=args, kwargs=kwargs)
+            thunk = fn_type(call, *args, **kwargs)
             return mode(thunk)
 
         else:
@@ -140,16 +140,26 @@ class NnModeOnOff[T, V = object](OnOffCtx, abc.ABC):
 
 
 @typing.final
-@thunk_dcls
-class NnFwdFn(TorchThunk[nn.Module]):
+class NnFwdFn(TorchThunk):
     """
     `NnFwdFn` represents the module calls.
 
     It hooks into `module_fwd` so it allows for optional overwrites.
     """
 
-    func: nn.Module
-    "The module for the `Fn`."
+    if typing.TYPE_CHECKING:
+
+        @property
+        def func(self) -> nn.Module: ...
+
+    def __init__(self, func: nn.Module, *args, **kwargs) -> None:
+        super().__init__(func, *args, **kwargs)
+
+        if not isinstance(self.func, nn.Module):
+            raise TypeError(f"Expected an `nn.Module`, got {type(self.func)=}.")
+
+    def __repr__(self):
+        return render_fcall(self.func, *self.args, **self.kwargs)
 
     def __hash__(self) -> int:
         return id(self)
@@ -189,22 +199,29 @@ class NnFwdMode(NnModeOnOff[NnFwdFn], abc.ABC):
 
 
 @typing.final
-@thunk_dcls
-class NnInitFn(TorchThunk[cabc.Callable[..., nn.Module]]):
+class NnInitFn[**P = ...](TorchThunk):
     """
     `NnInitFn` are used to initialize `nn.Module`s.
 
     It hooks into `module_init` so it allows for optional overwrites.
     """
 
-    func: cabc.Callable[..., nn.Module]
-    "The type of `nn.Module`."
+    if typing.TYPE_CHECKING:
 
-    def __post_init__(self):
-        super().__post_init__()
+        @property
+        def func(self) -> nn.Module: ...
+
+    def __init__(
+        self, func: cabc.Callable[P, nn.Module], *args: P.args, **kwargs: P.kwargs
+    ) -> None:
+        super().__init__(func, *args, **kwargs)
 
         if not isinstance(self.func, type) or not issubclass(self.func, nn.Module):
             raise TypeError(f"{self.func} should be a subclass of `nn.Module`.")
+
+    def __repr__(self):
+        func_name = render_torch_func_name(self.func)
+        return render_fcall(f"nn_init::{func_name}", *self.args, **self.kwargs)
 
     def __call__(self) -> nn.Module:
         return module_init(self.func, *self.args, **self.kwargs)
