@@ -9,7 +9,7 @@ import typing
 import tensordict as td
 import torch
 
-from aioway._streams import StreamState, TdictStream
+from aioway._streams import StreamState, TdictStream, stream_dcls
 from aioway.schemas import AttrDict
 
 from .sources import CacheStream
@@ -17,7 +17,7 @@ from .sources import CacheStream
 __all__ = ["ZipStream", "NestedLoopJoinStream"]
 
 
-@dcls.dataclass(frozen=True)
+@stream_dcls
 class ZipStream(TdictStream):
     """
     `ZipStream` is similar to what `zip` does.
@@ -59,7 +59,7 @@ class NestedState(StreamState):
     # as it would be paired with multiple RHS batches.
 
 
-@dcls.dataclass(frozen=True)
+@stream_dcls
 class NestedLoopJoinStream(TdictStream):
     """
     This is a stream that combines 2 input streams in a nested-loop matter,

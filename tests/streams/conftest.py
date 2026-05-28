@@ -4,7 +4,8 @@
 
 import pytest
 
-from aioway.io import FrameDict, TensorDictFrame
+from aioway.io import TensorDictFrame
+from aioway._frames import TdictFrame
 from aioway.relalg import FrameStream, FrameStreamLoader
 from tests.fake import chunk_ok, concat_ok, unionable_ok
 
@@ -16,7 +17,7 @@ def block_table(device: str, data_size: int) -> TensorDictFrame:
 
 
 @pytest.fixture
-def table_stream(block_table: FrameDict, batch_size: int) -> FrameStream:
+def table_stream(block_table: TdictFrame, batch_size: int) -> FrameStream:
     return FrameStream(
         frame=block_table,
         options=FrameStreamLoader(batch_size=batch_size),
@@ -30,7 +31,7 @@ def concat_frame(device: str, data_size: int) -> TensorDictFrame:
 
 
 @pytest.fixture
-def concat_stream(concat_frame: FrameDict, batch_size: int) -> FrameStream:
+def concat_stream(concat_frame: TdictFrame, batch_size: int) -> FrameStream:
     return FrameStream(
         frame=concat_frame,
         options=FrameStreamLoader(batch_size=batch_size),
@@ -46,7 +47,7 @@ def joinable_frame(device: str, data_size: int) -> TensorDictFrame:
 
 
 @pytest.fixture
-def joinable_stream(joinable_frame: FrameDict, batch_size: int) -> FrameStream:
+def joinable_stream(joinable_frame: TdictFrame, batch_size: int) -> FrameStream:
     "`Stream` for joining on the RHS."
     return FrameStream(
         frame=joinable_frame,

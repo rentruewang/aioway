@@ -10,7 +10,7 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway._streams import TdictStream
+from aioway._streams import TdictStream, stream_dcls
 from aioway._torch import tdict_rename
 from aioway.schemas import AttrDict
 
@@ -23,7 +23,7 @@ __all__ = [
 ]
 
 
-@dcls.dataclass(frozen=True)
+@stream_dcls
 class MapStream(TdictStream, abc.ABC):
     """
     The shared base class for all the `map` like `Stream`s,
@@ -66,10 +66,10 @@ class MapStream(TdictStream, abc.ABC):
         This method will define how each batch is processed.
 
         Args:
-            batch: The batch to handle. Will be a `Chunk`.
+            batch: The batch to handle. Will be a `td.TensorDict`.
 
         Returns:
-            Another `Chunk`. Does not need to have the same `__len__` to the input.
+            Another `td.TensorDict`. Does not need to have the same `__len__` to the input.
             See class docstring for more details.
         """
 
@@ -84,7 +84,7 @@ class MapStream(TdictStream, abc.ABC):
         return self._apply(next_batch)
 
 
-@dcls.dataclass(frozen=True)
+@stream_dcls
 class ApplyStream(MapStream):
     """
     A `Stream` that you can customize what the `__next__` function do.
@@ -116,7 +116,7 @@ class ApplyStream(MapStream):
         return self.schema(self.source.attrs)
 
 
-@dcls.dataclass(frozen=True)
+@stream_dcls
 class FuncFilterStream(MapStream):
     """
     A `Stream` that filteres on its inputs, based on a preducate function.
@@ -152,7 +152,7 @@ class FuncFilterStream(MapStream):
         return self.source.attrs
 
 
-@dcls.dataclass(frozen=True)
+@stream_dcls
 class ProjectStream(MapStream):
     """
     Projection of the input table. The `subset` should be a subset of the input columns.
@@ -173,7 +173,7 @@ class ProjectStream(MapStream):
         return self.attrs.select(*self.subset)
 
 
-@dcls.dataclass(frozen=True)
+@stream_dcls
 class RenameStream(MapStream):
     """
     Renames some columns in the inputs in the outputs.

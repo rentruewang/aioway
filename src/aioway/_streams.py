@@ -14,7 +14,12 @@ import torch
 from aioway._utils import dcls_asdict, decomp_flatten
 from aioway.schemas import Attr, AttrDict
 
-__all__ = ["StreamState", "Stream", "TensorStream", "TdictStream"]
+__all__ = ["StreamState", "Stream", "TensorStream", "TdictStream", "stream_dcls"]
+
+
+@typing.dataclass_transform(frozen_default=True)
+def stream_dcls(cls):
+    return dcls.dataclass(frozen=True)(cls)
 
 
 @dcls.dataclass
@@ -43,7 +48,7 @@ class StreamState:
         return self.idx != 0
 
 
-@dcls.dataclass(frozen=True)
+@stream_dcls
 class Stream[T](cabc.Iterator[T], abc.ABC):
     """
     The base class for `Stream` and `StreamDict`,
@@ -121,7 +126,7 @@ class Stream[T](cabc.Iterator[T], abc.ABC):
         yield from decomp_flatten(dcls_asdict(self), Stream)
 
 
-@dcls.dataclass(frozen=True)
+@stream_dcls
 class TensorStream(Stream[torch.Tensor], abc.ABC):
     """
     An iterator of batches of `torch.Tensor`.
@@ -137,7 +142,7 @@ class TensorStream(Stream[torch.Tensor], abc.ABC):
         raise NotImplementedError
 
 
-@dcls.dataclass(frozen=True)
+@stream_dcls
 class TdictStream(Stream[td.TensorDict], abc.ABC):
     """
     An iterator of batches of `td.TensorDict`.

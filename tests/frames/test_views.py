@@ -1,9 +1,9 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from aioway.io import FrameDict
+from aioway._frames import TdictFrame
 
 
-def test_column_attr(frame: FrameDict) -> None:
+def test_column_attr(frame: TdictFrame) -> None:
     attrs = frame.attrs
     first_key = list(attrs.keys())[0]
 
@@ -11,7 +11,7 @@ def test_column_attr(frame: FrameDict) -> None:
     assert frame.select(first_key).attrs == {first_key: attrs[first_key]}
 
 
-def test_select_attr(frame: FrameDict) -> None:
+def test_select_attr(frame: TdictFrame) -> None:
     attrs = frame.attrs
     k_0, k_1 = list(attrs.keys())[:2]
 

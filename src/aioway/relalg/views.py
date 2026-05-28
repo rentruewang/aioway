@@ -2,20 +2,20 @@
 
 "`StreamColumn`s are a column of `Stream`."
 
-import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
 import tensordict as td
 import torch
 
-from aioway._streams import TdictStream, TensorStream
+from aioway._frames import TdictFrame, TensorFrame, frame_dcls
+from aioway._streams import TdictStream, TensorStream, stream_dcls
 from aioway.schemas import Attr, AttrDict
 
-__all__ = ["StreamColumnView", "StreamSelectView"]
+__all__ = ["StreamColumnView", "StreamSelectView", "FrameColumnView", "FrameSelectView"]
 
 
-@dcls.dataclass(frozen=True)
+@stream_dcls
 class StreamColumnView(TensorStream):
     """
     A column reference (on a stream).
@@ -25,13 +25,13 @@ class StreamColumnView(TensorStream):
     input: TdictStream
     "The input `TdictStream` to perform views on."
 
-    column: str
+    col: str
     "The column to view on."
 
     @typing.override
     def read(self) -> torch.Tensor:
         tdict = next(self.input)
-        return tdict[self.column]
+        return tdict[self.col]
 
     @property
     @typing.override
@@ -41,10 +41,10 @@ class StreamColumnView(TensorStream):
     @property
     @typing.override
     def attr(self) -> Attr:
-        return self.input.attrs[self.column]
+        return self.input.attrs[self.col]
 
 
-@dcls.dataclass(frozen=True)
+@stream_dcls
 class StreamSelectView(TdictStream):
     """
     The view generated when calling `Stream.select`.
@@ -53,7 +53,7 @@ class StreamSelectView(TdictStream):
     input: TdictStream
     "The input `TdictStream` to perform views on."
 
-    columns: cabc.Sequence[str]
+    cols: cabc.Sequence[str]
     "The column to view on."
 
     def __iter__(self) -> typing.Self:
@@ -62,7 +62,7 @@ class StreamSelectView(TdictStream):
     @typing.override
     def read(self) -> td.TensorDict:
         batch = next(self.input)
-        return batch.select(*self.columns)
+        return batch.select(*self.cols)
 
     @property
     @typing.override
@@ -72,4 +72,61 @@ class StreamSelectView(TdictStream):
     @property
     @typing.override
     def attrs(self) -> AttrDict:
-        return self.input.attrs.select(*self.columns)
+        return self.input.attrs.select(*self.cols)
+
+
+@frame_dcls
+class FrameColumnView(TensorFrame):
+    """
+    A column reference to a `Frame`.
+    Performs `__getitem__` on a `Frame`, then select the column.
+    """
+
+    dset: TdictFrame
+    "The frame to get column from"
+
+    col: str
+    "The column to view."
+
+    def __len__(self) -> int:
+        return len(self.dset)
+
+    @typing.no_type_check
+    def __getitem(self, idx):
+        batch = self.dset[idx]
+        return batch[self.col]
+
+    __getitem__ = __getitems__ = __getitem
+
+    @property
+    @typing.override
+    def attr(self) -> Attr:
+        return self.dset.attrs[self.col]
+
+
+@frame_dcls
+class FrameSelectView(TdictFrame):
+    """
+    A selection view on the `Frame`.
+    """
+
+    dset: TdictFrame
+    "The frame to get column from"
+
+    cols: cabc.Sequence[str]
+    "The column to view."
+
+    @typing.override
+    def __len__(self) -> int:
+        return len(self.dset)
+
+    @typing.no_type_check
+    def __getitem(self, idx: list[int], /) -> td.TensorDict:
+        items = self.dset[idx]
+        return items.select(*self.cols)
+
+    __getitem__ = __getitems__ = __getitem
+
+    @property
+    def attrs(self):
+        return self.dset.attrs.select(*self.cols)

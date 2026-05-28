@@ -1,13 +1,14 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import dataclasses as dcls
+import functools
 import typing
 from collections import abc as cabc
 
 import pytest
 import tensordict as td
 
-from aioway._streams import StreamState, TdictStream
+from aioway._streams import StreamState, TdictStream, stream_dcls
 from aioway._torch import tdict_all_equal, tdict_rename
 from aioway.relalg import (
     ApplyStream,
@@ -27,11 +28,9 @@ class SaveLastState(StreamState):
     "The last batch."
 
 
-@dcls.dataclass(frozen=True)
+@stream_dcls
 class SaveLastMapStream(MapStream):
     "`Stream` that saves the last `__next__` call."
-
-    state: SaveLastState = dcls.field(default_factory=SaveLastState)
 
     @typing.override
     def _apply(self, batch: td.TensorDict) -> td.TensorDict:
@@ -45,6 +44,10 @@ class SaveLastMapStream(MapStream):
     @property
     def last(self) -> td.TensorDict:
         return self.state.last
+
+    @functools.cached_property
+    def state(self):
+        return SaveLastState()
 
 
 @pytest.fixture

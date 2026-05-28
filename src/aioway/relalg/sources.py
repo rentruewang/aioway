@@ -13,8 +13,8 @@ from collections import abc as cabc
 import tensordict as td
 from torch.utils import data
 
-from aioway._streams import TdictStream
-from aioway.io import FrameDict
+from aioway._frames import TdictFrame
+from aioway._streams import TdictStream, stream_dcls
 from aioway.schemas import AttrDict
 
 __all__ = [
@@ -28,7 +28,7 @@ __all__ = [
 LOGGER = logging.getLogger(__name__)
 
 
-@dcls.dataclass(frozen=True)
+@stream_dcls
 class BoundedStream(TdictStream, abc.ABC):
     """
     A stream with `__len__` and `__getitem__`.
@@ -55,11 +55,13 @@ class BoundedStream(TdictStream, abc.ABC):
             idx: An integer. Must be in the range `[-len(self), len(self))`.
 
         Returns:
-            The `Chunk` batch.
+            The `td.TensorDict` batch.
         """
 
+        raise NotImplementedError
 
-@dcls.dataclass(frozen=True)
+
+@stream_dcls
 class CacheStream(BoundedStream):
     """
     Exhaust the input stream, store it into a cache for repeating access.
@@ -120,7 +122,7 @@ class CacheStream(BoundedStream):
         return self.stream.attrs
 
 
-@dcls.dataclass(frozen=True)
+@stream_dcls
 class ListStream(BoundedStream):
     "A `Stream` backed by a list of `TensorDict`."
 
@@ -162,7 +164,7 @@ class ListStream(BoundedStream):
             raise StopIteration
 
 
-@dcls.dataclass(frozen=True)
+@stream_dcls
 class FrameStreamLoader:
     """
     The optoins for `data.DataLoader` on `Frame` in `FrameStream`.
@@ -181,13 +183,13 @@ class FrameStreamLoader:
     "How to sample in case when want to shuffle."
 
 
-@dcls.dataclass(frozen=True)
+@stream_dcls
 class FrameStream(TdictStream):
     """
     A `Stream` backed by a `Frame`.
     """
 
-    frame: FrameDict
+    frame: TdictFrame
     "The underlying `Frame`."
 
     options: FrameStreamLoader
@@ -239,7 +241,7 @@ class FrameStream(TdictStream):
             )
 
         idx %= self.size
-        return self.frame._getitems_batch(list(range(idx, idx + batch_size)))
+        return self.frame.__getitems__(list(range(idx, idx + batch_size)))
 
 
 def _identity[T](item: T) -> T:

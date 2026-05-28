@@ -2,7 +2,8 @@
 
 import pytest
 
-from aioway.io import FrameDict, TensorDictFrame, TensorDictListFrame
+from aioway.io import TensorDictFrame, TensorDictListFrame
+from aioway._frames import TdictFrame
 from aioway.relalg import FrameStream, FrameStreamLoader
 from tests.fake import chunk_ok
 
@@ -24,12 +25,12 @@ def list_table(device: str, batch_size: int, data_size: int):
 @pytest.fixture(params=[block_table, list_table])
 def frame(
     request: pytest.FixtureRequest, device: str, batch_size: int, data_size: int
-) -> FrameDict:
+) -> TdictFrame:
     return request.param(device=device, batch_size=batch_size, data_size=data_size)
 
 
 @pytest.fixture
-def table_stream(frame: FrameDict, batch_size: int):
+def table_stream(frame: TdictFrame, batch_size: int):
     return FrameStream(
         frame,
         FrameStreamLoader(batch_size=batch_size),

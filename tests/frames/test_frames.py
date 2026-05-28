@@ -5,33 +5,26 @@ import pytest
 import tensordict as td
 from numpy import random
 
-from aioway.io import FrameDict
+from aioway._frames import TdictFrame
 
 
-def test_table_not_empty(frame: FrameDict):
+def test_table_not_empty(frame: TdictFrame):
     assert frame
     assert len(frame)
 
 
-def test_table_idx_arr(frame: FrameDict):
+def test_table_idx_arr(frame: TdictFrame):
     idx = random.randint(low=-len(frame), high=len(frame), size=[len(frame)])
 
     assert np.all(-len(frame) <= idx)
     assert np.all(idx < len(frame))
     assert idx.shape == (len(frame),)
 
-    out = frame[idx.tolist()]
+    out = frame.__getitems__(idx.tolist())
     assert isinstance(out, td.TensorDict)
     assert len(out) == len(idx)
 
 
-def test_table_idx_slice(frame: FrameDict):
-    lf = len(frame)
-    out = frame[-lf:lf]
-    assert isinstance(out, td.TensorDict)
-    assert len(out) == len([*range(lf)[-lf:lf]])
-
-
-def test_table_out_of_bounds(frame: FrameDict):
+def test_table_out_of_bounds(frame: TdictFrame):
     with pytest.raises(IndexError):
-        _ = frame[[-2 * len(frame)]]
+        _ = frame.__getitems__([-2 * len(frame)])

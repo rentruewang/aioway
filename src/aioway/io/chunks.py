@@ -9,17 +9,16 @@ import typing
 import numpy as np
 import tensordict as td
 
+from aioway._frames import TdictFrame, frame_dcls
 from aioway._utils import is_list_of
 from aioway.schemas import AttrDict
-
-from .frames import FrameDict
 
 __all__ = ["TensorDictFrame", "TensorDictListFrame"]
 
 
 @typing.final
-@dcls.dataclass(frozen=True)
-class TensorDictFrame(FrameDict):
+@frame_dcls
+class TensorDictFrame(TdictFrame):
     """
     A `Frame` backed by a `td.TensorDict` (aka a batch in `aioway`).
     This means that it is non-distributed, and volatile.
@@ -35,7 +34,7 @@ class TensorDictFrame(FrameDict):
         return len(self.data)
 
     @typing.override
-    def _getitems_batch(self, idx: list[int]) -> td.TensorDict:
+    def __getitems__(self, idx: list[int]) -> td.TensorDict:
         return self.data[idx].auto_batch_size_()
 
     @property
@@ -45,8 +44,8 @@ class TensorDictFrame(FrameDict):
 
 
 @typing.final
-@dcls.dataclass(frozen=True)
-class TensorDictListFrame(FrameDict):
+@frame_dcls
+class TensorDictListFrame(TdictFrame):
     """
     A `Frame` backed by a `list[td.TensorDict]` (aka a batch in `aioway`).
     This means that it is non-distributed, and volatile.
@@ -79,8 +78,9 @@ class TensorDictListFrame(FrameDict):
 
     @typing.override
     @typing.no_type_check
-    def _getitems_batch(self, i: list[int], /) -> td.TensorDict:
-        idx = np.asarray(i)
+    def __getitems__(self, index: list[int], /) -> td.TensorDict:
+        assert is_list_of(int)(index), index
+        idx = np.asarray(index)
 
         # Which tensordict to use in `self.tensordicts`.
         td_idx = np.searchsorted(self._cumsum_len, idx, side="right")
@@ -93,7 +93,7 @@ class TensorDictListFrame(FrameDict):
         # Index in partition = original index - elements in prior partitions.
         idx_in_part = idx - prior_elements[td_idx]
 
-        # `Chunk` that each index would correspond to.
+        # `td.TensorDict` that each index would correspond to.
         td_for_idx: list[td.TensorDict] = [self._list[t] for t in td_idx]
 
         assert len(idx_in_part) == len(td_for_idx)
