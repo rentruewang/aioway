@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from aioway._costs import Cost, CostSession
+from aioway._costs import Cost, CostSession, current_session
 
 
 def test_cost():
@@ -26,3 +26,13 @@ def test_cost():
             assert session_1.total() == total_2 + total_4
 
         assert session_1.total() == total_2
+
+
+def test_session():
+    with (sess_1 := CostSession()).track():
+        assert current_session() is sess_1
+
+        with (sess_2 := CostSession()).track():
+            assert current_session() is sess_2
+
+        assert current_session() is sess_1

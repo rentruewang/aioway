@@ -11,7 +11,7 @@ from collections import abc as cabc
 
 from aioway._utils import Stack
 
-__all__ = ["Cost", "CostSession"]
+__all__ = ["Cost", "CostSession", "current_session"]
 
 
 _latest_session: CostSession | None = None
@@ -102,11 +102,28 @@ class CostSession:
         Track the costs in the `CostSession`.
         """
 
+        global _latest_session
+
         try:
-            yield self
+            with _set_latest_session(self):
+                yield self
         finally:
+            # When the scope exits, clean up all the costs (in the current session).
             assert len(self) >= 0
             _cost_cumsum().truncate(self._before_count)
+
+
+@ctxl.contextmanager
+def _set_latest_session(session: CostSession):
+
+    global _latest_session
+    before = _latest_session
+    _latest_session = session
+
+    try:
+        yield
+    finally:
+        _latest_session = before
 
 
 @functools.lru_cache(maxsize=1)
@@ -121,7 +138,9 @@ def _cost_cumsum() -> Stack[Cost]:
     return Stack([Cost.zero()])
 
 
-def latest_session() -> CostSession:
+def current_session() -> CostSession:
+    "Get the currently active session."
+
     if _latest_session is None:
         raise RuntimeError(
             "You have not started tracking cost with `CostSession().track()` yet."
