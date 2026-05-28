@@ -4,7 +4,8 @@
 
 import pytest
 
-from aioway.io import FrameDict, FrameStream, FrameStreamLoader, TensorDictFrame
+from aioway.io import FrameDict, TensorDictFrame
+from aioway.relalg import FrameStream, FrameStreamLoader
 from tests.fake import chunk_ok, concat_ok, unionable_ok
 
 

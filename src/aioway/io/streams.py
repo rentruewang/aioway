@@ -14,7 +14,7 @@ import torch
 from aioway._utils import dcls_asdict, decomp_flatten
 from aioway.schemas import Attr, AttrDict
 
-__all__ = ["TdictStream", "StreamState", "TdictStream", "TdictStream", "TdictStream"]
+__all__ = ["StreamState", "Stream", "TensorStream", "TdictStream"]
 
 
 @dcls.dataclass
@@ -153,11 +153,11 @@ class TdictStream(Stream[td.TensorDict], abc.ABC):
         raise NotImplementedError
 
     def column(self, col: str):
-        from .views import StreamColumnView
+        from aioway.relalg import StreamColumnView
 
         return StreamColumnView(self, col)
 
     def select(self, *cols: str):
-        from .views import StreamSelectView
+        from aioway.relalg import StreamSelectView
 
         return StreamSelectView(self, cols)

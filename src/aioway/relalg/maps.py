@@ -11,9 +11,8 @@ import tensordict as td
 import torch
 
 from aioway._torch import tdict_rename
+from aioway.io import TdictStream
 from aioway.schemas import AttrDict
-
-from .streams import TdictStream
 
 __all__ = [
     "MapStream",

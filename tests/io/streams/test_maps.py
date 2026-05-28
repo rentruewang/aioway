@@ -8,15 +8,14 @@ import pytest
 import tensordict as td
 
 from aioway._torch import tdict_all_equal, tdict_rename
-from aioway.io import (
+from aioway.io import StreamState, TdictStream
+from aioway.relalg import (
     ApplyStream,
     CacheStream,
     FuncFilterStream,
     MapStream,
     ProjectStream,
     RenameStream,
-    StreamState,
-    TdictStream,
 )
 from aioway.schemas import AttrDict
 

@@ -2,13 +2,8 @@
 
 import pytest
 
-from aioway.io import (
-    FrameDict,
-    FrameStream,
-    FrameStreamLoader,
-    TensorDictFrame,
-    TensorDictListFrame,
-)
+from aioway.io import FrameDict, TensorDictFrame, TensorDictListFrame
+from aioway.relalg import FrameStream, FrameStreamLoader
 from tests.fake import chunk_ok
 
 

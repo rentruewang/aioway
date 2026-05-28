@@ -13,12 +13,8 @@ from collections import abc as cabc
 import tensordict as td
 from torch.utils import data
 
-from aioway._utils import is_list_of
+from aioway.io import FrameDict, TdictStream
 from aioway.schemas import AttrDict
-
-from ..frames import FrameDict
-from .streams import TdictStream
-from .views import StreamColumnView, StreamSelectView
 
 __all__ = [
     "BoundedStream",

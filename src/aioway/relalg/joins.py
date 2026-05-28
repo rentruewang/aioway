@@ -9,10 +9,10 @@ import typing
 import tensordict as td
 import torch
 
+from aioway.io import StreamState, TdictStream
 from aioway.schemas import AttrDict
 
 from .sources import CacheStream
-from .streams import StreamState, TdictStream
 
 __all__ = ["ZipStream", "NestedLoopJoinStream"]
 
