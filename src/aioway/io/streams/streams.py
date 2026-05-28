@@ -13,7 +13,7 @@ import tensordict as td
 from aioway.dsets import Dataset, DatasetViewTypes
 from aioway.schemas import AttrDict
 
-__all__ = ["Stream", "StreamState", "Stream", "Stream", "Stream"]
+__all__ = ["StreamDict", "StreamState", "StreamDict", "StreamDict", "StreamDict"]
 
 
 @dcls.dataclass
@@ -43,18 +43,18 @@ class StreamState:
 
 
 @dcls.dataclass(frozen=True)
-class Stream(Dataset, cabc.Iterator[td.TensorDict], abc.ABC):
+class StreamDict(Dataset, cabc.Iterator[td.TensorDict], abc.ABC):
     """
-    `Stream` produces a stream of batches of data, in the form of `TensorDict`s,
-    everytime `__next__` is called on it, a `TensorDict` is yielded.
+    `StreamDict` produces a stream of batches of data, in the form of `td.TensorDict`s,
+    everytime `__next__` is called on it, a `td.TensorDict` is yielded.
 
-    `Stream` is a stateful operation, compared to the previous implementations,
+    `StreamDict` is a stateful operation, compared to the previous implementations,
     it is an external iterator, supporting state inspection, simplifying debugging.
     """
 
     __match_args__: typing.ClassVar[tuple[str, ...]]
     """
-    A `Stream` should be able to be decomposed with `match` statements.
+    A `StreamDict` should be able to be decomposed with `match` statements.
     """
 
     @typing.override
@@ -115,7 +115,7 @@ class Stream(Dataset, cabc.Iterator[td.TensorDict], abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def _inputs(self) -> tuple[Stream, ...]:
+    def _inputs(self) -> tuple[StreamDict, ...]:
         """
         `Stream`'s children, the dependent `Stream`s that would also be evaluated
         when calling `__next__` on the current `Stream`.

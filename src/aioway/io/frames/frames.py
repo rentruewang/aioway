@@ -20,13 +20,13 @@ __all__ = ["FrameDict"]
 @dcls.dataclass(frozen=True)
 class FrameDict(Dataset, data.Dataset[td.TensorDict], abc.ABC):
     """
-    `Frame` represents a set of heterogenious data stored in memory,
+    `FrameDict` represents a set of heterogenious data stored in memory,
     it is one of the main physical abstractions in `aioway` to represent eager computation.
 
-    Think of it as a normal `Sequence` of `Chunk`,
+    Think of it as a normal `Sequence` of `td.TensorDict`,
     where computation happens eagerly, imperatively, and the result is stored in memory.
 
-    Each `td.TensorDict` retrieved from `Frame` is a minibatch of data.
+    Each `td.TensorDict` retrieved from `FrameDict` is a minibatch of data.
 
     Similar to `Dataset`, but only allows retrieving a batch at a time.
     To get a single item, retrieve a batch of size 1.

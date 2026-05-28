@@ -13,7 +13,7 @@ import torch
 from aioway._torch import tdict_rename
 from aioway.schemas import AttrDict
 
-from .streams import Stream
+from .streams import StreamDict
 
 __all__ = [
     "MapStream",
@@ -25,7 +25,7 @@ __all__ = [
 
 
 @dcls.dataclass(frozen=True)
-class MapStream(Stream, abc.ABC):
+class MapStream(StreamDict, abc.ABC):
     """
     The shared base class for all the `map` like `Stream`s,
     which share the trait of::
@@ -42,13 +42,13 @@ class MapStream(Stream, abc.ABC):
         where each input row can correspond to one or multiple or 0 rows, in the same minibatch.
     """
 
-    source: Stream
+    source: StreamDict
     """
     The source stream that will be yielded from.
     """
 
     def __post_init__(self):
-        if not isinstance(self.source, Stream):
+        if not isinstance(self.source, StreamDict):
             raise ValueError(
                 f"{self.source=} should have been a `Stream`. Got {type(self.source)=}"
             )

@@ -11,13 +11,13 @@ import torch
 
 from aioway.dsets import DatasetColumnView, DatasetSelectView
 
-from .streams import Stream
+from .streams import StreamDict
 
 __all__ = ["StreamColumnView", "StreamSelectView"]
 
 
 @dcls.dataclass(frozen=True)
-class StreamColumnView(cabc.Iterator[torch.Tensor], DatasetColumnView[Stream]):
+class StreamColumnView(cabc.Iterator[torch.Tensor], DatasetColumnView[StreamDict]):
     """
     A column reference (on a stream).
     Performs `__next__` and yield `torch.Tensor`s.
@@ -31,12 +31,12 @@ class StreamColumnView(cabc.Iterator[torch.Tensor], DatasetColumnView[Stream]):
         return batch[self.col]
 
     @classmethod
-    def from_column(cls, dataset: Stream, /, column: str) -> typing.Self:
+    def from_column(cls, dataset: StreamDict, /, column: str) -> typing.Self:
         return cls(col=column, dset=dataset)
 
 
 @dcls.dataclass(frozen=True)
-class StreamSelectView(DatasetSelectView[Stream], Stream):
+class StreamSelectView(DatasetSelectView[StreamDict], StreamDict):
     """
     The view generated when calling `Stream.select`.
     """
@@ -61,5 +61,5 @@ class StreamSelectView(DatasetSelectView[Stream], Stream):
         return (self.dset,)
 
     @classmethod
-    def from_columns(cls, dataset: Stream, /, *columns: str) -> typing.Self:
+    def from_columns(cls, dataset: StreamDict, /, *columns: str) -> typing.Self:
         return cls(dset=dataset, cols=columns)

@@ -17,7 +17,7 @@ from aioway._utils import is_list_of
 from aioway.schemas import AttrDict
 
 from ..frames import FrameDict
-from .streams import Stream
+from .streams import StreamDict
 
 __all__ = [
     "BoundedStream",
@@ -31,7 +31,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 @dcls.dataclass(frozen=True)
-class BoundedStream(Stream, abc.ABC):
+class BoundedStream(StreamDict, abc.ABC):
     """
     A stream with `__len__` and `__getitem__`.
     """
@@ -47,7 +47,7 @@ class BoundedStream(Stream, abc.ABC):
             return self._getitem_int(key)
 
         if isinstance(key, str) or is_list_of(str)(key):
-            return Stream.__getitem__(self, key)
+            return StreamDict.__getitem__(self, key)
 
         raise TypeError(f"Do not know how to handle {type(key)=}.")
 
@@ -70,7 +70,7 @@ class CacheStream(BoundedStream):
     Exhaust the input stream, store it into a cache for repeating access.
     """
 
-    stream: Stream
+    stream: StreamDict
     "The input stream."
 
     saved: list[td.TensorDict] = dcls.field(default_factory=list)
@@ -195,7 +195,7 @@ class FrameStreamLoader:
 
 
 @dcls.dataclass(frozen=True)
-class FrameStream(Stream):
+class FrameStream(StreamDict):
     """
     A `Stream` backed by a `Frame`.
     """
