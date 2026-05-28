@@ -4,18 +4,19 @@ import abc
 import dataclasses as dcls
 import inspect
 import typing
+from collections import abc as cabc
 
 from torch import nn
 
-from aioway._fn import Fn, thunk_dcls
 from aioway._utils import render_fcall
 from aioway.modes import NnInitFn
 
-from ..hop import HopFwd, HopInit, hop_init_dcls
+from ..hop import Hop
+from .hop import NnHop
 
-__all__ = ["NnInit", "find_nn_init", "build_nn_hop", "NnHopInit", "NnHopFwd"]
+__all__ = ["NnInit", "find_nn_init", "build_nn_hop"]
 
-_NN_INITS: dict[type[nn.Module], type[NnInit]] = {}
+_NN_INITS: dict[cabc.Callable[..., nn.Module], type[NnInit]] = {}
 
 
 @typing.dataclass_transform(frozen_default=False)
@@ -25,19 +26,23 @@ def nn_init_dcls(cls):
 
 
 @nn_init_dcls
-class NnInit(Fn, abc.ABC):
+class NnInit(abc.ABC):
     """
     `NnInit` records the signature of an `nn.Module` initialization, and creates it.
 
     It provides metadata as to what `nn.Module` arguments are valid or not.
     """
 
-    NN: typing.ClassVar[type[nn.Module]] = NotImplemented
+    NN: typing.ClassVar[cabc.Callable[..., nn.Module]] = NotImplemented
+    HOP: typing.ClassVar[cabc.Callable[..., NnHop]] = NotImplemented
 
     def __init_subclass__(cls) -> None:
         # Abstract in terms of `ClassVar`.
         if cls.NN is NotImplemented:
             return
+
+        if cls.HOP is NotImplemented:
+            raise RuntimeError(f"{cls=}.HOP is not configured.")
 
         if inspect.isabstract(cls):
             return
@@ -56,16 +61,13 @@ class NnInit(Fn, abc.ABC):
         thunk = NnInitFn(func=self.NN, args=(), kwargs=dcls.asdict(self))
         return thunk()
 
-    def apply_hop(self, input: HopInit):
+    def apply(self, *args, **kwargs) -> Hop:
         """
-        Apply the `NnInit` on the input `Hop` operator.
-        Create an `Fn` that when called `.__call__()`, will initialize an `nn.Module`.
-
-        Returns:
-            An `NnHopInit` instance that uses the `input` as input and `self` as module.
+        Builds a high level operator with the given `NN` and `HOP` runtime class.
         """
 
-        return NnHopInit(nn_init=self, input=input)
+        nn_module = self.init_nn()
+        return self.HOP(self, nn_module, *args, **kwargs)
 
 
 def find_nn_init(thunk: NnInitFn, /) -> NnInit | None:
@@ -80,74 +82,8 @@ def find_nn_init(thunk: NnInitFn, /) -> NnInit | None:
     return nn_init_type(*thunk.args, **thunk.kwargs)
 
 
-def build_nn_hop(thunk: NnInitFn, input: HopInit) -> HopInit | None:
-    """
-    Build a high level operator from the `thunk` with `input` as input.
-    """
-
+def build_nn_hop(thunk: NnInitFn, *args, **kwargs):
     if (nn_init := find_nn_init(thunk)) is None:
         return None
 
-    return nn_init.apply_hop(input)
-
-
-@hop_init_dcls
-class NnHopInit(HopInit):
-    """
-    The `nn.Module` high level operator.
-    """
-
-    nn_init: NnInit
-    "The `nn.Module` instance that takes in `input()` as input."
-
-    input: HopInit
-    "The input `Hop`, must output in a way that `module` accepts."
-
-    @typing.override
-    def init(self) -> NnHopFwd:
-        "Pass the input to the module and returns the output."
-
-        # Initialize here, cost will be tracked outside.
-        module = self.nn_init()
-
-        return NnHopFwd(module, self.input())
-
-
-@thunk_dcls
-class NnHopFwd(HopFwd):
-    """
-    The `HopFwdNode` subclass for `nn.Module`s.
-    It is a thunk so it has args, kwargs as attributes.
-    """
-
-    func: nn.Module
-    "`NnHopFwd` stores the module."
-
-    args: tuple[typing.Any, ...]
-    "The *args arguments."
-
-    kwargs: dict[str, typing.Any]
-    "The **kwargs arguments."
-
-    def __init__(self, func: nn.Module, *args, **kwargs):
-        super().__init__()
-
-        self.func = func
-        self.args = args
-        self.kwargs = kwargs
-
-    @typing.override
-    def forward(self) -> object:
-        def maybe_do(item):
-            if isinstance(item, Fn):
-                return item()
-            else:
-                return item
-
-        args = [maybe_do(arg) for arg in self.args]
-        kwargs = {key: maybe_do(arg) for key, arg in self.kwargs.items()}
-        return self.func(*args, **kwargs)
-
-    def parameters(self):
-        "Pass forward the `.parameters()` of modules."
-        yield from self.func.parameters()
+    return nn_init.apply(*args, **kwargs)

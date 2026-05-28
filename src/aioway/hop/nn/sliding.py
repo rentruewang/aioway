@@ -9,6 +9,7 @@ from torch import nn
 
 from aioway._utils import is_tuple_of
 
+from .hop import NnLayerHop
 from .modules import NnInit, nn_init_dcls
 
 __all__ = [
@@ -29,7 +30,6 @@ _PADDING = frozenset(["zeros", "reflect", "replicate", "circular"])
 
 @nn_init_dcls
 class _BaseAvgSliding(abc.ABC):
-    NN: typing.ClassVar[type[nn.Module]] = NotImplemented
     NDIM: typing.ClassVar[int]
 
     _: dcls.KW_ONLY
@@ -102,6 +102,8 @@ class _BaseConvWeights(abc.ABC):
 
 @nn_init_dcls
 class _BaseConv(_BaseSliding, _BaseConvWeights, NnInit):
+    HOP = NnLayerHop
+
     def __post_init__(self) -> None:
         _BaseSliding.__post_init__(self)
         _BaseConvWeights.__post_init__(self)
@@ -109,12 +111,16 @@ class _BaseConv(_BaseSliding, _BaseConvWeights, NnInit):
 
 @nn_init_dcls
 class _BaseAvgPool(_BaseAvgSliding, NnInit):
+    HOP = NnLayerHop
+
     def __post_init__(self) -> None:
         _BaseAvgSliding.__post_init__(self)
 
 
 @nn_init_dcls
 class _BaseMaxPool(_BaseSliding, NnInit):
+    HOP = NnLayerHop
+
     return_indices: bool = False
     """
     If `True`, will return the max indices along with the outputs.

@@ -53,7 +53,7 @@ def module_fwd(module: nn.Module, /, *args, **kwargs) -> typing.Any:
 
 
 @track_call_count
-def module_init(init: type[nn.Module], /, *args, **kwargs) -> nn.Module:
+def module_init(init: cabc.Callable[..., nn.Module], /, *args, **kwargs) -> nn.Module:
     """
     Initialize the `nn.Module`. This would execute all the modes at the outermost module.
     `aioway` functions must call this function to initalize `nn.Module`.
@@ -190,14 +190,14 @@ class NnFwdMode(NnModeOnOff[NnFwdFn], abc.ABC):
 
 @typing.final
 @thunk_dcls
-class NnInitFn(TorchThunk[type[nn.Module]]):
+class NnInitFn(TorchThunk[cabc.Callable[..., nn.Module]]):
     """
     `NnInitFn` are used to initialize `nn.Module`s.
 
     It hooks into `module_init` so it allows for optional overwrites.
     """
 
-    func: type[nn.Module]
+    func: cabc.Callable[..., nn.Module]
     "The type of `nn.Module`."
 
     def __post_init__(self):

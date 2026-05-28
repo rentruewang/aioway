@@ -4,47 +4,56 @@ import pytest
 import torch
 from torch import nn
 
-from aioway.hop import HopInit, NnHopFwd, TensorHopInit, build_nn_hop
-from aioway.hop.hop import cache_hop_fwd_output, cache_hop_init_output
-from aioway.modes.modules import NnInitFn
+from aioway.hop import NnLayerHop, NnLossHop, TensorHop, build_nn_hop, hop_cache_on
+from aioway.modes import NnInitFn
 
 
 @pytest.fixture
 def tensor_init():
-    return TensorHopInit(tensor=torch.randn(100, 30))
+    return TensorHop(data=torch.randn(100, 30))
 
 
 @pytest.fixture
-def hop_cache_on():
-    with cache_hop_init_output(), cache_hop_fwd_output():
+def cache_on():
+    with hop_cache_on():
         yield
 
 
 @pytest.fixture
-def hop_cache_off():
+def cache_off():
     return
 
 
-@pytest.fixture(params=[hop_cache_on.name, hop_cache_off.name])
+@pytest.fixture(params=[cache_on.name, cache_off.name])
 def maybe_cache_hop(request: pytest.FixtureRequest):
     return request.getfixturevalue(request.param)
 
 
-def test_hop(module_thunk, tensor_init: TensorHopInit, maybe_cache_hop):
-    result = build_nn_hop(module_thunk, tensor_init)
-    assert isinstance(result, HopInit)
-
-    fwd = result()
-    assert isinstance(fwd, NnHopFwd)
-
-    assert all(isinstance(param, nn.Parameter) for param in fwd.parameters())
+def test_layer_hop(layer_thunk, tensor_init: TensorHop, maybe_cache_hop):
+    hop = build_nn_hop(layer_thunk, tensor_init)
+    assert isinstance(hop, NnLayerHop)
+    assert all(isinstance(param, nn.Parameter) for param in hop.parameters())
 
 
-def test_hop_linear(tensor_init: TensorHopInit, maybe_cache_hop):
+def test_loss_hop(loss_thunk, tensor_init: TensorHop, maybe_cache_hop):
+    result = build_nn_hop(loss_thunk, tensor_init, tensor_init)
+    assert isinstance(result, NnLossHop)
+
+
+def test_hop_mse(tensor_init: TensorHop, maybe_cache_hop):
+    result = build_nn_hop(
+        NnInitFn(nn.MSELoss, args=(), kwargs={}), tensor_init, tensor_init
+    )
+
+    assert result
+    out = result()
+    assert isinstance(out, torch.Tensor)
+
+
+def test_hop_linear(tensor_init: TensorHop, maybe_cache_hop):
     linear = build_nn_hop(NnInitFn(nn.Linear, args=(30, 31), kwargs={}), tensor_init)
     assert linear
 
-    fwd_node = linear()
-    result = fwd_node()
+    result = linear()
     assert isinstance(result, torch.Tensor)
     assert result.shape == (100, 31)

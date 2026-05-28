@@ -5,7 +5,6 @@
 import dataclasses as dcls
 import functools
 import graphlib
-import typing
 from collections import abc as cabc
 
 import numpy as np
@@ -15,7 +14,8 @@ from .typing import IntArray
 __all__ = ["DagNode", "Dag", "topo_sort"]
 
 
-class DagNode[T](typing.NamedTuple):
+@dcls.dataclass(frozen=True, slots=True)
+class DagNode[T]:
     """
     `DagNode` essentially is a `key: list[value]` mapping pair,
     but `key` does not need to be hashable. Each data must have unique `id`.
