@@ -56,7 +56,8 @@ class Cost:
 
 class CostSession:
     """
-    The cost session
+    The cost session. Use the `.track()` function to track the costs in a new scope.
+    Not thread safe, but efficient in single threading context.
     """
 
     def __init__(self) -> None:
