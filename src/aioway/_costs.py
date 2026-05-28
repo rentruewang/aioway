@@ -46,7 +46,7 @@ class Cost:
 
     def commit(self) -> None:
         """
-        Record the cost to the session.
+        Record the cost to the session. No-op when no session active.
         """
 
         if (sess := current_session()) is None:
