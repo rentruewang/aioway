@@ -10,7 +10,7 @@ from collections import abc as cabc
 
 from aioway._utils import Stack
 
-__all__ = ["Cost", "CostSession", "current_session"]
+__all__ = ["Cost", "CostSession", "track_cost", "current_session"]
 
 
 _latest_session: CostSession | None = None
@@ -45,8 +45,13 @@ class Cost:
         )
 
     def commit(self) -> None:
-        cumsum = _COST_CUMSUM.top() + self
-        _COST_CUMSUM.append(cumsum)
+        if (sess := current_session()) is None:
+            return
+
+        # Using this rather than the `_COST_CUMSUM`.
+        # This forces `current_session()` to be `not None`,
+        # so we always clean it up via scopes.
+        sess.record(self)
 
     @classmethod
     def zero(cls) -> typing.Self:
@@ -55,13 +60,21 @@ class Cost:
 
 class CostSession:
     """
-    The cost session. Use the `.track()` function to track the costs in a new scope.
+    The cost session. Use the `track_cost()` function to track the costs in a new scope.
     Providing `.total()` function for summarization of costs.
     Not thread safe, but efficient in single threading context.
     """
 
+    _COST_CUMSUM = Stack([Cost.zero()])
+    """
+    The cumsum of costs. Since we are doing a lot of slice summation (and no setitem),
+    this gives O(1) slice summation at the cost of item access being slower.
+
+    The stack itself always has a minimum size of 1 (concetual 0).
+    """
+
     def __init__(self) -> None:
-        self._before_count = len(_COST_CUMSUM)
+        self._before_count = len(self._COST_CUMSUM)
         """
         These items, due to how scopes and stacks work (not thread safe),
         will not be modified in the scope of `self.track`.
@@ -70,7 +83,7 @@ class CostSession:
     def __len__(self) -> int:
         "The number of items, in the scope of this session."
 
-        return len(_COST_CUMSUM) - self._before_count
+        return len(self._COST_CUMSUM) - self._before_count
 
     def __getitem__(self, idx: int | slice[int, int, None], /) -> Cost:
         if isinstance(idx, int):
@@ -91,32 +104,22 @@ class CostSession:
         if not 0 <= end <= len(self):
             raise IndexError
 
-        end_cost = _COST_CUMSUM[end + self._before_count - 1]
-        start_cost = _COST_CUMSUM[start + self._before_count - 1]
+        end_cost = self._COST_CUMSUM[end + self._before_count - 1]
+        start_cost = self._COST_CUMSUM[start + self._before_count - 1]
         return end_cost - start_cost
 
     def sum(self) -> Cost:
         "Return the sum of costs in this current session."
         return self[0 : len(self)]
 
-    @ctxl.contextmanager
-    def track(self) -> cabc.Generator[typing.Self]:
-        """
-        Track the costs in the `CostSession`.
-        """
+    def record(self, cost: Cost):
+        "Record the `cost` into the session."
 
-        global _latest_session
-
-        try:
-            with self._set_latest_session():
-                yield self
-        finally:
-            # When the scope exits, clean up all the costs (in the current session).
-            assert len(self) >= 0
-            _COST_CUMSUM.truncate(self._before_count)
+        cumsum = self._COST_CUMSUM.top() + cost
+        self._COST_CUMSUM.append(cumsum)
 
     @ctxl.contextmanager
-    def _set_latest_session(self: CostSession):
+    def _set_latest(self: CostSession):
 
         global _latest_session
         before = _latest_session
@@ -127,22 +130,39 @@ class CostSession:
         finally:
             _latest_session = before
 
-
-_COST_CUMSUM = Stack([Cost.zero()])
-"""
-The cumsum of costs. Since we are doing a lot of slice summation (and no setitem),
-this gives O(1) slice summation at the cost of item access being slower.
-
-The stack itself always has a minimum size of 1 (concetual 0).
-"""
+    def cleanup(self) -> None:
+        self._COST_CUMSUM.truncate(self._before_count)
 
 
-def current_session() -> CostSession:
+@ctxl.contextmanager
+def _set_latest_session(sess: CostSession):
+
+    global _latest_session
+    before = _latest_session
+    _latest_session = sess
+
+    try:
+        yield
+    finally:
+        _latest_session = before
+
+
+@ctxl.contextmanager
+def track_cost() -> cabc.Generator[CostSession]:
+    """
+    Track the costs in the `CostSession`.
+    """
+
+    sess = CostSession()
+
+    with _set_latest_session(sess):
+        try:
+            yield sess
+        finally:
+            sess.cleanup()
+
+
+def current_session() -> CostSession | None:
     "Get the currently active session."
-
-    if _latest_session is None:
-        raise RuntimeError(
-            "You have not started tracking cost with `CostSession().track()` yet."
-        )
 
     return _latest_session
