@@ -109,6 +109,7 @@ class TensorDictListFrame(TdictFrame):
 
         assert len(idx_in_part) == len(td_for_idx)
 
+        # Get each from partition, sequentially (maybe improve this in the future).
         chunks: list[td.TensorDict] = []
         for tdict, part_idx in zip(td_for_idx, idx_in_part.tolist()):
             assert -len(tdict) <= part_idx < len(tdict), {
