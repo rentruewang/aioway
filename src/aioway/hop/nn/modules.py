@@ -8,8 +8,7 @@ from collections import abc as cabc
 
 from torch import nn
 
-from aioway._utils import render_fcall
-from aioway._utils import dcls_asdict
+from aioway._utils import dcls_asdict, render_fcall
 from aioway.modes import NnInitFn
 
 from ..hop import Hop
