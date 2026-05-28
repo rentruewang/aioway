@@ -7,11 +7,12 @@ import dataclasses as dcls
 import re
 import typing
 
+import tensordict as td
 import torch
 
-from ..attrs import Attr
+from aioway.attrs import Attr, AttrDict
 
-__all__ = ["Tag", "tags_dcls", "attach_tags", "extract_tags"]
+__all__ = ["Tag", "TensorTag", "tags_dcls", "attach_tags", "extract_tags"]
 
 _TAG_NAME = re.compile(r"^__aioway_[a-zA-Z0-9_]+__$")
 
@@ -22,10 +23,12 @@ def tags_dcls(cls):
 
 
 @tags_dcls
-class Tag(abc.ABC):
+class Tag[T = object](abc.ABC):
     """
     The base class for tags. A tag describes a `torch.Tensor`,
     and is piggybacked onto the tensor to pass around `torch` APIs.
+
+    It is also a filtering system.
 
     Each tag type (subclass) defines a tag name `cls.TAG`,
     corresponding to the attribute name it is set on the tensor.
@@ -53,43 +56,39 @@ class Tag(abc.ABC):
         # Validate `self`. The reason this is marked `@typing.final` is
         # because it can be easy to forget to call `super().__post_init__()`.
 
-        self.check_self()
+        self._check_self()
 
-    def check_self(self) -> None:
+    def _check_self(self) -> None:
         """
         Validate the data of the tags on its own (not in relation to the `torch.Tensor`).
         """
 
-    def check_attr(self, attr: Attr, /) -> None:
+    @abc.abstractmethod
+    def check(self, value: T, /) -> bool:
         """
-        Validate the static aspect of the given `torch.Tensor`.
-        Raise an error if `self` cannot attach to tensor with `attr`.
-        """
-
-    def check_data(self, tensor: torch.Tensor, /) -> None:
-        """
-        Validate if `self` can be attached to the given `torch.Tensor`.
-        Raise an error if `self` is not valid or cannot attach to `tensor`.
+        Perform some checks on the value you are going to attach on.
+        If the tests pass, return `True`, else return `False`.
         """
 
-    def attach(self, tensor: torch.Tensor, /, overwrite: bool = True) -> None:
+        raise NotImplementedError
+
+    def attach(self, item: T, /, overwrite: bool = True) -> None:
         """
-        Tag the instance on another tensor. Validate then set `self` on the `tensor`.
+        Validate then set `self` on the `item`.
 
         If `overwrite` is `False` (defaults to `True`), and the tag already exists,
-        raise a `ValueError` and do not set the attribute.
+        raise a `AttributeError` and do not set the attribute.
         """
 
-        self.check_attr(Attr.parse(tensor))
-        self.check_data(tensor)
+        self.check(item)
 
-        if not overwrite and hasattr(tensor, self.NAME):
-            raise ValueError(f"`{self.NAME}` already exists on {tensor=}.")
+        if not overwrite and hasattr(item, self.NAME):
+            raise AttributeError(f"`{self.NAME}` already exists on {item=}.")
 
-        setattr(tensor, self.NAME, self)
+        setattr(item, self.NAME, self)
 
     @classmethod
-    def extract(cls, tensor: torch.Tensor) -> typing.Self | None:
+    def extract(cls, tensor: T) -> typing.Self | None:
         """
         Get the tag currently stored on the `tensor`.
         """
@@ -103,12 +102,72 @@ class Tag(abc.ABC):
         return tag
 
 
-def attach_tags(tensor: torch.Tensor, *tags: Tag) -> None:
+@tags_dcls
+class TensorTag(Tag[torch.Tensor]):
+    "A `Tag` that tags itself onto a `torch.Tensor`."
+
+    @typing.override
+    def check(self, value: torch.Tensor, /) -> bool:
+        if not isinstance(value, torch.Tensor):
+            raise TypeError(f"{type(value)} is not a `torch.Tensor`.")
+
+        attr = Attr.parse(value)
+
+        try:
+            self._check_attr(attr)
+            self._check_data(value)
+        except ValueError:
+            return False
+        else:
+            return True
+
+    def _check_attr(self, attr: Attr, /) -> None:
+        """
+        Raise `ValueError` if `self` cannot attach to tensor with `attr`.
+        """
+
+    def _check_data(self, tensor: torch.Tensor, /) -> None:
+        """
+        Raise `ValueError` if `self` is not valid or cannot attach to `tensor`.
+        """
+
+
+@tags_dcls
+class TdictTag(Tag[td.TensorDict]):
+    "A `Tag` that tags `td.TensorDict`."
+
+    @typing.override
+    def check(self, value: td.TensorDict, /) -> bool:
+        if not isinstance(value, td.TensorDict):
+            raise TypeError(f"{type(value)} is not a `td.TensorDict`.")
+
+        attrs = AttrDict.parse(value)
+
+        try:
+            self._check_attrs(attrs)
+            self._check_data(value)
+        except ValueError:
+            return False
+        else:
+            return True
+
+    def _check_attrs(self, attrs: AttrDict, /) -> None:
+        """
+        Raise `ValueError` if `self` cannot attach to tdict with `attrs`.
+        """
+
+    def _check_data(self, tdict: td.TensorDict, /) -> None:
+        """
+        Raise `ValueError` if `self` is not valid or cannot attach to `tdict`.
+        """
+
+
+def attach_tags[T](item: T, *tags: Tag[T]) -> None:
     for tag in tags:
-        tag.attach(tensor)
+        tag.attach(item)
 
 
-def extract_tags(tensor: torch.Tensor, /) -> dict[str, Tag]:
+def extract_tags[T](tensor: T, /) -> dict[str, Tag[T]]:
     """
     Extract all the tags on the `torch.Tensor`.
 
@@ -119,8 +178,8 @@ def extract_tags(tensor: torch.Tensor, /) -> dict[str, Tag]:
     return {name: _get_tag(tensor, name) for name in tag_names}
 
 
-def _get_tag(tensor: torch.Tensor, tag_name: str, /) -> Tag:
-    if isinstance(attr := getattr(tensor, tag_name, None), Tag):
+def _get_tag[T](item: T, tag_name: str, /) -> Tag[T]:
+    if isinstance(attr := getattr(item, tag_name, None), Tag):
         return attr
 
     raise AttributeError(

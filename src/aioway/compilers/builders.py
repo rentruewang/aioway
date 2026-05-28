@@ -5,6 +5,7 @@ import typing
 from aioway._torch import torch_set_fake_mode_func
 from aioway.hop import HopDag, Linear, TensorHop
 from aioway.tags import Tag
+from aioway.tags.attrs import HasDTypeTag
 
 __all__ = ["Builder", "just_linear_builder"]
 
@@ -44,10 +45,11 @@ def _check_linear_io(spaces: list[Tag]):
 
     [space] = spaces
 
-    if not isinstance(space, SchemaSpace):
-        raise NotImplementedError
+    if isinstance(space, Tag):
+        pass
 
-    if space.schema.attr.dtype.family != "float":
+    dtype_tag = HasDTypeTag.extract(space)
+    if HasDTypeTag.extract(space).family != "float":
         raise NotImplementedError
 
     return space.schema

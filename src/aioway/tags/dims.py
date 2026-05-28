@@ -8,7 +8,7 @@ import re
 import typing
 
 from ..attrs import Attr
-from .tags import Tag, tags_dcls
+from .tags import TensorTag, tags_dcls
 
 __all__ = ["DimTag", "DimInfo"]
 
@@ -45,7 +45,7 @@ class DimInfo(enum.StrEnum):
 
 
 @tags_dcls
-class DimTag(Tag):
+class DimTag(TensorTag):
     NAME = "__aioway_dim_tag__"
 
     tags: str
@@ -55,14 +55,14 @@ class DimTag(Tag):
     """
 
     @typing.override
-    def check_attr(self, attr: Attr) -> None:
+    def _check_attr(self, attr: Attr) -> None:
         if len(self.tags) != (ndim := attr.ndim):
             raise ValueError(
                 f"The {self.tags=} dimensions do not match the tensor's {ndim=}."
             )
 
     @typing.override
-    def check_self(self) -> None:
+    def _check_self(self) -> None:
         if not _valid_dim_tag(self.tags):
             raise ValueError("The dimension tags are not valid.")
 
