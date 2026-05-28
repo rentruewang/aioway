@@ -1,22 +1,22 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import dataclasses as dcls
+import functools
 import typing
 from collections import abc as cabc
 
 import pytest
 import tensordict as td
 
+from aioway._streams import StreamState, TdictStream, stream_dcls
 from aioway._torch import tdict_all_equal, tdict_rename
-from aioway.dsets import (
+from aioway.relalg import (
     ApplyStream,
     CacheStream,
     FuncFilterStream,
     MapStream,
     ProjectStream,
     RenameStream,
-    Stream,
-    StreamState,
 )
 from aioway.schemas import AttrDict
 
@@ -28,11 +28,9 @@ class SaveLastState(StreamState):
     "The last batch."
 
 
-@dcls.dataclass(frozen=True)
+@stream_dcls
 class SaveLastMapStream(MapStream):
     "`Stream` that saves the last `__next__` call."
-
-    state: SaveLastState = dcls.field(default_factory=SaveLastState)
 
     @typing.override
     def _apply(self, batch: td.TensorDict) -> td.TensorDict:
@@ -47,9 +45,13 @@ class SaveLastMapStream(MapStream):
     def last(self) -> td.TensorDict:
         return self.state.last
 
+    @functools.cached_property
+    def state(self):
+        return SaveLastState()
+
 
 @pytest.fixture
-def save_last(table_stream: Stream):
+def save_last(table_stream: TdictStream):
     "The stream that is wrapped, preserving the last item."
 
     return SaveLastMapStream(table_stream)
@@ -59,7 +61,7 @@ def save_last(table_stream: Stream):
 def map_stream(request: pytest.FixtureRequest, save_last: SaveLastMapStream):
     "Indirect fixture to create `MapStream`s based on a builder function."
 
-    builder: cabc.Callable[[Stream], MapStream] = request.param
+    builder: cabc.Callable[[TdictStream], MapStream] = request.param
 
     if not callable(builder):
         raise TypeError("The `map_stream` fixture only accepts function parameters.")
@@ -75,7 +77,7 @@ def _pred_filter_builder(source):
 
 
 @pytest.mark.parametrize("map_stream", [_pred_filter_builder], indirect=True)
-def test_filter(map_stream: Stream, save_last: SaveLastMapStream):
+def test_filter(map_stream: TdictStream, save_last: SaveLastMapStream):
     "Testing the 2 filter streams and whether they are doing their jobs."
 
     for filtered in map_stream:
@@ -94,7 +96,7 @@ def _rename_builder(save_last: SaveLastMapStream):
 
 
 @pytest.mark.parametrize("map_stream", [_rename_builder], indirect=True)
-def test_rename(map_stream: Stream, save_last: SaveLastMapStream):
+def test_rename(map_stream: TdictStream, save_last: SaveLastMapStream):
     "Testing the renaming functionality."
 
     for renamed in map_stream:
@@ -122,7 +124,7 @@ def _project_builder(save_last: SaveLastMapStream):
 
 
 @pytest.mark.parametrize("map_stream", [_project_builder], indirect=True)
-def test_project(map_stream: Stream, save_last: SaveLastMapStream):
+def test_project(map_stream: TdictStream, save_last: SaveLastMapStream):
     for projected in map_stream:
         assert tdict_all_equal(projected, save_last.last.select("f1d", "i2d"))
 
@@ -137,7 +139,7 @@ def test_project(map_stream: Stream, save_last: SaveLastMapStream):
     ],
     indirect=True,
 )
-def test_map_stream_one_to_one(map_stream: Stream, save_last: SaveLastMapStream):
+def test_map_stream_one_to_one(map_stream: TdictStream, save_last: SaveLastMapStream):
     assert (
         map_stream.source is save_last
     ), f"Malformed input {map_stream}, should have source={save_last}"
@@ -156,6 +158,6 @@ def test_map_stream_one_to_one(map_stream: Stream, save_last: SaveLastMapStream)
 @pytest.mark.parametrize(
     "map_stream", [_project_builder, _apply_builder], indirect=True
 )
-def test_caching(map_stream: Stream):
+def test_caching(map_stream: TdictStream):
     cached = CacheStream(map_stream)
     assert cached.size == map_stream.size

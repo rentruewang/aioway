@@ -13,11 +13,9 @@ from collections import abc as cabc
 import tensordict as td
 from torch.utils import data
 
-from aioway._utils import is_list_of
+from aioway._frames import TdictFrame
+from aioway._streams import TdictStream, stream_dcls
 from aioway.schemas import AttrDict
-
-from ..frames import Frame
-from .streams import Stream
 
 __all__ = [
     "BoundedStream",
@@ -30,8 +28,8 @@ __all__ = [
 LOGGER = logging.getLogger(__name__)
 
 
-@dcls.dataclass(frozen=True)
-class BoundedStream(Stream, abc.ABC):
+@stream_dcls
+class BoundedStream(TdictStream, abc.ABC):
     """
     A stream with `__len__` and `__getitem__`.
     """
@@ -46,9 +44,6 @@ class BoundedStream(Stream, abc.ABC):
         if isinstance(key, int):
             return self._getitem_int(key)
 
-        if isinstance(key, str) or is_list_of(str)(key):
-            return Stream.__getitem__(self, key)
-
         raise TypeError(f"Do not know how to handle {type(key)=}.")
 
     @abc.abstractmethod
@@ -60,17 +55,19 @@ class BoundedStream(Stream, abc.ABC):
             idx: An integer. Must be in the range `[-len(self), len(self))`.
 
         Returns:
-            The `Chunk` batch.
+            The `td.TensorDict` batch.
         """
 
+        raise NotImplementedError
 
-@dcls.dataclass(frozen=True)
+
+@stream_dcls
 class CacheStream(BoundedStream):
     """
     Exhaust the input stream, store it into a cache for repeating access.
     """
 
-    stream: Stream
+    stream: TdictStream
     "The input stream."
 
     saved: list[td.TensorDict] = dcls.field(default_factory=list)
@@ -89,7 +86,7 @@ class CacheStream(BoundedStream):
         return self.saved[idx]
 
     @typing.override
-    def _next(self) -> td.TensorDict:
+    def read(self) -> td.TensorDict:
         LOGGER.debug(
             "Executing `__iter__` for `CacheStream`. self.idx=%s, stream.idx=%s",
             self.idx,
@@ -114,10 +111,6 @@ class CacheStream(BoundedStream):
         self.saved.append(item)
         return item
 
-    @typing.override
-    def _inputs(self):
-        return (self.stream,)
-
     @property
     @typing.override
     def size(self) -> int:
@@ -129,7 +122,7 @@ class CacheStream(BoundedStream):
         return self.stream.attrs
 
 
-@dcls.dataclass(frozen=True)
+@stream_dcls
 class ListStream(BoundedStream):
     "A `Stream` backed by a list of `TensorDict`."
 
@@ -164,18 +157,14 @@ class ListStream(BoundedStream):
         raise ValueError("Chunks should have the same schema.")
 
     @typing.override
-    def _next(self) -> td.TensorDict:
+    def read(self) -> td.TensorDict:
         if self.idx < self.size:
             return self._getitem_int(self.idx)
         else:
             raise StopIteration
 
-    @typing.override
-    def _inputs(self):
-        return ()
 
-
-@dcls.dataclass(frozen=True)
+@stream_dcls
 class FrameStreamLoader:
     """
     The optoins for `data.DataLoader` on `Frame` in `FrameStream`.
@@ -194,13 +183,13 @@ class FrameStreamLoader:
     "How to sample in case when want to shuffle."
 
 
-@dcls.dataclass(frozen=True)
-class FrameStream(Stream):
+@stream_dcls
+class FrameStream(TdictStream):
     """
     A `Stream` backed by a `Frame`.
     """
 
-    frame: Frame
+    frame: TdictFrame
     "The underlying `Frame`."
 
     options: FrameStreamLoader
@@ -209,7 +198,7 @@ class FrameStream(Stream):
     """
 
     @typing.override
-    def _next(self) -> td.TensorDict:
+    def read(self) -> td.TensorDict:
         try:
             return self._get_batch(self.idx)
         except IndexError as ie:
@@ -252,11 +241,7 @@ class FrameStream(Stream):
             )
 
         idx %= self.size
-        return self.frame._getitems_batch(list(range(idx, idx + batch_size)))
-
-    @typing.override
-    def _inputs(self):
-        return ()
+        return self.frame.__getitems__(list(range(idx, idx + batch_size)))
 
 
 def _identity[T](item: T) -> T:

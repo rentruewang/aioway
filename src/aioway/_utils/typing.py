@@ -7,6 +7,9 @@ from collections import abc as cabc
 import numpy as np
 from numpy import typing as npt
 
+if typing.TYPE_CHECKING:
+    from aioway.schemas import Attr, AttrDict
+
 __all__ = [
     "IntArray",
     "IntArrayLike",
@@ -20,6 +23,8 @@ __all__ = [
     "is_dict_of_str_to",
     "SeqKeysView",
     "SetKeysView",
+    "TensorDataset",
+    "TdictDataset",
 ]
 
 type IntArray = npt.NDArray[np.int_]
@@ -108,3 +113,19 @@ class SeqKeysView(_ContainerKeysView[cabc.Sequence[str]]): ...
 
 
 class SetKeysView(_ContainerKeysView[set[str]]): ...
+
+
+@typing.runtime_checkable
+class TensorDataset(typing.Protocol):
+    @property
+    def attr(self) -> Attr: ...
+
+
+@typing.runtime_checkable
+class TdictDataset(typing.Protocol):
+    @property
+    def attrs(self) -> AttrDict: ...
+
+    def column(self, col: str) -> TensorDataset: ...
+
+    def select(self, *cols: str) -> typing.Self: ...

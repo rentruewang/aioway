@@ -9,17 +9,16 @@ import typing
 import numpy as np
 import tensordict as td
 
-from aioway._utils import is_list_of
+from aioway._frames import TdictFrame, frame_dcls
+from aioway._utils import IntArray, is_list_of
 from aioway.schemas import AttrDict
 
-from .frames import Frame
-
-__all__ = ["TdFrame", "TdListFrame"]
+__all__ = ["TensorDictFrame", "TensorDictListFrame"]
 
 
 @typing.final
-@dcls.dataclass(frozen=True)
-class TdFrame(Frame):
+@frame_dcls
+class TensorDictFrame(TdictFrame):
     """
     A `Frame` backed by a `td.TensorDict` (aka a batch in `aioway`).
     This means that it is non-distributed, and volatile.
@@ -35,7 +34,7 @@ class TdFrame(Frame):
         return len(self.data)
 
     @typing.override
-    def _getitems_batch(self, idx: list[int]) -> td.TensorDict:
+    def __getitems__(self, idx: list[int]) -> td.TensorDict:
         return self.data[idx].auto_batch_size_()
 
     @property
@@ -45,8 +44,8 @@ class TdFrame(Frame):
 
 
 @typing.final
-@dcls.dataclass(frozen=True)
-class TdListFrame(Frame):
+@frame_dcls
+class TensorDictListFrame(TdictFrame):
     """
     A `Frame` backed by a `list[td.TensorDict]` (aka a batch in `aioway`).
     This means that it is non-distributed, and volatile.
@@ -78,9 +77,21 @@ class TdListFrame(Frame):
         return self._list.pop()
 
     @typing.override
-    @typing.no_type_check
-    def _getitems_batch(self, i: list[int], /) -> td.TensorDict:
-        idx = np.asarray(i)
+    def __getitems__(self, index: list[int], /):
+        # Check index out of bounds.
+        idx: IntArray = np.asarray(index)
+        if any(idx < -len(self)) or any(idx >= len(self)):
+            violation = np.concat([idx[idx < -len(self)], idx[idx >= len(self)]])
+            raise IndexError(
+                f"Part of the index: {violation=} out of bounds for {len(self)=}."
+            )
+
+        # Convert to positive.
+        return self.__getitems(idx % len(self))
+
+    def __getitems(self, idx: IntArray, /) -> td.TensorDict:
+        assert all(idx >= 0)
+        assert all(idx < len(self))
 
         # Which tensordict to use in `self.tensordicts`.
         td_idx = np.searchsorted(self._cumsum_len, idx, side="right")
@@ -93,11 +104,12 @@ class TdListFrame(Frame):
         # Index in partition = original index - elements in prior partitions.
         idx_in_part = idx - prior_elements[td_idx]
 
-        # `Chunk` that each index would correspond to.
+        # `td.TensorDict` that each index would correspond to.
         td_for_idx: list[td.TensorDict] = [self._list[t] for t in td_idx]
 
         assert len(idx_in_part) == len(td_for_idx)
 
+        # Get each from partition, sequentially (maybe improve this in the future).
         chunks: list[td.TensorDict] = []
         for tdict, part_idx in zip(td_for_idx, idx_in_part.tolist()):
             assert -len(tdict) <= part_idx < len(tdict), {

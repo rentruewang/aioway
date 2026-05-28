@@ -1,9 +1,10 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from aioway.dsets import Stream
+
+from aioway._streams import TdictStream
 
 
-def test_column_attr(table_stream: Stream):
+def test_column_attr(table_stream: TdictStream):
     attrs = table_stream.attrs
     first_key = list(attrs.keys())[0]
 
@@ -11,7 +12,7 @@ def test_column_attr(table_stream: Stream):
     assert table_stream.select(first_key).attrs == {first_key: attrs[first_key]}
 
 
-def test_select_attr(table_stream: Stream):
+def test_select_attr(table_stream: TdictStream):
     attrs = table_stream.attrs
     k_0, k_1 = list(attrs.keys())[:2]
 
