@@ -37,15 +37,15 @@ class Tag(abc.ABC):
     because that tag type can only have a singleton on each tensor.
     """
 
-    TAG: typing.ClassVar[str]
+    NAME: typing.ClassVar[str]
     """
     The name of the tag. Must be of the format `__aioway_*__`.
     """
 
     def __init_subclass__(cls) -> None:
-        if not _TAG_NAME.fullmatch(cls.TAG):
+        if not _TAG_NAME.fullmatch(cls.NAME):
             raise ValueError(
-                f"Tag name should be of the format `__aioway_*__`. Got '{cls.TAG}'."
+                f"Tag name should be of the format `__aioway_*__`. Got '{cls.NAME}'."
             )
 
     @typing.final
@@ -83,10 +83,10 @@ class Tag(abc.ABC):
         self.check_attr(Attr.parse(tensor))
         self.check_data(tensor)
 
-        if not overwrite and hasattr(tensor, self.TAG):
-            raise ValueError(f"`{self.TAG}` already exists on {tensor=}.")
+        if not overwrite and hasattr(tensor, self.NAME):
+            raise ValueError(f"`{self.NAME}` already exists on {tensor=}.")
 
-        setattr(tensor, self.TAG, self)
+        setattr(tensor, self.NAME, self)
 
     @classmethod
     def extract(cls, tensor: torch.Tensor) -> typing.Self | None:
@@ -94,7 +94,7 @@ class Tag(abc.ABC):
         Get the tag currently stored on the `tensor`.
         """
 
-        if (tag := getattr(tensor, cls.TAG, None)) is None:
+        if (tag := getattr(tensor, cls.NAME, None)) is None:
             return None
 
         if not isinstance(tag, cls):

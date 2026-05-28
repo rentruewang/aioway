@@ -21,7 +21,7 @@ class IsTokenizedTag(Tag):
     Tag the tensor as embeddings (tokenized).
     """
 
-    TAG = "__aioway_is_tokenized__"
+    NAME = "__aioway_is_tokenized__"
 
     tokenizer: str
     """
@@ -42,7 +42,7 @@ class IsVideoTag(Tag):
     Tag the tensor as video. Must be 5, 5 dimensional (with or without batch).
     """
 
-    TAG = "__aioway_is_video__"
+    NAME = "__aioway_is_video__"
 
     @typing.override
     def check_data(self, tensor: torch.Tensor) -> None:
@@ -55,7 +55,7 @@ class IsImageTag(Tag):
     Tag the tensor as image. Should be 3, 4 dimensional (with or without batch).
     """
 
-    TAG = "__aioway_is_image__"
+    NAME = "__aioway_is_image__"
 
     @typing.override
     def check_data(self, tensor: torch.Tensor) -> None:
@@ -68,7 +68,7 @@ class SampleRateTag(Tag):
     Tag the tensor as audio, and having a sample rate.
     """
 
-    TAG = "__aioway_audio_sample_rate__"
+    NAME = "__aioway_audio_sample_rate__"
 
     sample_rate: int
     """
@@ -87,7 +87,7 @@ class IsStftTag(Tag):
     Tag the tensor as stft. Useful to mark audio as spectrogram.
     """
 
-    TAG = "__aioway_is_stft__"
+    NAME = "__aioway_is_stft__"
 
 
 class NdimInfo(typing.NamedTuple):

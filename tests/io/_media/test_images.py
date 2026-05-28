@@ -35,5 +35,5 @@ def test_read_image_tags(
 ):
     image = _read_image(example_image, loader)
     tags = extract_tags(image)
-    assert IsImageTag.TAG in tags
-    assert isinstance(tags[IsImageTag.TAG], IsImageTag)
+    assert IsImageTag.NAME in tags
+    assert isinstance(tags[IsImageTag.NAME], IsImageTag)

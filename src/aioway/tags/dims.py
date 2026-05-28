@@ -46,7 +46,7 @@ class DimInfo(enum.StrEnum):
 
 @tags_dcls
 class DimTag(Tag):
-    TAG = "__aioway_dim_tag__"
+    NAME = "__aioway_dim_tag__"
 
     tags: str
     """

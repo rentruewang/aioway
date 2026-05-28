@@ -62,9 +62,9 @@ def test_attach(valid_tags: TensorAndTag):
     assert DimTag.extract(valid_tags.tensor) is None
     tag = DimTag(valid_tags.tag)
     tag.attach(valid_tags.tensor)
-    assert hasattr(valid_tags.tensor, DimTag.TAG)
+    assert hasattr(valid_tags.tensor, DimTag.NAME)
     assert DimTag.extract(valid_tags.tensor) is tag
-    assert extract_tags(valid_tags.tensor) == {DimTag.TAG: tag}
+    assert extract_tags(valid_tags.tensor) == {DimTag.NAME: tag}
 
 
 def test_attach_preserve_after_tdict(valid_tags: TensorAndTag):
