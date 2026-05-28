@@ -9,6 +9,8 @@ from collections import abc as cabc
 import torch
 from torch import ops
 
+from aioway._costs import Cost
+
 from .fate import Fate, fate_dcls
 
 __all__ = [
@@ -58,10 +60,9 @@ class _BinaryUFunc(Fate, abc.ABC):
     def forward(self) -> torch.Tensor:
         return self.BINARY(self.self, self.other * self.alpha)
 
-    @typing.final
-    @typing.override
-    def cost(self) -> int:
-        return self._shape.numel()
+    def cost(self) -> Cost:
+        numel = self._shape.numel()
+        return Cost(time=numel, memory=numel * 2)
 
     @functools.cached_property
     @typing.no_type_check
