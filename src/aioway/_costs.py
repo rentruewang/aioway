@@ -57,6 +57,7 @@ class Cost:
 class CostSession:
     """
     The cost session. Use the `.track()` function to track the costs in a new scope.
+    Providing `.total()` function for summarization of costs.
     Not thread safe, but efficient in single threading context.
     """
 
