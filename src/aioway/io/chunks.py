@@ -10,8 +10,7 @@ import numpy as np
 import tensordict as td
 
 from aioway._frames import TdictFrame, frame_dcls
-from aioway._utils import is_list_of
-from aioway._utils import IntArray
+from aioway._utils import IntArray, is_list_of
 from aioway.schemas import AttrDict
 
 __all__ = ["TensorDictFrame", "TensorDictListFrame"]
@@ -79,15 +78,20 @@ class TensorDictListFrame(TdictFrame):
 
     @typing.override
     def __getitems__(self, index: list[int], /):
+        # Check index out of bounds.
         idx: IntArray = np.asarray(index)
         if any(idx < -len(self)) or any(idx >= len(self)):
             violation = np.concat([idx[idx < -len(self)], idx[idx >= len(self)]])
             raise IndexError(
                 f"Part of the index: {violation=} out of bounds for {len(self)=}."
             )
+
+        # Convert to positive.
         return self.__getitems(idx % len(self))
 
     def __getitems(self, idx: IntArray, /) -> td.TensorDict:
+        assert all(idx >= 0)
+        assert all(idx < len(self))
 
         # Which tensordict to use in `self.tensordicts`.
         td_idx = np.searchsorted(self._cumsum_len, idx, side="right")
