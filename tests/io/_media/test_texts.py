@@ -5,8 +5,9 @@ import pathlib
 import pytest
 import torch
 
+from aioway.attrs import DType
 from aioway.io._media import TokenizerLoader
-from aioway.schemas import DType, IsTokenizedTag
+from aioway.tags import IsTokenizedTag
 
 
 def _tokenizers():

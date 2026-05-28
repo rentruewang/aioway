@@ -11,7 +11,7 @@ from aioway.io._media import (
     TorchCodecAudioLoader,
     encode_with_stft,
 )
-from aioway.schemas import SampleRateTag
+from aioway.tags import SampleRateTag
 
 
 def _loaders():

@@ -6,7 +6,7 @@ import pytest
 import torch
 
 from aioway.io._media import AvVideoLoader, TorchCodecVideoLoader, VideoLoader
-from aioway.schemas import IsVideoTag
+from aioway.tags import IsVideoTag
 
 
 def _loader():

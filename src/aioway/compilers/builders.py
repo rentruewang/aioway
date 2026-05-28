@@ -4,16 +4,15 @@ import typing
 
 from aioway._torch import torch_set_fake_mode_func
 from aioway.hop import HopDag, Linear, TensorHop
-from aioway.schemas import Schema
-from aioway.spaces import SchemaSpace, Space
+from aioway.tags import Tag
 
 __all__ = ["Builder", "just_linear_builder"]
 
 
 class Builder(typing.Protocol):
-    def __call__(self, inputs: list[Space], outputs: list[Space]) -> HopDag:
+    def __call__(self, inputs: list[Tag], outputs: list[Tag]) -> HopDag:
         """
-        Compiles from a list of input and output spaces.
+        Compiles from a list of input and output tags.
         Returns `NotImplemented` if the current builder does not support the inputs outputs.
         """
 
@@ -21,7 +20,7 @@ class Builder(typing.Protocol):
 
 
 @torch_set_fake_mode_func(True)
-def just_linear_builder(inputs: list[Space], outputs: list[Space]) -> HopDag:
+def just_linear_builder(inputs: list[Tag], outputs: list[Tag]) -> HopDag:
     try:
         input_schema = _check_linear_io(inputs)
         output_schema = _check_linear_io(outputs)
@@ -39,7 +38,7 @@ def just_linear_builder(inputs: list[Space], outputs: list[Space]) -> HopDag:
     return HopDag.from_list_of_nodes([input_node, linear_node])
 
 
-def _check_linear_io(spaces: list[Space]) -> Schema:
+def _check_linear_io(spaces: list[Tag]):
     if len(spaces) != 1:
         raise NotImplementedError
 

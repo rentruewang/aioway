@@ -10,6 +10,7 @@ import tensordict as td
 
 from aioway._streams import StreamState, TdictStream, stream_dcls
 from aioway._torch import tdict_all_equal, tdict_rename
+from aioway.attrs import AttrDict
 from aioway.relalg import (
     ApplyStream,
     CacheStream,
@@ -18,7 +19,6 @@ from aioway.relalg import (
     ProjectStream,
     RenameStream,
 )
-from aioway.schemas import AttrDict
 
 
 @dcls.dataclass

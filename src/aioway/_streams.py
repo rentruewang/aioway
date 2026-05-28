@@ -12,7 +12,7 @@ import tensordict as td
 import torch
 
 from aioway._utils import dcls_asdict, decomp_flatten
-from aioway.schemas import Attr, AttrDict
+from aioway.attrs import Attr, AttrDict
 
 __all__ = ["StreamState", "Stream", "TensorStream", "TdictStream", "stream_dcls"]
 

@@ -5,7 +5,7 @@ import typing
 
 from aioway.compilers import just_linear_builder
 from aioway.hop import HopDag, MSELoss
-from aioway.spaces import Space
+from aioway.tags import Tag
 
 __all__ = ["SupervisedAlgo"]
 
@@ -15,7 +15,7 @@ class SupervisedAlgo(abc.ABC):
     The supervised learning algorithm. Currently supports 1 input 1 output.
     """
 
-    def __call__(self, input_space: Space, target_space: Space) -> typing.Any:
+    def __call__(self, input_space: Tag, target_space: Tag) -> typing.Any:
         dag = just_linear_builder([input_space], [target_space])
         output_nodes = dag.output_nodes
 

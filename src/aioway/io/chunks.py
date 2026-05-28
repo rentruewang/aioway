@@ -11,7 +11,7 @@ import tensordict as td
 
 from aioway._frames import TdictFrame, frame_dcls
 from aioway._utils import IntArray, is_list_of
-from aioway.schemas import AttrDict
+from aioway.attrs import AttrDict
 
 __all__ = ["TensorDictFrame", "TensorDictListFrame"]
 

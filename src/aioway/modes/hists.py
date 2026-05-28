@@ -14,7 +14,7 @@ import torch
 from aioway._fn import Fn, TensorInput
 from aioway._torch import is_leaf_has_grad
 from aioway._utils import find_nested_tensors
-from aioway.schemas import Attr
+from aioway.attrs import Attr
 
 from .common import replace_tensors_with_attr
 

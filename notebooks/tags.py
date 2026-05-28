@@ -16,7 +16,7 @@
 import torch
 
 # %%
-from aioway.schemas import SampleRateTag
+from aioway.tags import SampleRateTag
 
 # %%
 t = torch.randn(3, 4)

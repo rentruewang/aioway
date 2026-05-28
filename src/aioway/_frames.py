@@ -10,7 +10,7 @@ import tensordict as td
 import torch
 from torch.utils import data
 
-from aioway.schemas import Attr, AttrDict
+from aioway.attrs import Attr, AttrDict
 
 __all__ = ["Frame", "TensorFrame", "TdictFrame", "frame_dcls"]
 
