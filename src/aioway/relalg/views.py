@@ -91,12 +91,9 @@ class FrameColumnView(TensorFrame):
     def __len__(self) -> int:
         return len(self.dset)
 
-    @typing.no_type_check
-    def __getitem(self, idx):
-        batch = self.dset[idx]
+    def __getitems__(self, idx):
+        batch = self.dset.__getitems__(idx)
         return batch[self.col]
-
-    __getitem__ = __getitems__ = __getitem
 
     @property
     @typing.override
@@ -120,12 +117,9 @@ class FrameSelectView(TdictFrame):
     def __len__(self) -> int:
         return len(self.dset)
 
-    @typing.no_type_check
-    def __getitem(self, idx: list[int], /) -> td.TensorDict:
-        items = self.dset[idx]
+    def __getitems__(self, idx: list[int], /) -> td.TensorDict:
+        items = self.dset.__getitems__(idx)
         return items.select(*self.cols)
-
-    __getitem__ = __getitems__ = __getitem
 
     @property
     def attrs(self):
