@@ -10,13 +10,13 @@ import torch
 
 from aioway.dsets import DatasetColumnView, DatasetSelectView
 
-from .frames import Frame
+from .frames import FrameDict
 
 __all__ = ["FrameColumnView", "FrameSelectView"]
 
 
 @dcls.dataclass(frozen=True)
-class FrameColumnView(DatasetColumnView[Frame]):
+class FrameColumnView(DatasetColumnView[FrameDict]):
     """
     A column reference to a `Frame`.
     Performs `__getitem__` on a `Frame`, then select the column.
@@ -30,12 +30,12 @@ class FrameColumnView(DatasetColumnView[Frame]):
         return batch[self.col]
 
     @classmethod
-    def from_column(cls, dataset: Frame, /, column: str) -> typing.Self:
+    def from_column(cls, dataset: FrameDict, /, column: str) -> typing.Self:
         return cls(dataset, column)
 
 
 @dcls.dataclass(frozen=True)
-class FrameSelectView(DatasetSelectView[Frame], Frame):
+class FrameSelectView(DatasetSelectView[FrameDict], FrameDict):
     """
     A selection view on the `Frame`.
     """
@@ -52,5 +52,5 @@ class FrameSelectView(DatasetSelectView[Frame], Frame):
         return items.select(*self.cols)
 
     @classmethod
-    def from_columns(cls, dataset: Frame, /, *columns: str) -> typing.Self:
+    def from_columns(cls, dataset: FrameDict, /, *columns: str) -> typing.Self:
         return cls(dataset, columns)

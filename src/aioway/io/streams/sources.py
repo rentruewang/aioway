@@ -16,7 +16,7 @@ from torch.utils import data
 from aioway._utils import is_list_of
 from aioway.schemas import AttrDict
 
-from ..frames import Frame
+from ..frames import FrameDict
 from .streams import Stream
 
 __all__ = [
@@ -200,7 +200,7 @@ class FrameStream(Stream):
     A `Stream` backed by a `Frame`.
     """
 
-    frame: Frame
+    frame: FrameDict
     "The underlying `Frame`."
 
     options: FrameStreamLoader

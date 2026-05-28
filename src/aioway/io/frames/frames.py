@@ -14,11 +14,11 @@ from aioway._utils import is_list_of
 from aioway.dsets import Dataset, DatasetColumnView, DatasetSelectView, DatasetViewTypes
 from aioway.schemas import AttrDict
 
-__all__ = ["Frame"]
+__all__ = ["FrameDict"]
 
 
 @dcls.dataclass(frozen=True)
-class Frame(Dataset, data.Dataset[td.TensorDict], abc.ABC):
+class FrameDict(Dataset, data.Dataset[td.TensorDict], abc.ABC):
     """
     `Frame` represents a set of heterogenious data stored in memory,
     it is one of the main physical abstractions in `aioway` to represent eager computation.
@@ -26,7 +26,7 @@ class Frame(Dataset, data.Dataset[td.TensorDict], abc.ABC):
     Think of it as a normal `Sequence` of `Chunk`,
     where computation happens eagerly, imperatively, and the result is stored in memory.
 
-    Each `Chunk` retrieved from `Frame` is a minibatch of data.
+    Each `td.TensorDict` retrieved from `Frame` is a minibatch of data.
 
     Similar to `Dataset`, but only allows retrieving a batch at a time.
     To get a single item, retrieve a batch of size 1.

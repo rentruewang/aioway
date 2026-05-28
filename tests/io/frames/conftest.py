@@ -2,7 +2,7 @@
 
 import pytest
 
-from aioway.io import Frame, FrameStream, FrameStreamLoader, TdFrame, TdListFrame
+from aioway.io import FrameDict, FrameStream, FrameStreamLoader, TdFrame, TdListFrame
 from tests.fake import chunk_ok
 
 
@@ -23,12 +23,12 @@ def list_table(device: str, batch_size: int, data_size: int):
 @pytest.fixture(params=[block_table, list_table])
 def frame(
     request: pytest.FixtureRequest, device: str, batch_size: int, data_size: int
-) -> Frame:
+) -> FrameDict:
     return request.param(device=device, batch_size=batch_size, data_size=data_size)
 
 
 @pytest.fixture
-def table_stream(frame: Frame, batch_size: int):
+def table_stream(frame: FrameDict, batch_size: int):
     return FrameStream(
         frame,
         FrameStreamLoader(batch_size=batch_size),

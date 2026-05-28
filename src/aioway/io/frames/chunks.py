@@ -12,14 +12,14 @@ import tensordict as td
 from aioway._utils import is_list_of
 from aioway.schemas import AttrDict
 
-from .frames import Frame
+from .frames import FrameDict
 
 __all__ = ["TdFrame", "TdListFrame"]
 
 
 @typing.final
 @dcls.dataclass(frozen=True)
-class TdFrame(Frame):
+class TdFrame(FrameDict):
     """
     A `Frame` backed by a `td.TensorDict` (aka a batch in `aioway`).
     This means that it is non-distributed, and volatile.
@@ -46,7 +46,7 @@ class TdFrame(Frame):
 
 @typing.final
 @dcls.dataclass(frozen=True)
-class TdListFrame(Frame):
+class TdListFrame(FrameDict):
     """
     A `Frame` backed by a `list[td.TensorDict]` (aka a batch in `aioway`).
     This means that it is non-distributed, and volatile.
