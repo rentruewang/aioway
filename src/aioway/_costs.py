@@ -83,7 +83,12 @@ class CostSession:
                 "Do not specify the step for slices."
             )
 
-        return self.__getitem_slice(idx.start, idx.stop)
+        # Whenn `len(self) == 0` calling `.sum()` still invokes `[]`.
+        if len(self) == 0:
+            return Cost.zero()
+
+        else:
+            return self.__getitem_slice(idx.start, idx.stop)
 
     def __getitem_slice(self, start: int | None, end: int | None):
         start = start if start is not None else 0
