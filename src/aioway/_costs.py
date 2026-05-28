@@ -45,6 +45,10 @@ class Cost:
         )
 
     def commit(self) -> None:
+        """
+        Record the cost to the session.
+        """
+
         if (sess := current_session()) is None:
             return
 
