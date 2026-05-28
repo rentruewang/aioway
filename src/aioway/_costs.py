@@ -93,7 +93,8 @@ class CostSession:
         start_cost = _cost_cumsum()[start + self._before_count - 1]
         return end_cost - start_cost
 
-    def total(self) -> Cost:
+    def sum(self) -> Cost:
+        "Return the sum of costs in this current session."
         return self[:]
 
     @ctxl.contextmanager

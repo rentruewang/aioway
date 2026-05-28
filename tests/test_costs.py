@@ -8,24 +8,24 @@ def test_cost():
     cost_2 = Cost(time=30, memory=40)
 
     with CostSession().track() as session_1:
-        total_1 = session_1.total()
+        total_1 = session_1.sum()
         cost_1.commit()
-        total_2 = session_1.total()
+        total_2 = session_1.sum()
 
         assert total_2 - total_1 == cost_1
 
         with CostSession().track() as session_2:
 
-            total_3 = session_2.total()
+            total_3 = session_2.sum()
             assert total_3 == Cost.zero()
 
             cost_2.commit()
-            total_4 = session_2.total()
+            total_4 = session_2.sum()
             assert total_4 - total_3 == cost_2
 
-            assert session_1.total() == total_2 + total_4
+            assert session_1.sum() == total_2 + total_4
 
-        assert session_1.total() == total_2
+        assert session_1.sum() == total_2
 
 
 def test_session():
