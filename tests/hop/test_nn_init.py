@@ -28,9 +28,10 @@ def test_loss_nn_init_module(loss_nn_init: NnInit):
 def test_sequential():
     seq_init = find_nn_init(
         NnInitFn(
-            func=nn.Sequential,
-            args=(nn.Linear(1, 2), nn.Linear(2, 3), nn.Linear(3, 4)),
-            kwargs={},
+            nn.Sequential,
+            nn.Linear(1, 2),
+            nn.Linear(2, 3),
+            nn.Linear(3, 4),
         )
     )
     assert seq_init

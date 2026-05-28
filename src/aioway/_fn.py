@@ -3,7 +3,6 @@
 "Metadata for torch operators / functions."
 
 import abc
-import dataclasses as dcls
 import functools
 import logging
 import typing
@@ -13,7 +12,7 @@ import torch
 
 from aioway._utils import find_nested_tensors, render_fcall
 
-__all__ = ["Fn", "TensorInput", "Thunk", "TorchThunk", "thunk_dcls"]
+__all__ = ["Fn", "TensorInput", "Thunk", "TorchThunk"]
 
 LOGGER = logging.getLogger(__name__)
 _PENDING = object()
@@ -131,28 +130,18 @@ class Thunk:
         return render_fcall(self.func, *args, **kwargs)
 
 
-@typing.dataclass_transform()
-def thunk_dcls(cls: type):
-    return dcls.dataclass(match_args=False)(cls)
-
-
-@thunk_dcls
-class TorchThunk[T: cabc.Callable[..., typing.Any]](abc.ABC):
+class TorchThunk(abc.ABC):
     """
     `TorchThunk` is a really basic `Fn` that acts as a base class,
     with some `torch` utilities.
     """
 
-    _: dcls.KW_ONLY
+    def __init__(self, func, *args, **kwargs) -> None:
+        self._func = func
+        self._args = args
+        self._kwargs = kwargs
 
-    func: T
-    "The function to call. Must be callable.."
-
-    args: tuple[typing.Any, ...]
-    "The positional args."
-
-    kwargs: dict[str, typing.Any]
-    "The keyword arguments."
+        assert callable(self.func)
 
     def __post_init__(self):
         if not callable(self.func):
@@ -164,12 +153,27 @@ class TorchThunk[T: cabc.Callable[..., typing.Any]](abc.ABC):
         if not isinstance(self.kwargs, dict):
             raise TypeError(f"{self.kwargs=} is not a dict.")
 
-    def __call__(self) -> object:
+    def __call__(self):
         return self.func(*self.args, **self.kwargs)
 
     def inputs(self):
         yield from find_nested_tensors(self.args)
         yield from find_nested_tensors(self.kwargs)
+
+    @property
+    def func(self):
+        "The function to call. Must be callable.."
+        return self._func
+
+    @property
+    def args(self):
+        "The positional args."
+        return self._args
+
+    @property
+    def kwargs(self):
+        "The keyword arguments."
+        return self._kwargs
 
     @property
     def requires_grad(self) -> bool:

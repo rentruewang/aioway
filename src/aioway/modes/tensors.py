@@ -13,7 +13,7 @@ import torch
 from torch import _ops, overrides
 from torch.utils import _python_dispatch as pyd
 
-from aioway._fn import TorchThunk, thunk_dcls
+from aioway._fn import TorchThunk
 from aioway._torch import is_aten_op, is_prim_op
 
 from ._on_off import OnOffCtx, OnOffStack
@@ -31,16 +31,28 @@ DISPATCHES: OnOffStack[TorchDispMode] = OnOffStack()
 
 
 @typing.final
-@thunk_dcls
-class TorchFuncFn(TorchThunk[cabc.Callable[..., typing.Any]]):
+class TorchFuncFn[**P = ...](TorchThunk):
     """
     `TorchFuncFn` is the thunk capturing the function calls initiated by `torch`.
 
     The `func` here are `torch.*` or `torch.Tensor` operators.
     """
 
-    types: tuple[type, ...]
-    "The types of the arguments."
+    def __init__(
+        self,
+        func: cabc.Callable[P, object],
+        types: tuple[type, ...],
+        *args: P.args,
+        **kwargs: P.kwargs,
+    ) -> None:
+        super().__init__(func, *args, **kwargs)
+
+        self._types = types
+
+        if not isinstance(self.types, tuple) and all(
+            isinstance(t, type) for t in self.types
+        ):
+            raise TypeError(f"{self.types=} should be a tuple of types.")
 
     def __hash__(self) -> int:
         return id(self)
@@ -50,10 +62,14 @@ class TorchFuncFn(TorchThunk[cabc.Callable[..., typing.Any]]):
             "function", self.func, self.args, self.kwargs
         )
 
+    @property
+    def types(self) -> tuple[type, ...]:
+        "The types of the arguments."
+        return self._types
+
 
 @typing.final
-@thunk_dcls
-class TorchDispFn(TorchThunk[_ops.OpOverload]):
+class TorchDispFn(TorchThunk):
     """
     `TorchDispFn` is the thunk capturing the function calls initiated by `torch`.
     This is by default what a null-op `__torch_dispatch__` would call.
@@ -61,10 +77,15 @@ class TorchDispFn(TorchThunk[_ops.OpOverload]):
     The `func` here are `torch.ops.aten.*` operators.
     """
 
-    def __post_init__(self):
-        super().__post_init__()
+    if typing.TYPE_CHECKING:
 
-        if not isinstance(self.func, _ops.OpOverload):
+        @property
+        def func(self) -> _ops.OpOverload: ...
+
+    def __init__(self, func: _ops.OpOverload, *args, **kwargs) -> None:
+        super().__init__(func, *args, **kwargs)
+
+        if not isinstance(func, _ops.OpOverload):
             raise TypeError(f"{self.func=} is not a `torch._ops.OpOverload`.")
 
     def __hash__(self) -> int:
@@ -132,7 +153,7 @@ class _TorchFuncModeCtx(overrides.TorchFunctionMode):
         if not self.mode.on:
             return func(*args, **kwargs)
 
-        thunk = TorchFuncFn(func=func, types=types, args=args, kwargs=kwargs)
+        thunk = TorchFuncFn(func, types, *args, **kwargs)
         return self.mode(thunk)
 
 
@@ -169,7 +190,7 @@ class _TorchDispModeCtx(pyd.TorchDispatchMode):
         if not self.mode.on:
             return func(*args, **kwargs)
 
-        thunk = TorchDispFn(func=func, args=args, kwargs=kwargs)
+        thunk = TorchDispFn(func, *args, **kwargs)
         return self.mode(thunk)
 
 
