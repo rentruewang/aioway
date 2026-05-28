@@ -89,6 +89,9 @@ class CostSession:
         start = start if start is not None else 0
         end = end if end is not None else len(self)
 
+        start %= len(self)
+        end %= len(self)
+
         end_cost = _cost_cumsum()[end + self._before_count - 1]
         start_cost = _cost_cumsum()[start + self._before_count - 1]
         return end_cost - start_cost
