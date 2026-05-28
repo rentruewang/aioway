@@ -22,6 +22,7 @@ __all__ = [
     "AvAudioLoader",
     "TorchCodecAudioLoader",
     "AudioData",
+    "encode_with_stft",
 ]
 
 
