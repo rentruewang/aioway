@@ -109,25 +109,24 @@ class CostSession:
         global _latest_session
 
         try:
-            with _set_latest_session(self):
+            with self._set_latest_session():
                 yield self
         finally:
             # When the scope exits, clean up all the costs (in the current session).
             assert len(self) >= 0
             _COST_CUMSUM.truncate(self._before_count)
 
+    @ctxl.contextmanager
+    def _set_latest_session(self: CostSession):
 
-@ctxl.contextmanager
-def _set_latest_session(session: CostSession):
+        global _latest_session
+        before = _latest_session
+        _latest_session = self
 
-    global _latest_session
-    before = _latest_session
-    _latest_session = session
-
-    try:
-        yield
-    finally:
-        _latest_session = before
+        try:
+            yield
+        finally:
+            _latest_session = before
 
 
 _COST_CUMSUM = Stack([Cost.zero()])
