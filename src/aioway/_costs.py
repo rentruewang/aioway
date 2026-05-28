@@ -73,7 +73,7 @@ class CostSession:
 
         return len(_COST_CUMSUM) - self._before_count
 
-    def __getitem__(self, idx: int | slice, /) -> Cost:
+    def __getitem__(self, idx: int | slice[int, int, None], /) -> Cost:
         if isinstance(idx, int):
             idx = slice(idx, idx + 1)
 
@@ -83,19 +83,14 @@ class CostSession:
                 "Do not specify the step for slices."
             )
 
-        # Whenn `len(self) == 0` calling `.sum()` still invokes `[]`.
-        if len(self) == 0:
-            return Cost.zero()
+        return self.__getitem_slice(idx.start, idx.stop)
 
-        else:
-            return self.__getitem_slice(idx.start, idx.stop)
+    def __getitem_slice(self, start: int, end: int):
+        if not 0 <= start <= len(self):
+            raise IndexError
 
-    def __getitem_slice(self, start: int | None, end: int | None):
-        start = start if start is not None else 0
-        end = end if end is not None else len(self)
-
-        start %= len(self)
-        end %= len(self)
+        if not 0 <= end <= len(self):
+            raise IndexError
 
         end_cost = _COST_CUMSUM[end + self._before_count - 1]
         start_cost = _COST_CUMSUM[start + self._before_count - 1]
@@ -103,7 +98,7 @@ class CostSession:
 
     def sum(self) -> Cost:
         "Return the sum of costs in this current session."
-        return self[:]
+        return self[0 : len(self)]
 
     @ctxl.contextmanager
     def track(self) -> cabc.Generator[typing.Self]:
