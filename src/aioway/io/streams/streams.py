@@ -9,11 +9,12 @@ import typing
 from collections import abc as cabc
 
 import tensordict as td
+import torch
 
-from aioway.dsets import Dataset, DatasetViewTypes
-from aioway.schemas import AttrDict
+from aioway._utils import dcls_asdict, decomp_flatten
+from aioway.schemas import Attr, AttrDict
 
-__all__ = ["StreamDict", "StreamState", "StreamDict", "StreamDict", "StreamDict"]
+__all__ = ["TdictStream", "StreamState", "TdictStream", "TdictStream", "TdictStream"]
 
 
 @dcls.dataclass
@@ -43,82 +44,36 @@ class StreamState:
 
 
 @dcls.dataclass(frozen=True)
-class StreamDict(Dataset, cabc.Iterator[td.TensorDict], abc.ABC):
+class Stream[T](cabc.Iterator[T], abc.ABC):
     """
-    `StreamDict` produces a stream of batches of data, in the form of `td.TensorDict`s,
-    everytime `__next__` is called on it, a `td.TensorDict` is yielded.
+    The base class for `Stream` and `StreamDict`,
+    yielding batches of `torch.Tensor` and `td.TensorDict`, respectively.
 
-    `StreamDict` is a stateful operation, compared to the previous implementations,
-    it is an external iterator, supporting state inspection, simplifying debugging.
+    It's a stateful operation, using `StreamState`.
     """
 
     __match_args__: typing.ClassVar[tuple[str, ...]]
     """
-    A `StreamDict` should be able to be decomposed with `match` statements.
+    A `Stream` should be able to be decomposed with `match` statements.
     """
 
     @typing.override
     def __iter__(self) -> typing.Self:
-        """
-        `__iter__` allows `Stream`s to be used in `for` loops.
-
-        As it returns `self`, re-use carefully.
-        """
-
         return self
 
     @typing.final
     @typing.override
-    def __next__(self) -> td.TensorDict:
-        """
-        `__next__` allows `Stream`s to be used in `for` loops.
-        """
-
-        result = self._next()
+    def __next__(self) -> T:
+        result = self.read()
         self.state.step()
         return result
 
-    @property
     @abc.abstractmethod
-    def size(self) -> int:
+    def read(self) -> T:
         """
-        The length of the current `Stream`.
-        Does not change when the `Stream` is being iterated over.
-        """
-
-        raise NotImplementedError
-
-    @property
-    @abc.abstractmethod
-    def attrs(self) -> AttrDict:
-        """
-        The schema for the current `Stream`.
-        """
-
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def _next(self) -> td.TensorDict:
-        """
-        Compute the next batch (a `td.TensorDict`).
+        Compute the next batch.
 
         An exception raised here would be translated to `StopIteration`.
-
-        Note:
-
-            The name `read` is inspired by the original release of clickhouse.
-            I think this is a great name for a as a method on `Stream` to poll data,
-            giving it a natural feeling like how we normally work with files.
-
-        """
-
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def _inputs(self) -> tuple[StreamDict, ...]:
-        """
-        `Stream`'s children, the dependent `Stream`s that would also be evaluated
-        when calling `__next__` on the current `Stream`.
         """
 
         raise NotImplementedError
@@ -130,6 +85,16 @@ class StreamDict(Dataset, cabc.Iterator[td.TensorDict], abc.ABC):
         because if it has a default value it would make subclassing difficult.
         """
         return StreamState()
+
+    @property
+    @abc.abstractmethod
+    def size(self) -> int:
+        """
+        The length of the current `Stream`.
+        Does not change when the `Stream` is being iterated over.
+        """
+
+        raise NotImplementedError
 
     @property
     def idx(self) -> int:
@@ -147,9 +112,52 @@ class StreamDict(Dataset, cabc.Iterator[td.TensorDict], abc.ABC):
 
         return self.state.started
 
-    @classmethod
-    @typing.override
-    def view_types(cls):
-        from .views import StreamColumnView, StreamSelectView
+    @typing.final
+    def inputs(self) -> cabc.Iterator[Stream[T]]:
+        """
+        The input of the current `Stream`.
+        """
 
-        return DatasetViewTypes(column=StreamColumnView, select=StreamSelectView)
+        yield from decomp_flatten(dcls_asdict(self), Stream)
+
+
+@dcls.dataclass(frozen=True)
+class TensorStream(Stream[torch.Tensor], abc.ABC):
+    """
+    An iterator of batches of `torch.Tensor`.
+    """
+
+    @property
+    @abc.abstractmethod
+    def attr(self) -> Attr:
+        """
+        The schema for the current `Stream`.
+        """
+
+        raise NotImplementedError
+
+
+@dcls.dataclass(frozen=True)
+class TdictStream(Stream[td.TensorDict], abc.ABC):
+    """
+    An iterator of batches of `td.TensorDict`.
+    """
+
+    @property
+    @abc.abstractmethod
+    def attrs(self) -> AttrDict:
+        """
+        The schema for the current `Stream`.
+        """
+
+        raise NotImplementedError
+
+    def column(self, col: str):
+        from .views import StreamColumnView
+
+        return StreamColumnView(self, col)
+
+    def select(self, *cols: str):
+        from .views import StreamSelectView
+
+        return StreamSelectView(self, cols)

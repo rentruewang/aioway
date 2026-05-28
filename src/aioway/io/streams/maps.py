@@ -13,7 +13,7 @@ import torch
 from aioway._torch import tdict_rename
 from aioway.schemas import AttrDict
 
-from .streams import StreamDict
+from .streams import TdictStream
 
 __all__ = [
     "MapStream",
@@ -25,7 +25,7 @@ __all__ = [
 
 
 @dcls.dataclass(frozen=True)
-class MapStream(StreamDict, abc.ABC):
+class MapStream(TdictStream, abc.ABC):
     """
     The shared base class for all the `map` like `Stream`s,
     which share the trait of::
@@ -42,13 +42,13 @@ class MapStream(StreamDict, abc.ABC):
         where each input row can correspond to one or multiple or 0 rows, in the same minibatch.
     """
 
-    source: StreamDict
+    source: TdictStream
     """
     The source stream that will be yielded from.
     """
 
     def __post_init__(self):
-        if not isinstance(self.source, StreamDict):
+        if not isinstance(self.source, TdictStream):
             raise ValueError(
                 f"{self.source=} should have been a `Stream`. Got {type(self.source)=}"
             )
@@ -78,16 +78,11 @@ class MapStream(StreamDict, abc.ABC):
 
     @typing.override
     @typing.final
-    def _next(self) -> td.TensorDict:
+    def read(self) -> td.TensorDict:
         # A `map` kind of `Stream` always calls `next` once on its source.
         # May raise `StopIteration` here.
         next_batch = next(self.source)
         return self._apply(next_batch)
-
-    @typing.final
-    @typing.override
-    def _inputs(self):
-        return (self.source,)
 
 
 @dcls.dataclass(frozen=True)

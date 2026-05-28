@@ -14,12 +14,12 @@ from aioway.schemas import AttrDict
 
 from .frames import FrameDict
 
-__all__ = ["TdFrame", "TdListFrame"]
+__all__ = ["TensorDictFrame", "TensorDictListFrame"]
 
 
 @typing.final
 @dcls.dataclass(frozen=True)
-class TdFrame(FrameDict):
+class TensorDictFrame(FrameDict):
     """
     A `Frame` backed by a `td.TensorDict` (aka a batch in `aioway`).
     This means that it is non-distributed, and volatile.
@@ -46,7 +46,7 @@ class TdFrame(FrameDict):
 
 @typing.final
 @dcls.dataclass(frozen=True)
-class TdListFrame(FrameDict):
+class TensorDictListFrame(FrameDict):
     """
     A `Frame` backed by a `list[td.TensorDict]` (aka a batch in `aioway`).
     This means that it is non-distributed, and volatile.

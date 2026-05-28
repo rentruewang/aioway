@@ -17,7 +17,8 @@ from aioway._utils import is_list_of
 from aioway.schemas import AttrDict
 
 from ..frames import FrameDict
-from .streams import StreamDict
+from .streams import TdictStream
+from .views import StreamColumnView, StreamSelectView
 
 __all__ = [
     "BoundedStream",
@@ -31,7 +32,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 @dcls.dataclass(frozen=True)
-class BoundedStream(StreamDict, abc.ABC):
+class BoundedStream(TdictStream, abc.ABC):
     """
     A stream with `__len__` and `__getitem__`.
     """
@@ -45,9 +46,6 @@ class BoundedStream(StreamDict, abc.ABC):
     def __getitem__(self, key):
         if isinstance(key, int):
             return self._getitem_int(key)
-
-        if isinstance(key, str) or is_list_of(str)(key):
-            return StreamDict.__getitem__(self, key)
 
         raise TypeError(f"Do not know how to handle {type(key)=}.")
 
@@ -70,7 +68,7 @@ class CacheStream(BoundedStream):
     Exhaust the input stream, store it into a cache for repeating access.
     """
 
-    stream: StreamDict
+    stream: TdictStream
     "The input stream."
 
     saved: list[td.TensorDict] = dcls.field(default_factory=list)
@@ -89,7 +87,7 @@ class CacheStream(BoundedStream):
         return self.saved[idx]
 
     @typing.override
-    def _next(self) -> td.TensorDict:
+    def read(self) -> td.TensorDict:
         LOGGER.debug(
             "Executing `__iter__` for `CacheStream`. self.idx=%s, stream.idx=%s",
             self.idx,
@@ -113,10 +111,6 @@ class CacheStream(BoundedStream):
         item = next(self.stream)
         self.saved.append(item)
         return item
-
-    @typing.override
-    def _inputs(self):
-        return (self.stream,)
 
     @property
     @typing.override
@@ -164,15 +158,11 @@ class ListStream(BoundedStream):
         raise ValueError("Chunks should have the same schema.")
 
     @typing.override
-    def _next(self) -> td.TensorDict:
+    def read(self) -> td.TensorDict:
         if self.idx < self.size:
             return self._getitem_int(self.idx)
         else:
             raise StopIteration
-
-    @typing.override
-    def _inputs(self):
-        return ()
 
 
 @dcls.dataclass(frozen=True)
@@ -195,7 +185,7 @@ class FrameStreamLoader:
 
 
 @dcls.dataclass(frozen=True)
-class FrameStream(StreamDict):
+class FrameStream(TdictStream):
     """
     A `Stream` backed by a `Frame`.
     """
@@ -209,7 +199,7 @@ class FrameStream(StreamDict):
     """
 
     @typing.override
-    def _next(self) -> td.TensorDict:
+    def read(self) -> td.TensorDict:
         try:
             return self._get_batch(self.idx)
         except IndexError as ie:
@@ -253,10 +243,6 @@ class FrameStream(StreamDict):
 
         idx %= self.size
         return self.frame._getitems_batch(list(range(idx, idx + batch_size)))
-
-    @typing.override
-    def _inputs(self):
-        return ()
 
 
 def _identity[T](item: T) -> T:

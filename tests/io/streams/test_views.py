@@ -1,9 +1,9 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from aioway.io import StreamDict
+from aioway.io import TdictStream
 
 
-def test_column_attr(table_stream: StreamDict):
+def test_column_attr(table_stream: TdictStream):
     attrs = table_stream.attrs
     first_key = list(attrs.keys())[0]
 
@@ -11,7 +11,7 @@ def test_column_attr(table_stream: StreamDict):
     assert table_stream.select(first_key).attrs == {first_key: attrs[first_key]}
 
 
-def test_select_attr(table_stream: StreamDict):
+def test_select_attr(table_stream: TdictStream):
     attrs = table_stream.attrs
     k_0, k_1 = list(attrs.keys())[:2]
 

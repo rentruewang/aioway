@@ -3,6 +3,7 @@
 "The binary `Stream`s that consumes 2 `Stream`s."
 
 import dataclasses as dcls
+import functools
 import typing
 
 import tensordict as td
@@ -11,23 +12,23 @@ import torch
 from aioway.schemas import AttrDict
 
 from .sources import CacheStream
-from .streams import StreamDict, StreamState
+from .streams import StreamState, TdictStream
 
 __all__ = ["ZipStream", "NestedLoopJoinStream"]
 
 
 @dcls.dataclass(frozen=True)
-class ZipStream(StreamDict):
+class ZipStream(TdictStream):
     """
     `ZipStream` is similar to what `zip` does.
     """
 
-    left: StreamDict
+    left: TdictStream
     """
     The LHS stream.
     """
 
-    right: StreamDict
+    right: TdictStream
     """
     The RHS stream.
     """
@@ -43,15 +44,11 @@ class ZipStream(StreamDict):
         return self.left.attrs | self.right.attrs
 
     @typing.override
-    def _next(self) -> td.TensorDict:
+    def read(self) -> td.TensorDict:
         # Either one of those may raise `StopIteration`, at which point it is done.
         left_batch = next(self.left)
         right_batch = next(self.right)
         return td.merge_tensordicts(left_batch, right_batch)
-
-    @typing.override
-    def _inputs(self):
-        return self.left, self.right
 
 
 @dcls.dataclass
@@ -63,7 +60,7 @@ class NestedState(StreamState):
 
 
 @dcls.dataclass(frozen=True)
-class NestedLoopJoinStream(StreamDict):
+class NestedLoopJoinStream(TdictStream):
     """
     This is a stream that combines 2 input streams in a nested-loop matter,
     as in `[[x, y] for x in left for y in right if x.key == y.key]`.
@@ -71,7 +68,7 @@ class NestedLoopJoinStream(StreamDict):
     The end result would be merged with `tensordict.merge_tensordicts`.
     """
 
-    left: StreamDict
+    left: TdictStream
     """
     LHS is a normal stream. Will only be iterated over once.
     """
@@ -86,9 +83,6 @@ class NestedLoopJoinStream(StreamDict):
     The key to join on.
     """
 
-    state: NestedState = dcls.field(default_factory=NestedState)
-    "The state for the nested loop."
-
     @property
     @typing.override
     def size(self) -> int:
@@ -99,12 +93,13 @@ class NestedLoopJoinStream(StreamDict):
     def attrs(self) -> AttrDict:
         return self.left.attrs | self.right.attrs
 
-    @typing.override
-    def _inputs(self):
-        return self.left, self.right
+    @functools.cached_property
+    def state(self) -> NestedState:
+        "The state for the nested loop."
+        return NestedState()
 
     @typing.override
-    def _next(self) -> td.TensorDict:
+    def read(self) -> td.TensorDict:
         lhs_batch = self._get_lhs()
         rhs_batch = self._get_rhs()
 

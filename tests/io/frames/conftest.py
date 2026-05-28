@@ -2,17 +2,23 @@
 
 import pytest
 
-from aioway.io import FrameDict, FrameStream, FrameStreamLoader, TdFrame, TdListFrame
+from aioway.io import (
+    FrameDict,
+    FrameStream,
+    FrameStreamLoader,
+    TensorDictFrame,
+    TensorDictListFrame,
+)
 from tests.fake import chunk_ok
 
 
 def block_table(device: str, batch_size: int, data_size: int):
     block = chunk_ok(size=data_size, device=device)
-    return TdFrame(block)
+    return TensorDictFrame(block)
 
 
 def list_table(device: str, batch_size: int, data_size: int):
-    return TdListFrame(
+    return TensorDictListFrame(
         [
             chunk_ok(size=batch_size, device=device)
             for _ in range(0, data_size, batch_size)
