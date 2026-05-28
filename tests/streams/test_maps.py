@@ -7,8 +7,8 @@ from collections import abc as cabc
 import pytest
 import tensordict as td
 
+from aioway._streams import StreamState, TdictStream
 from aioway._torch import tdict_all_equal, tdict_rename
-from aioway.io import StreamState, TdictStream
 from aioway.relalg import (
     ApplyStream,
     CacheStream,

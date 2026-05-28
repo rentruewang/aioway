@@ -2,4 +2,3 @@
 
 from . import _media
 from .frames import *
-from .streams import *

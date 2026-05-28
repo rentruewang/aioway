@@ -9,7 +9,7 @@ import typing
 import tensordict as td
 import torch
 
-from aioway.io import StreamState, TdictStream
+from aioway._streams import StreamState, TdictStream
 from aioway.schemas import AttrDict
 
 from .sources import CacheStream

@@ -10,8 +10,8 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
+from aioway._streams import TdictStream
 from aioway._torch import tdict_rename
-from aioway.io import TdictStream
 from aioway.schemas import AttrDict
 
 __all__ = [

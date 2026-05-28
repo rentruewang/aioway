@@ -9,7 +9,7 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway.io import TdictStream, TensorStream
+from aioway._streams import TdictStream, TensorStream
 from aioway.schemas import Attr, AttrDict
 
 __all__ = ["StreamColumnView", "StreamSelectView"]

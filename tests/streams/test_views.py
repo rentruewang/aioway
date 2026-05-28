@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from aioway.io import TdictStream
+from aioway._streams import TdictStream
 
 
 def test_column_attr(table_stream: TdictStream):

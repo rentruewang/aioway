@@ -13,7 +13,8 @@ from collections import abc as cabc
 import tensordict as td
 from torch.utils import data
 
-from aioway.io import FrameDict, TdictStream
+from aioway._streams import TdictStream
+from aioway.io import FrameDict
 from aioway.schemas import AttrDict
 
 __all__ = [
