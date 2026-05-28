@@ -4,7 +4,6 @@
 
 import contextlib as ctxl
 import dataclasses as dcls
-import functools
 import operator
 import typing
 from collections import abc as cabc
