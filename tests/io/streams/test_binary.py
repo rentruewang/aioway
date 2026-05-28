@@ -8,7 +8,7 @@ import tensordict as td
 import torch
 
 from aioway._torch import tdict_all_equal
-from aioway.streams import (
+from aioway.io import (
     CacheStream,
     ListStream,
     NestedLoopJoinStream,

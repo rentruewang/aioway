@@ -2,8 +2,7 @@
 
 import pytest
 
-from aioway.frames import Frame, TdFrame, TdListFrame
-from aioway.streams import FrameStream, FrameStreamLoader
+from aioway.io import Frame, FrameStream, FrameStreamLoader, TdFrame, TdListFrame
 from tests.fake import chunk_ok
 
 

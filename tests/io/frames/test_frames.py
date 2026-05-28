@@ -5,7 +5,7 @@ import pytest
 import tensordict as td
 from numpy import random
 
-from aioway.frames import Frame
+from aioway.io import Frame
 
 
 def test_table_not_empty(frame: Frame):

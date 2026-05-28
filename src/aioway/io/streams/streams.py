@@ -43,7 +43,7 @@ class StreamState:
 
 
 @dcls.dataclass(frozen=True)
-class Stream(cabc.Iterator[td.TensorDict], Dataset, abc.ABC):
+class Stream(Dataset, cabc.Iterator[td.TensorDict], abc.ABC):
     """
     `Stream` produces a stream of batches of data, in the form of `TensorDict`s,
     everytime `__next__` is called on it, a `TensorDict` is yielded.

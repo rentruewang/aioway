@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from aioway.streams import Stream
+from aioway.io import Stream
 
 
 def test_column_attr(table_stream: Stream):
