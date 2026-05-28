@@ -110,7 +110,7 @@ class CostSession:
 @functools.lru_cache(maxsize=1)
 def _cost_cumsum() -> Stack[Cost]:
     """
-    The cumsum of costs. Since we are doing a lot of slice summation,
+    The cumsum of costs. Since we are doing a lot of slice summation (and no setitem),
     this gives O(1) slice summation at the cost of item access being slower.
 
     The stack itself always has a minimum size of 1 (concetual 0).
