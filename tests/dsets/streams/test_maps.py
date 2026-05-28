@@ -8,7 +8,8 @@ import pytest
 import tensordict as td
 
 from aioway._torch import tdict_all_equal, tdict_rename
-from aioway.dsets import (
+from aioway.schemas import AttrDict
+from aioway.streams import (
     ApplyStream,
     CacheStream,
     FuncFilterStream,
@@ -18,7 +19,6 @@ from aioway.dsets import (
     Stream,
     StreamState,
 )
-from aioway.schemas import AttrDict
 
 
 @dcls.dataclass

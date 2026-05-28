@@ -4,7 +4,8 @@
 
 import pytest
 
-from aioway.dsets import Frame, FrameStream, FrameStreamLoader, TdFrame
+from aioway.frames import Frame, TdFrame
+from aioway.streams import FrameStream, FrameStreamLoader
 from tests.fake import chunk_ok, concat_ok, unionable_ok
 
 

@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from aioway.dsets import Frame
+from aioway.frames import Frame
 
 
 def test_column_attr(frame: Frame) -> None:

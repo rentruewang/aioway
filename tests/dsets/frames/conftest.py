@@ -2,13 +2,8 @@
 
 import pytest
 
-from aioway.dsets import (
-    Frame,
-    FrameStream,
-    FrameStreamLoader,
-    TdFrame,
-    TdListFrame,
-)
+from aioway.frames import Frame, TdFrame, TdListFrame
+from aioway.streams import FrameStream, FrameStreamLoader
 from tests.fake import chunk_ok
 
 

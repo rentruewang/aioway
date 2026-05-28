@@ -8,7 +8,8 @@ import typing
 import tensordict as td
 import torch
 
-from ..dsets import DatasetColumnView, DatasetSelectView
+from aioway.dsets import DatasetColumnView, DatasetSelectView
+
 from .frames import Frame
 
 __all__ = ["FrameColumnView", "FrameSelectView"]

@@ -10,9 +10,8 @@ from collections import abc as cabc
 
 import tensordict as td
 
+from aioway.dsets import Dataset, DatasetViewTypes
 from aioway.schemas import AttrDict
-
-from ..dsets import Dataset, DatasetViewTypes
 
 __all__ = ["Stream", "StreamState", "Stream", "Stream", "Stream"]
 
