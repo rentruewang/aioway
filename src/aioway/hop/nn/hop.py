@@ -22,7 +22,8 @@ class NnHop(Hop, abc.ABC):
     module: nn.Module
     "The `nn.Module` initialized by `nn_init`."
 
-    def rebuild(self) -> typing.Self:
+    @typing.override
+    def _rebuild(self) -> typing.Self:
         new_module = self.nn_init()
         return dcls.replace(self, module=new_module)
 

@@ -55,3 +55,20 @@ def test_hop_linear(tensor_init: TensorHop, maybe_cache_hop):
     result = linear()
     assert isinstance(result, torch.Tensor)
     assert result.shape == (100, 31)
+
+
+def test_layer_hop_rebuild(layer_thunk, tensor_init: TensorHop, maybe_cache_hop):
+    hop = build_nn_hop(layer_thunk, tensor_init)
+    assert isinstance(hop, NnLayerHop)
+    assert all(isinstance(param, nn.Parameter) for param in hop.parameters())
+
+    rebuilt = hop.rebuild()
+    assert rebuilt is not hop
+
+
+def test_loss_hop_rebuild(loss_thunk, tensor_init: TensorHop, maybe_cache_hop):
+    result = build_nn_hop(loss_thunk, tensor_init, tensor_init)
+    assert isinstance(result, NnLossHop)
+
+    rebuilt = result.rebuild()
+    assert rebuilt is not result

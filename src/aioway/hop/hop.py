@@ -53,12 +53,18 @@ class Hop(abc.ABC):
 
         raise NotImplementedError
 
-    @abc.abstractmethod
     def rebuild(self):
         """
         Rebuild the current `Hop`. This is useful when you are switching contexts,
         e.g. switching on real mode after configuring the `HopDag` in fake mode.
         """
+
+        copied = self._rebuild()
+        assert copied is not self
+        return copied
+
+    @abc.abstractmethod
+    def _rebuild(self):
 
         raise NotImplementedError
 
