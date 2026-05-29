@@ -3,6 +3,7 @@
 "The high level operators that are just torch functions / data."
 
 import abc
+import copy
 import typing
 from collections import abc as cabc
 
@@ -27,6 +28,10 @@ class TensorHop[T = object](Hop):
     def forward(self) -> T:
         return self.data
 
+    @typing.override
+    def _rebuild(self) -> typing.Self:
+        return copy.deepcopy(self)
+
 
 @hop_dcls
 class _CatStackHop(Hop, abc.ABC):
@@ -47,8 +52,13 @@ class _CatStackHop(Hop, abc.ABC):
     dim: int = 0
     "The `dim` flag that would be passed to `.function`."
 
+    @typing.override
     def forward(self) -> torch.Tensor:
         return self.FUNCTION(self.tensors, dim=self.dim)
+
+    @typing.override
+    def _rebuild(self) -> typing.Self:
+        return copy.deepcopy(self)
 
 
 @hop_dcls

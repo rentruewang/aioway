@@ -47,6 +47,25 @@ class Hop(abc.ABC):
 
     @abc.abstractmethod
     def forward(self) -> object:
+        """
+        The forwarding logic. Should invoke dependencies' `__call__` methods.
+        """
+
+        raise NotImplementedError
+
+    def rebuild(self):
+        """
+        Rebuild the current `Hop`. This is useful when you are switching contexts,
+        e.g. switching on real mode after configuring the `HopDag` in fake mode.
+        """
+
+        copied = self._rebuild()
+        assert copied is not self
+        return copied
+
+    @abc.abstractmethod
+    def _rebuild(self):
+
         raise NotImplementedError
 
 

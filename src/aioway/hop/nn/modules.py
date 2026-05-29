@@ -82,7 +82,7 @@ def find_nn_init(thunk: NnInitFn, /) -> NnInit | None:
     return nn_init_type(*thunk.args, **thunk.kwargs)
 
 
-def build_nn_hop(thunk: NnInitFn, *args, **kwargs):
+def build_nn_hop(thunk: NnInitFn, *args, **kwargs) -> Hop | None:
     if (nn_init := find_nn_init(thunk)) is None:
         return None
 
