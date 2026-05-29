@@ -52,9 +52,9 @@ class Cost:
         if (sess := current_session()) is None:
             return
 
-        # Using this rather than the `_COST_CUMSUM`.
+        # Using this rather than the `_COST_CUMSUM` variable directly.
         # This forces `current_session()` to be `not None`,
-        # so we always clean it up via scopes.
+        # so we always clean it up via scopes (don't append infinitely).
         sess.record(self)
 
     @classmethod
@@ -65,11 +65,11 @@ class Cost:
 class CostSession:
     """
     The cost session. Use the `track_cost()` function to track the costs in a new scope.
-    Providing `.total()` function for summarization of costs.
+    Providing `.sum()` function for summarization of costs.
     Not thread safe, but efficient in single threading context.
     """
 
-    _COST_CUMSUM = Stack([Cost.zero()])
+    _COST_CUMSUM: typing.ClassVar[Stack[Cost]] = Stack([Cost.zero()])
     """
     The cumsum of costs. Since we are doing a lot of slice summation (and no setitem),
     this gives O(1) slice summation at the cost of item access being slower.
@@ -122,24 +122,14 @@ class CostSession:
         cumsum = self._COST_CUMSUM.top() + cost
         self._COST_CUMSUM.append(cumsum)
 
-    @ctxl.contextmanager
-    def _set_latest(self: CostSession):
-
-        global _latest_session
-        before = _latest_session
-        _latest_session = self
-
-        try:
-            yield
-        finally:
-            _latest_session = before
-
     def cleanup(self) -> None:
+        assert len(self) >= 0
         self._COST_CUMSUM.truncate(self._before_count)
 
 
 @ctxl.contextmanager
 def _set_latest_session(sess: CostSession):
+    "Set the latest session and restore later."
 
     global _latest_session
     before = _latest_session

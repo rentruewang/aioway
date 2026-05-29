@@ -24,40 +24,6 @@ def chunk(device: str, batch: int) -> td.TensorDict:
     return chunk_ok(device=device, size=batch)
 
 
-@pytest.fixture
-def schema():
-    return dict[str, Attr].from_values(
-        f1d=Attr.build(
-            device="cpu",
-            shape=[1],
-            dtype="float32",
-            layout="strided",
-            requires_grad=False,
-        ),
-        f2d=Attr.build(
-            device="cpu",
-            shape=[1, 32],
-            dtype="float32",
-            layout="strided",
-            requires_grad=False,
-        ),
-        i1d=Attr.build(
-            device="cpu",
-            shape=[1],
-            dtype="int64",
-            layout="strided",
-            requires_grad=False,
-        ),
-        i2d=Attr.build(
-            device="cpu",
-            shape=[1, 32],
-            dtype="int64",
-            layout="strided",
-            requires_grad=False,
-        ),
-    )
-
-
 def test_chunk_init_success(chunk: td.TensorDict) -> None:
     _ = chunk
 
