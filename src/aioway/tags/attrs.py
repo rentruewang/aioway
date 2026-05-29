@@ -1,110 +1,79 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import dataclasses as dcls
 import typing
-
-import tensordict as td
-import torch
 
 from aioway.attrs import Attr, Device, DType, Layout, Shape
 
-from .tags import Tag, TensorTag, tags_dcls
+from .tags import TensorTag, tags_dcls
 
-__all__ = [
-    "HasShapeTag",
-    "HasDTypeTag",
-    "HasDeviceTag",
-    "HasLayoutTag",
-    "HasRequiresGradTag",
-    "tag_attr",
-]
-
-
-def tag_attr(attr, item: torch.Tensor):
-    "Tag the given tensor with the attributes, to mark constraints."
-
-    HasShapeTag(attr.shape).attach(item)
-    HasDeviceTag(attr.device).attach(item)
-    HasDTypeTag(attr.dtype).attach(item)
-    HasLayoutTag(attr.layout).attach(item)
-    HasRequiresGradTag(attr.requires_grad).attach(item)
+__all__ = ["AttrTag"]
 
 
 @tags_dcls
-class HasShapeTag(Tag):
+class AttrTag(TensorTag):
     """
-    The tensor must have the shape given by this tag.
-    """
-
-    NAME = "__aioway_has_shape__"
-
-    shape: Shape
-    "The given shape that must match."
-
-    @typing.override
-    def check(self, item: torch.Tensor | td.TensorDict, /) -> bool:
-        return item.shape == self.shape
-
-
-@tags_dcls
-class HasDTypeTag(Tag):
-    """
-    The tensor must have the dtype given by this tag.
+    Tag that specify `Attr`s that should be respected.
     """
 
-    NAME = "__aioway_has_dtype__"
+    NAME = "__aioway_attr__"
 
-    dtype: DType
-    "The given dtype that must match."
+    _: dcls.KW_ONLY
 
-    @typing.override
-    def check(self, item: torch.Tensor | td.TensorDict, /) -> bool:
-        return item.dtype == self.dtype
+    shape: Shape | None = None
+    "The given shape, if given, that must match."
 
+    dtype: DType | None = None
+    "The given dtype, if given, that must match."
 
-@tags_dcls
-class HasDeviceTag(Tag):
-    """
-    The tensor must have the device given by this tag.
-    """
+    device: Device | None = None
+    "The given device, if given, that must match."
 
-    NAME = "__aioway_has_device__"
+    layout: Layout | None = None
+    "The given layout, if given, that must match."
 
-    device: Device
-    "The given device that must match."
+    requires_grad: bool | None = None
+    "The given requires_grad, if given, that must match."
 
-    @typing.override
-    def check(self, item: torch.Tensor | td.TensorDict, /) -> bool:
-        return item.device == self.device
+    def _check_attr(self, attr: Attr) -> None:
+        def check_if_not_none[T](left: T | None, right: T):
+            if left is None:
+                return
 
+            if left != right:
+                raise ValueError
 
-@tags_dcls
-class HasLayoutTag(TensorTag):
-    """
-    The tensor must have the layout given by this tag.
-    """
+        check_if_not_none(self.shape, attr.shape)
+        check_if_not_none(self.dtype, attr.dtype)
+        check_if_not_none(self.device, attr.device)
+        check_if_not_none(self.layout, attr.layout)
+        check_if_not_none(self.requires_grad, attr.requires_grad)
 
-    NAME = "__aioway_has_layout__"
+    def to_attr(self) -> Attr:
+        "Convert to `Attr`. If not enough info, will raise `TypeError`."
 
-    layout: Layout
-    "The given layout that must match."
+        attr_dict: typing.Any = {}
 
-    @typing.override
-    def _check_attr(self, attr: Attr):
-        if attr.layout != self.layout:
-            raise ValueError
+        def add_if_not_none(key, val):
+            if val is None:
+                return
 
+            attr_dict[key] = val
 
-@tags_dcls
-class HasRequiresGradTag(Tag[torch.Tensor | td.TensorDict]):
-    """
-    The tensor must have the requires_grad given by this tag.
-    """
+        add_if_not_none("shape", self.shape)
+        add_if_not_none("dtype", self.dtype)
+        add_if_not_none("device", self.device)
+        add_if_not_none("layout", self.layout)
+        add_if_not_none("requires_grad", self.requires_grad)
 
-    NAME = "__aioway_has_requires_grad__"
+        return Attr.parse(attr_dict)
 
-    requires_grad: bool
-    "The given `requires_grad` attribute that must match."
-
-    @typing.override
-    def check(self, item: torch.Tensor | td.TensorDict, /) -> bool:
-        return item.requires_grad == self.requires_grad
+    @classmethod
+    def from_attr(cls, attr: Attr, /) -> typing.Self:
+        return cls(
+            shape=attr.shape,
+            device=attr.device,
+            dtype=attr.dtype,
+            layout=attr.layout,
+            requires_grad=attr.requires_grad,
+        )

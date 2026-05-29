@@ -1,16 +1,22 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import abc
+import dataclasses as dcls
 import typing
+from collections import abc as cabc
 
-from aioway._torch import torch_set_fake_mode_func
 from aioway.hop import HopDag, Linear, TensorHop
-from aioway.tags import HasDTypeTag, Tag
+from aioway.tags import AttrTag, TagDict
 
-__all__ = ["Builder", "just_linear_builder"]
+__all__ = ["Builder", "builder_dcls", "JustLinearBuilder"]
 
 
 @typing.dataclass_transform(frozen_default=True)
+def builder_dcls(cls):
+    return dcls.dataclass(frozen=True)(cls)
+
+
+@builder_dcls
 class Builder(abc.ABC):
     @abc.abstractmethod
     def __call__(self) -> HopDag:
@@ -21,44 +27,43 @@ class Builder(abc.ABC):
 
         raise NotImplementedError
 
-    # @abc.abstractmethod
-    # def inputs(self) ->
-
-
-class Builder(typing.Protocol):
-    def __call__(self, inputs: list[Tag], outputs: list[Tag]) -> HopDag: ...
-
-
-@torch_set_fake_mode_func(True)
-def just_linear_builder(inputs: list[Tag], outputs: list[Tag]) -> HopDag:
-    try:
-        input_schema = _check_linear_io(inputs)
-        output_schema = _check_linear_io(outputs)
-    except NotImplementedError:
-        return NotImplemented
-
-    if input_schema.shape[:-1] != output_schema.shape[:-1]:
-        return NotImplemented
-
-    input_node = TensorHop(input_schema.to_fake_tensor())
-
-    linear_layer = Linear(input_schema.shape[-1], output_schema.shape[-1])
-    linear_node = linear_layer.apply(input_node)
-
-    return HopDag.from_list_of_nodes([input_node, linear_node])
-
-
-def _check_linear_io(spaces: list[Tag]):
-    if len(spaces) != 1:
+    @abc.abstractmethod
+    def inputs(self) -> cabc.Iterator[TagDict]:
         raise NotImplementedError
 
-    [space] = spaces
-
-    if isinstance(space, Tag):
-        pass
-
-    dtype_tag = HasDTypeTag.extract(space)
-    if HasDTypeTag.extract(space).family != "float":
+    @abc.abstractmethod
+    def outputs(self) -> cabc.Iterator[TagDict]:
         raise NotImplementedError
 
-    return space.schema
+
+@builder_dcls
+class JustLinearBuilder(Builder):
+    """
+    A builder that outputs 1 linear layer, supporting 1 input and 1 output.
+    """
+
+    in_attr: AttrTag
+    "The input shape."
+
+    out_attr: AttrTag
+    "The output shape."
+
+    def __call__(self) -> HopDag:
+        try:
+            in_attr = self.in_attr.to_attr()
+            out_attr = self.out_attr.to_attr()
+        except TypeError:
+            return NotImplemented
+
+        input_node = TensorHop(in_attr.to_fake_tensor())
+
+        linear_layer = Linear(in_attr.shape[-1], out_attr.shape[-1])
+        linear_node = linear_layer.apply(input_node)
+
+        return HopDag.from_list_of_nodes([input_node, linear_node])
+
+    def inputs(self) -> cabc.Iterator[TagDict]:
+        yield TagDict.from_tags(self.in_attr)
+
+    def outputs(self) -> cabc.Iterator[TagDict]:
+        yield TagDict.from_tags(self.out_attr)

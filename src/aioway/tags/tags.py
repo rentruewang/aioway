@@ -4,6 +4,7 @@
 
 import abc
 import dataclasses as dcls
+import functools
 import inspect
 import re
 import typing
@@ -12,6 +13,7 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
+from aioway._utils import SeqKeysView
 from aioway.attrs import Attr, AttrDict
 
 __all__ = ["Tag", "TensorTag", "TagDict", "tags_dcls", "attach_tags"]
@@ -202,7 +204,7 @@ def attach_tags[T](item: T, *tags: Tag[T]) -> None:
         tag.attach(item)
 
 
-class TagDict[T]:
+class TagDict[T = typing.Any]:
     """
     The tags stored on an object can be extracted into a `TagDict`,
     which supports both fast lookup and conveniently unpacks to only `Tag`s.
@@ -239,6 +241,29 @@ class TagDict[T]:
         assert isinstance(key, str)
         return self._mapping[key]
 
+    def __hash__(self):
+        return self.__hash
+
+    @functools.cached_property
+    def __hash(self):
+        "Hash value of the `TagDict`, since all values are frozen and slots based."
+        return hash(tuple(sorted(self.items())))
+
+    def keys(self) -> cabc.KeysView[str]:
+        return self.__keys
+
+    def values(self) -> cabc.Generator[Tag[T]]:
+        for key in self.keys():
+            yield self[key]
+
+    def items(self) -> cabc.Generator[tuple[str, Tag[T]]]:
+        for key in self.keys():
+            yield key, self[key]
+
+    @functools.cached_property
+    def __keys(self):
+        return SeqKeysView(list(self._mapping))
+
     @classmethod
     def extract(cls, data: T) -> typing.Self:
         """
@@ -249,6 +274,10 @@ class TagDict[T]:
 
         tag_names = [attr_name for attr_name in dir(data) if _TAG_NAME.match(attr_name)]
         return cls({name: _get_tag(data, name) for name in tag_names})
+
+    @classmethod
+    def from_tags(cls, *tags: Tag[T]) -> typing.Self:
+        return cls({tag.NAME: tag for tag in tags})
 
 
 def _get_tag[T](item: T, tag_name: str, /) -> Tag[T]:
