@@ -6,7 +6,7 @@ import pytest
 import torch
 
 from aioway.io._media import ImageLoader, PillowImageLoader, TvioImageLoader
-from aioway.tags import IsImageTag, extract_tags
+from aioway.tags import IsImageTag, TagDict
 
 
 def _loaders():
@@ -34,6 +34,6 @@ def test_read_image_tags(
     example_image: pathlib.Path, loader: ImageLoader, maybe_fake_mode
 ):
     image = _read_image(example_image, loader)
-    tags = extract_tags(image)
-    assert IsImageTag.NAME in tags
+    tags = TagDict.extract(image)
+    assert IsImageTag() in tags
     assert isinstance(tags[IsImageTag.NAME], IsImageTag)
