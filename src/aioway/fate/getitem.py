@@ -6,6 +6,8 @@ import typing
 import torch
 from torch import ops
 
+from aioway._costs import Cost
+
 from .fate import Fate, fate_dcls
 
 __all__ = ["BooleanMasking", "IntSelect"]
@@ -20,8 +22,8 @@ class _BaseGetItem(Fate, abc.ABC):
         return id(self)
 
     @typing.override
-    def cost(self) -> int:
-        return self().numel()
+    def cost(self) -> Cost:
+        return Cost(time=self.self.numel(), memory=0)
 
 
 @fate_dcls

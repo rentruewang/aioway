@@ -10,6 +10,7 @@ from collections import abc as cabc
 
 from torch import _ops
 
+from aioway._costs import Cost
 from aioway._utils import camel_to_snake, find_nested_tensors, render_fcall
 
 if typing.TYPE_CHECKING:
@@ -47,7 +48,9 @@ class Fate(abc.ABC):
 
     @typing.final
     def __call__(self):
-        return self.forward()
+        result = self.forward()
+        self.cost().commit()
+        return result
 
     def forward(self):
         return self.KEY(**dcls.asdict(self))
@@ -61,7 +64,7 @@ class Fate(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def cost(self) -> int:
+    def cost(self) -> Cost:
         """
         Return the cost of each operation.
         """

@@ -112,11 +112,19 @@ class Stack[T]:
     def top(self) -> T:
         return self.stack[-1]
 
-    def append(self, fn: T) -> None:
-        self.stack.append(fn)
+    def append(self, obj: T, /) -> None:
+        self.stack.append(obj)
 
     def pop(self) -> T:
         return self.stack.pop()
+
+    def extend(self, it: cabc.Iterable[T], /) -> None:
+        self.stack.extend(it)
+
+    def truncate(self, after: int, /) -> None:
+        "Truncate the items after the `after` index. Equivalent to `stack[after:]`."
+
+        del self.stack[after:]
 
     @ctxl.contextmanager
     def hold(self, item: T):
