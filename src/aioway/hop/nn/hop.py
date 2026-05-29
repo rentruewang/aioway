@@ -4,6 +4,7 @@ import abc
 import typing
 
 from torch import nn
+import dataclasses as dcls
 
 from ..hop import Hop, hop_dcls
 
@@ -15,8 +16,15 @@ __all__ = ["NnHop", "NnLayerHop", "NnLossHop"]
 
 @hop_dcls
 class NnHop(Hop, abc.ABC):
-    config: NnInit
+    nn_init: NnInit
     "The config used to initialize the `Hop`."
+
+    module: nn.Module
+    "The `nn.Module` initialized by `nn_init`."
+
+    def rebuild(self) -> typing.Self:
+        new_module = self.nn_init()
+        return dcls.replace(self, module=new_module)
 
 
 @hop_dcls
@@ -25,9 +33,6 @@ class NnLayerHop(NnHop):
     The `Hop` subclass for normal layers in `nn.Module`s.
     It is a thunk so it has args, kwargs as attributes.
     """
-
-    module: nn.Module
-    "`NnLayerHop` stores the module."
 
     input: Hop
     "The input of the `NnLayerHop`. Should output a `torch.Tensor`."
@@ -47,9 +52,6 @@ class NnLossHop(NnHop):
     The `Hop` subclass for loss functions that are `nn.Module`s.
     """
 
-    loss: nn.Module
-    "`NnLossHop` stores the module."
-
     input: Hop
     "The input of the `NnLossHop`. Should output a `torch.Tensor`."
 
@@ -58,4 +60,4 @@ class NnLossHop(NnHop):
 
     @typing.override
     def forward(self) -> object:
-        return self.loss(self.input(), self.target())
+        return self.module(self.input(), self.target())

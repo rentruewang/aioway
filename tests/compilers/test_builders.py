@@ -26,9 +26,9 @@ def test_just_linear(input_space: AttrTag, output_space: AttrTag):
     [tensor_node, linear_node] = built
     assert isinstance(linear_node, NnLayerHop)
     assert isinstance(linear_node.module, nn.Linear)
-    assert isinstance(linear_node.config, Linear)
-    assert linear_node.config.in_features == 5
-    assert linear_node.config.out_features == 6
+    assert isinstance(linear_node.nn_init, Linear)
+    assert linear_node.nn_init.in_features == 5
+    assert linear_node.nn_init.out_features == 6
 
     assert len(built.input_nodes) == 1
     assert len(built.output_nodes) == 1
@@ -43,7 +43,7 @@ def test_just_linear_supervised(input_space: SchemaSpace, output_space: SchemaSp
 
     for node in supervised.output_nodes:
         assert isinstance(node, NnHop)
-        assert isinstance(node.config, NnInit)
+        assert isinstance(node.nn_init, NnInit)
 
         # Right now only `nn.sMSELoss`.
-        assert node.config.NN == nn.MSELoss
+        assert node.nn_init.NN == nn.MSELoss

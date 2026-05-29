@@ -27,6 +27,10 @@ class TensorHop[T = object](Hop):
     def forward(self) -> T:
         return self.data
 
+    @typing.override
+    def rebuild(self) -> typing.Self:
+        return self
+
 
 @hop_dcls
 class _CatStackHop(Hop, abc.ABC):
@@ -47,8 +51,13 @@ class _CatStackHop(Hop, abc.ABC):
     dim: int = 0
     "The `dim` flag that would be passed to `.function`."
 
+    @typing.override
     def forward(self) -> torch.Tensor:
         return self.FUNCTION(self.tensors, dim=self.dim)
+
+    @typing.override
+    def rebuild(self) -> typing.Self:
+        return self
 
 
 @hop_dcls
