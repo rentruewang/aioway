@@ -15,7 +15,7 @@ from torch.utils import data
 
 from aioway._frames import TdictFrame
 from aioway._streams import TdictStream, stream_dcls
-from aioway.schemas import AttrDict
+from aioway.attrs import AttrDict
 
 __all__ = [
     "BoundedStream",

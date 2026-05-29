@@ -8,7 +8,7 @@ import numpy as np
 from numpy import typing as npt
 
 if typing.TYPE_CHECKING:
-    from aioway.schemas import Attr, AttrDict
+    from aioway.attrs import Attr, AttrDict
 
 __all__ = [
     "IntArray",

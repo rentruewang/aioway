@@ -12,7 +12,7 @@ import torch
 
 from aioway._streams import TdictStream, stream_dcls
 from aioway._torch import tdict_rename
-from aioway.schemas import AttrDict
+from aioway.attrs import AttrDict
 
 __all__ = [
     "MapStream",

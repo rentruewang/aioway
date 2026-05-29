@@ -10,18 +10,18 @@ import torch
 from aioway._torch import is_fake_tensor
 
 from ..attrs import Attr, DType
-from .tags import Tag, tags_dcls
+from .tags import TensorTag, tags_dcls
 
 __all__ = ["IsTokenizedTag", "IsVideoTag", "IsImageTag", "SampleRateTag", "IsStftTag"]
 
 
 @tags_dcls
-class IsTokenizedTag(Tag):
+class IsTokenizedTag(TensorTag):
     """
     Tag the tensor as embeddings (tokenized).
     """
 
-    TAG = "__aioway_is_tokenized__"
+    NAME = "__aioway_is_tokenized__"
 
     tokenizer: str
     """
@@ -29,7 +29,7 @@ class IsTokenizedTag(Tag):
     """
 
     @typing.override
-    def check_attr(self, attr: Attr) -> None:
+    def _check_attr(self, attr: Attr) -> None:
         if attr.dtype.family != "int":
             raise ValueError(
                 f"Tokenized result has dtype family: '{attr.dtype.family}', not 'int'."
@@ -37,38 +37,38 @@ class IsTokenizedTag(Tag):
 
 
 @tags_dcls
-class IsVideoTag(Tag):
+class IsVideoTag(TensorTag):
     """
     Tag the tensor as video. Must be 5, 5 dimensional (with or without batch).
     """
 
-    TAG = "__aioway_is_video__"
+    NAME = "__aioway_is_video__"
 
     @typing.override
-    def check_data(self, tensor: torch.Tensor) -> None:
+    def _check_data(self, tensor: torch.Tensor) -> None:
         _check_image_or_video(tensor, _VIDEO_NDIM_INFO)
 
 
 @tags_dcls
-class IsImageTag(Tag):
+class IsImageTag(TensorTag):
     """
     Tag the tensor as image. Should be 3, 4 dimensional (with or without batch).
     """
 
-    TAG = "__aioway_is_image__"
+    NAME = "__aioway_is_image__"
 
     @typing.override
-    def check_data(self, tensor: torch.Tensor) -> None:
+    def _check_data(self, tensor: torch.Tensor) -> None:
         _check_image_or_video(tensor, _IMAGE_NDIM_INFO)
 
 
 @tags_dcls
-class SampleRateTag(Tag):
+class SampleRateTag(TensorTag):
     """
     Tag the tensor as audio, and having a sample rate.
     """
 
-    TAG = "__aioway_audio_sample_rate__"
+    NAME = "__aioway_audio_sample_rate__"
 
     sample_rate: int
     """
@@ -76,18 +76,18 @@ class SampleRateTag(Tag):
     """
 
     @typing.override
-    def check_self(self) -> None:
+    def _check_self(self) -> None:
         if self.sample_rate <= 0:
             raise ValueError(f"{self.sample_rate} <= 0.")
 
 
 @tags_dcls
-class IsStftTag(Tag):
+class IsStftTag(TensorTag):
     """
     Tag the tensor as stft. Useful to mark audio as spectrogram.
     """
 
-    TAG = "__aioway_is_stft__"
+    NAME = "__aioway_is_stft__"
 
 
 class NdimInfo(typing.NamedTuple):
