@@ -2,9 +2,8 @@
 
 "The high level operators that are just torch functions / data."
 
-import copy
-
 import abc
+import copy
 import typing
 from collections import abc as cabc
 

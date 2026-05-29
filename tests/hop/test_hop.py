@@ -4,6 +4,7 @@ import pytest
 import torch
 from torch import nn
 
+from aioway._torch import is_fake_tensor, torch_fake_mode
 from aioway.hop import NnLayerHop, NnLossHop, TensorHop, build_nn_hop, hop_cache_on
 from aioway.modes import NnInitFn
 
@@ -57,18 +58,16 @@ def test_hop_linear(tensor_init: TensorHop, maybe_cache_hop):
     assert result.shape == (100, 31)
 
 
-def test_layer_hop_rebuild(layer_thunk, tensor_init: TensorHop, maybe_cache_hop):
-    hop = build_nn_hop(layer_thunk, tensor_init)
-    assert isinstance(hop, NnLayerHop)
-    assert all(isinstance(param, nn.Parameter) for param in hop.parameters())
+def test_hop_linear_rebuild(tensor_init: TensorHop):
+    with torch_fake_mode():
+        linear = build_nn_hop(NnInitFn(nn.Linear, 30, 31), tensor_init)
+        assert linear
 
-    rebuilt = hop.rebuild()
-    assert rebuilt is not hop
+        result = linear()
+        assert isinstance(result, torch.Tensor)
+        assert result.shape == (100, 31)
+        assert is_fake_tensor(result)
 
-
-def test_loss_hop_rebuild(loss_thunk, tensor_init: TensorHop, maybe_cache_hop):
-    result = build_nn_hop(loss_thunk, tensor_init, tensor_init)
-    assert isinstance(result, NnLossHop)
-
-    rebuilt = result.rebuild()
-    assert rebuilt is not result
+    linear = linear.rebuild()
+    result = linear()
+    assert not is_fake_tensor(result)

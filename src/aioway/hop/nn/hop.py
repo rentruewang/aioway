@@ -1,10 +1,10 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import abc
+import dataclasses as dcls
 import typing
 
 from torch import nn
-import dataclasses as dcls
 
 from ..hop import Hop, hop_dcls
 
