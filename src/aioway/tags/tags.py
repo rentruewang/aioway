@@ -70,6 +70,11 @@ class Tag[T = object](abc.ABC):
     The name of the tag. Must be of the format `__aioway_*__`.
     """
 
+    TYPE: typing.ClassVar[type] = object
+    """
+    The type `T` in `Tag[T]` for runtime checking.
+    """
+
     def __init_subclass__(cls) -> None:
         if _is_abstract_tag(cls):
             return
@@ -140,6 +145,8 @@ class Tag[T = object](abc.ABC):
 class TensorTag(Tag[torch.Tensor]):
     "A `Tag` that tags itself onto a `torch.Tensor`."
 
+    TYPE = torch.Tensor
+
     @typing.override
     def check(self, value: torch.Tensor, /) -> bool:
         if not isinstance(value, torch.Tensor):
@@ -169,6 +176,8 @@ class TensorTag(Tag[torch.Tensor]):
 @tags_dcls
 class TdictTag(Tag[td.TensorDict]):
     "A `Tag` that tags `td.TensorDict`."
+
+    TYPE = td.TensorDict
 
     @typing.override
     def check(self, value: td.TensorDict, /) -> bool:
