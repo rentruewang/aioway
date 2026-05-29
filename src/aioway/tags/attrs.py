@@ -19,7 +19,7 @@ __all__ = [
 ]
 
 
-def tag_attr(attr, item: torch.Tensor | td.TensorDict):
+def tag_attr(attr, item: torch.Tensor):
     "Tag the given tensor with the attributes, to mark constraints."
 
     HasShapeTag(attr.shape).attach(item)

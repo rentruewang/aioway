@@ -1,23 +1,32 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import abc
 import typing
 
 from aioway._torch import torch_set_fake_mode_func
 from aioway.hop import HopDag, Linear, TensorHop
-from aioway.tags import Tag
-from aioway.tags.attrs import HasDTypeTag
+from aioway.tags import HasDTypeTag, Tag
 
 __all__ = ["Builder", "just_linear_builder"]
 
 
-class Builder(typing.Protocol):
-    def __call__(self, inputs: list[Tag], outputs: list[Tag]) -> HopDag:
+@typing.dataclass_transform(frozen_default=True)
+class Builder(abc.ABC):
+    @abc.abstractmethod
+    def __call__(self) -> HopDag:
         """
         Compiles from a list of input and output tags.
         Returns `NotImplemented` if the current builder does not support the inputs outputs.
         """
 
-        ...
+        raise NotImplementedError
+
+    # @abc.abstractmethod
+    # def inputs(self) ->
+
+
+class Builder(typing.Protocol):
+    def __call__(self, inputs: list[Tag], outputs: list[Tag]) -> HopDag: ...
 
 
 @torch_set_fake_mode_func(True)

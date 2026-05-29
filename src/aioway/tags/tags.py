@@ -7,13 +7,14 @@ import dataclasses as dcls
 import inspect
 import re
 import typing
+from collections import abc as cabc
 
 import tensordict as td
 import torch
 
 from aioway.attrs import Attr, AttrDict
 
-__all__ = ["Tag", "TensorTag", "tags_dcls", "attach_tags", "extract_tags"]
+__all__ = ["Tag", "TensorTag", "TagDict", "tags_dcls", "attach_tags"]
 
 _TAG_NAME = re.compile(r"^__aioway_[a-zA-Z0-9_]+__$")
 "The tag name regex for '__aioway_*__'."
@@ -70,11 +71,6 @@ class Tag[T = typing.Any](abc.ABC):
     The name of the tag. Must be of the format `__aioway_*__`.
     """
 
-    TYPE: typing.ClassVar[type | tuple[type, ...]] = object
-    """
-    The type `T` in `Tag[T]` for runtime checking.
-    """
-
     def __init_subclass__(cls) -> None:
         if _is_abstract_tag(cls):
             return
@@ -118,9 +114,6 @@ class Tag[T = typing.Any](abc.ABC):
         raise a `AttributeError` and do not set the attribute.
         """
 
-        if not isinstance(item, self.TYPE):
-            raise TypeError(f"{item=} must be a valid type of: {self.TYPE}.")
-
         if not self.check(item):
             raise ValueError(f"The tag={self} cannot attach to the {item=}.")
 
@@ -147,8 +140,6 @@ class Tag[T = typing.Any](abc.ABC):
 @tags_dcls
 class TensorTag(Tag[torch.Tensor]):
     "A `Tag` that tags itself onto a `torch.Tensor`."
-
-    TYPE = torch.Tensor
 
     @typing.override
     def check(self, value: torch.Tensor, /) -> bool:
@@ -179,8 +170,6 @@ class TensorTag(Tag[torch.Tensor]):
 @tags_dcls
 class TdictTag(Tag[td.TensorDict]):
     "A `Tag` that tags `td.TensorDict`."
-
-    TYPE = td.TensorDict
 
     @typing.override
     def check(self, value: td.TensorDict, /) -> bool:
@@ -213,15 +202,53 @@ def attach_tags[T](item: T, *tags: Tag[T]) -> None:
         tag.attach(item)
 
 
-def extract_tags[T](tensor: T, /) -> dict[str, Tag[T]]:
+class TagDict[T]:
     """
-    Extract all the tags on the `torch.Tensor`.
-
-    This assumes that no one else uses the `__aioway_*__` namespace. Hopefully.
+    The tags stored on an object can be extracted into a `TagDict`,
+    which supports both fast lookup and conveniently unpacks to only `Tag`s.
     """
 
-    tag_names = [attr_name for attr_name in dir(tensor) if _TAG_NAME.match(attr_name)]
-    return {name: _get_tag(tensor, name) for name in tag_names}
+    def __init__(self, mapping: dict[str, Tag[T]], /) -> None:
+        self._mapping = mapping
+
+    def __contains__(self, item: Tag[T]) -> bool:
+        return item.NAME in self._mapping and self._mapping[item.NAME] == item
+
+    def __iter__(self) -> cabc.Iterator[Tag[T]]:
+        yield from self._mapping.values()
+
+    def __bool__(self) -> bool:
+        return bool(len(self))
+
+    def __len__(self) -> int:
+        return len(self._mapping)
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, TagDict):
+            return self._mapping == other._mapping
+
+        if isinstance(other, cabc.Mapping):
+            return self._mapping == {**other}
+
+        return NotImplemented
+
+    def __getitem__(self, key: str | type[Tag]) -> Tag[T]:
+        if isinstance(key, Tag):
+            key = key.NAME
+
+        assert isinstance(key, str)
+        return self._mapping[key]
+
+    @classmethod
+    def extract(cls, data: T) -> typing.Self:
+        """
+        Extract all the tags on the `data`.
+
+        This assumes that no one else uses the `__aioway_*__` namespace. Hopefully.
+        """
+
+        tag_names = [attr_name for attr_name in dir(data) if _TAG_NAME.match(attr_name)]
+        return cls({name: _get_tag(data, name) for name in tag_names})
 
 
 def _get_tag[T](item: T, tag_name: str, /) -> Tag[T]:

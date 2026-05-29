@@ -4,7 +4,7 @@ import pytest
 import torch
 
 from aioway.attrs import Attr
-from aioway.tags import extract_tags, tag_attr
+from aioway.tags import TagDict, tag_attr
 
 
 @pytest.fixture
@@ -24,9 +24,9 @@ def attr_ok():
 
 
 def test_tagging_ok(attr_ok, tensor):
-    assert len(extract_tags(tensor)) == 0
+    assert len(TagDict.extract(tensor)) == 0
     tag_attr(attr=attr_ok, item=tensor)
-    assert len(extract_tags(tensor)) == 5
+    assert len(TagDict.extract(tensor)) == 5
 
 
 def _attr_not_ok():
@@ -45,6 +45,6 @@ def attr_not_ok(request: pytest.FixtureRequest):
 
 
 def test_tagging_not_ok(attr_not_ok, tensor):
-    assert len(extract_tags(tensor)) == 0
+    assert len(TagDict.extract(tensor)) == 0
     with pytest.raises(ValueError):
         tag_attr(attr_not_ok, tensor)
