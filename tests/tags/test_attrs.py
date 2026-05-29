@@ -25,7 +25,7 @@ def attr_ok():
 
 def test_tagging_ok(attr_ok, tensor):
     assert len(extract_tags(tensor)) == 0
-    tag_attr(attr=attr_ok, tensor=tensor)
+    tag_attr(attr=attr_ok, item=tensor)
     assert len(extract_tags(tensor)) == 5
 
 

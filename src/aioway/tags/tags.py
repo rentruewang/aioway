@@ -48,7 +48,7 @@ def _is_abstract_tag[T](cls: type[Tag[T]]):
 
 
 @tags_dcls
-class Tag[T = object](abc.ABC):
+class Tag[T = typing.Any](abc.ABC):
     """
     The base class for tags. A tag describes a `torch.Tensor`,
     and is piggybacked onto the tensor to pass around `torch` APIs.
@@ -70,7 +70,7 @@ class Tag[T = object](abc.ABC):
     The name of the tag. Must be of the format `__aioway_*__`.
     """
 
-    TYPE: typing.ClassVar[type] = object
+    TYPE: typing.ClassVar[type | tuple[type, ...]] = object
     """
     The type `T` in `Tag[T]` for runtime checking.
     """
@@ -117,6 +117,9 @@ class Tag[T = object](abc.ABC):
         If `overwrite` is `False` (defaults to `True`), and the tag already exists,
         raise a `AttributeError` and do not set the attribute.
         """
+
+        if not isinstance(item, self.TYPE):
+            raise TypeError(f"{item=} must be a valid type of: {self.TYPE}.")
 
         if not self.check(item):
             raise ValueError(f"The tag={self} cannot attach to the {item=}.")
