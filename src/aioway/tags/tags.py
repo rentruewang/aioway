@@ -24,6 +24,12 @@ _SEEN_TAGS: dict[str, type[Tag[typing.Any]]] = {}
 
 @typing.dataclass_transform(frozen_default=True)
 def tags_dcls[T](cls: type[Tag[T]]):
+    """
+    The dataclass decorator for all `Tag` subclasses.
+    It's defined here as a standalone function
+    s.t. you do not need to repeat dataclass configs for subclasses.
+    """
+
     def save_in_seen():
         if cls.NAME in _SEEN_TAGS:
             current = _SEEN_TAGS[cls.NAME]

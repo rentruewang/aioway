@@ -41,7 +41,8 @@ class HasShapeTag(TensorTag):
 
     @typing.override
     def _check_attr(self, attr: Attr, /) -> None:
-        assert attr.shape == self.shape
+        if attr.shape != self.shape:
+            raise ValueError
 
 
 @tags_dcls
@@ -57,7 +58,8 @@ class HasDTypeTag(TensorTag):
 
     @typing.override
     def _check_attr(self, attr: Attr, /) -> None:
-        assert attr.dtype == self.dtype
+        if attr.dtype != self.dtype:
+            raise ValueError
 
 
 @tags_dcls
@@ -73,7 +75,8 @@ class HasDeviceTag(TensorTag):
 
     @typing.override
     def _check_attr(self, attr: Attr, /) -> None:
-        assert attr.device == self.device
+        if attr.device != self.device:
+            raise ValueError
 
 
 @tags_dcls
@@ -89,7 +92,8 @@ class HasLayoutTag(TensorTag):
 
     @typing.override
     def _check_attr(self, attr: Attr, /) -> None:
-        assert attr.layout == self.layout
+        if attr.layout != self.layout:
+            raise ValueError
 
 
 @tags_dcls
@@ -105,4 +109,5 @@ class HasRequiresGradTag(TensorTag):
 
     @typing.override
     def _check_attr(self, attr: Attr, /) -> None:
-        assert attr.requires_grad == self.requires_grad
+        if attr.requires_grad != self.requires_grad:
+            raise ValueError
