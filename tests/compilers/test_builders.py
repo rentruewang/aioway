@@ -5,24 +5,24 @@ from torch import nn
 
 from aioway.algos import SupervisedAlgo
 from aioway.attrs import Attr
-from aioway.compilers import just_linear_builder
+from aioway.compilers import JustLinearBuilder
 from aioway.hop import HopDag, Linear, NnHop, NnInit, NnLayerHop
+from aioway.tags import AttrTag
 
 
 @pytest.fixture
 def input_space():
-    pytest.xfail()
-    return SchemaSpace(Schema(Attr.build(dtype="float", shape=[3, 4, 5])))
+    return AttrTag.from_attr(Attr.build(dtype="float", shape=[3, 4, 5]))
 
 
 @pytest.fixture
 def output_space():
-    pytest.xfail()
-    return SchemaSpace(Schema(Attr.build(dtype="float", shape=[3, 4, 6])))
+    return AttrTag.from_attr(Attr.build(dtype="float", shape=[3, 4, 6]))
 
 
-def test_just_linear(input_space: SchemaSpace, output_space: SchemaSpace):
-    built = just_linear_builder([input_space], [output_space])
+def test_just_linear(input_space: AttrTag, output_space: AttrTag):
+    builder = JustLinearBuilder(input_space, output_space)
+    built = builder()
     [tensor_node, linear_node] = built
     assert isinstance(linear_node, NnLayerHop)
     assert isinstance(linear_node.module, nn.Linear)
