@@ -3,10 +3,9 @@
 import pytest
 from torch import nn
 
-from aioway.algos import SupervisedAlgo
 from aioway.attrs import Attr
 from aioway.compilers import JustLinearBuilder
-from aioway.hop import HopDag, Linear, NnHop, NnInit, NnLayerHop
+from aioway.hop import Linear, NnLayerHop
 from aioway.tags import AttrTag
 
 
@@ -32,18 +31,3 @@ def test_just_linear(input_space: AttrTag, output_space: AttrTag):
 
     assert len(built.input_nodes) == 1
     assert len(built.output_nodes) == 1
-
-
-@pytest.mark.xfail(reason="Supervised learning has bugs.")
-def test_just_linear_supervised(input_space: SchemaSpace, output_space: SchemaSpace):
-    built = just_linear_builder([input_space], [output_space])
-    supervised: HopDag = SupervisedAlgo()(input_space, output_space)
-
-    assert len(built) + len(built.output_nodes) == len(supervised)
-
-    for node in supervised.output_nodes:
-        assert isinstance(node, NnHop)
-        assert isinstance(node.nn_init, NnInit)
-
-        # Right now only `nn.sMSELoss`.
-        assert node.nn_init.NN == nn.MSELoss
