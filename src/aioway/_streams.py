@@ -157,12 +157,12 @@ class TdictStream(Stream[td.TensorDict], abc.ABC):
 
         raise NotImplementedError
 
-    def column(self, col: str):
+    def column(self, col: str) -> TensorStream:
         from aioway.relalg import StreamColumnView
 
         return StreamColumnView(self, col)
 
-    def select(self, *cols: str):
+    def select(self, *cols: str) -> TdictStream:
         from aioway.relalg import StreamSelectView
 
         return StreamSelectView(self, cols)

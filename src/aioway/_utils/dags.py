@@ -151,6 +151,9 @@ def _validate_graph_ids[T](graph: cabc.Sequence[DagNode[T]]) -> dict[int, DagNod
     for node in graph:
         for dep in node.deps:
             if id(dep) not in data_ids_set:
-                raise ValueError("Contains dependencies not in the key of `graph`.")
+                raise ValueError(
+                    "List of nodes is not comprehensive! "
+                    "Contains dependencies not in the key of `graph`."
+                )
 
     return {id(node.key): node for node in graph}

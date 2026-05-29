@@ -48,6 +48,7 @@ class Frame[T: _HasGetItem](data.Dataset[T], abc.ABC):
     def __getitem__(self, idx: int) -> T:
         if not isinstance(idx, int):
             raise TypeError(f"__getitem__ only accepts `int`, got {idx=}")
+
         result = self.__getitems__([idx])
         return result[0]
 

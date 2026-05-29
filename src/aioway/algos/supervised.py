@@ -1,9 +1,12 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import typing
+from collections import abc as cabc
 
-from aioway.compilers import Builder, builder_dcls
-from aioway.tags import AttrTag
+from aioway._streams import TensorStream
+from aioway.compilers import Builder, JustLinearBuilder, builder_dcls
+from aioway.hop import HopDag, MSELoss, TensorStreamHop
+from aioway.tags import AttrTag, TagDict
 
 __all__ = ["SupervisedAlgo"]
 
@@ -14,17 +17,28 @@ class SupervisedAlgo(Builder):
     The supervised learning algorithm. Currently supports 1 input 1 output.
     """
 
-    input_space: AttrTag
-    target_space: AttrTag
+    input_data: TensorStream
+    target_data: TensorStream
 
     @typing.no_type_check
-    def __call__(self) -> typing.Any:
-        raise NotImplementedError
-        # builder = JustLinearBuilder(input_space, outputsapc)
-        # dag = just_linear_builder([input_space], [target_space])
-        # output_nodes = dag.output_nodes
+    def __call__(self) -> HopDag:
+        builder = self.just_linear
+        dag = builder()
 
-        # # FIXME: this is a bug.
-        # loss_nodes = [MSELoss().apply(node) for node in output_nodes]
-        # all_hop_nodes = list(dag)
-        # return HopDag.from_list_of_nodes([*all_hop_nodes, *loss_nodes])
+        [output_node] = dag.output_nodes
+        stream_node = TensorStreamHop(self.target_data)
+        loss_node = MSELoss().apply(output_node, stream_node)
+        return HopDag.from_list_of_nodes([*dag, loss_node, stream_node])
+
+    @property
+    def just_linear(self) -> JustLinearBuilder:
+        return JustLinearBuilder(
+            AttrTag.from_attr(self.input_data.attr),
+            AttrTag.from_attr(self.target_data.attr),
+        )
+
+    def inputs(self) -> cabc.Iterator[TagDict]:
+        yield TagDict.from_tags(AttrTag.from_attr(self.input_data.attr))
+
+    def outputs(self) -> cabc.Iterator[TagDict]:
+        yield TagDict.from_tags(AttrTag.from_attr(self.target_data.attr))
