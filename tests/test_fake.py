@@ -5,7 +5,6 @@ import tensordict as td
 import torch
 from numpy import random as np_rand
 
-from aioway.attrs import Attr
 from tests.fake import batch_sizes, chunk_ok, cpu_and_maybe_cuda
 
 

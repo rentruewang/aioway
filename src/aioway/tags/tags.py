@@ -4,6 +4,7 @@
 
 import abc
 import dataclasses as dcls
+import inspect
 import re
 import typing
 
@@ -15,11 +16,29 @@ from aioway.attrs import Attr, AttrDict
 __all__ = ["Tag", "TensorTag", "tags_dcls", "attach_tags", "extract_tags"]
 
 _TAG_NAME = re.compile(r"^__aioway_[a-zA-Z0-9_]+__$")
+"The tag name regex for '__aioway_*__'."
+
+_SEEN_TAGS: dict[str, type[Tag[typing.Any]]] = {}
+"The tag classes already seen"
 
 
 @typing.dataclass_transform(frozen_default=True)
-def tags_dcls(cls):
+def tags_dcls[T](cls: type[Tag[T]]):
+    def save_in_seen():
+        if cls.NAME in _SEEN_TAGS:
+            current = _SEEN_TAGS[cls.NAME]
+            raise ValueError(f"Tag name {cls.NAME=} already used by {current}.")
+
+        _SEEN_TAGS[cls.NAME] = cls
+
+    if not _is_abstract_tag(cls):
+        save_in_seen()
+
     return dcls.dataclass(frozen=True, slots=True)(cls)
+
+
+def _is_abstract_tag[T](cls: type[Tag[T]]):
+    return inspect.isabstract(cls) or cls.NAME is NotImplemented
 
 
 @tags_dcls
@@ -40,12 +59,15 @@ class Tag[T = object](abc.ABC):
     because that tag type can only have a singleton on each tensor.
     """
 
-    NAME: typing.ClassVar[str]
+    NAME: typing.ClassVar[str] = NotImplemented
     """
     The name of the tag. Must be of the format `__aioway_*__`.
     """
 
     def __init_subclass__(cls) -> None:
+        if _is_abstract_tag(cls):
+            return
+
         if not _TAG_NAME.fullmatch(cls.NAME):
             raise ValueError(
                 f"Tag name should be of the format `__aioway_*__`. Got '{cls.NAME}'."
@@ -53,9 +75,14 @@ class Tag[T = object](abc.ABC):
 
     @typing.final
     def __post_init__(self):
+        # Do our checking because python doesn't have "abstract ClassVar".
+        if self.NAME is NotImplemented:
+            raise TypeError(
+                f"Cannot initialize abstract class {type(self)} when 'NAME' is not defined."
+            )
+
         # Validate `self`. The reason this is marked `@typing.final` is
         # because it can be easy to forget to call `super().__post_init__()`.
-
         self._check_self()
 
     def _check_self(self) -> None:
@@ -80,7 +107,8 @@ class Tag[T = object](abc.ABC):
         raise a `AttributeError` and do not set the attribute.
         """
 
-        self.check(item)
+        if not self.check(item):
+            raise ValueError(f"The tag={self} cannot attach to the {item=}.")
 
         if not overwrite and hasattr(item, self.NAME):
             raise AttributeError(f"`{self.NAME}` already exists on {item=}.")
