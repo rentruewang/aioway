@@ -27,13 +27,13 @@ class PrintTorchGradEnabled(TorchDispMode):
 
 
 # %%
-with PrintTorchGradEnabled().enter():
+with PrintTorchGradEnabled()():
     a = torch.tensor(3)
     b = torch.tensor(4)
     a + b
 
 # %%
-with PrintTorchGradEnabled().enter(), torch.set_grad_enabled(False):
+with PrintTorchGradEnabled()(), torch.set_grad_enabled(False):
     a = torch.tensor(3)
     b = torch.tensor(4)
     a + b

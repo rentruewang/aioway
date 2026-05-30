@@ -25,11 +25,11 @@ with torch_fake_mode():
     b = torch.randn(3, 4)
 
 # %%
-with fake_fn() as hists, PrintTorchDisp().enter():
+with fake_fn() as hists, PrintTorchDisp()():
     a + b
 
 # %%
-with fake_fn() as hists, PrintTorchDisp().enter():
+with fake_fn() as hists, PrintTorchDisp()():
     c = a + b
     d = a + c
     e = a + d
@@ -39,17 +39,17 @@ with fake_fn() as hists, PrintTorchDisp().enter():
 hists.dispatch
 
 # %%
-with fake_fn(), PrintTorchDisp().enter():
+with fake_fn(), PrintTorchDisp()():
     3 - a
 
 # %%
-with fake_fn(), PrintTorchDisp().enter():
+with fake_fn(), PrintTorchDisp()():
     a[a > 0]
 
 # %%
-with fake_fn(), PrintTorchDisp().enter():
+with fake_fn(), PrintTorchDisp()():
     torch.stack([a, a, a])
 
 # %%
-with fake_fn(), PrintTorchDisp().enter():
+with fake_fn(), PrintTorchDisp()():
     torch.cat([a, a, a], dim=-1)

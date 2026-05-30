@@ -20,14 +20,14 @@ from torch import nn
 from aioway.modes import PrintNnFwd, PrintNnInit, mode_off, module_fwd, module_init
 
 # %%
-with PrintNnInit().enter():
+with PrintNnInit()():
     module_init(nn.Linear, 3, 5)
     module_init(nn.Dropout)
 
 # %%
 t = torch.randn(7, 3)
 
-with PrintNnInit().enter(), PrintNnFwd().enter():
+with PrintNnInit()(), PrintNnFwd()():
     linear = module_init(nn.Linear, 3, 5)
     dropout = module_init(nn.Dropout)
 
@@ -42,7 +42,7 @@ with PrintNnInit().enter(), PrintNnFwd().enter():
 t = torch.randn(7, 3)
 
 
-with PrintNnInit().enter(), mode_off(), PrintNnFwd().enter():
+with PrintNnInit()(), mode_off(), PrintNnFwd()():
     linear = module_init(nn.Linear, 3, 5)
     dropout = module_init(nn.Dropout)
 
@@ -59,7 +59,7 @@ with PrintNnInit().enter(), mode_off(), PrintNnFwd().enter():
 t = torch.randn(7, 3)
 
 
-with PrintNnInit().enter(), PrintNnFwd().enter(), mode_off():
+with PrintNnInit()(), PrintNnFwd()(), mode_off():
     linear = module_init(nn.Linear, 3, 5)
     dropout = module_init(nn.Dropout)
 

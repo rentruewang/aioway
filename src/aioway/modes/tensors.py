@@ -124,7 +124,7 @@ class TorchModeOnOff[T: TorchThunk](Mode[T, object], abc.ABC):
 
     @typing.override
     @ctxl.contextmanager
-    def enter(self) -> cabc.Generator[None]:
+    def _enter_extra_ctx(self) -> cabc.Generator[None]:
         """
         Enter the `__torch_function__` / `__torch_dispatch__` context,
         and store the mode itself s.t. it can be turned on / off later.

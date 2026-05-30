@@ -227,7 +227,7 @@ def track_fn():
     dis = RouteTorchDisp()
     func = RouteTorchFunc()
 
-    with func.enter(), dis.enter(), init.enter(), fwd.enter():
+    with func(), dis(), init(), fwd():
         yield HistoryCollection(
             function=func.history,
             dispatch=dis.history,

@@ -166,7 +166,7 @@ class NnFwdFn(TorchThunk):
 class NnFwdMode(Mode[NnFwdFn, object], abc.ABC):
     """
     `NnFwdMode` is the mode for similar to `__torch_function__` / `__torch_dispatch__`,
-    except you enter / exit with a `.enter()` method (I prefer context managers).
+    except you enter / exit with a `Mode.__call__()` method (I prefer context managers).
 
     It is triggered when a `module_fwd` is called.
     """
@@ -205,8 +205,7 @@ class NnInitFn[**P = ...](TorchThunk):
 
 class NnInitMode(Mode[NnInitFn, nn.Module], abc.ABC):
     """
-    `NnInitMode` is the mode for similar to `__torch_function__` / `__torch_dispatch__`,
-    except you enter / exit with a `.enter()` method (I prefer context managers).
+    `NnInitMode` is a `Mode` for `nn.Module.__init__`.
 
     It is triggered when a `module_init` is called.
     """
