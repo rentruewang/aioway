@@ -15,14 +15,7 @@ from aioway._utils import render_fcall, render_torch_func_name, track_call_count
 
 from .modes import Mode, ModeStack
 
-__all__ = [
-    "NnFwdFn",
-    "NnInitFn",
-    "NnFwdMode",
-    "NnInitMode",
-    "module_fwd",
-    "module_init",
-]
+__all__ = ["NnFwdFn", "NnInitFn", "NnFwdMode", "NnInitMode"]
 
 LOGGER = logging.getLogger(__name__)
 
@@ -31,47 +24,6 @@ FORWARDS: ModeStack[NnFwdMode] = ModeStack()
 
 INITS: ModeStack[NnInitMode] = ModeStack()
 "`NnInitMode` that is currently entered."
-
-
-@track_call_count
-def module_fwd(module: nn.Module, /, *args, **kwargs) -> typing.Any:
-    """
-    Call the `nn.Module`. This would execute all the modes at the outermost module.
-    `aioway` functions must call this function to call `nn.Module`.
-
-    For nested modules (fields of modules), use `register_*_hook` from `torch`.
-
-    This function is recursive, so call counts are tracked to aid debugging.
-    """
-
-    if not isinstance(module, nn.Module):
-        raise TypeError(f"Expected an `nn.Module` instance. Got {module=}.")
-
-    return _invoke_rec(FORWARDS, NnFwdFn, module, args, kwargs)
-
-
-@track_call_count
-def module_init(init: cabc.Callable[..., nn.Module], /, *args, **kwargs) -> nn.Module:
-    """
-    Initialize the `nn.Module`. This would execute all the modes at the outermost module.
-    `aioway` functions must call this function to initalize `nn.Module`.
-
-    For nested modules (fields of modules), use `register_*_hook` from `torch`.
-
-    This function is recursive, so call counts are tracked to aid debugging.
-    """
-
-    if not isinstance(init, type) or not issubclass(init, nn.Module):
-        raise TypeError(
-            f"Your module type {init} is not valid. Must be an `nn.Module` subclass."
-        )
-
-    result = _invoke_rec(INITS, NnInitFn, init, args, kwargs)
-
-    if not isinstance(result, nn.Module):
-        raise TypeError("Function `module_init` must return an `nn.Module`.")
-
-    return result
 
 
 def _invoke_rec[T: Mode[typing.Any, typing.Any]](
@@ -140,8 +92,18 @@ class NnFwdFn(TorchThunk):
     def __hash__(self) -> int:
         return id(self)
 
+    @track_call_count
     def __call__(self) -> object:
-        return module_fwd(self.func, *self.args, **self.kwargs)
+        """
+        Call the `nn.Module`. This would execute all the modes at the outermost module.
+        `aioway` functions must call this function to call `nn.Module`.
+
+        For nested modules (fields of modules), use `register_*_hook` from `torch`.
+
+        This function is recursive, so call counts are tracked to aid debugging.
+        """
+
+        return _invoke_rec(FORWARDS, NnFwdFn, self.func, self.args, self.kwargs)
 
     def load_state_dict(
         self,
@@ -199,8 +161,23 @@ class NnInitFn[**P = ...](TorchThunk):
         func_name = render_torch_func_name(self.func)
         return render_fcall(f"nn_init::{func_name}", *self.args, **self.kwargs)
 
+    @track_call_count
     def __call__(self) -> nn.Module:
-        return module_init(self.func, *self.args, **self.kwargs)
+        """
+        Initialize the `nn.Module`. This would execute all the modes at the outermost module.
+        `aioway` functions must call this function to initalize `nn.Module`.
+
+        For nested modules (fields of modules), use `register_*_hook` from `torch`.
+
+        This function is recursive, so call counts are tracked to aid debugging.
+        """
+
+        result = _invoke_rec(INITS, NnInitFn, self.func, self.args, self.kwargs)
+
+        if not isinstance(result, nn.Module):
+            raise TypeError("Function `module_init` must return an `nn.Module`.")
+
+        return result
 
 
 class NnInitMode(Mode[NnInitFn, nn.Module], abc.ABC):
