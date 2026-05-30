@@ -84,7 +84,7 @@ def _invoke_rec[T: Mode[typing.Any, typing.Any]](
     """
     Essentially, invoke the given `call` recursively until the `stack` is exhausted.
 
-    Overriding modes must only call `module_fwd` and `module_init`,
+    Overriding modes must only call `NnFwdFn.__call__` and `NnInitFn.__call__`,
     which in turn calls this function to pop the next `mode` off the stack, and invoke it.
 
     This concept is borrowed from `__torch_function__` and `__torch_dispatch__`,
@@ -140,7 +140,7 @@ class NnFwdFn(TorchThunk):
     def __hash__(self) -> int:
         return id(self)
 
-    def run(self) -> object:
+    def __call__(self) -> object:
         return module_fwd(self.func, *self.args, **self.kwargs)
 
     def load_state_dict(
@@ -199,7 +199,7 @@ class NnInitFn[**P = ...](TorchThunk):
         func_name = render_torch_func_name(self.func)
         return render_fcall(f"nn_init::{func_name}", *self.args, **self.kwargs)
 
-    def run(self) -> nn.Module:
+    def __call__(self) -> nn.Module:
         return module_init(self.func, *self.args, **self.kwargs)
 
 
