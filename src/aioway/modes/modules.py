@@ -26,47 +26,6 @@ INITS: ModeStack[NnInitMode] = ModeStack()
 "`NnInitMode` that is currently entered."
 
 
-def _invoke_rec[T: Mode[typing.Any, typing.Any]](
-    stack: ModeStack[T],
-    fn_type: type[TorchThunk],
-    call: cabc.Callable[..., typing.Any],
-    args: tuple[typing.Any, ...],
-    kwargs: dict[str, typing.Any],
-):
-    """
-    Essentially, invoke the given `call` recursively until the `stack` is exhausted.
-
-    Overriding modes must only call `NnFwdFn.__call__` and `NnInitFn.__call__`,
-    which in turn calls this function to pop the next `mode` off the stack, and invoke it.
-
-    This concept is borrowed from `__torch_function__` and `__torch_dispatch__`,
-    you can see similarity when reading the code around their `_pop_mode_temporarily` function,
-    which corresponds to our `borrow` function on the stack.
-    """
-
-    LOGGER.debug("Inovked on %s", stack)
-    LOGGER.debug("type: %s", fn_type)
-    LOGGER.debug("Thunk: %s", Thunk(call, *args, **kwargs))
-
-    # Do not reinvoke the function! Call directly.
-    if not stack:
-        return call(*args, **kwargs)
-
-    # Pop one `mode` for each call. At some point this would be exhausted.
-    # And go to the previous `if not stack` shortcut.
-    # For this to work, `mode(thunk)` must call `_invoke_rec` indirectly,
-    # therefore you must call `module_fwd` / `module_init`,
-    # or using `.run()` on `NnFwdFn` / `NnInitFn` does the same thing.
-    with stack.borrow() as mode:
-
-        if mode.on:
-            thunk = fn_type(call, *args, **kwargs)
-            return mode.run(thunk)
-
-        else:
-            return _invoke_rec(stack, fn_type, call, args, kwargs)
-
-
 @typing.final
 class NnFwdFn(TorchThunk):
     """
@@ -188,3 +147,44 @@ class NnInitMode(Mode[NnInitFn, nn.Module], abc.ABC):
     """
 
     STACK = INITS
+
+
+def _invoke_rec[T: Mode[typing.Any, typing.Any]](
+    stack: ModeStack[T],
+    fn_type: type[TorchThunk],
+    call: cabc.Callable[..., typing.Any],
+    args: tuple[typing.Any, ...],
+    kwargs: dict[str, typing.Any],
+):
+    """
+    Essentially, invoke the given `call` recursively until the `stack` is exhausted.
+
+    Overriding modes must only call `NnFwdFn.__call__` and `NnInitFn.__call__`,
+    which in turn calls this function to pop the next `mode` off the stack, and invoke it.
+
+    This concept is borrowed from `__torch_function__` and `__torch_dispatch__`,
+    you can see similarity when reading the code around their `_pop_mode_temporarily` function,
+    which corresponds to our `borrow` function on the stack.
+    """
+
+    LOGGER.debug("Inovked on %s", stack)
+    LOGGER.debug("type: %s", fn_type)
+    LOGGER.debug("Thunk: %s", Thunk(call, *args, **kwargs))
+
+    # Do not reinvoke the function! Call directly.
+    if not stack:
+        return call(*args, **kwargs)
+
+    # Pop one `mode` for each call. At some point this would be exhausted.
+    # And go to the previous `if not stack` shortcut.
+    # For this to work, `mode(thunk)` must call `_invoke_rec` indirectly,
+    # therefore you must call `module_fwd` / `module_init`,
+    # or using `.run()` on `NnFwdFn` / `NnInitFn` does the same thing.
+    with stack.borrow() as mode:
+
+        if mode.on:
+            thunk = fn_type(call, *args, **kwargs)
+            return mode.run(thunk)
+
+        else:
+            return _invoke_rec(stack, fn_type, call, args, kwargs)
