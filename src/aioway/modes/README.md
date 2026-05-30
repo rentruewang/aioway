@@ -1,11 +1,15 @@
-# `Fn`s
+# `Mode`s
 
-`Fn`s are an non-invasive way of interactive with `torch` operations and functions,
-leveraging `__torch_function__` and `__torch_dispatch__` contexts.
+A `Mode` is a non-invasive way of interactive with:
 
-This means that `Fn`s would work with any valid `torch` operations and can be used on top of existing code.
+1. `torch` operations and functions:
+   Uses `__torch_function__` and `__torch_dispatch__` contexts,
+   this dynamically overwrites what those functions do (optionally),
+   or recursively try the next mode if you call the default implementation.
+2. `nn.Module`'s `__init__` and `forward`:
+   Drawing inspiration from `torch`'s modes,
+   I designed something similar hooks to `nn.Module`'s initialization and forward,
+   you must call `module_init` and `module_fwd` to call the hooks.
 
-This is done s.t. we can reuse what a lot of `torch` did without reinventing the wheel,
-which was attempted by `koila` and the previous versions.
-
-See `aioway.fate` / `aioway.nn.inits` for specifics.
+This means that we can customize other people's code without manually changing them,
+just by changing a context.
