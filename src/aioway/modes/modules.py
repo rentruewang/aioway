@@ -15,7 +15,7 @@ from torch import nn
 from aioway._fn import Thunk, TorchThunk
 from aioway._utils import render_fcall, render_torch_func_name, track_call_count
 
-from ._on_off import OnOffCtx, OnOffStack
+from ._on_off import Mode, ModeStack
 
 __all__ = [
     "NnFwdFn",
@@ -28,10 +28,10 @@ __all__ = [
 
 LOGGER = logging.getLogger(__name__)
 
-FORWARDS: OnOffStack[NnFwdMode] = OnOffStack()
+FORWARDS: ModeStack[NnFwdMode] = ModeStack()
 "`NnFwdMode` that is currently entered."
 
-INITS: OnOffStack[NnInitMode] = OnOffStack()
+INITS: ModeStack[NnInitMode] = ModeStack()
 "`NnInitMode` that is currently entered."
 
 
@@ -77,7 +77,7 @@ def module_init(init: cabc.Callable[..., nn.Module], /, *args, **kwargs) -> nn.M
 
 
 def _invoke_rec[T: NnModeOnOff[typing.Any, typing.Any]](
-    stack: OnOffStack[T],
+    stack: ModeStack[T],
     fn_type: type[TorchThunk],
     call: cabc.Callable[..., typing.Any],
     args: tuple[typing.Any, ...],
@@ -118,7 +118,7 @@ def _invoke_rec[T: NnModeOnOff[typing.Any, typing.Any]](
 
 
 @dcls.dataclass
-class NnModeOnOff[T, V = object](OnOffCtx, abc.ABC):
+class NnModeOnOff[T, V = object](Mode, abc.ABC):
     """
     The mixin for either `NnFwdMode`, `NnInitMode`.
     """

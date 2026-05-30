@@ -16,17 +16,17 @@ from torch.utils import _python_dispatch as pyd
 from aioway._fn import TorchThunk
 from aioway._torch import is_aten_op, is_prim_op
 
-from ._on_off import OnOffCtx, OnOffStack
+from ._on_off import Mode, ModeStack
 from .common import render_function_body_prefix
 
 __all__ = ["TorchFuncMode", "TorchDispMode", "TorchFuncFn", "TorchDispFn"]
 
 LOGGER = logging.getLogger(__name__)
 
-FUNCTIONS: OnOffStack[TorchFuncMode] = OnOffStack()
+FUNCTIONS: ModeStack[TorchFuncMode] = ModeStack()
 "`TorchFuncMode` that is currently entered."
 
-DISPATCHES: OnOffStack[TorchDispMode] = OnOffStack()
+DISPATCHES: ModeStack[TorchDispMode] = ModeStack()
 "`TorchDispMode` that is currently entered."
 
 
@@ -111,7 +111,7 @@ type _Mode = overrides.TorchFunctionMode | pyd.TorchDispatchMode
 
 
 @dcls.dataclass
-class TorchModeOnOff[T](OnOffCtx, abc.ABC):
+class TorchModeOnOff[T](Mode, abc.ABC):
     """
     The mixin for either `TorchFuncMode`, `TorchDispMode`.
     """

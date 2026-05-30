@@ -16,12 +16,12 @@ LOGGER = logging.getLogger(__name__)
 
 
 @dcls.dataclass
-class OnOffCtx(abc.ABC):
+class Mode(abc.ABC):
     """
     `OnOffCtx` is a mixin class that gives the subclasses a toggle.
     """
 
-    STACK: typing.ClassVar[OnOffStack[typing.Self]]
+    STACK: typing.ClassVar[ModeStack[typing.Self]]
     "The stack."
 
     _: dcls.KW_ONLY
@@ -52,7 +52,7 @@ class OnOffCtx(abc.ABC):
             self.on = before
 
 
-class OnOffStack[T: OnOffCtx](Stack[T]):
+class ModeStack[T: Mode](Stack[T]):
     """
     `OnOffStack` provides additional utilites to decide when to turn on or off.
     """
