@@ -28,3 +28,14 @@ a `Mode` is meant to be used cooperatively.
 If you are done with your customization in the mode's `run` function,
 you should call the default implementation (`thunk()`).
 This way, it gives the next mode a chance to do its own customization.
+
+### `Session`s?
+
+A `Mode` is not a `Session`.
+
+A `Session` is tied to a scope, entering a `Session` means the previous `Session` is the parent of the latest entered `Session`.
+
+`Session`s cooperatively update a shared state, `Mode`s do not (only `STACK`, but that's not managed by subclass).
+
+A `Mode` works cooperatively, when active, all the `Mode`s in the active stack should be executed,
+unless one `Mode` in the stack terminates the chain by not calling the default implementation.

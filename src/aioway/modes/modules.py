@@ -3,8 +3,6 @@
 "Module fwd/init modes, similar to `torch` function/dispatch modes."
 
 import abc
-import contextlib as ctxl
-import dataclasses as dcls
 import logging
 import typing
 from collections import abc as cabc
@@ -76,7 +74,7 @@ def module_init(init: cabc.Callable[..., nn.Module], /, *args, **kwargs) -> nn.M
     return result
 
 
-def _invoke_rec[T: NnModeOnOff[typing.Any, typing.Any]](
+def _invoke_rec[T: Mode[typing.Any, typing.Any]](
     stack: ModeStack[T],
     fn_type: type[TorchThunk],
     call: cabc.Callable[..., typing.Any],
@@ -115,28 +113,6 @@ def _invoke_rec[T: NnModeOnOff[typing.Any, typing.Any]](
 
         else:
             return _invoke_rec(stack, fn_type, call, args, kwargs)
-
-
-@dcls.dataclass
-class NnModeOnOff[T, V = object](Mode, abc.ABC):
-    """
-    The mixin for either `NnFwdMode`, `NnInitMode`.
-    """
-
-    @abc.abstractmethod
-    def run(self, thunk: T, /) -> V:
-        raise NotImplementedError
-
-    @typing.override
-    @ctxl.contextmanager
-    def enter(self: typing.Self):
-        """
-        Enter the `__torch_function__` / `__torch_dispatch__` context,
-        and store the mode itself s.t. it can be turned on / off later.
-        """
-
-        with self.STACK.hold(self):
-            yield self
 
 
 @typing.final
@@ -187,7 +163,7 @@ class NnFwdFn(TorchThunk):
         return self.func.state_dict()
 
 
-class NnFwdMode(NnModeOnOff[NnFwdFn], abc.ABC):
+class NnFwdMode(Mode[NnFwdFn, object], abc.ABC):
     """
     `NnFwdMode` is the mode for similar to `__torch_function__` / `__torch_dispatch__`,
     except you enter / exit with a `.enter()` method (I prefer context managers).
@@ -227,7 +203,7 @@ class NnInitFn[**P = ...](TorchThunk):
         return module_init(self.func, *self.args, **self.kwargs)
 
 
-class NnInitMode(NnModeOnOff[NnInitFn, nn.Module], abc.ABC):
+class NnInitMode(Mode[NnInitFn, nn.Module], abc.ABC):
     """
     `NnInitMode` is the mode for similar to `__torch_function__` / `__torch_dispatch__`,
     except you enter / exit with a `.enter()` method (I prefer context managers).

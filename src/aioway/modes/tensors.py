@@ -111,7 +111,7 @@ type _Mode = overrides.TorchFunctionMode | pyd.TorchDispatchMode
 
 
 @dcls.dataclass
-class TorchModeOnOff[T](Mode, abc.ABC):
+class TorchModeOnOff[T: TorchThunk](Mode[T, object], abc.ABC):
     """
     The mixin for either `TorchFuncMode`, `TorchDispMode`.
     """
@@ -122,20 +122,16 @@ class TorchModeOnOff[T](Mode, abc.ABC):
     These are specific modes that honor the `on` switch (hence private function).
     """
 
-    @abc.abstractmethod
-    def run(self, thunk: T, /) -> object:
-        raise NotImplementedError
-
     @typing.override
     @ctxl.contextmanager
-    def enter(self: typing.Self):
+    def enter(self) -> cabc.Generator[None]:
         """
         Enter the `__torch_function__` / `__torch_dispatch__` context,
         and store the mode itself s.t. it can be turned on / off later.
         """
 
-        with self.STACK.hold(self), self._TORCH_MODE(self):
-            yield self
+        with self._TORCH_MODE(self):
+            yield
 
 
 @typing.final
