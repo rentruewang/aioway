@@ -7,6 +7,7 @@ import contextlib as ctxl
 import dataclasses as dcls
 import logging
 import typing
+import warnings
 from collections import abc as cabc
 
 import torch
@@ -136,16 +137,31 @@ class TorchModeOnOff[T: TorchThunk](Mode[T, object], abc.ABC):
 
 @typing.final
 class _TorchFuncModeCtx(overrides.TorchFunctionMode):
-    "The `__torch_function__` adaptor"
+    "The `__torch_function__` adaptor."
 
     def __init__(self, mode: TorchFuncMode) -> None:
         super().__init__()
         self.mode = mode
 
+        assert self.mode.STACK is FUNCTIONS
+
     @typing.final
     @typing.override
     def __torch_function__(self, func, types, args=(), kwargs=None) -> object:
         kwargs = kwargs or {}
+
+        with FUNCTIONS.borrow() as mode:
+            if mode is not self.mode:
+                warnings.warn(
+                    "Modes mismatch in `__torch_function__`. "
+                    "`torch` has changed their `__torch_function__` execution model. "
+                    "This may cause bugs.",
+                    RuntimeWarning,
+                )
+
+            return self.__impl(func, types, args, kwargs)
+
+    def __impl(self, func, types, args, kwargs) -> object:
 
         # The mode can be turned off.
         if not self.mode.on:
@@ -170,11 +186,13 @@ class TorchFuncMode(TorchModeOnOff[TorchFuncFn], abc.ABC):
 
 @typing.final
 class _TorchDispModeCtx(pyd.TorchDispatchMode):
-    "The `__torch_dispatch__` adaptor"
+    "The `__torch_dispatch__` adaptor."
 
     def __init__(self, mode: TorchDispMode) -> None:
         super().__init__()
         self.mode = mode
+
+        assert self.mode.STACK is DISPATCHES
 
     @typing.final
     @typing.override
@@ -184,6 +202,18 @@ class _TorchDispModeCtx(pyd.TorchDispatchMode):
         if not all(issubclass(t, torch.Tensor) for t in types):
             raise AssertionError(f"Not all {types=} are subclasses of `torch.Tensor`.")
 
+        with DISPATCHES.borrow() as mode:
+            if mode is not self.mode:
+                warnings.warn(
+                    "Modes mismatch in `__torch_dispatch__`. "
+                    "`torch` has changed their `__torch_dispatch__` execution model. "
+                    "This may cause bugs.",
+                    RuntimeWarning,
+                )
+
+            return self.__impl(func, args, kwargs)
+
+    def __impl(self, func, args, kwargs) -> object:
         # The mode can be turned off.
         if not self.mode.on:
             return func(*args, **kwargs)
