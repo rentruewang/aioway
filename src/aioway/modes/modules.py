@@ -106,12 +106,12 @@ def _invoke_rec[T: NnModeOnOff[typing.Any, typing.Any]](
     # And go to the previous `if not stack` shortcut.
     # For this to work, `mode(thunk)` must call `_invoke_rec` indirectly,
     # therefore you must call `module_fwd` / `module_init`,
-    # or using `.__call__()` on `NnFwdFn` / `NnInitFn` does the same thing.
+    # or using `.run()` on `NnFwdFn` / `NnInitFn` does the same thing.
     with stack.borrow() as mode:
 
         if mode.on:
             thunk = fn_type(call, *args, **kwargs)
-            return mode(thunk)
+            return mode.run(thunk)
 
         else:
             return _invoke_rec(stack, fn_type, call, args, kwargs)
@@ -124,7 +124,7 @@ class NnModeOnOff[T, V = object](OnOffCtx, abc.ABC):
     """
 
     @abc.abstractmethod
-    def __call__(self, thunk: T, /) -> V:
+    def run(self, thunk: T, /) -> V:
         raise NotImplementedError
 
     @typing.override
@@ -164,7 +164,7 @@ class NnFwdFn(TorchThunk):
     def __hash__(self) -> int:
         return id(self)
 
-    def __call__(self) -> object:
+    def run(self) -> object:
         return module_fwd(self.func, *self.args, **self.kwargs)
 
     def load_state_dict(
@@ -223,7 +223,7 @@ class NnInitFn[**P = ...](TorchThunk):
         func_name = render_torch_func_name(self.func)
         return render_fcall(f"nn_init::{func_name}", *self.args, **self.kwargs)
 
-    def __call__(self) -> nn.Module:
+    def run(self) -> nn.Module:
         return module_init(self.func, *self.args, **self.kwargs)
 
 

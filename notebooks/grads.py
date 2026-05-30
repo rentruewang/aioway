@@ -21,7 +21,7 @@ from aioway.modes import TorchDispMode
 
 # %%
 class PrintTorchGradEnabled(TorchDispMode):
-    def __call__(self, thunk):
+    def run(self, thunk):
         print(torch.is_grad_enabled())
         return thunk()
 

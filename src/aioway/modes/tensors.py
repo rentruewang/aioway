@@ -49,8 +49,10 @@ class TorchFuncFn[**P = ...](TorchThunk):
 
         self._types = types
 
-        if not isinstance(self.types, tuple) and all(
-            isinstance(t, type) for t in self.types
+        if not (
+            True
+            and isinstance(self.types, tuple)
+            and all(isinstance(t, type) for t in self.types)
         ):
             raise TypeError(f"{self.types=} should be a tuple of types.")
 
@@ -121,7 +123,7 @@ class TorchModeOnOff[T](OnOffCtx, abc.ABC):
     """
 
     @abc.abstractmethod
-    def __call__(self, thunk: T, /) -> object:
+    def run(self, thunk: T, /) -> object:
         raise NotImplementedError
 
     @typing.override
@@ -154,7 +156,7 @@ class _TorchFuncModeCtx(overrides.TorchFunctionMode):
             return func(*args, **kwargs)
 
         thunk = TorchFuncFn(func, types, *args, **kwargs)
-        return self.mode(thunk)
+        return self.mode.run(thunk)
 
 
 @dcls.dataclass
@@ -191,7 +193,7 @@ class _TorchDispModeCtx(pyd.TorchDispatchMode):
             return func(*args, **kwargs)
 
         thunk = TorchDispFn(func, *args, **kwargs)
-        return self.mode(thunk)
+        return self.mode.run(thunk)
 
 
 @dcls.dataclass
