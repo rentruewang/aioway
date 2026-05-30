@@ -3,7 +3,7 @@
 import contextlib as ctxl
 import typing
 
-from ._on_off import ModeStack
+from .modes import ModeStack
 from .modules import FORWARDS, INITS
 from .tensors import DISPATCHES, FUNCTIONS
 

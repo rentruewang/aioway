@@ -15,7 +15,7 @@ from torch import nn
 from aioway._fn import Thunk, TorchThunk
 from aioway._utils import render_fcall, render_torch_func_name, track_call_count
 
-from ._on_off import Mode, ModeStack
+from .modes import Mode, ModeStack
 
 __all__ = [
     "NnFwdFn",
