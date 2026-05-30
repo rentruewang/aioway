@@ -2,20 +2,18 @@
 
 "Simple dag utilites."
 
-import dataclasses as dcls
-import functools
 import graphlib
+import typing
 from collections import abc as cabc
 
-import numpy as np
-
-from .typing import IntArray
-
-__all__ = ["DagNode", "Dag", "topo_sort"]
+__all__ = ["DagNode", "topo_sort"]
 
 
-@dcls.dataclass(frozen=True, slots=True)
-class DagNode[T]:
+type DagNodeLike[T] = DagNode[T] | tuple[T, cabc.Iterable[T]]
+"A type that looks like `DagNode`."
+
+
+class DagNode[T](typing.NamedTuple):
     """
     `DagNode` essentially is a `key: list[value]` mapping pair,
     but `key` does not need to be hashable. Each data must have unique `id`.
@@ -31,114 +29,48 @@ class DagNode[T]:
     List of parents.
     """
 
-
-@dcls.dataclass(frozen=True)
-class Dag[T]:
-    """
-    The sorted results of `topo_sort`.
-    """
-
-    nodes: cabc.Sequence[DagNode[T]]
-    "The list of nodes after topological sorting."
-
-    def __post_init__(self):
-        for node_idx, node in enumerate(self.nodes):
-            for dep in node.deps:
-                if self._lookup_node_idx(dep) < node_idx:
-                    continue
-
-                raise ValueError("The given nodes is not sorted!")
-
-    def __len__(self):
-        return len(self.nodes)
-
-    def __getitem__(self, idx: int):
-        return self.nodes[idx].key
-
-    def __iter__(self):
-        for i in range(len(self)):
-            yield self[i]
-
-    @property
-    def items(self) -> list[T]:
-        "Get the underlying items."
-
-        return [node.key for node in self.nodes]
-
-    @property
-    def num_inputs(self) -> IntArray:
-        ins, _ = self._num_ins_outs
-        return ins
-
-    @property
-    def num_outputs(self) -> IntArray:
-        _, outs = self._num_ins_outs
-        return outs
-
-    @property
-    def inputs_idx(self) -> IntArray:
-        return np.arange(len(self))[self.num_inputs == 0]
-
-    @property
-    def inputs_items(self) -> list[T]:
-        items = self.items
-        return [items[i] for i in self.inputs_idx]
-
-    @property
-    def outputs_idx(self) -> IntArray:
-        return np.arange(len(self))[self.num_outputs == 0]
-
-    @property
-    def outputs_items(self) -> list[T]:
-        items = self.items
-        return [items[i] for i in self.outputs_idx]
-
-    @functools.cached_property
-    def _num_ins_outs(self) -> tuple[IntArray, IntArray]:
-        input_cnt = [0] * len(self.nodes)
-        output_cnt = [0] * len(self.nodes)
-
-        for node_idx, node in enumerate(self.nodes):
-            for dep in node.deps:
-                assert node_idx == self._lookup_node_idx(node.key)
-                dep_idx = self._lookup_node_idx(dep)
-
-                input_cnt[node_idx] += 1
-                output_cnt[dep_idx] += 1
-
-        input_cnt_arr = np.array(input_cnt)
-        output_cnt_arr = np.array(output_cnt)
-
-        # Make sure it's not modifiable.
-        input_cnt_arr.flags.writeable = output_cnt_arr.flags.writeable = False
-
-        return input_cnt_arr, output_cnt_arr
-
-    def _lookup_node_idx(self, key: T) -> int:
-        return self._ids_to_idx[id(key)]
-
-    @functools.cached_property
-    def _ids_to_idx(self) -> dict[int, int]:
-        return {id(node.key): idx for idx, node in enumerate(self.nodes)}
+    @classmethod
+    def coerce(cls, item: DagNodeLike[T]) -> typing.Self:
+        key, deps = item
+        return cls(key=key, deps=list(deps))
 
 
-def topo_sort[T](graph: cabc.Sequence[DagNode[T]], /) -> Dag[T]:
+def _as_dag_nodes[T](
+    obj: cabc.Iterable[DagNodeLike[T]] | dict[T, cabc.Iterable[T]],
+) -> cabc.Generator[DagNode[T]]:
+    if isinstance(obj, cabc.Mapping):
+        obj = typing.cast(cabc.Iterable[DagNodeLike[T]], obj.items())
+
+    for key, deps in obj:
+        yield DagNode(key=key, deps=list(deps))
+
+
+def topo_sort[T](
+    graph: cabc.Iterable[DagNodeLike[T]] | dict[T, cabc.Iterable[T]], /
+) -> list[T]:
     """
     Create a `Dag` from the given `graph`. Uses `TopologicalSorter` under the hood.
     Used this instead of `TopologicalSorter` when data is not `Hashable`.
     """
 
-    deref = _validate_graph_ids(graph)
+    node_list = list(_as_dag_nodes(graph))
+    deref = _validate_graph_ids(node_list)
 
-    sortable_graph = {id(node.key): [id(dep) for dep in node.deps] for node in graph}
+    sortable_graph = {
+        id(node.key): [id(dep) for dep in node.deps] for node in node_list
+    }
+
+    # Sort on the ids.
     topo_sorter = graphlib.TopologicalSorter(sortable_graph)
     topo_sorter.prepare()
     ordered_ids = list(topo_sorter.static_order())
 
-    return Dag([deref[i] for i in ordered_ids])
+    return [deref[i].key for i in ordered_ids]
 
 
-def _validate_graph_ids[T](graph: cabc.Sequence[DagNode[T]]) -> dict[int, DagNode[T]]:
+def _validate_graph_ids[T](
+    graph: cabc.Sequence[DagNode[T]],
+) -> dict[int, DagNode[T]]:
     "Validate the graph and return a dictionary used to deref the `id`s."
 
     # Check if data all have unique ids.

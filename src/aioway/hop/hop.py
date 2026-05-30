@@ -2,13 +2,15 @@
 
 "The [h]igh level [o]peration [p]review class."
 
+from jupyter_lsp.specs import r
+
 import abc
 import contextlib as ctxl
 import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-from aioway._utils import AnyDict, Dag, DagNode, dcls_asdict, decomp_flatten, topo_sort
+from aioway._utils import AnyDict, DagNode, dcls_asdict, decomp_flatten, topo_sort
 
 __all__ = ["Hop", "HopDag", "hop_cache_on", "hop_cache"]
 
@@ -97,13 +99,26 @@ def hop_cache() -> AnyDict[Hop]:
     return _hop_cache
 
 
+@dcls.dataclass(frozen=True)
+class HopNode:
+    hop: Hop
+
+    @property
+    def input_hops(self) -> cabc.Iterator[Hop]:
+        yield from decomp_flatten(dcls_asdict(self.hop), Hop)
+
+    @property
+    def is_input(self) -> bool:
+        return not list(self.input_hops)
+
+
 @dcls.dataclass
 class HopDag:
     """
     The DAG of `HopInit`s or `HopFwd`s.
     """
 
-    dag: Dag[Hop]
+    dag: list[HopNode]
     "The ordered nodes."
 
     def __len__(self):
@@ -115,14 +130,13 @@ class HopDag:
     def __call__(self) -> list[object]:
         "Evaluating the `HopInit`/`HopFwd`."
 
-        items = self.dag.items
-        return [node() for node in items]
+        return [node.hop() for node in self.dag]
 
     @property
     def input_nodes(self) -> list[Hop]:
         "Get the input nodes."
 
-        return self.dag.inputs_items
+        return [len(list(node.input_hops())) for node in self.dag]
 
     @property
     def output_nodes(self) -> list[Hop]:
@@ -133,8 +147,8 @@ class HopDag:
     @classmethod
     def from_list_of_nodes(cls, nodes: list[Hop]) -> typing.Self:
         dag_nodes = [_to_dag_node(node) for node in nodes]
-        dag: Dag[Hop] = topo_sort(dag_nodes)
-        return cls(dag)
+        dag = topo_sort(dag_nodes)
+        return cls([HopNode(hop) for hop in dag])
 
 
 def _to_dag_node(hop: Hop) -> DagNode[Hop]:
