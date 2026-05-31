@@ -28,7 +28,7 @@ def test_cost():
         assert session_1.sum() == total_2
 
 
-def test_session():
+def test_cost_session():
     with track_cost() as sess_1:
         assert current_session() is sess_1
 

@@ -8,13 +8,10 @@ import operator
 import typing
 from collections import abc as cabc
 
+from aioway._sess import Session
 from aioway._utils import Stack
 
 __all__ = ["Cost", "CostSession", "track_cost", "current_session"]
-
-
-_latest_session: CostSession | None = None
-"The latest cost session."
 
 
 @dcls.dataclass
@@ -62,7 +59,7 @@ class Cost:
         return cls(time=0, memory=0)
 
 
-class CostSession:
+class CostSession(Session):
     """
     The cost session. Use the `track_cost()` function to track the costs in a new scope.
     Providing `.sum()` function for summarization of costs.
@@ -78,6 +75,8 @@ class CostSession:
     """
 
     def __init__(self) -> None:
+        super().__init__()
+
         self._before_count = len(self._COST_CUMSUM)
         """
         These items, due to how scopes and stacks work (not thread safe),
@@ -128,20 +127,6 @@ class CostSession:
 
 
 @ctxl.contextmanager
-def _set_latest_session(sess: CostSession):
-    "Set the latest session and restore later."
-
-    global _latest_session
-    before = _latest_session
-    _latest_session = sess
-
-    try:
-        yield
-    finally:
-        _latest_session = before
-
-
-@ctxl.contextmanager
 def track_cost() -> cabc.Generator[CostSession]:
     """
     Track the costs in the `CostSession`.
@@ -149,7 +134,7 @@ def track_cost() -> cabc.Generator[CostSession]:
 
     sess = CostSession()
 
-    with _set_latest_session(sess):
+    with sess():
         try:
             yield sess
         finally:
@@ -159,4 +144,6 @@ def track_cost() -> cabc.Generator[CostSession]:
 def current_session() -> CostSession | None:
     "Get the currently active session."
 
-    return _latest_session
+    sess = CostSession.current()
+
+    return sess if isinstance(sess, CostSession) else None
