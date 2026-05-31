@@ -52,3 +52,8 @@ def test_no_repeat_entry(sess_1: Session):
         with pytest.raises(RuntimeError):
             with sess_1():
                 pass
+
+
+def test_no_abstract_session_current():
+    with pytest.raises(RuntimeError):
+        Session.current()

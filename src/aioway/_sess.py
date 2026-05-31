@@ -5,6 +5,7 @@
 import abc
 import contextlib as ctxl
 import dataclasses as dcls
+import inspect
 import typing
 from collections import abc as cabc
 
@@ -130,6 +131,9 @@ class Session[T](abc.ABC):
         """
         Returns the most recently active `Session`.
         """
+
+        if inspect.isabstract(cls):
+            raise RuntimeError(f"{cls=} is abstract! `.current()` not supported.")
 
         if not isinstance(cls._active, cls):
             assert isinstance(cls._active, _RootSession), cls._active
