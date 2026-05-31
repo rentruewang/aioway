@@ -107,32 +107,77 @@ def hop_cache() -> AnyDict[Hop]:
     return _hop_cache
 
 
-@dcls.dataclass(frozen=True)
+@dcls.dataclass
 class HopNode:
     """
     `HopNode` is a node in DAG.
     Since it stores indices, it only makes sense used by a `HopDag`.
     """
 
-    hop: Hop
-    "The operator represented by this node."
-
-    dag: HopDag
+    dag: list[Hop]
     "The dag of the node."
 
-    inputs: list[int]
+    idx: int
+    "The operator represented by this node is stored in this index.."
+
+    in_idxs: list[int] = dcls.field(default_factory=list)
     "The input indices."
 
-    outputs: list[int]
+    out_idxs: list[int] = dcls.field(default_factory=list)
     "The output indices."
 
+    def __post_init__(self) -> None:
+        if not 0 <= self.idx < (length := len(self.dag)):
+            raise IndexError(f"The dag has size {length}, but {self.idx=}.")
+
+        if not all(0 <= ipt < self.idx for ipt in self.in_idxs):
+            raise IndexError(
+                f"Input index {self.in_idxs=} contains indices >= {self.idx=}."
+            )
+
+        if not all(self.idx < opt < length for opt in self.out_idxs):
+            raise IndexError(
+                f"Input index {self.out_idxs=} contains indices <= {self.idx=}."
+            )
+
     @property
-    def input_hops(self) -> cabc.Iterator[Hop]:
-        yield from decomp_flatten(dcls_asdict(self.hop), Hop)
+    def hop(self) -> Hop:
+        return self.dag[self.idx]
+
+    @property
+    def num_inputs(self):
+        return len(self.in_idxs)
+
+    @property
+    def num_outputs(self):
+        return len(self.out_idxs)
+
+    def add_input(self, idx: int):
+        if idx >= self.idx:
+            raise IndexError(f"Input index {idx=} >= {self.idx=}.")
+
+    def add_output(self, idx: int):
+        if idx <= self.idx:
+            raise IndexError(f"Output index {idx=} <= {self.idx=}.")
+
+    def inputs(self) -> cabc.Generator[Hop]:
+        "Get the input hops."
+
+        for input in self.in_idxs:
+            yield self.dag[input]
+
+    def outputs(self) -> cabc.Generator[Hop]:
+        "Get the output hops."
+        for output in self.out_idxs:
+            yield self.dag[output]
 
     @property
     def is_input(self) -> bool:
-        return not list(self.input_hops)
+        return not self.in_idxs
+
+    @property
+    def is_output(self) -> bool:
+        return not self.out_idxs
 
 
 @dcls.dataclass
@@ -165,14 +210,31 @@ class HopDag:
     def output_nodes(self) -> list[Hop]:
         "Get the output nodes."
 
-        raise NotImplementedError
+        return [node.hop for node in self.dag if node.is_output]
 
     @classmethod
     def from_list_of_nodes(cls, nodes: list[Hop]) -> typing.Self:
-        dag_nodes = [_to_dag_node(node) for node in nodes]
-        dag = topo_sort(dag_nodes)
-        hop_to_key = {hop: idx for idx, hop in enumerate(dag)}
-        return cls([HopNode(hop) for hop in dag])
+        ordered_hop = topo_sort([_to_dag_node(node) for node in nodes])
+
+        hop_nodes: list[HopNode] = []
+        hop_id_to_dag_idx = {id(hop): idx for idx, hop in enumerate(ordered_hop)}
+
+        for idx, hop in enumerate(ordered_hop):
+            node = HopNode(ordered_hop, idx)
+
+            deps_idxs = [
+                hop_id_to_dag_idx[id(dep)]
+                for dep in decomp_flatten(dcls_asdict(hop), Hop)
+            ]
+
+            # Link them together.
+            for dep_idx in deps_idxs:
+                node.add_input(dep_idx)
+                hop_nodes[dep_idx].add_output(idx)
+
+            hop_nodes.append(node)
+
+        return cls(hop_nodes)
 
 
 def _to_dag_node(hop: Hop) -> DagNode[Hop]:
