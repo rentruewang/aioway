@@ -11,7 +11,7 @@ from collections import abc as cabc
 from aioway._sess import Session
 from aioway._utils import Stack
 
-__all__ = ["Cost", "CostSession", "track_cost", "current_session"]
+__all__ = ["Cost", "CostSession"]
 
 
 @dcls.dataclass
