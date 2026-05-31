@@ -61,7 +61,7 @@ def replace_tensors(
     Caused by `.device` / `.shape` / `.dtype` calls, which is used in `replace_tensors`.
     """
 
-    from aioway._modes import mode_off
+    from aioway.modes import mode_off
 
     with mode_off():
         return decomp_replace(obj, torch.Tensor, replace)

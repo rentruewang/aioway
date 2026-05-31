@@ -4,7 +4,7 @@ import typing
 
 from torch import nn
 
-from aioway._modes import NnInitFn
+from aioway.modes import NnInitFn
 
 from .hop import NnLayerHop
 from .modules import NnInit, nn_init_dcls

@@ -4,9 +4,9 @@ import pytest
 import torch
 from torch import nn
 
-from aioway._modes import NnFwdFn, NnInitFn
 from aioway._torch import current_fake_mode, torch_fake_mode
 from aioway.ctx import fake_fn, track_fn
+from aioway.modes import NnFwdFn, NnInitFn
 
 
 @pytest.fixture
