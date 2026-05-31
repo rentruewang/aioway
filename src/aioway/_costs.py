@@ -46,11 +46,11 @@ class Cost:
         Record the cost to the session. No-op when no session active.
         """
 
-        if (sess := current_session()) is None:
+        if (sess := CostSession.current()) is None:
             return
 
         # Using this rather than the `_COST_CUMSUM` variable directly.
-        # This forces `current_session()` to be `not None`,
+        # This forces 1 `CostSession` to be entered,
         # so we always clean it up via scopes (don't append infinitely).
         sess.record(self)
 
@@ -100,6 +100,14 @@ class CostSession(Session):
 
         return self.__getitem_slice(idx.start, idx.stop)
 
+    @ctxl.contextmanager
+    def __call__(self):
+        with super().__call__():
+            try:
+                yield self
+            finally:
+                self.cleanup()
+
     def __getitem_slice(self, start: int, end: int):
         if not 0 <= start <= len(self):
             raise IndexError
@@ -124,26 +132,3 @@ class CostSession(Session):
     def cleanup(self) -> None:
         assert len(self) >= 0
         self._COST_CUMSUM.truncate(self._before_count)
-
-
-@ctxl.contextmanager
-def track_cost() -> cabc.Generator[CostSession]:
-    """
-    Track the costs in the `CostSession`.
-    """
-
-    sess = CostSession()
-
-    with sess():
-        try:
-            yield sess
-        finally:
-            sess.cleanup()
-
-
-def current_session() -> CostSession | None:
-    "Get the currently active session."
-
-    sess = CostSession.current()
-
-    return sess if isinstance(sess, CostSession) else None
