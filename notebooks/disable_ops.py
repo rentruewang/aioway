@@ -15,8 +15,10 @@
 # %%
 import torch
 
+from aioway.modes import mode_off
+
 # %%
-from aioway.modes import PrintTorchDisp, PrintTorchFunc, mode_off
+from aioway.tracking import PrintTorchDisp, PrintTorchFunc
 
 # %%
 a = torch.randn(3, 4)
