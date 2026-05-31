@@ -101,7 +101,22 @@ def hop_cache() -> AnyDict[Hop]:
 
 @dcls.dataclass(frozen=True)
 class HopNode:
+    """
+    `HopNode` is a node in DAG.
+    Since it stores indices, it only makes sense used by a `HopDag`.
+    """
+
     hop: Hop
+    "The operator represented by this node."
+
+    dag: HopDag
+    "The dag of the node."
+
+    inputs: list[int]
+    "The input indices."
+
+    outputs: list[int]
+    "The output indices."
 
     @property
     def input_hops(self) -> cabc.Iterator[Hop]:
@@ -124,7 +139,7 @@ class HopDag:
     def __len__(self):
         return len(self.dag)
 
-    def __iter__(self) -> cabc.Generator[Hop]:
+    def __iter__(self) -> cabc.Generator[HopNode]:
         yield from self.dag
 
     def __call__(self) -> list[object]:
@@ -136,18 +151,19 @@ class HopDag:
     def input_nodes(self) -> list[Hop]:
         "Get the input nodes."
 
-        return [len(list(node.input_hops())) for node in self.dag]
+        return [node.hop for node in self.dag if node.is_input]
 
     @property
     def output_nodes(self) -> list[Hop]:
         "Get the output nodes."
 
-        return self.dag.outputs_items
+        raise NotImplementedError
 
     @classmethod
     def from_list_of_nodes(cls, nodes: list[Hop]) -> typing.Self:
         dag_nodes = [_to_dag_node(node) for node in nodes]
         dag = topo_sort(dag_nodes)
+        hop_to_key = {hop: idx for idx, hop in enumerate(dag)}
         return cls([HopNode(hop) for hop in dag])
 
 
