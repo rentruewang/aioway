@@ -1,6 +1,5 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import numpy as np
 import pytest
 
 from aioway._utils import DagNode, topo_sort

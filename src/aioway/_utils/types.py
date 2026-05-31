@@ -205,6 +205,7 @@ class AnyDict[T = object](cabc.MutableMapping[T, object]):
     @typing.override
     def __setitem__(self, key: T, val: object, /) -> None:
         self.__assert_same_length()
+
         key_id = id(key)
         self.__keys[key_id] = key
         self.__vals[key_id] = val

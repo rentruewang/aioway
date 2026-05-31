@@ -28,9 +28,14 @@ class TensorHop[T = object](Hop):
     def forward(self) -> T:
         return self.data
 
+    @property
+    @typing.override
+    def requires_grad(self) -> bool:
+        return False
+
     @typing.override
     def _rebuild(self) -> typing.Self:
-        return copy.deepcopy(self)
+        return copy.copy(self)
 
 
 @hop_dcls
@@ -56,9 +61,14 @@ class _CatStackHop(Hop, abc.ABC):
     def forward(self) -> torch.Tensor:
         return self.FUNCTION(self.tensors, dim=self.dim)
 
+    @property
+    @typing.override
+    def requires_grad(self) -> bool:
+        return any(t.requires_grad for t in self.tensors)
+
     @typing.override
     def _rebuild(self) -> typing.Self:
-        return copy.deepcopy(self)
+        return copy.copy(self)
 
 
 @hop_dcls
