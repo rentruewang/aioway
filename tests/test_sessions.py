@@ -1,25 +1,29 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import contextlib as ctxl
+
 import pytest
 
 from aioway._sess import Session
 
 
-class SubSession(Session):
-    pass
+class SubSession(Session["SubSession"]):
+    @ctxl.contextmanager
+    def do(self):
+        yield self
 
 
 @pytest.fixture
 def sess_1():
-    yield Session()
+    yield SubSession()
 
 
 @pytest.fixture
 def sess_2():
-    yield Session()
+    yield SubSession()
 
 
-def test_session_scope(sess_1: Session, sess_2: Session):
+def test_session_scope(sess_1: SubSession, sess_2: SubSession):
     assert not sess_1.is_active
     assert not sess_2.is_active
 
@@ -31,19 +35,19 @@ def test_session_scope(sess_1: Session, sess_2: Session):
             assert sess_2.is_active
 
 
-def test_current_session(sess_1: Session, sess_2: Session):
+def test_current_session(sess_1: SubSession, sess_2: SubSession):
     with sess_1():
-        assert Session.current() is sess_1
+        assert SubSession.current() is sess_1
 
         with sess_2():
-            assert Session.current() is sess_2
+            assert SubSession.current() is sess_2
 
-        assert Session.current() is sess_1
+        assert SubSession.current() is sess_1
 
 
 def test_no_repeat_entry(sess_1: Session):
     with sess_1():
-        assert Session.current() is sess_1
+        assert SubSession.current() is sess_1
 
         with pytest.raises(RuntimeError):
             with sess_1():

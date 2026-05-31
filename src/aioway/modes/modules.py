@@ -31,7 +31,8 @@ class NnFwdFn(TorchThunk):
     """
     `NnFwdFn` represents the module calls.
 
-    It hooks into `module_fwd` so it allows for optional overwrites.
+    It works like `__torch_function__`, pops the context from the global stack,
+    execute the `.run` function (which might trigger recursive calls), then push it back.
     """
 
     if typing.TYPE_CHECKING:
@@ -89,7 +90,7 @@ class NnFwdMode(Mode[NnFwdFn, object], abc.ABC):
     `NnFwdMode` is the mode for similar to `__torch_function__` / `__torch_dispatch__`,
     except you enter / exit with a `Mode.__call__()` method (I prefer context managers).
 
-    It is triggered when a `module_fwd` is called.
+    It is triggered when a `NnFwdFn.__call__` is called.
     """
 
     STACK = FORWARDS
@@ -100,7 +101,8 @@ class NnInitFn[**P = ...](TorchThunk):
     """
     `NnInitFn` are used to initialize `nn.Module`s.
 
-    It hooks into `module_init` so it allows for optional overwrites.
+    It works like `__torch_function__`, pops the context from the global stack,
+    execute the `.run` function (which might trigger recursive calls), then push it back.
     """
 
     if typing.TYPE_CHECKING:
@@ -143,7 +145,7 @@ class NnInitMode(Mode[NnInitFn, nn.Module], abc.ABC):
     """
     `NnInitMode` is a `Mode` for `nn.Module.__init__`.
 
-    It is triggered when a `module_init` is called.
+    It is triggered when a `NnInitFn.__call__` is called.
     """
 
     STACK = INITS
