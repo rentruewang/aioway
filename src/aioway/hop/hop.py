@@ -120,10 +120,10 @@ class HopNode:
     idx: int
     "The operator represented by this node is stored in this index.."
 
-    in_idxs: list[int] = dcls.field(default_factory=list)
+    in_idxs: set[int] = dcls.field(default_factory=set)
     "The input indices."
 
-    out_idxs: list[int] = dcls.field(default_factory=list)
+    out_idxs: set[int] = dcls.field(default_factory=set)
     "The output indices."
 
     def __post_init__(self) -> None:
@@ -156,9 +156,13 @@ class HopNode:
         if idx >= self.idx:
             raise IndexError(f"Input index {idx=} >= {self.idx=}.")
 
+        self.in_idxs.add(idx)
+
     def add_output(self, idx: int):
         if idx <= self.idx:
             raise IndexError(f"Output index {idx=} <= {self.idx=}.")
+
+        self.out_idxs.add(idx)
 
     def inputs(self) -> cabc.Generator[Hop]:
         "Get the input hops."
@@ -186,31 +190,35 @@ class HopDag:
     The DAG of `HopInit`s or `HopFwd`s.
     """
 
-    dag: list[HopNode]
+    nodes: list[HopNode]
     "The ordered nodes."
 
     def __len__(self):
-        return len(self.dag)
+        return len(self.nodes)
 
-    def __iter__(self) -> cabc.Generator[HopNode]:
-        yield from self.dag
+    def __getitem__(self, idx: int) -> Hop:
+        return self.nodes[idx].hop
+
+    def __iter__(self) -> cabc.Generator[Hop]:
+        for idx in range(len(self)):
+            yield self[idx]
 
     def __call__(self) -> list[object]:
         "Evaluating the `HopInit`/`HopFwd`."
 
-        return [node.hop() for node in self.dag]
+        return [node.hop() for node in self.nodes]
 
     @property
     def input_nodes(self) -> list[Hop]:
         "Get the input nodes."
 
-        return [node.hop for node in self.dag if node.is_input]
+        return [node.hop for node in self.nodes if node.is_input]
 
     @property
     def output_nodes(self) -> list[Hop]:
         "Get the output nodes."
 
-        return [node.hop for node in self.dag if node.is_output]
+        return [node.hop for node in self.nodes if node.is_output]
 
     @classmethod
     def from_list_of_nodes(cls, nodes: list[Hop]) -> typing.Self:
