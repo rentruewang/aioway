@@ -126,7 +126,7 @@ class Session:
         """
 
         if not isinstance(cls._active, cls):
-            assert cls._active == _RootSession(), cls._active
+            assert isinstance(cls._active, _RootSession), cls._active
             return None
 
         return cls._active
