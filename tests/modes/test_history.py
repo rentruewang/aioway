@@ -5,7 +5,7 @@ import torch
 from torch import nn
 
 from aioway._torch import current_fake_mode, torch_fake_mode
-from aioway.modes import fake_fn, module_fwd, module_init, track_fn
+from aioway.modes import NnFwdFn, NnInitFn, fake_fn, track_fn
 
 
 @pytest.fixture
@@ -79,7 +79,7 @@ def test_call(a: torch.Tensor, c: torch.Tensor):
 
 def test_module_init():
     with track_fn() as [func_hist, dis_hist, init_calls, fwd_calls]:
-        m = module_init(nn.Linear, 11, 13)
+        m = NnInitFn(nn.Linear, 11, 13)()
 
     assert isinstance(m, nn.Module)
     assert init_calls
@@ -87,11 +87,12 @@ def test_module_init():
 
 
 def test_module_fwd(d: torch.Tensor):
-    m = module_init(nn.Linear, 11, 13)
+    m = NnInitFn(nn.Linear, 11, 13)()
 
     with track_fn() as [func_hist, dis_hist, init_calls, fwd_calls]:
-        o = module_fwd(m, d)
+        o = NnFwdFn(m, d)()
 
+    assert isinstance(o, torch.Tensor)
     assert o.shape == (3, 13)
 
     assert isinstance(m, nn.Module)

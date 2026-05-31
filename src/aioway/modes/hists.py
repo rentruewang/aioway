@@ -29,7 +29,7 @@ class HashableTensorInput(typing.Hashable, TensorInput, Fn, typing.Protocol): ..
 @typing.runtime_checkable
 class TensorNode(TensorInput, Fn, typing.Protocol):
     f"""
-    `TensorNode` have both tensor output (`__call__()`) and tensor inputs (`.inputs()`).
+    `TensorNode` have both tensor output (`run()`) and tensor inputs (`.inputs()`).
     The output itself does not need to be tensor, but must decompose (only) into tensors.
     """
 

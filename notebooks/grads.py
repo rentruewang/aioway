@@ -21,19 +21,19 @@ from aioway.modes import TorchDispMode
 
 # %%
 class PrintTorchGradEnabled(TorchDispMode):
-    def __call__(self, thunk):
+    def run(self, thunk):
         print(torch.is_grad_enabled())
         return thunk()
 
 
 # %%
-with PrintTorchGradEnabled().enter():
+with PrintTorchGradEnabled()():
     a = torch.tensor(3)
     b = torch.tensor(4)
     a + b
 
 # %%
-with PrintTorchGradEnabled().enter(), torch.set_grad_enabled(False):
+with PrintTorchGradEnabled()(), torch.set_grad_enabled(False):
     a = torch.tensor(3)
     b = torch.tensor(4)
     a + b

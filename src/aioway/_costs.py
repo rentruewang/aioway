@@ -8,13 +8,10 @@ import operator
 import typing
 from collections import abc as cabc
 
+from aioway._sess import Session
 from aioway._utils import Stack
 
-__all__ = ["Cost", "CostSession", "track_cost", "current_session"]
-
-
-_latest_session: CostSession | None = None
-"The latest cost session."
+__all__ = ["Cost", "CostSession"]
 
 
 @dcls.dataclass
@@ -49,11 +46,11 @@ class Cost:
         Record the cost to the session. No-op when no session active.
         """
 
-        if (sess := current_session()) is None:
+        if (sess := CostSession.current()) is None:
             return
 
         # Using this rather than the `_COST_CUMSUM` variable directly.
-        # This forces `current_session()` to be `not None`,
+        # This forces 1 `CostSession` to be entered,
         # so we always clean it up via scopes (don't append infinitely).
         sess.record(self)
 
@@ -62,7 +59,7 @@ class Cost:
         return cls(time=0, memory=0)
 
 
-class CostSession:
+class CostSession(Session):
     """
     The cost session. Use the `track_cost()` function to track the costs in a new scope.
     Providing `.sum()` function for summarization of costs.
@@ -78,6 +75,8 @@ class CostSession:
     """
 
     def __init__(self) -> None:
+        super().__init__()
+
         self._before_count = len(self._COST_CUMSUM)
         """
         These items, due to how scopes and stacks work (not thread safe),
@@ -100,6 +99,14 @@ class CostSession:
             )
 
         return self.__getitem_slice(idx.start, idx.stop)
+
+    @ctxl.contextmanager
+    def __call__(self):
+        with super().__call__():
+            try:
+                yield self
+            finally:
+                self.cleanup()
 
     def __getitem_slice(self, start: int, end: int):
         if not 0 <= start <= len(self):
@@ -125,38 +132,3 @@ class CostSession:
     def cleanup(self) -> None:
         assert len(self) >= 0
         self._COST_CUMSUM.truncate(self._before_count)
-
-
-@ctxl.contextmanager
-def _set_latest_session(sess: CostSession):
-    "Set the latest session and restore later."
-
-    global _latest_session
-    before = _latest_session
-    _latest_session = sess
-
-    try:
-        yield
-    finally:
-        _latest_session = before
-
-
-@ctxl.contextmanager
-def track_cost() -> cabc.Generator[CostSession]:
-    """
-    Track the costs in the `CostSession`.
-    """
-
-    sess = CostSession()
-
-    with _set_latest_session(sess):
-        try:
-            yield sess
-        finally:
-            sess.cleanup()
-
-
-def current_session() -> CostSession | None:
-    "Get the currently active session."
-
-    return _latest_session

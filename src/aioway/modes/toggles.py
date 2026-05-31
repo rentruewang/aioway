@@ -3,7 +3,7 @@
 import contextlib as ctxl
 import typing
 
-from ._on_off import OnOffStack
+from .modes import ModeStack
 from .modules import FORWARDS, INITS
 from .tensors import DISPATCHES, FUNCTIONS
 
@@ -57,7 +57,7 @@ def set_mode(
 
     with ctxl.ExitStack() as ctx:
 
-        def _switch_if_not_none(stack: OnOffStack, flag: bool | None):
+        def _switch_if_not_none(stack: ModeStack, flag: bool | None):
             if flag is not None:
                 ctx.enter_context(stack.switch(flag))
 
