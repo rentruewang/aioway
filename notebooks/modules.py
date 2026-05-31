@@ -16,9 +16,10 @@
 import torch
 from torch import nn
 
+from aioway.ctx import PrintNnFwd, PrintNnInit
+
 # %%
 from aioway.modes import NnFwdFn, NnInitFn, mode_off
-from aioway.tracking import PrintNnFwd, PrintNnInit
 
 # %%
 with PrintNnInit()():
