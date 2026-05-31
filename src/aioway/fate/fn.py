@@ -7,8 +7,8 @@ import logging
 import typing
 
 from aioway._fn import Fn
+from aioway._modes import TorchDispFn
 from aioway._torch import is_aten_op
-from aioway.modes import TorchDispFn
 
 from .fate import Fate, find_fate
 

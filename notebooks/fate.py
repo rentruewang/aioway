@@ -15,10 +15,10 @@
 # %%
 import torch
 
+from aioway._modes import *
 from aioway._torch import *
 from aioway.ctx import *
 from aioway.fate import *
-from aioway.modes import *
 
 # %%
 dispatch_print = PrintTorchDisp()

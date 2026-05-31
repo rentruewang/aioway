@@ -3,9 +3,10 @@
 import pytest
 
 from aioway._fn import Fn, TensorInput, TorchThunk
+from aioway._modes import NnFwdFn, NnInitFn, TorchDispFn, TorchFuncFn
+from aioway.ctx import HistTensorGraph
 from aioway.fate import Fate, FateFn
 from aioway.hop import Hop
-from aioway.modes import HistTensorGraph, NnFwdFn, NnInitFn, TorchDispFn, TorchFuncFn
 
 
 def _fn_cls():

@@ -4,9 +4,9 @@ import pytest
 import torch
 from torch import nn
 
+from aioway._modes import NnInitFn
 from aioway._torch import is_fake_tensor, torch_fake_mode
 from aioway.hop import NnLayerHop, NnLossHop, TensorHop, build_nn_hop, hop_cache_on
-from aioway.modes import NnInitFn
 
 
 @pytest.fixture

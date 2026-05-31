@@ -14,7 +14,7 @@ from aioway._costs import Cost
 from aioway._utils import camel_to_snake, find_nested_tensors, render_fcall
 
 if typing.TYPE_CHECKING:
-    from aioway.modes import TorchDispFn
+    from aioway._modes import TorchDispFn
 
 __all__ = ["Fate", "fate_dcls", "find_fate", "all_fates"]
 
