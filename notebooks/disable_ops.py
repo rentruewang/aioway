@@ -16,14 +16,15 @@
 import torch
 
 # %%
-from aioway.modes import PrintTorchDisp, PrintTorchFunc, mode_off
+from aioway.ctx import PrintTorchDisp, PrintTorchFunc
+from aioway.modes import mode_off
 
 # %%
 a = torch.randn(3, 4)
 b = torch.randn(1, 1)
 
 # %%
-with PrintTorchDisp().enter(), PrintTorchFunc().enter():
+with PrintTorchDisp()(), PrintTorchFunc()():
     c = a + b
 
 # %% [markdown]
@@ -33,7 +34,7 @@ with PrintTorchDisp().enter(), PrintTorchFunc().enter():
 c
 
 # %%
-with PrintTorchDisp().enter(), PrintTorchFunc().enter(), mode_off():
+with PrintTorchDisp()(), PrintTorchFunc()(), mode_off():
     c = a + b
 
 # %% [markdown]
@@ -42,7 +43,7 @@ with PrintTorchDisp().enter(), PrintTorchFunc().enter(), mode_off():
 # This is the same to how it works with torch's dispatch mode and function mode.
 
 # %%
-with PrintTorchDisp().enter(), mode_off(), PrintTorchFunc().enter():
+with PrintTorchDisp()(), mode_off(), PrintTorchFunc()():
     c = a + b
 
 # %% [markdown]

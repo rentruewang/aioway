@@ -7,6 +7,7 @@ import contextlib as ctxl
 import dataclasses as dcls
 import logging
 import typing
+import warnings
 from collections import abc as cabc
 
 import torch
@@ -14,19 +15,18 @@ from torch import _ops, overrides
 from torch.utils import _python_dispatch as pyd
 
 from aioway._fn import TorchThunk
-from aioway._torch import is_aten_op, is_prim_op
+from aioway._torch import is_aten_op, is_prim_op, render_function_body_prefix
 
-from ._on_off import OnOffCtx, OnOffStack
-from .common import render_function_body_prefix
+from .modes import Mode, ModeStack
 
 __all__ = ["TorchFuncMode", "TorchDispMode", "TorchFuncFn", "TorchDispFn"]
 
 LOGGER = logging.getLogger(__name__)
 
-FUNCTIONS: OnOffStack[TorchFuncMode] = OnOffStack()
+FUNCTIONS: ModeStack[TorchFuncMode] = ModeStack()
 "`TorchFuncMode` that is currently entered."
 
-DISPATCHES: OnOffStack[TorchDispMode] = OnOffStack()
+DISPATCHES: ModeStack[TorchDispMode] = ModeStack()
 "`TorchDispMode` that is currently entered."
 
 
@@ -49,8 +49,10 @@ class TorchFuncFn[**P = ...](TorchThunk):
 
         self._types = types
 
-        if not isinstance(self.types, tuple) and all(
-            isinstance(t, type) for t in self.types
+        if not (
+            True
+            and isinstance(self.types, tuple)
+            and all(isinstance(t, type) for t in self.types)
         ):
             raise TypeError(f"{self.types=} should be a tuple of types.")
 
@@ -109,7 +111,7 @@ type _Mode = overrides.TorchFunctionMode | pyd.TorchDispatchMode
 
 
 @dcls.dataclass
-class TorchModeOnOff[T](OnOffCtx, abc.ABC):
+class TorchModeOnOff[T: TorchThunk](Mode[T, object], abc.ABC):
     """
     The mixin for either `TorchFuncMode`, `TorchDispMode`.
     """
@@ -120,41 +122,52 @@ class TorchModeOnOff[T](OnOffCtx, abc.ABC):
     These are specific modes that honor the `on` switch (hence private function).
     """
 
-    @abc.abstractmethod
-    def __call__(self, thunk: T, /) -> object:
-        raise NotImplementedError
-
     @typing.override
     @ctxl.contextmanager
-    def enter(self: typing.Self):
+    def enter(self) -> cabc.Generator[None]:
         """
         Enter the `__torch_function__` / `__torch_dispatch__` context,
         and store the mode itself s.t. it can be turned on / off later.
         """
 
-        with self.STACK.hold(self), self._TORCH_MODE(self):
-            yield self
+        with self._TORCH_MODE(self):
+            yield
 
 
 @typing.final
 class _TorchFuncModeCtx(overrides.TorchFunctionMode):
-    "The `__torch_function__` adaptor"
+    "The `__torch_function__` adaptor."
 
     def __init__(self, mode: TorchFuncMode) -> None:
         super().__init__()
         self.mode = mode
+
+        assert self.mode.STACK is FUNCTIONS
 
     @typing.final
     @typing.override
     def __torch_function__(self, func, types, args=(), kwargs=None) -> object:
         kwargs = kwargs or {}
 
+        with FUNCTIONS.borrow() as mode:
+            if mode is not self.mode:
+                warnings.warn(
+                    "Modes mismatch in `__torch_function__`. "
+                    "`torch` has changed their `__torch_function__` execution model. "
+                    "This may cause bugs.",
+                    RuntimeWarning,
+                )
+
+            return self.__impl(func, types, args, kwargs)
+
+    def __impl(self, func, types, args, kwargs) -> object:
+
         # The mode can be turned off.
         if not self.mode.on:
             return func(*args, **kwargs)
 
         thunk = TorchFuncFn(func, types, *args, **kwargs)
-        return self.mode(thunk)
+        return self.mode.run(thunk)
 
 
 @dcls.dataclass
@@ -172,11 +185,13 @@ class TorchFuncMode(TorchModeOnOff[TorchFuncFn], abc.ABC):
 
 @typing.final
 class _TorchDispModeCtx(pyd.TorchDispatchMode):
-    "The `__torch_dispatch__` adaptor"
+    "The `__torch_dispatch__` adaptor."
 
     def __init__(self, mode: TorchDispMode) -> None:
         super().__init__()
         self.mode = mode
+
+        assert self.mode.STACK is DISPATCHES
 
     @typing.final
     @typing.override
@@ -186,12 +201,24 @@ class _TorchDispModeCtx(pyd.TorchDispatchMode):
         if not all(issubclass(t, torch.Tensor) for t in types):
             raise AssertionError(f"Not all {types=} are subclasses of `torch.Tensor`.")
 
+        with DISPATCHES.borrow() as mode:
+            if mode is not self.mode:
+                warnings.warn(
+                    "Modes mismatch in `__torch_dispatch__`. "
+                    "`torch` has changed their `__torch_dispatch__` execution model. "
+                    "This may cause bugs.",
+                    RuntimeWarning,
+                )
+
+            return self.__impl(func, args, kwargs)
+
+    def __impl(self, func, args, kwargs) -> object:
         # The mode can be turned off.
         if not self.mode.on:
             return func(*args, **kwargs)
 
         thunk = TorchDispFn(func, *args, **kwargs)
-        return self.mode(thunk)
+        return self.mode.run(thunk)
 
 
 @dcls.dataclass

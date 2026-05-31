@@ -10,14 +10,21 @@ import typing
 import rich
 from torch import nn
 
-from aioway._torch import current_fake_mode, torch_fake_mode
+from aioway._torch import current_fake_mode, replace_tensors_with_attr, torch_fake_mode
 from aioway._utils import replace_tensors
 from aioway.fate import FateFn
+from aioway.modes import (
+    NnFwdFn,
+    NnFwdMode,
+    NnInitFn,
+    NnInitMode,
+    TorchDispFn,
+    TorchDispMode,
+    TorchFuncFn,
+    TorchFuncMode,
+)
 
-from .common import replace_tensors_with_attr
 from .hists import Hist, HistTensorGraph
-from .modules import NnFwdFn, NnFwdMode, NnInitFn, NnInitMode
-from .tensors import TorchDispFn, TorchDispMode, TorchFuncFn, TorchFuncMode
 
 __all__ = [
     "track_fn",
@@ -42,7 +49,7 @@ class _HasRichFlagMixin:
 
 
 class PrintNnInit(NnInitMode):
-    def __call__(self, thunk: NnInitFn) -> nn.Module:
+    def run(self, thunk: NnInitFn) -> nn.Module:
         print("invoke", thunk)
         result = thunk()
         print("return", thunk, "->", result)
@@ -50,7 +57,7 @@ class PrintNnInit(NnInitMode):
 
 
 class PrintNnFwd(NnFwdMode):
-    def __call__(self, thunk: NnFwdFn) -> object:
+    def run(self, thunk: NnFwdFn) -> object:
         print("invoke", thunk)
         result = thunk()
         print("return", thunk, "->", replace_tensors_with_attr(result))
@@ -59,13 +66,13 @@ class PrintNnFwd(NnFwdMode):
 
 class PrintTorchFunc(_HasRichFlagMixin, TorchFuncMode):
     @typing.override
-    def __call__(self, thunk: TorchFuncFn, /) -> object:
+    def run(self, thunk: TorchFuncFn, /) -> object:
         return _TorchThunkPrinter(rich=self._rich)(thunk)
 
 
 class PrintTorchDisp(_HasRichFlagMixin, TorchDispMode):
     @typing.override
-    def __call__(self, thunk: TorchDispFn, /) -> object:
+    def run(self, thunk: TorchDispFn, /) -> object:
         return _TorchThunkPrinter(rich=self._rich)(thunk)
 
 
@@ -98,7 +105,7 @@ class LogTorchFunc(TorchFuncMode):
     "The logger to log to. Default to the one in the current module."
 
     @typing.override
-    def __call__(self, thunk: TorchFuncFn) -> object:
+    def run(self, thunk: TorchFuncFn) -> object:
         result = thunk()
         self.logger.log(self.level, "%s", thunk)
         return result
@@ -117,7 +124,7 @@ class LogTorchDis(TorchDispMode):
     "The logger to log to. Default to the one in the current module."
 
     @typing.override
-    def __call__(self, thunk: TorchDispFn) -> object:
+    def run(self, thunk: TorchDispFn) -> object:
         result = thunk()
         self.logger.log(self.level, "%s", thunk)
         return result
@@ -125,7 +132,7 @@ class LogTorchDis(TorchDispMode):
 
 class CloneDispatchOp(TorchDispMode):
     @typing.override
-    def __call__(self, thunk: TorchDispFn, /) -> object:
+    def run(self, thunk: TorchDispFn, /) -> object:
         result = thunk()
 
         # In fake mode, clone the tensor to prevent `FakeTensor` reuse. Should be cheap.
@@ -146,7 +153,7 @@ class RouteNnInit(NnInitMode):
     """
 
     @typing.override
-    def __call__(self, thunk: NnInitFn, /) -> nn.Module:
+    def run(self, thunk: NnInitFn, /) -> nn.Module:
         result = self.history.execute(thunk)
         assert isinstance(result, nn.Module), type(result)
         return result
@@ -163,7 +170,7 @@ class RouteNnFwd(NnFwdMode):
     """
 
     @typing.override
-    def __call__(self, thunk: NnFwdFn, /) -> object:
+    def run(self, thunk: NnFwdFn, /) -> object:
         return self.history.execute(thunk)
 
 
@@ -176,7 +183,7 @@ class RouteTorchDisp(TorchDispMode):
     )
     "The history used for tracking."
 
-    def __call__(self, thunk: TorchDispFn) -> object:
+    def run(self, thunk: TorchDispFn) -> object:
         fn: FateFn | TorchDispFn
 
         if (found := FateFn.find_fate(thunk)) is not None:
@@ -205,7 +212,7 @@ class RouteTorchFunc(TorchFuncMode):
     """
 
     @typing.override
-    def __call__(self, thunk: TorchFuncFn, /) -> object:
+    def run(self, thunk: TorchFuncFn, /) -> object:
         return self.history.execute(thunk)
 
 
@@ -227,7 +234,7 @@ def track_fn():
     dis = RouteTorchDisp()
     func = RouteTorchFunc()
 
-    with func.enter(), dis.enter(), init.enter(), fwd.enter():
+    with func(), dis(), init(), fwd():
         yield HistoryCollection(
             function=func.history,
             dispatch=dis.history,
