@@ -12,11 +12,9 @@ from collections import abc as cabc
 import torch
 
 from aioway._fn import Fn, TensorInput
-from aioway._torch import is_leaf_has_grad
+from aioway._torch import is_leaf_has_grad, replace_tensors_with_attr
 from aioway._utils import find_nested_tensors
 from aioway.attrs import Attr
-
-from .common import replace_tensors_with_attr
 
 LOGGER = logging.getLogger(__name__)
 
