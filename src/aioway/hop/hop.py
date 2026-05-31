@@ -112,6 +112,8 @@ class HopNode:
     """
     `HopNode` is a node in DAG.
     Since it stores indices, it only makes sense used by a `HopDag`.
+
+    In the future, make this more graph friendly (we need to decompose often).
     """
 
     dag: list[Hop]
