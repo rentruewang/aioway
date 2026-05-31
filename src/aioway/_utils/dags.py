@@ -49,7 +49,8 @@ def topo_sort[T](
     graph: cabc.Iterable[DagNodeLike[T]] | dict[T, cabc.Iterable[T]], /
 ) -> list[T]:
     """
-    Create a `Dag` from the given `graph`. Uses `TopologicalSorter` under the hood.
+    Create a topological sorted list from the given `graph`.
+    Uses `TopologicalSorter` under the hood.
     Used this instead of `TopologicalSorter` when data is not `Hashable`.
     """
 
