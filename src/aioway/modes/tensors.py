@@ -15,9 +15,8 @@ from torch import _ops, overrides
 from torch.utils import _python_dispatch as pyd
 
 from aioway._fn import TorchThunk
-from aioway._torch import is_aten_op, is_prim_op
+from aioway._torch import is_aten_op, is_prim_op, render_function_body_prefix
 
-from .common import render_function_body_prefix
 from .modes import Mode, ModeStack
 
 __all__ = ["TorchFuncMode", "TorchDispMode", "TorchFuncFn", "TorchDispFn"]
@@ -125,7 +124,7 @@ class TorchModeOnOff[T: TorchThunk](Mode[T, object], abc.ABC):
 
     @typing.override
     @ctxl.contextmanager
-    def _enter_extra_ctx(self) -> cabc.Generator[None]:
+    def enter(self) -> cabc.Generator[None]:
         """
         Enter the `__torch_function__` / `__torch_dispatch__` context,
         and store the mode itself s.t. it can be turned on / off later.

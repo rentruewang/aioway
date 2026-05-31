@@ -20,7 +20,7 @@ LOGGER = logging.getLogger(__name__)
 @dcls.dataclass
 class Mode[T: TorchThunk = TorchThunk, V = object](abc.ABC):
     """
-    `OnOffCtx` is a mixin class that gives the subclasses a toggle.
+    `Mode` is a mixin class that gives the subclasses a toggle.
     """
 
     STACK: typing.ClassVar[ModeStack]
@@ -40,7 +40,7 @@ class Mode[T: TorchThunk = TorchThunk, V = object](abc.ABC):
         which is much less elegant than `ctxl.contextmanager` (I know it's necessary).
         """
 
-        with self.STACK.hold(self), self._enter_extra_ctx():
+        with self.STACK.hold(self), self.enter():
             yield self
 
     @abc.abstractmethod
@@ -54,7 +54,7 @@ class Mode[T: TorchThunk = TorchThunk, V = object](abc.ABC):
         raise NotImplementedError
 
     @ctxl.contextmanager
-    def _enter_extra_ctx(self) -> cabc.Generator[None]:
+    def enter(self) -> cabc.Generator[None]:
         yield
 
     @ctxl.contextmanager

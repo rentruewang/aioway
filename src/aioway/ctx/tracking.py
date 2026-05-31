@@ -10,14 +10,21 @@ import typing
 import rich
 from torch import nn
 
-from aioway._torch import current_fake_mode, torch_fake_mode
+from aioway._torch import current_fake_mode, replace_tensors_with_attr, torch_fake_mode
 from aioway._utils import replace_tensors
 from aioway.fate import FateFn
+from aioway.modes import (
+    NnFwdFn,
+    NnFwdMode,
+    NnInitFn,
+    NnInitMode,
+    TorchDispFn,
+    TorchDispMode,
+    TorchFuncFn,
+    TorchFuncMode,
+)
 
-from .common import replace_tensors_with_attr
 from .hists import Hist, HistTensorGraph
-from .modules import NnFwdFn, NnFwdMode, NnInitFn, NnInitMode
-from .tensors import TorchDispFn, TorchDispMode, TorchFuncFn, TorchFuncMode
 
 __all__ = [
     "track_fn",

@@ -8,8 +8,8 @@ import operator
 import typing
 from collections import abc as cabc
 
-from aioway._sess import Session
 from aioway._utils import Stack
+from aioway.sess import Session
 
 __all__ = ["Cost", "CostSession"]
 
@@ -101,12 +101,11 @@ class CostSession(Session):
         return self.__getitem_slice(idx.start, idx.stop)
 
     @ctxl.contextmanager
-    def __call__(self):
-        with super().__call__():
-            try:
-                yield self
-            finally:
-                self.cleanup()
+    def do(self):
+        try:
+            yield self
+        finally:
+            self.cleanup()
 
     def __getitem_slice(self, start: int, end: int):
         if not 0 <= start <= len(self):

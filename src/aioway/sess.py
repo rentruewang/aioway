@@ -2,8 +2,10 @@
 
 "The `Session` interface."
 
+import abc
 import contextlib as ctxl
 import dataclasses as dcls
+import inspect
 import typing
 from collections import abc as cabc
 
@@ -26,7 +28,7 @@ class _RootSession[S: Session]:
         return repr(self._child)
 
 
-class Session:
+class Session[T](abc.ABC):
     """
     The cost session. Use the `track_cost()` function to track the costs in a new scope.
     Providing `.sum()` function for summarization of costs.
@@ -46,13 +48,18 @@ class Session:
         self.__is_active: bool = False
         "Whether or not the session is turned on."
 
+    @typing.final
     @ctxl.contextmanager
-    def __call__(self) -> cabc.Generator[typing.Self]:
-        with self.__set_active_flag(), self._set_parent_and_active():
-            yield self
+    def __call__(self) -> cabc.Generator[T]:
+        with self.__set_active_flag(), self._set_parent_active(), self.do() as t:
+            yield t
+
+    @abc.abstractmethod
+    def do(self) -> typing.ContextManager[T]:
+        raise NotImplementedError
 
     @ctxl.contextmanager
-    def _set_parent_and_active(self) -> cabc.Generator[None]:
+    def _set_parent_active(self) -> cabc.Generator[None]:
         cls = type(self)
 
         if cls._active._child is not None:
@@ -125,8 +132,11 @@ class Session:
         Returns the most recently active `Session`.
         """
 
+        if inspect.isabstract(cls):
+            raise RuntimeError(f"{cls=} is abstract! `.current()` not supported.")
+
         if not isinstance(cls._active, cls):
-            assert cls._active == _RootSession(), cls._active
+            assert isinstance(cls._active, _RootSession), cls._active
             return None
 
         return cls._active
