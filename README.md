@@ -5,6 +5,8 @@ _  __ `/_  /_  __ \_ | /| / /  __ `/_  / / /
 / /_/ /_  / / /_/ /_ |/ |/ // /_/ /_  /_/ /
 \__,_/ /_/  \____/____/|__/ \__,_/ _\__, /
                                    /____/
+
+An optimizing compiler for ML algorithms.
 ```
 
 # 🛣️ AioWay
@@ -12,7 +14,9 @@ _  __ `/_  /_  __ \_ | /| / /  __ `/_  / / /
 > Aioway is an optimizing compiler for deep learning algorithms.
 > It treats the machine learning models / algorithms as instructions and build the pipeline that way.
 
-### 🏢 Architecture
+### 🏢 Architecture diagram
+
+![](./assets/architecture.svg)
 
 ### 🍰 Features
 
