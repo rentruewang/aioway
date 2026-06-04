@@ -9,6 +9,12 @@ _  __ `/_  /_  __ \_ | /| / /  __ `/_  / / /
 An optimizing compiler for ML algorithms.
 ```
 
+[![Unit Testing](https://github.com/rentruewang/aioway/actions/workflows/unit-test.yaml/badge.svg)](https://github.com/rentruewang/aioway/actions/workflows/unit-test.yaml)
+[![Pre Commit Checks](https://github.com/rentruewang/aioway/actions/workflows/pre-commit.yaml/badge.svg)](https://github.com/rentruewang/aioway/actions/workflows/pre-commit.yaml)
+[![Publish](https://github.com/rentruewang/aioway/actions/workflows/publish.yaml/badge.svg)](https://github.com/rentruewang/aioway/actions/workflows/publish.yaml)
+
+![PyPI](https://img.shields.io/pypi/v/aioway)
+
 # 🛣️ AioWay
 
 > Aioway is an optimizing compiler for deep learning algorithms.
