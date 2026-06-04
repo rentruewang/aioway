@@ -46,11 +46,11 @@ However, current AutoML solutions are subpar. Each one of them have clear limita
 Drawing inspriation from opitmizing compilers (especially SQLs), `aioway` aims to solve that.
 
 
-## 🌟 Give us a star!
+## [🌟 Give us a star][star]!
 
 That's all for now!
 
-If you have read this far, please consider giving me a [star (⭐)](https://github.com/rentruewang/aioway/stargazers) or a fork (🍴).
+If you have read this far, please consider giving me a star (⭐) or a fork (🍴).
 
 This will keep me motivated!
 
@@ -81,3 +81,4 @@ Conceptually, `aioway` works in a similar way, but instead of `Tensor` ops, `aio
 
 
 [koila]: https://github.com/rentruewang/aioway/tree/koila
+[star]: https://github.com/rentruewang/aioway/stargazers
