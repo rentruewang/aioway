@@ -1,6 +1,6 @@
 # Aioway
 
-AI on the way, a compiler approach to deep learning.
+AI on the way, an optimizing compiler approach to deep learning.
 
 Declarative, explainable, scalable, optimizable, easy to deploy, all that good stuff.
 
