@@ -50,7 +50,7 @@ Drawing inspriation from opitmizing compilers (especially SQLs), `aioway` aims t
 
 That's all for now!
 
-If you have read this far, please consider giving me a star (⭐) or a fork (🍴).
+If you have read this far, please consider giving me a [star (⭐)](https://github.com/rentruewang/aioway/stargazers) or a fork (🍴).
 
 This will keep me motivated!
 
