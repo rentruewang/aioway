@@ -22,12 +22,12 @@ An optimizing compiler for ML algorithms.
 
 > Most of these features are done but not polished yet! But will be in couple of weeks.
 
-- Fast. Compared to neural architecture search, the optimization can be rule based (fast).
-- Detects the tasks at hand, resource available, and select the best algorithms and models.
-- The models built from aioway would be white box (explainable), due to our architecture.
-- Allows upgrading parts of the models. You scale up to different model size, and to different machines.
-- Both relational algebra and python library interface.
-- Extensible with custom pytorch.
+- ⚡ Fast. Compared to neural architecture search, the optimization can be rule based (fast).
+- 🕵️ Detects the tasks at hand, resource available, and select the best algorithms and models.
+- 🎁 The models built from aioway would be white box (explainable), due to our architecture.
+- ⚙️ Allows upgrading parts of the models. You scale up to different model size, and to different machines.
+- 🐍 Both relational algebra (SQL like) and python library interface.
+- 🔥 Extensible with custom pytorch.
 
 ### ⛰️ Compared with current landscape
 
