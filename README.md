@@ -29,12 +29,22 @@ An optimizing compiler for ML algorithms.
 - Both relational algebra and python library interface.
 - Extensible with custom pytorch.
 
-
 ### ⛰️ Compared with current landscape
 
 1. Neural architecture search: Too slow (because most need backtracking).
 2. Current autoML framework: non flexible enough, usually stuck with UI or fixed set of models (black box still).
 3. Pretrained models / LLM: Usually expensive, non explainable, less flexible.
+4. Traditional methods: They can't handle new data (multimodal).
+
+
+### 🤔 Why aioway yada yada
+
+In the recent years, machine learning's entry barrier higher, rather than lower. People with expert training are expensive, as they need years of experience to be good.
+
+However, current AutoML solutions are subpar. Each one of them have clear limitations: slow, inflexible, unreliable, or unable to handle modern data.
+
+Drawing inspriation from opitmizing compilers (especially SQLs), `aioway` aims to solve that.
+
 
 ## 🌟 Give us a star!
 
@@ -42,7 +52,7 @@ That's all for now!
 
 If you have read this far, please consider giving me a star (⭐) or a fork (🍴).
 
-This will keep my motivation going!
+This will keep me motivated!
 
 Or if you have too much cash at hand: [![BuyMeACoffee](https://raw.githubusercontent.com/pachadotdev/buymeacoffee-badges/main/bmc-yellow.svg)](https://www.buymeacoffee.com/rentruewang)
 
@@ -50,14 +60,6 @@ Or if you have too much cash at hand: [![BuyMeACoffee](https://raw.githubusercon
 
 We are most likely launching `v0.1.0` before July 2026, but before that,
 see the pre-release tracking [project](https://github.com/users/rentruewang/projects/7) for more details.
-
-
-
-## 🤔 Why aioway yada yada
-
-In the recent years, machine learning's entry barrier has gotten higher, rather than lower. With the increasing number of algorithms and libraries and models, it's no wonder qualified data scientists are rare because you would need years of training to keep up to the status quo.
-
-We designed Aioway in a way such that instead of thinking about **how** to do ML, you specify **what** to do. Instead of focusing on what algorithms and models to use, Aioway allows you to focus on the use cases by taking into account the context of the problem, and perform compliation according to the data to ensure good performance. Automatically.
 
 ## 🤝 Contributing
 
