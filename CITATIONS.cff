@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Aioway: A compiler approach to deep learning."
+authors:
+  - family-names: Wang
+    given-names: RenChu
+date-released: 2026-07-01
+url: https://github.com/rentruewang/aioway/
+version: "2026"
