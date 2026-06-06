@@ -22,10 +22,19 @@ class NnHop(Hop, abc.ABC):
     module: nn.Module
     "The `nn.Module` initialized by `nn_init`."
 
+    input: Hop
+    "The input of the `NnHop`. Should output a `torch.Tensor`."
+
     @typing.override
     def _rebuild(self) -> typing.Self:
         new_module = self.nn_init()
         return dcls.replace(self, module=new_module)
+
+    @property
+    @typing.override
+    def requires_grad(self) -> bool:
+        module_grad = any(param.requires_grad for param in self.module.parameters())
+        return self.input.requires_grad or module_grad
 
 
 @hop_dcls
@@ -34,9 +43,6 @@ class NnLayerHop(NnHop):
     The `Hop` subclass for normal layers in `nn.Module`s.
     It is a thunk so it has args, kwargs as attributes.
     """
-
-    input: Hop
-    "The input of the `NnLayerHop`. Should output a `torch.Tensor`."
 
     @typing.override
     def forward(self) -> object:
@@ -52,9 +58,6 @@ class NnLossHop(NnHop):
     """
     The `Hop` subclass for loss functions that are `nn.Module`s.
     """
-
-    input: Hop
-    "The input of the `NnLossHop`. Should output a `torch.Tensor`."
 
     target: Hop
     "The target of the `NnLossHop`. Should output a `torch.Tensor`."

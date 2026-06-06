@@ -1,13 +1,12 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import numpy as np
 import pytest
 
-from aioway._utils import Dag, DagNode, topo_sort
+from aioway._utils import DagNode, topo_sort
 
 
 @pytest.fixture
-def dag() -> Dag[int]:
+def dag():
     nodes = [
         DagNode(1, []),
         DagNode(2, [1]),
@@ -17,21 +16,7 @@ def dag() -> Dag[int]:
     return topo_sort(nodes)
 
 
-def test_dag_items(dag: Dag[int]):
-    items = dag.items
-    assert items[0] == 1
-    assert items[3] == 4
-    assert set(items[1:3]) == {2, 3}
-
-
-def test_dag_inputs_outputs(dag: Dag[int]):
-    ins = dag.num_inputs
-    outs = dag.num_outputs
-
-    assert np.all(ins == [0, 1, 1, 2])
-    assert outs[0] == 3
-    assert outs[3] == 0
-    assert set(outs[1:3]) == {0, 1}
-
-    assert np.all(dag.inputs_idx == [0])
-    assert np.all(dag.outputs_idx == [1, 3])
+def test_dag_items(dag: list[int]):
+    assert dag[0] == 1
+    assert dag[3] == 4
+    assert set(dag[1:3]) == {2, 3}

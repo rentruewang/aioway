@@ -3,6 +3,7 @@
 "The dataset related `Hop`s."
 
 import copy
+import typing
 
 import torch
 
@@ -20,5 +21,10 @@ class TensorStreamHop(Hop):
     def forward(self) -> torch.Tensor:
         return next(self.stream)
 
-    def _rebuild(self):
-        return copy.copy(self.stream)
+    def _rebuild(self) -> typing.Self:
+        return copy.copy(self)
+
+    @property
+    @typing.override
+    def requires_grad(self) -> bool:
+        return False

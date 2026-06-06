@@ -11,7 +11,7 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway._utils import dcls_asdict, decomp_flatten
+from aioway._utils import decomp_dcls_members
 from aioway.attrs import Attr, AttrDict
 
 __all__ = ["StreamState", "Stream", "TensorStream", "TdictStream", "stream_dcls"]
@@ -123,7 +123,7 @@ class Stream[T](cabc.Iterator[T], abc.ABC):
         The input of the current `Stream`.
         """
 
-        yield from decomp_flatten(dcls_asdict(self), Stream)
+        yield from decomp_dcls_members(self, Stream)
 
 
 @stream_dcls

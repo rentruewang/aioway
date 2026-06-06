@@ -2,7 +2,7 @@
 
 import typing
 
-from aioway.hop import HopDag
+from aioway.hop import HopGraph
 
 __all__ = ["Rewriter"]
 
@@ -12,4 +12,4 @@ class Rewriter(typing.Protocol):
     `Rewriter` rewrites the given `HopDag` into another `HopDag`.
     """
 
-    def __call__(self, dag: HopDag, /) -> HopDag: ...
+    def __call__(self, dag: HopGraph, /) -> HopGraph: ...

@@ -5,7 +5,7 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-__all__ = ["track_call_count", "Stack", "AnyDict"]
+__all__ = ["track_call_count", "Stack", "AnySet", "AnyDict"]
 
 
 class _CallCounter[**P, T]:
@@ -154,71 +154,76 @@ class Stack[T]:
             self.append(item)
 
 
-class AnyDict[T = object](cabc.MutableMapping[T, object]):
+class AnySet[K = object]:
+    """
+    `AnySet` allows to store a set of items, using their `id`s to compare equality.
+    """
+
+    def __init__(self, base: type = object, /) -> None:
+        self.__keys: dict[int, K] = {}
+        """
+        The keys that has been stored in the `AnyDict`.
+        Using `dict` to avoid actually dereference `id`.
+        """
+
+        self.__type: type[K] = base
+        "Store the type for `isinstance` checks."
+
+    def __len__(self) -> int:
+        return len(self.__keys)
+
+    def __contains__(self, key: object, /) -> bool:
+        if isinstance(key, self.__type):
+            key_id = id(key)
+            return key_id in self.__keys
+
+        raise TypeError(f"{type(key)=} is not `{self.__type}`.")
+
+    def __iter__(self) -> cabc.Iterator[K]:
+        yield from self.__keys.values()
+
+    def add(self, key: K) -> None:
+        self.__keys[id(key)] = key
+
+    def discard(self, key: K) -> None:
+        if id(key) in self.__keys:
+            del self.__keys[id(key)]
+
+
+class AnyDict[K = object, V = object](AnySet[K]):
     """
     `AnyDict` allows you to treat `T` as if it's `Hashable` (it's not).
     Each item would be compared with `is` rather than `==`.
     """
 
     def __init__(self, base: type = object, /) -> None:
-        self.__keys: dict[int, T] = {}
-        """
-        The keys that has been stored in the `AnyDict`.
-        Using `dict` to avoid actually dereference `id`.
-        """
+        super().__init__(base)
 
-        self.__vals: dict[int, object] = {}
+        self.__vals: dict[int, V] = {}
         """
         The values refered to by the `key`, using `id` as key.
         """
 
-        self.__type: type[T] = base
-        "Store the type for `isinstance` checks."
+    def __getitem__(self, key: K, /) -> V:
+        if key not in self:
+            raise KeyError(f"{key=} is not found in `HopDict`.")
 
-    @typing.override
-    def __len__(self) -> int:
+        return self.__vals[id(key)]
+
+    def __setitem__(self, key: K, val: V, /) -> None:
         self.__assert_same_length()
-        return len(self.__keys)
 
-    @typing.override
-    def __contains__(self, key: object, /) -> bool:
-        if isinstance(key, self.__type):
-            key_id = id(key)
-            return key_id in self.__keys
+        super().add(key)
+        self.__vals[id(key)] = val
 
-        raise TypeError(f"{type(key)=} is not `T`.")
-
-    @typing.override
-    def __iter__(self) -> cabc.Generator[T]:
-        yield from self.__keys.values()
-
-    @typing.override
-    def __getitem__(self, key: T, /) -> object:
-        key_id = id(key)
-
-        if key_id in self.__keys:
-            assert key_id in self.__vals
-            return self.__vals[key_id]
-
-        raise KeyError(f"{key=} is not found in `HopDict`.")
-
-    @typing.override
-    def __setitem__(self, key: T, val: object, /) -> None:
-        self.__assert_same_length()
-        key_id = id(key)
-        self.__keys[key_id] = key
-        self.__vals[key_id] = val
-
-    @typing.override
-    def __delitem__(self, key: T, /) -> None:
+    def __delitem__(self, key: K, /) -> None:
         self.__assert_same_length()
 
         if key not in self:
             raise KeyError(f"{key=} is not in `HopDict`.")
 
-        key_id = id(key)
-        del self.__keys[key_id]
-        del self.__vals[key_id]
+        super().discard(key)
+        del self.__vals[id(key)]
 
     def __assert_same_length(self):
-        assert len(self.__keys) == len(self.__vals)
+        assert super().__len__() == len(self.__vals)
