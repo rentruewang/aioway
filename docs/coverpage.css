@@ -1,0 +1,13 @@
+.cover {
+    background: #0f172a !important;
+}
+
+.cover::before {
+    background: rgba(0, 0, 0, 0.5) !important;
+}
+
+.cover h1,
+.cover p,
+.cover a {
+    color: #e5e7eb !important;
+}
