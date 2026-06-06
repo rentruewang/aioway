@@ -22,12 +22,12 @@ def output_space():
 def test_just_linear(input_space: AttrTag, output_space: AttrTag):
     builder = JustLinearBuilder(input_space, output_space)
     built = builder()
-    [tensor_node, linear_node] = built
+    [tensor_node, linear_node] = built.dag()
     assert isinstance(linear_node, NnLayerHop)
     assert isinstance(linear_node.module, nn.Linear)
     assert isinstance(linear_node.nn_init, Linear)
     assert linear_node.nn_init.in_features == 5
     assert linear_node.nn_init.out_features == 6
 
-    assert len(built.input_nodes) == 1
-    assert len(built.output_nodes) == 1
+    assert len(list(built.input_nodes)) == 1
+    assert len(list(built.output_nodes)) == 1

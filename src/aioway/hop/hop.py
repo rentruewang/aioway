@@ -8,9 +8,16 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-from aioway._utils import AnyDict, DagNode, dcls_asdict, decomp_flatten, topo_sort
+from aioway._utils import (
+    AnyDict,
+    AnySet,
+    DagNode,
+    dcls_asdict,
+    decomp_dcls_members,
+    topo_sort,
+)
 
-__all__ = ["Hop", "HopDag", "hop_cache_on", "hop_cache"]
+__all__ = ["Hop", "HopGraph", "hop_cache_on", "hop_cache"]
 
 _hop_cache: AnyDict[Hop] | None = None
 "The cache instance for `Hop`."
@@ -37,13 +44,10 @@ class Hop(abc.ABC):
             return self.forward()
 
         # Do the caching if enabled.
+        elif self not in _hop_cache:
+            _hop_cache[self] = self.forward()
 
-        cache = hop_cache()
-
-        if self not in cache:
-            cache[self] = self.forward()
-
-        return cache[self]
+        return _hop_cache[self]
 
     @abc.abstractmethod
     def forward(self) -> object:
@@ -64,6 +68,22 @@ class Hop(abc.ABC):
 
         raise NotImplementedError
 
+    def replace(self, function: cabc.Callable[[Hop], Hop | None]) -> Hop:
+        """
+        Replace the current `node` with `function(node)` if it's not `None`,
+        or else recursively invoke `.replace(function)` on `Hop` in `.inputs()`.
+        """
+
+        if mapped := function(self):
+            return mapped
+
+        sub_dict = {
+            name: hop.replace(function)
+            for name, hop in dcls_asdict(self).items()
+            if isinstance(hop, Hop)
+        }
+        return dcls.replace(self, **sub_dict)
+
     def rebuild(self):
         """
         Rebuild the current `Hop`. This is useful when you are switching contexts,
@@ -77,6 +97,28 @@ class Hop(abc.ABC):
     @abc.abstractmethod
     def _rebuild(self) -> typing.Self:
         raise NotImplementedError
+
+    def inputs(self, recursive: bool = False) -> cabc.Iterator[Hop]:
+        for hop in decomp_dcls_members(self, Hop):
+            assert isinstance(hop, Hop)
+            yield from hop._sub_tree(recursive=recursive)
+
+    @property
+    def is_source(self) -> bool:
+        for _ in decomp_dcls_members(self, Hop):
+            return True
+        else:
+            return False
+
+    def _sub_tree(self, recursive: bool) -> cabc.Iterator[Hop]:
+        """
+        Get the inputs, maybe recursively.
+        """
+
+        yield self
+
+        if recursive:
+            yield from self._sub_tree(True)
 
 
 @ctxl.contextmanager
@@ -107,151 +149,73 @@ def hop_cache() -> AnyDict[Hop]:
     return _hop_cache
 
 
-@dcls.dataclass
-class HopNode:
+class HopGraph:
     """
-    `HopNode` is a node in DAG.
-    Since it stores indices, it only makes sense used by a `HopDag`.
-
-    In the future, make this more graph friendly (we need to decompose often).
+    The graph of `Hop`. Right now it stores the output nodes,
+    and use a pull strategy to pull in the data when called.
     """
 
-    dag: list[Hop]
-    "The dag of the node."
+    def __init__(self, *outputs: Hop) -> None:
+        self._outputs = outputs
+        "The output nodes."
 
-    idx: int
-    "The operator represented by this node is stored in this index.."
-
-    in_idxs: set[int] = dcls.field(default_factory=set)
-    "The input indices."
-
-    out_idxs: set[int] = dcls.field(default_factory=set)
-    "The output indices."
-
-    def __post_init__(self) -> None:
-        if not 0 <= self.idx < (length := len(self.dag)):
-            raise IndexError(f"The dag has size {length}, but {self.idx=}.")
-
-        if not all(0 <= ipt < self.idx for ipt in self.in_idxs):
-            raise IndexError(
-                f"Input index {self.in_idxs=} contains indices >= {self.idx=}."
-            )
-
-        if not all(self.idx < opt < length for opt in self.out_idxs):
-            raise IndexError(
-                f"Input index {self.out_idxs=} contains indices <= {self.idx=}."
-            )
-
-    @property
-    def hop(self) -> Hop:
-        return self.dag[self.idx]
-
-    @property
-    def num_inputs(self):
-        return len(self.in_idxs)
-
-    @property
-    def num_outputs(self):
-        return len(self.out_idxs)
-
-    def add_input(self, idx: int):
-        if idx >= self.idx:
-            raise IndexError(f"Input index {idx=} >= {self.idx=}.")
-
-        self.in_idxs.add(idx)
-
-    def add_output(self, idx: int):
-        if idx <= self.idx:
-            raise IndexError(f"Output index {idx=} <= {self.idx=}.")
-
-        self.out_idxs.add(idx)
-
-    def inputs(self) -> cabc.Generator[Hop]:
-        "Get the input hops."
-
-        for input in self.in_idxs:
-            yield self.dag[input]
-
-    def outputs(self) -> cabc.Generator[Hop]:
-        "Get the output hops."
-        for output in self.out_idxs:
-            yield self.dag[output]
-
-    @property
-    def is_input(self) -> bool:
-        return not self.in_idxs
-
-    @property
-    def is_output(self) -> bool:
-        return not self.out_idxs
-
-
-@dcls.dataclass
-class HopDag:
-    """
-    The DAG of `HopInit`s or `HopFwd`s.
-    """
-
-    nodes: list[HopNode]
-    "The ordered nodes."
-
-    def __len__(self):
-        return len(self.nodes)
-
-    def __getitem__(self, idx: int) -> Hop:
-        return self.nodes[idx].hop
+    def __len__(self) -> int:
+        return len(self.collect())
 
     def __iter__(self) -> cabc.Generator[Hop]:
-        for idx in range(len(self)):
-            yield self[idx]
+        yield from self.collect()
 
-    def __call__(self) -> list[object]:
-        "Evaluating the `HopInit`/`HopFwd`."
+    def __call__(self) -> AnyDict[Hop, object]:
+        """
+        Evaluating the `Hop` and get the result in an `AnyDict[Hop, object]`.
 
-        return [node.hop() for node in self.nodes]
+        This gets affected by whether or not `hop_cache_on` is activated.
+        """
+
+        result = AnyDict[Hop](Hop)
+        nodes = self.collect()
+
+        for node in nodes:
+            result[node] = node()
+
+        return result
+
+    def dag(self) -> list[Hop]:
+        "Order the `Hop`s in their topological order."
+
+        return topo_sort(DagNode(hop, list(hop.inputs())) for hop in self)
 
     @property
-    def input_nodes(self) -> list[Hop]:
-        "Get the input nodes."
-
-        return [node.hop for node in self.nodes if node.is_input]
+    def input_nodes(self) -> cabc.Iterator[Hop]:
+        for node in self.collect():
+            if node.is_source:
+                yield node
 
     @property
-    def output_nodes(self) -> list[Hop]:
-        "Get the output nodes."
+    def output_nodes(self) -> cabc.Iterator[Hop]:
+        yield from self._outputs
 
-        return [node.hop for node in self.nodes if node.is_output]
+    def replace(self, function: cabc.Callable[[Hop], Hop | None]) -> typing.Self:
+        outputs = [output.replace(function) for output in self._outputs]
+        return type(self)(*outputs)
 
-    @classmethod
-    def from_list_of_nodes(cls, nodes: list[Hop]) -> typing.Self:
-        ordered_hop = topo_sort([_to_dag_node(node) for node in nodes])
+    def collect(self) -> AnySet[Hop]:
+        """
+        Collect the input nodes into an `AnySet[Hop]`.
+        """
 
-        hop_nodes: list[HopNode] = []
-        hop_id_to_dag_idx = {id(hop): idx for idx, hop in enumerate(ordered_hop)}
+        visited: AnySet[Hop] = AnySet(Hop)
 
-        for idx, hop in enumerate(ordered_hop):
-            node = HopNode(ordered_hop, idx)
+        def _visit_node(hop: Hop) -> None:
+            if hop in visited:
+                return
 
-            deps_idxs = [
-                hop_id_to_dag_idx[id(dep)]
-                for dep in decomp_flatten(dcls_asdict(hop), Hop)
-            ]
+            visited.add(hop)
 
-            # Link them together.
-            for dep_idx in deps_idxs:
-                node.add_input(dep_idx)
-                hop_nodes[dep_idx].add_output(idx)
+            for node_input in decomp_dcls_members(hop, Hop):
+                _visit_node(node_input)
 
-            hop_nodes.append(node)
+        for output in self._outputs:
+            _visit_node(output)
 
-        return cls(hop_nodes)
-
-
-def _to_dag_node(hop: Hop) -> DagNode[Hop]:
-    """
-    The dependent `Hop`s. It's decomposed from the dataclass members.
-    """
-
-    # Flatten the dict version s.t. we do not include `self`.
-    deps: list[Hop] = list(decomp_flatten(dcls_asdict(hop), Hop))
-    return DagNode(key=hop, deps=deps)
+        return visited

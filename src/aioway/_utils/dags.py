@@ -24,7 +24,7 @@ class DagNode[T](typing.NamedTuple):
     The underlying data.
     """
 
-    deps: list[T]
+    deps: cabc.Sequence[T]
     """
     List of parents.
     """

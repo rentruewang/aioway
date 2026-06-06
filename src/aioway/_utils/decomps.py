@@ -18,6 +18,7 @@ __all__ = [
     "dcls_asdict",
     "decomp_block_items",
     "decomp_block_types",
+    "decomp_dcls_members",
 ]
 
 _decomp_block_items: tuple[typing.Any, ...] = None, NotImplemented, ..., True, False
@@ -104,7 +105,22 @@ def decomp_replace(
     return obj
 
 
-def decomp_flatten(obj, types: type | tuple[type, ...], /, strict: bool = False):
+def decomp_dcls_members(
+    obj, types: type | tuple[type, ...]
+) -> cabc.Iterator[typing.Any]:
+    """
+    Decompose dataclass members, 1 layer deep.
+    """
+
+    if not dcls.is_dataclass(obj):
+        raise TypeError(f"The input {obj} should be a dataclass object.")
+
+    yield from decomp_flatten(dcls_asdict(obj), types)
+
+
+def decomp_flatten(
+    obj, types: type | tuple[type, ...], /, strict: bool = False
+) -> cabc.Iterator[typing.Any]:
     "Decompose the object based on the desired type."
 
     if isinstance(obj, types):
