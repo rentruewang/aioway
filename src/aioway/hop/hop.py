@@ -165,6 +165,9 @@ class HopGraph:
     def __iter__(self) -> cabc.Generator[Hop]:
         yield from self.collect()
 
+    def __repr__(self):
+        return repr(list(self))
+
     def __call__(self) -> AnyDict[Hop, object]:
         """
         Evaluating the `Hop` and get the result in an `AnyDict[Hop, object]`.
