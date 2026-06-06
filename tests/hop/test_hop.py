@@ -58,6 +58,28 @@ def test_hop_linear(tensor_init: TensorHop, maybe_cache_hop):
     assert result.shape == (100, 31)
 
 
+def test_hop_replace_with_function(tensor_init: TensorHop):
+    def replace(hop):
+        if isinstance(hop, TensorHop):
+            return TensorHop(data=torch.randn(101, 31))
+
+        else:
+            return None
+
+    result = tensor_init.replace(replace)
+    assert isinstance(result, TensorHop)
+    assert result.data.shape == (101, 31)
+
+
+def test_hop_no_replace_with_function(tensor_init: TensorHop):
+    def replace(hop):
+        return None
+
+    result = tensor_init.replace(replace)
+    assert isinstance(result, TensorHop)
+    assert result.data.shape == (100, 30)
+
+
 def test_hop_linear_rebuild(tensor_init: TensorHop):
     with torch_fake_mode():
         linear = build_nn_hop(NnInitFn(nn.Linear, 30, 31), tensor_init)
