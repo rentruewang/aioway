@@ -27,9 +27,9 @@ def supervised(input_stream: TensorStream, target_stream: TensorStream):
 def test_just_linear_supervised(supervised: SupervisedAlgo):
     original = supervised.just_linear()
     dag = supervised()
-    assert len(dag) == len(original) + 2
+    assert len(dag.nodes()) == len(original.nodes()) + 2
 
-    for node in dag.output_nodes:
+    for node in dag.deps():
         assert isinstance(node, NnHop)
         assert isinstance(node.nn_init, NnInit)
 

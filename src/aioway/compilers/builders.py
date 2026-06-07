@@ -5,7 +5,7 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-from aioway.hop import HopGraph, Linear, TensorHop
+from aioway.hop import HopList, Linear, TensorHop
 from aioway.tags import AttrTag, TagDict
 
 __all__ = ["Builder", "builder_dcls", "JustLinearBuilder"]
@@ -19,7 +19,7 @@ def builder_dcls(cls):
 @builder_dcls
 class Builder(abc.ABC):
     @abc.abstractmethod
-    def __call__(self) -> HopGraph:
+    def __call__(self) -> HopList:
         """
         Compiles from a list of input and output tags.
         Returns `NotImplemented` if the current builder does not support the inputs outputs.
@@ -48,7 +48,7 @@ class JustLinearBuilder(Builder):
     out_attr: AttrTag
     "The output shape."
 
-    def __call__(self) -> HopGraph:
+    def __call__(self) -> HopList:
         try:
             in_attr = self.in_attr.to_attr()
             out_attr = self.out_attr.to_attr()
@@ -59,7 +59,7 @@ class JustLinearBuilder(Builder):
 
         linear_layer = Linear(in_attr.shape[-1], out_attr.shape[-1])
         linear_node = linear_layer.apply(input_node)
-        return HopGraph(linear_node)
+        return HopList([linear_node])
 
     def inputs(self) -> cabc.Iterator[TagDict]:
         yield TagDict.from_tags(self.in_attr)

@@ -110,6 +110,7 @@ def decomp_dcls_members(
 ) -> cabc.Iterator[typing.Any]:
     """
     Decompose dataclass members, 1 layer deep.
+    Using this still handles e.g. type `A` having `list[A]` as members.
     """
 
     if not dcls.is_dataclass(obj):

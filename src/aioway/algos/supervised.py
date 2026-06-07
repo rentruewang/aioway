@@ -5,7 +5,7 @@ from collections import abc as cabc
 
 from aioway._streams import TensorStream
 from aioway.compilers import Builder, JustLinearBuilder, builder_dcls
-from aioway.hop import HopGraph, MSELoss, TensorStreamHop
+from aioway.hop import HopList, MSELoss, TensorStreamHop
 from aioway.tags import AttrTag, TagDict
 
 __all__ = ["SupervisedAlgo"]
@@ -21,15 +21,16 @@ class SupervisedAlgo(Builder):
     target_data: TensorStream
 
     @typing.no_type_check
-    def __call__(self) -> HopGraph:
+    def __call__(self) -> HopList:
         builder = self.just_linear
         dag = builder()
 
-        [output_node] = dag.output_nodes
+        # Getting the `HopList` (which are the outputs)'s immediate dependencies.
+        [output_node] = dag.deps()
         stream_node = TensorStreamHop(self.target_data)
         loss_node = MSELoss().apply(output_node, stream_node)
 
-        return HopGraph(loss_node)
+        return HopList([loss_node])
 
     @property
     def just_linear(self) -> JustLinearBuilder:
