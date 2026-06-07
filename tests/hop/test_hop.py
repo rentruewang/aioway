@@ -3,9 +3,9 @@
 import pytest
 import torch
 from torch import nn
-
+import contextlib as ctxl
 from aioway._torch import is_fake_tensor, torch_fake_mode
-from aioway.hop import NnLayerHop, NnLossHop, TensorHop, build_nn_hop, hop_cache_on
+from aioway.hop import Hop, NnLayerHop, NnLossHop, TensorHop, build_nn_hop, hop_cache_on
 from aioway.modes import NnInitFn
 
 
@@ -28,6 +28,29 @@ def cache_off():
 @pytest.fixture(params=[cache_on.name, cache_off.name])
 def maybe_cache_hop(request: pytest.FixtureRequest):
     return request.getfixturevalue(request.param)
+
+
+@pytest.mark.parametrize("cache", [False, True])
+def test_hop_cache(cache: bool):
+    number: int = 0
+
+    class HopCacheLog(Hop):
+        def forward(self):
+            nonlocal number
+            number += 1
+            return number
+
+    logger = HopCacheLog()
+
+    cacher = hop_cache_on if cache else ctxl.nullcontext
+
+    with cacher():
+        assert number == 0, {"number": number, "cache": cache}
+        logger()
+        assert number == 1, {"number": number, "cache": cache}
+        logger()
+        logger()
+        assert number == (1 if cache else 3), {"number": number, "cache": cache}
 
 
 def test_layer_hop(layer_thunk, tensor_init: TensorHop, maybe_cache_hop):

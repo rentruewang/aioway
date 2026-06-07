@@ -3,7 +3,6 @@
 "The high level operators that are just torch functions / data."
 
 import abc
-import copy
 import typing
 from collections import abc as cabc
 
@@ -27,15 +26,6 @@ class TensorHop[T = torch.Tensor](Hop):
     @typing.override
     def forward(self) -> T:
         return self.data
-
-    @property
-    @typing.override
-    def requires_grad(self) -> bool:
-        return False
-
-    @typing.override
-    def _rebuild(self) -> typing.Self:
-        return copy.copy(self)
 
 
 @hop_dcls
@@ -65,10 +55,6 @@ class _CatStackHop(Hop, abc.ABC):
     @typing.override
     def requires_grad(self) -> bool:
         return any(t.requires_grad for t in self.tensors)
-
-    @typing.override
-    def _rebuild(self) -> typing.Self:
-        return copy.copy(self)
 
 
 @hop_dcls
