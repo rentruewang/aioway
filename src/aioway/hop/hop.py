@@ -11,13 +11,14 @@ from collections import abc as cabc
 
 from aioway._utils import (
     AnyDict,
+    AnySet,
     DagNode,
     dcls_asdict,
     decomp_dcls_members,
     topo_sort,
 )
 
-__all__ = ["Hop", "HopGraph", "hop_cache_on", "hop_cache"]
+__all__ = ["Hop", "HopList", "HopDict", "hop_cache_on", "hop_cache"]
 
 _hop_cache: AnyDict[Hop] | None = None
 "The cache instance for `Hop`."
@@ -132,10 +133,29 @@ class Hop(abc.ABC):
     def _rebuild(self) -> typing.Self:
         return copy.copy(self)
 
-    def inputs(self, recursive: bool = False) -> cabc.Iterator[Hop]:
+    def deps(self) -> cabc.Iterator[Hop]:
+        "Decompose `self`, get the immediate dependencies."
+
         for hop in decomp_dcls_members(self, Hop):
-            assert isinstance(hop, Hop)
-            yield from hop._sub_tree(recursive=recursive)
+            yield hop
+
+    def nodes(self) -> AnySet[Hop]:
+        "Get all the nodes recursively, including `self`."
+
+        nodes = AnySet[Hop](Hop)
+
+        # Add nodes recursively.
+        def _visit_nodes(hop: Hop):
+            if hop in nodes:
+                return
+
+            nodes.add(hop)
+
+            for dep in hop.deps():
+                _visit_nodes(dep)
+
+        _visit_nodes(self)
+        return nodes
 
     @property
     def is_source(self) -> bool:
@@ -146,35 +166,6 @@ class Hop(abc.ABC):
         else:
             return False
 
-    def collect(self) -> AnyDict[Hop, object]:
-        """
-        Collect the nodes and their outputs into an `AnyDict[Hop, object]`.
-        """
-
-        visited = AnyDict[Hop](Hop)
-
-        def _visit_node(hop: Hop) -> None:
-            if hop in visited:
-                return
-
-            visited[hop] = hop()
-
-            for node_input in decomp_dcls_members(hop, Hop):
-                _visit_node(node_input)
-
-        _visit_node(self)
-        return visited
-
-    def _sub_tree(self, recursive: bool) -> cabc.Iterator[Hop]:
-        """
-        Get the inputs, maybe recursively.
-        """
-
-        yield self
-
-        if recursive:
-            yield from self._sub_tree(True)
-
 
 class HopTensorList:
     """
@@ -182,55 +173,83 @@ class HopTensorList:
     """
 
 
-class HopGraph:
+@hop_dcls
+class HopList(Hop, cabc.Sequence[Hop]):
+    "A convenient list of `Hop`s."
+
+    hops: list[Hop]
     """
-    The graph of `Hop`. Right now it stores the output nodes,
-    and use a pull strategy to pull in the data when called.
+    The hop list that this `HopList` represents.
     """
 
-    def __init__(self, *outputs: Hop) -> None:
-        self._outputs = outputs
-        "The output nodes."
+    def __repr__(self) -> str:
+        return repr(self.hops)
 
     def __len__(self) -> int:
-        return len(self.collect())
+        return len(self.hops)
 
-    def __iter__(self) -> cabc.Generator[Hop]:
-        yield from self.collect()
+    @typing.overload
+    def __getitem__(self, key: int) -> Hop: ...
 
-    def __repr__(self):
-        return repr(list(self))
+    @typing.overload
+    def __getitem__(self, key: slice) -> typing.Self: ...
 
-    def __call__(self) -> AnyDict[Hop, object]:
-        """
-        Evaluating the `Hop` and get the result in an `AnyDict[Hop, object]`.
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return self.hops[key]
 
-        This gets affected by whether or not `hop_cache_on` is activated.
-        """
+        if isinstance(key, slice):
+            return type(self)(self.hops[key])
 
-        result = AnyDict[Hop](Hop)
-        nodes = self.collect()
+        raise TypeError(f"Don't know how to handle {type(key)=}.")
 
-        for node in nodes:
-            result[node] = node()
+    def __iter__(self) -> cabc.Iterator[Hop]:
+        yield from self.hops
 
-        return result
+    @typing.override
+    def forward(self) -> list[typing.Any]:
+        return [hop() for hop in self.hops]
 
     def dag(self) -> list[Hop]:
         "Order the `Hop`s in their topological order."
 
-        return topo_sort(DagNode(hop, list(hop.inputs())) for hop in self)
+        dag_nodes = [DagNode(key=hop, deps=list(hop.deps())) for hop in self.nodes()]
+        return topo_sort(dag_nodes)
 
-    @property
-    def input_nodes(self) -> cabc.Iterator[Hop]:
-        for node in self.collect():
-            if node.is_source:
-                yield node
 
-    @property
-    def output_nodes(self) -> cabc.Iterator[Hop]:
-        yield from self._outputs
+@hop_dcls
+class HopDict(Hop, cabc.Mapping[str, Hop]):
+    "A convenient dict of `Hop` (usually a dict)."
 
-    def replace(self, function: cabc.Callable[[Hop], Hop | None]) -> typing.Self:
-        outputs = [output.replace(function) for output in self._outputs]
-        return type(self)(*outputs)
+    hops: dict[str, Hop]
+    """
+    The hop dict that this `HopDict` represents.
+    """
+
+    def __repr__(self) -> str:
+        return repr(self.hops)
+
+    def __len__(self) -> int:
+        return len(self.hops)
+
+    def __getitem__(self, key: str) -> Hop:
+        return self.hops[key]
+
+    def __contains__(self, key: object) -> bool:
+        return key in self.hops
+
+    def __iter__(self) -> cabc.Generator[str]:
+        yield from self.hops
+
+    @typing.override
+    def keys(self) -> cabc.KeysView[str]:
+        return self.hops.keys()
+
+    @typing.override
+    def forward(self) -> dict[str, typing.Any]:
+        return {key: hop() for key, hop in self.hops.items()}
+
+    def to_hop_list(self) -> HopList:
+        "Convert to `HopList` (for their utilities like `.dag()`)."
+
+        return HopList(list(self.values()))

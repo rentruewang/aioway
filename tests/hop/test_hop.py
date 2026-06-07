@@ -1,9 +1,11 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import contextlib as ctxl
+
 import pytest
 import torch
 from torch import nn
-import contextlib as ctxl
+
 from aioway._torch import is_fake_tensor, torch_fake_mode
 from aioway.hop import Hop, NnLayerHop, NnLossHop, TensorHop, build_nn_hop, hop_cache_on
 from aioway.modes import NnInitFn
