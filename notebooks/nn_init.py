@@ -20,7 +20,7 @@
 from torch import nn
 
 # %%
-from aioway.hop import find_nn_init
+from aioway.nn import find_nn_init
 from aioway.modes import NnInitFn
 
 # %%
