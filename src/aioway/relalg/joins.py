@@ -9,8 +9,8 @@ import typing
 import tensordict as td
 import torch
 
-from aioway._streams import StreamState, TdictStream, stream_dcls
 from aioway.attrs import AttrDict
+from aioway.relalg import StreamState, TdictStream, stream_dcls
 
 from .sources import CacheStream
 

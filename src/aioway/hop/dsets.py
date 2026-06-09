@@ -6,7 +6,7 @@ import typing
 
 import torch
 
-from aioway._streams import TensorStream
+from aioway.relalg import TensorStream
 
 from .hop import Hop, hop_dcls
 

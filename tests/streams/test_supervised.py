@@ -3,10 +3,9 @@
 import pytest
 from torch import nn
 
-from aioway._streams import TensorStream
 from aioway.algos import SupervisedAlgo
 from aioway.nn import NnHop, NnInit
-from aioway.relalg import FrameStream
+from aioway.relalg import FrameStream, TensorStream
 
 
 @pytest.fixture

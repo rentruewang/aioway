@@ -2,6 +2,7 @@
 
 "Relation algebra related stream utilities."
 
+from ._streams import *
 from .joins import *
 from .maps import *
 from .sources import *

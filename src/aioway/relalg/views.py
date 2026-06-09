@@ -9,8 +9,8 @@ import tensordict as td
 import torch
 
 from aioway._frames import TdictFrame, TensorFrame, frame_dcls
-from aioway._streams import TdictStream, TensorStream, stream_dcls
 from aioway.attrs import Attr, AttrDict
+from aioway.relalg import TdictStream, TensorStream, stream_dcls
 
 __all__ = ["StreamColumnView", "StreamSelectView", "FrameColumnView", "FrameSelectView"]
 
