@@ -6,7 +6,7 @@ import typing
 
 from torch import nn
 
-from ..hop import Hop, hop_dcls
+from aioway.hop import Hop, hop_dcls
 
 if typing.TYPE_CHECKING:
     from .modules import NnInit

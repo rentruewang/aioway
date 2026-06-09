@@ -14,8 +14,8 @@ import tensordict as td
 from torch.utils import data
 
 from aioway._frames import TdictFrame
-from aioway._streams import TdictStream, stream_dcls
 from aioway.attrs import AttrDict
+from aioway.relalg import TdictStream, stream_dcls
 
 __all__ = [
     "BoundedStream",

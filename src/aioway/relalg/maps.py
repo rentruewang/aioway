@@ -10,9 +10,9 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway._streams import TdictStream, stream_dcls
 from aioway._torch import tdict_rename
 from aioway.attrs import AttrDict
+from aioway.relalg import TdictStream, stream_dcls
 
 __all__ = [
     "MapStream",

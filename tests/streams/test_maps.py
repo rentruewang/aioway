@@ -8,7 +8,6 @@ from collections import abc as cabc
 import pytest
 import tensordict as td
 
-from aioway._streams import StreamState, TdictStream, stream_dcls
 from aioway._torch import tdict_all_equal, tdict_rename
 from aioway.attrs import AttrDict
 from aioway.relalg import (
@@ -18,6 +17,9 @@ from aioway.relalg import (
     MapStream,
     ProjectStream,
     RenameStream,
+    StreamState,
+    TdictStream,
+    stream_dcls,
 )
 
 

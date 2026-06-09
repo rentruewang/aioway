@@ -3,9 +3,10 @@
 import typing
 from collections import abc as cabc
 
-from aioway._streams import TensorStream
 from aioway.compilers import Builder, JustLinearBuilder, builder_dcls
-from aioway.hop import HopList, MSELoss, TensorStreamHop
+from aioway.hop import HopList, TensorStreamHop
+from aioway.nn import MSELoss
+from aioway.relalg import TensorStream
 from aioway.tags import AttrTag, TagDict
 
 __all__ = ["SupervisedAlgo"]

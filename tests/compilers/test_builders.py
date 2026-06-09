@@ -5,7 +5,8 @@ from torch import nn
 
 from aioway.attrs import Attr
 from aioway.compilers import JustLinearBuilder
-from aioway.hop import HopList, Linear, NnLayerHop, TensorHop
+from aioway.hop import HopList, TensorHop
+from aioway.nn import Linear, NnLayerHop
 from aioway.tags import AttrTag
 
 

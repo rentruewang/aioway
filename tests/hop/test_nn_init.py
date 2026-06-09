@@ -3,8 +3,8 @@
 
 from torch import nn
 
-from aioway.hop import NnInit, Sequential, find_nn_init
 from aioway.modes import NnInitFn
+from aioway.nn import NnInit, Sequential, find_nn_init
 
 
 def test_layer_nn_init(layer_nn_init: NnInit):
