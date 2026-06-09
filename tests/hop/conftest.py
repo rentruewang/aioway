@@ -6,7 +6,7 @@ import pytest
 from torch import nn
 
 from aioway._utils import render_fcall
-from aioway.hop import NnInit, find_nn_init
+from aioway.nn import NnInit, find_nn_init
 from aioway.modes import NnInitFn
 
 

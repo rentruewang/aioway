@@ -5,7 +5,7 @@ import pathlib
 import pytest
 import torch
 
-from aioway.io._media import ImageLoader, PillowImageLoader, TvioImageLoader
+from aioway._media import ImageLoader, PillowImageLoader, TvioImageLoader
 from aioway.tags import IsImageTag, TagDict
 
 

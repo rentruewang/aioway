@@ -3,7 +3,7 @@
 
 from torch import nn
 
-from aioway.hop import NnInit, Sequential, find_nn_init
+from aioway.nn import NnInit, Sequential, find_nn_init
 from aioway.modes import NnInitFn
 
 

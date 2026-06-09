@@ -7,7 +7,8 @@ import torch
 from torch import nn
 
 from aioway._torch import is_fake_tensor, torch_fake_mode
-from aioway.hop import Hop, NnLayerHop, NnLossHop, TensorHop, build_nn_hop, hop_cache_on
+from aioway.hop import Hop, TensorHop, hop_cache_on
+from aioway.nn import NnLayerHop, NnLossHop, build_nn_hop
 from aioway.modes import NnInitFn
 
 

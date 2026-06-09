@@ -18,7 +18,7 @@ from aioway._utils import (
     topo_sort,
 )
 
-__all__ = ["Hop", "HopList", "HopDict", "hop_cache_on", "hop_cache"]
+__all__ = ["Hop", "HopList", "HopDict", "hop_dcls", "hop_cache_on", "hop_cache"]
 
 _hop_cache: AnyDict[Hop] | None = None
 "The cache instance for `Hop`."
