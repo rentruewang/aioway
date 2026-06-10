@@ -112,7 +112,7 @@ def _decomp_replace(
     obj,
     replace: cabc.Callable[..., object],
     memo: AnyDict[typing.Any, typing.Any],
-) -> object:
+) -> typing.Any:
 
     # If it returns a proper value, it will be replaced (if not in `memo`).
     # Things in `memo` are prioritized.
@@ -132,10 +132,10 @@ def _decomp_replace(
         return {key: _decomp_replace(elem, replace, memo) for key, elem in obj.items()}
 
     if not isinstance(obj, type) and dcls.is_dataclass(obj):
-        obj_type = type(obj)
+        obj_type: typing.Any = type(obj)
         fields = dcls_asdict(obj)
-        replaced: typing.Any = _decomp_replace(fields, replace, memo)
-        return obj_type(**replaced)
+        fields = _decomp_replace(fields, replace, memo)
+        return obj_type(**fields)
 
     return obj
 

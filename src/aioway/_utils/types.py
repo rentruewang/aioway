@@ -238,4 +238,4 @@ class AnyDict[K = typing.Any, V = typing.Any](AnySet[K]):
         assert super().__len__() == len(self.__vals)
 
     # Delete these methods.
-    add = discard = None
+    add = discard = typing.cast(typing.Any, None)
