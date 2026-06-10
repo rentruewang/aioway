@@ -2,16 +2,59 @@
 
 "The iterator for `Hop`."
 
-import abc
+import contextlib as ctxl
 import typing
 from collections import abc as cabc
 
-__all__ = ["HopIter", "HopGenIter"]
+from aioway._utils import AnyDict
+
+from .hop import Hop
+
+__all__ = ["HopIter", "hop_cache", "hop_cache_on"]
 
 
-class HopIter[T = typing.Any](cabc.Iterator, abc.ABC):
-    def __init__(self) -> None:
+_hop_cache: AnyDict[Hop] | None = None
+"The cache instance for `Hop`."
+
+
+@ctxl.contextmanager
+def hop_cache_on() -> cabc.Generator[AnyDict[Hop]]:
+    """
+    Turn on caching for `Hop`. Everytime you call `hop_cache_on`,
+    a new scope is created and so a new cache is created.
+    (The old cache still stays in memory so it'll still be "active").
+
+    Returns:
+        A context manager that when activates, intercept all `Hop.__call__` calls,
+        and stores the outputs s.t. second `.__call__()` uses the previous rersult.
+    """
+
+    global _hop_cache
+    before, _hop_cache = _hop_cache, AnyDict[Hop](Hop)
+
+    try:
+        yield _hop_cache
+    finally:
+        _hop_cache = before
+
+
+def hop_cache() -> AnyDict[Hop]:
+    """
+    The active cache for `Hop`. If there is no active session, raise `RuntimeError`.
+    """
+
+    if _hop_cache is None:
+        raise RuntimeError("`hop_cache` can only be called in `hop_cache_on` scope.")
+
+    return _hop_cache
+
+
+class HopIter[T = typing.Any](cabc.Iterator[T]):
+    def __init__(self, hop: Hop) -> None:
         self.__idx: int = 0
+        self.__gen = hop.iterate()
+        self.__result = NotImplemented
+        self._hop = hop
 
     def __iter__(self):
         return self
@@ -19,13 +62,19 @@ class HopIter[T = typing.Any](cabc.Iterator, abc.ABC):
     @typing.final
     def __next__(self) -> T:
         # If `StopIteration` is raised here, it's done.
-        result = self.read()
+        answer = self.read()
         self.__idx += 1
-        return result
+        return answer
 
-    @abc.abstractmethod
     def read(self) -> T:
-        raise NotImplementedError
+        if _hop_cache is None:
+            return next(self.__gen)
+
+        elif self.hop not in _hop_cache:
+            _hop_cache[self.hop] = next(self.__gen)
+
+        result: typing.Any = _hop_cache[self.hop]
+        return result
 
     @property
     def idx(self) -> int:
@@ -39,20 +88,6 @@ class HopIter[T = typing.Any](cabc.Iterator, abc.ABC):
 
         return self.idx != 0
 
-
-class HopGenIter[T = typing.Any](HopIter[T]):
-    def __init__(self, generator: cabc.Iterator[T]):
-        super().__init__()
-
-        self._generator = generator
-        """
-        The generator from which to yield.
-        """
-
-    @typing.override
-    def read(self) -> T:
-        return next(self._generator)
-
     @property
-    def generator(self) -> cabc.Iterator[T]:
-        return self.generator
+    def hop(self) -> Hop:
+        return self._hop

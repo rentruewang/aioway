@@ -3,7 +3,6 @@
 "The [h]igh level [o]peration [p]review class."
 
 import abc
-import contextlib as ctxl
 import copy
 import dataclasses as dcls
 import typing
@@ -13,7 +12,6 @@ import tensordict as td
 import torch
 
 from aioway._utils import (
-    AnyDict,
     AnySet,
     DagNode,
     dcls_asdict,
@@ -22,52 +20,7 @@ from aioway._utils import (
 )
 from aioway.attrs import Attr, AttrDict
 
-from .iters import HopGenIter, HopIter
-
-__all__ = [
-    "Hop",
-    "TensorHop",
-    "TdictHop",
-    "ListHop",
-    "hop_dcls",
-    "hop_cache_on",
-    "hop_cache",
-]
-
-_hop_cache: AnyDict[Hop, HopIter] | None = None
-"The cache instance for `Hop`."
-
-
-@ctxl.contextmanager
-def hop_cache_on() -> cabc.Generator[AnyDict[Hop, HopIter]]:
-    """
-    Turn on caching for `Hop`. Everytime you call `hop_cache_on`,
-    a new scope is created and so a new cache is created.
-    (The old cache still stays in memory so it'll still be "active").
-
-    Returns:
-        A context manager that when activates, intercept all `Hop.__call__` calls,
-        and stores the outputs s.t. second `.__call__()` uses the previous rersult.
-    """
-
-    global _hop_cache
-    before, _hop_cache = _hop_cache, AnyDict[Hop, HopIter](Hop)
-
-    try:
-        yield _hop_cache
-    finally:
-        _hop_cache = before
-
-
-def hop_cache() -> AnyDict[Hop, HopIter]:
-    """
-    The active cache for `Hop`. If there is no active session, raise `RuntimeError`.
-    """
-
-    if _hop_cache is None:
-        raise RuntimeError("`hop_cache` can only be called in `hop_cache_on` scope.")
-
-    return _hop_cache
+__all__ = ["Hop", "TensorHop", "TdictHop", "ListHop", "hop_dcls"]
 
 
 @typing.dataclass_transform()
@@ -89,19 +42,11 @@ class Hop[T](cabc.Iterable[T], abc.ABC):
         return id(self)
 
     @typing.final
-    def __iter__(self) -> HopIter[T]:
-        # Get a new `Iterator`, it's trivial to construct one,
-        # so long as we don't overwrite we are fine.
-        new_iter = HopGenIter(self.iterate())
+    def __iter__(self):
+        # Every iteration should yield a new `Iterator`.
+        from .iters import HopIter
 
-        if _hop_cache is None:
-            return new_iter
-
-        # Do the caching if enabled.
-        elif self not in _hop_cache:
-            _hop_cache[self] = new_iter
-
-        return _hop_cache[self]
+        return HopIter(self)
 
     @abc.abstractmethod
     def iterate(self) -> cabc.Iterator[T]:

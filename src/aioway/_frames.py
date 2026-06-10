@@ -79,9 +79,3 @@ class TdictFrame(Frame[td.TensorDict], abc.ABC):
         "The schema of the current frame."
 
         raise NotImplementedError
-
-    def column(self, col: str):
-        raise NotImplementedError
-
-    def select(self, *cols: str):
-        raise NotImplementedError

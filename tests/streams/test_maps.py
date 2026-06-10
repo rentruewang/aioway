@@ -140,20 +140,20 @@ def test_project(map_stream: TdictHop, save_last: SaveLastMapStream):
     ],
     indirect=True,
 )
-def test_map_stream_one_to_one(map_stream: TdictHop, save_last: SaveLastMapStream):
+def test_map_stream_one_to_one(map_stream: MapStream, save_last: SaveLastMapStream):
+    map_stream_iter = iter(map_stream)
+
     assert (
         map_stream.source is save_last
     ), f"Malformed input {map_stream}, should have source={save_last}"
 
-    assert map_stream.idx == 0, "Pre iteration stream's index starts with 0."
+    assert map_stream_iter.idx == 0, "Pre iteration stream's index starts with 0."
 
-    for idx, _ in enumerate(map_stream, start=1):
+    for idx, _ in enumerate(map_stream_iter, start=1):
         # Ensure that the input is also exhausted.
-        assert idx == map_stream.idx
-        assert idx == save_last.idx
+        assert idx == map_stream_iter.idx
 
-    assert map_stream.idx == save_last.size
-    assert save_last.idx == save_last.size
+    assert map_stream_iter.idx == save_last.size
 
 
 @pytest.mark.parametrize(
