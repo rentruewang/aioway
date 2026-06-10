@@ -9,9 +9,10 @@ import typing
 import numpy as np
 import tensordict as td
 
-from aioway._frames import TdictFrame, frame_dcls
 from aioway._utils import IntArray, is_list_of
 from aioway.attrs import AttrDict
+
+from .frames import TdictFrame, frame_dcls
 
 __all__ = ["TensorDictFrame", "TensorDictListFrame"]
 

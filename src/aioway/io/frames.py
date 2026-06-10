@@ -25,7 +25,7 @@ class _HasGetItem(typing.Protocol):
 
 
 @frame_dcls
-class Frame[T: _HasGetItem](data.Dataset[T], abc.ABC):
+class Frame[T: _HasGetItem](abc.ABC):
     """
     `Frame` represents a set of heterogenious data stored in memory,
     it is one of the main physical abstractions in `aioway` to represent eager computation.
