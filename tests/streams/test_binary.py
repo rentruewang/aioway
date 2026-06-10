@@ -63,19 +63,29 @@ def test_zip_input_len(
 
 @pytest.mark.parametrize("binary_stream", [_zip_builder], indirect=True)
 def test_zip(
-    binary_stream: TdictHop,
-    lhs_stream: TdictHop,
-    rhs_stream: TdictHop,
+    binary_stream: ZipStream,
+    lhs_stream: CacheStream,
+    rhs_stream: CacheStream,
 ):
-    assert not lhs_stream.started
-    assert not rhs_stream.started
-    assert not binary_stream.started
+    assert isinstance(binary_stream, ZipStream)
+    assert isinstance(lhs_stream, CacheStream)
+    assert isinstance(rhs_stream, CacheStream)
+
+    lhs_stream_iter = iter(lhs_stream)
+    rhs_stream_iter = iter(rhs_stream)
+    binary_stream_iter = iter(binary_stream)
+
+    assert not lhs_stream_iter.started
+    assert not rhs_stream_iter.started
+    assert not binary_stream_iter.started
+
     assert binary_stream.left is lhs_stream
     assert binary_stream.right is rhs_stream
     for result in binary_stream:
-        assert binary_stream.idx == lhs_stream.idx == rhs_stream.idx
+        assert binary_stream_iter.idx == lhs_stream_iter.idx == rhs_stream_iter.idx
         concat = td.merge_tensordicts(
-            lhs_stream[lhs_stream.idx - 1], rhs_stream[rhs_stream.idx - 1]
+            lhs_stream.saved[lhs_stream_iter.idx - 1],
+            rhs_stream.saved[rhs_stream_iter.idx - 1],
         )
         assert tdict_all_equal(result, concat)
 
@@ -214,14 +224,14 @@ def test_match_functionally(
 def test_binary_stream_in_list(
     binary_stream: NestedLoopJoinStream | ZipStream,
 ):
+    binary_stream_iter = iter(binary_stream)
     assert binary_stream.size, "The binary stream is empty."
+    assert binary_stream_iter.idx == 0, "Pre iteration stream's index starts with 0."
 
-    assert binary_stream.idx == 0, "Pre iteration stream's index starts with 0."
-
-    batches: list[Chunk] = []
-    for idx, batch in enumerate(binary_stream, start=1):
+    batches: list[td.TensorDict] = []
+    for idx, batch in enumerate(binary_stream_iter, start=1):
         # Ensure that the input is also exhausted.
-        assert idx == binary_stream.idx
+        assert idx == binary_stream_iter.idx
         batches.append(batch)
 
-    assert binary_stream.idx == binary_stream.size == len(batches)
+    assert binary_stream_iter.idx == binary_stream.size == len(batches)

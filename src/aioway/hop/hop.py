@@ -22,6 +22,8 @@ from aioway._utils import (
 )
 from aioway.attrs import Attr, AttrDict
 
+from .iters import HopGenIter, HopIter
+
 __all__ = [
     "Hop",
     "TensorHop",
@@ -32,12 +34,12 @@ __all__ = [
     "hop_cache",
 ]
 
-_hop_cache: AnyDict[Hop, cabc.Iterator] | None = None
+_hop_cache: AnyDict[Hop, HopIter] | None = None
 "The cache instance for `Hop`."
 
 
 @ctxl.contextmanager
-def hop_cache_on() -> cabc.Generator[AnyDict[Hop, cabc.Iterator]]:
+def hop_cache_on() -> cabc.Generator[AnyDict[Hop, HopIter]]:
     """
     Turn on caching for `Hop`. Everytime you call `hop_cache_on`,
     a new scope is created and so a new cache is created.
@@ -49,7 +51,7 @@ def hop_cache_on() -> cabc.Generator[AnyDict[Hop, cabc.Iterator]]:
     """
 
     global _hop_cache
-    before, _hop_cache = _hop_cache, AnyDict[Hop](Hop)
+    before, _hop_cache = _hop_cache, AnyDict[Hop, HopIter](Hop)
 
     try:
         yield _hop_cache
@@ -57,7 +59,7 @@ def hop_cache_on() -> cabc.Generator[AnyDict[Hop, cabc.Iterator]]:
         _hop_cache = before
 
 
-def hop_cache() -> AnyDict[Hop, cabc.Iterator]:
+def hop_cache() -> AnyDict[Hop, HopIter]:
     """
     The active cache for `Hop`. If there is no active session, raise `RuntimeError`.
     """
@@ -87,13 +89,17 @@ class Hop[T](cabc.Iterable[T], abc.ABC):
         return id(self)
 
     @typing.final
-    def __iter__(self) -> cabc.Iterator[T]:
+    def __iter__(self) -> HopIter[T]:
+        # Get a new `Iterator`, it's trivial to construct one,
+        # so long as we don't overwrite we are fine.
+        new_iter = HopGenIter(self.iterate())
+
         if _hop_cache is None:
-            return self.iterate()
+            return new_iter
 
         # Do the caching if enabled.
         elif self not in _hop_cache:
-            _hop_cache[self] = self.iterate()
+            _hop_cache[self] = new_iter
 
         return _hop_cache[self]
 

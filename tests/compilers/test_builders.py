@@ -32,4 +32,4 @@ def test_just_linear(input_space: AttrTag, output_space: AttrTag):
     assert linear_node.nn_init.in_features == 5
     assert linear_node.nn_init.out_features == 6
 
-    assert len([node.is_source for node in built])
+    assert len([node.is_source for node in built.hops])
