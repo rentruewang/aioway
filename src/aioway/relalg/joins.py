@@ -2,33 +2,32 @@
 
 "The binary `Stream`s that consumes 2 `Stream`s."
 
-import dataclasses as dcls
-import functools
 import typing
+from collections import abc as cabc
 
 import tensordict as td
 import torch
 
 from aioway.attrs import AttrDict
-from aioway.relalg import StreamState, TdictStream, stream_dcls
+from aioway.hop import TdictHop, hop_dcls
 
 from .sources import CacheStream
 
 __all__ = ["ZipStream", "NestedLoopJoinStream"]
 
 
-@stream_dcls
-class ZipStream(TdictStream):
+@hop_dcls
+class ZipStream(TdictHop):
     """
     `ZipStream` is similar to what `zip` does.
     """
 
-    left: TdictStream
+    left: TdictHop
     """
     The LHS stream.
     """
 
-    right: TdictStream
+    right: TdictHop
     """
     The RHS stream.
     """
@@ -44,23 +43,13 @@ class ZipStream(TdictStream):
         return self.left.attrs | self.right.attrs
 
     @typing.override
-    def read(self) -> td.TensorDict:
-        # Either one of those may raise `StopIteration`, at which point it is done.
-        left_batch = next(self.left)
-        right_batch = next(self.right)
-        return td.merge_tensordicts(left_batch, right_batch)
+    def iterate(self):
+        for left_batch, right_batch in zip(self.left, self.right):
+            yield td.merge_tensordicts(left_batch, right_batch)
 
 
-@dcls.dataclass
-class NestedState(StreamState):
-    lhs_batch: td.TensorDict | None = None
-
-    # It is necessary to save the last batch for the LHS,
-    # as it would be paired with multiple RHS batches.
-
-
-@stream_dcls
-class NestedLoopJoinStream(TdictStream):
+@hop_dcls
+class NestedLoopJoinStream(TdictHop):
     """
     This is a stream that combines 2 input streams in a nested-loop matter,
     as in `[[x, y] for x in left for y in right if x.key == y.key]`.
@@ -68,7 +57,7 @@ class NestedLoopJoinStream(TdictStream):
     The end result would be merged with `tensordict.merge_tensordicts`.
     """
 
-    left: TdictStream
+    left: TdictHop
     """
     LHS is a normal stream. Will only be iterated over once.
     """
@@ -93,16 +82,13 @@ class NestedLoopJoinStream(TdictStream):
     def attrs(self) -> AttrDict:
         return self.left.attrs | self.right.attrs
 
-    @functools.cached_property
-    def state(self) -> NestedState:
-        "The state for the nested loop."
-        return NestedState()
-
     @typing.override
-    def read(self) -> td.TensorDict:
-        lhs_batch = self._get_lhs()
-        rhs_batch = self._get_rhs()
+    def iterate(self) -> cabc.Generator[td.TensorDict]:
+        for lhs_batch in self.left:
+            for rhs_batch in self.right:
+                yield self.__iter_batch(lhs_batch, rhs_batch)
 
+    def __iter_batch(self, lhs_batch: td.TensorDict, rhs_batch: td.TensorDict):
         lhs_select = lhs_batch[self.key]
         rhs_select = rhs_batch[self.key]
 
@@ -115,23 +101,3 @@ class NestedLoopJoinStream(TdictStream):
         out = td.merge_tensordicts(lhs_batch[l], rhs_batch[r])
         assert len(out) == torch.sum(matrix)
         return out
-
-    def _get_lhs(self) -> td.TensorDict:
-        # Clear cache and re-evalaute.
-        if self._right_idx == 0:
-            self.state.lhs_batch = next(self.left)
-        assert self.state.lhs_batch is not None
-        return self.state.lhs_batch
-
-    def _get_rhs(self) -> td.TensorDict:
-        if self.idx < self.right.size:
-            out = next(self.right)
-            assert out is self.right[self._right_idx]
-        else:
-            assert len(self.right) == self.right.size
-            assert self.left.idx > 1
-        return self.right[self._right_idx]
-
-    @property
-    def _right_idx(self):
-        return self.idx % self.right.size

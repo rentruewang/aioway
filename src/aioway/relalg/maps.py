@@ -12,7 +12,7 @@ import torch
 
 from aioway._torch import tdict_rename
 from aioway.attrs import AttrDict
-from aioway.relalg import TdictStream, stream_dcls
+from aioway.hop import TdictHop, hop_dcls
 
 __all__ = [
     "MapStream",
@@ -23,8 +23,8 @@ __all__ = [
 ]
 
 
-@stream_dcls
-class MapStream(TdictStream, abc.ABC):
+@hop_dcls
+class MapStream(TdictHop, abc.ABC):
     """
     The shared base class for all the `map` like `Stream`s,
     which share the trait of::
@@ -41,13 +41,13 @@ class MapStream(TdictStream, abc.ABC):
         where each input row can correspond to one or multiple or 0 rows, in the same minibatch.
     """
 
-    source: TdictStream
+    source: TdictHop
     """
     The source stream that will be yielded from.
     """
 
     def __post_init__(self):
-        if not isinstance(self.source, TdictStream):
+        if not isinstance(self.source, TdictHop):
             raise ValueError(
                 f"{self.source=} should have been a `Stream`. Got {type(self.source)=}"
             )
@@ -76,15 +76,13 @@ class MapStream(TdictStream, abc.ABC):
         raise NotImplementedError
 
     @typing.override
-    @typing.final
-    def read(self) -> td.TensorDict:
-        # A `map` kind of `Stream` always calls `next` once on its source.
-        # May raise `StopIteration` here.
-        next_batch = next(self.source)
-        return self._apply(next_batch)
+    def iterate(self):
+        for batch in self.source:
+            batch = self._apply(batch)
+            yield batch
 
 
-@stream_dcls
+@hop_dcls
 class ApplyStream(MapStream):
     """
     A `Stream` that you can customize what the `__next__` function do.
@@ -116,7 +114,7 @@ class ApplyStream(MapStream):
         return self.schema(self.source.attrs)
 
 
-@stream_dcls
+@hop_dcls
 class FuncFilterStream(MapStream):
     """
     A `Stream` that filteres on its inputs, based on a preducate function.
@@ -144,7 +142,9 @@ class FuncFilterStream(MapStream):
                 f"Should return a boolean `torch.Tensor`. Got {pred.dtype}."
             )
 
-        return batch[pred]
+        result = batch[pred]
+        assert isinstance(result, td.TensorDict)
+        return result
 
     @property
     @typing.override
@@ -152,7 +152,7 @@ class FuncFilterStream(MapStream):
         return self.source.attrs
 
 
-@stream_dcls
+@hop_dcls
 class ProjectStream(MapStream):
     """
     Projection of the input table. The `subset` should be a subset of the input columns.
@@ -173,7 +173,7 @@ class ProjectStream(MapStream):
         return self.attrs.select(*self.subset)
 
 
-@stream_dcls
+@hop_dcls
 class RenameStream(MapStream):
     """
     Renames some columns in the inputs in the outputs.

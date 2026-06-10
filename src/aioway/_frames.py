@@ -79,13 +79,3 @@ class TdictFrame(Frame[td.TensorDict], abc.ABC):
         "The schema of the current frame."
 
         raise NotImplementedError
-
-    def column(self, col: str):
-        from aioway.relalg import FrameColumnView
-
-        return FrameColumnView(self, col)
-
-    def select(self, *cols: str):
-        from aioway.relalg import FrameSelectView
-
-        return FrameSelectView(self, cols)

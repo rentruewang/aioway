@@ -6,7 +6,7 @@ import typing
 
 from torch import nn
 
-from aioway.hop import Hop, hop_dcls
+from aioway.hop import Hop, TensorHop, hop_dcls
 
 if typing.TYPE_CHECKING:
     from .modules import NnInit
@@ -22,7 +22,7 @@ class NnHop(Hop, abc.ABC):
     module: nn.Module
     "The `nn.Module` initialized by `nn_init`."
 
-    input: Hop
+    input: TensorHop
     "The input of the `NnHop`. Should output a `torch.Tensor`."
 
     @typing.override
@@ -45,8 +45,9 @@ class NnLayerHop(NnHop):
     """
 
     @typing.override
-    def forward(self) -> object:
-        return self.module(self.input())
+    def iterate(self):
+        for input in self.input:
+            yield self.module(input)
 
     def parameters(self):
         "Pass forward the `.parameters()` of modules."
@@ -59,9 +60,10 @@ class NnLossHop(NnHop):
     The `Hop` subclass for loss functions that are `nn.Module`s.
     """
 
-    target: Hop
+    target: TensorHop
     "The target of the `NnLossHop`. Should output a `torch.Tensor`."
 
     @typing.override
-    def forward(self) -> object:
-        return self.module(self.input(), self.target())
+    def iterate(self):
+        for input, target in zip(self.input, self.target):
+            yield self.module(input, target)

@@ -5,7 +5,7 @@ from torch import nn
 
 from aioway.attrs import Attr
 from aioway.compilers import JustLinearBuilder
-from aioway.hop import HopList, TensorHop
+from aioway.hop import ListHop, TensorHop
 from aioway.nn import Linear, NnLayerHop
 from aioway.tags import AttrTag
 
@@ -28,8 +28,8 @@ def test_just_linear(input_space: AttrTag, output_space: AttrTag):
     assert isinstance(linear_node.module, nn.Linear)
     assert isinstance(linear_node.nn_init, Linear)
     assert isinstance(tensor_node, TensorHop)
-    assert isinstance(list_node, HopList)
+    assert isinstance(list_node, ListHop)
     assert linear_node.nn_init.in_features == 5
     assert linear_node.nn_init.out_features == 6
 
-    assert len([node.is_source for node in built])
+    assert len([node.is_source for node in built.hops])

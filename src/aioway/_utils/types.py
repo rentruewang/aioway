@@ -169,6 +169,9 @@ class AnySet[K = object]:
         self.__type: type[K] = base
         "Store the type for `isinstance` checks."
 
+    def __repr__(self):
+        return "{" + ", ".join(map(repr, self.__keys.values())) + "}"
+
     def __len__(self) -> int:
         return len(self.__keys)
 
@@ -203,6 +206,9 @@ class AnyDict[K = object, V = object](AnySet[K]):
         """
         The values refered to by the `key`, using `id` as key.
         """
+
+    def __repr__(self):
+        return "{" + ", ".join(f"{k}:{self[k]}" for k in self) + "}"
 
     def __getitem__(self, key: K, /) -> V:
         if key not in self:

@@ -4,8 +4,9 @@ import pytest
 from torch import nn
 
 from aioway.algos import SupervisedAlgo
+from aioway.hop import TensorHop
 from aioway.nn import NnHop, NnInit
-from aioway.relalg import FrameStream, TensorStream
+from aioway.relalg import FrameStream
 
 
 @pytest.fixture
@@ -19,14 +20,17 @@ def target_stream(table_stream: FrameStream):
 
 
 @pytest.fixture
-def supervised(input_stream: TensorStream, target_stream: TensorStream):
+def supervised(input_stream: TensorHop, target_stream: TensorHop):
     return SupervisedAlgo(input_stream, target_stream)
 
 
 def test_just_linear_supervised(supervised: SupervisedAlgo):
     original = supervised.just_linear()
     dag = supervised()
-    assert len(dag.nodes()) == len(original.nodes()) + 2
+    assert (
+        len(dag.nodes())
+        == len(original.nodes()) + len(supervised.target_data.nodes()) + 1
+    )
 
     for node in dag.deps():
         assert isinstance(node, NnHop)

@@ -8,59 +8,54 @@ import tensordict as td
 import torch
 
 from aioway._torch import tdict_all_equal
-from aioway.relalg import (
-    CacheStream,
-    ListStream,
-    NestedLoopJoinStream,
-    TdictStream,
-    ZipStream,
-)
+from aioway.hop import TdictHop
+from aioway.relalg import CacheStream, ListStream, NestedLoopJoinStream, ZipStream
 
 
 @pytest.fixture
-def lhs_stream(concat_stream: TdictStream) -> CacheStream:
+def lhs_stream(concat_stream: TdictHop) -> CacheStream:
     return CacheStream(concat_stream)
 
 
 @pytest.fixture
-def rhs_stream(joinable_stream: TdictStream) -> CacheStream:
+def rhs_stream(joinable_stream: TdictHop) -> CacheStream:
     return CacheStream(joinable_stream)
 
 
-def test_lhs_stream_length(concat_stream: TdictStream, lhs_stream: TdictStream):
+def test_lhs_stream_length(concat_stream: TdictHop, lhs_stream: TdictHop):
     assert concat_stream.size == lhs_stream.size
 
 
-def test_rhs_stream_length(joinable_stream: TdictStream, rhs_stream: CacheStream):
+def test_rhs_stream_length(joinable_stream: TdictHop, rhs_stream: CacheStream):
     assert joinable_stream.size == rhs_stream.size
 
 
 @pytest.fixture
 def binary_stream(
     request: pytest.FixtureRequest,
-    lhs_stream: TdictStream,
+    lhs_stream: TdictHop,
     rhs_stream: CacheStream,
 ):
     "An indirect fixture that takes in a builder function and outputs a stream."
 
-    builder: cabc.Callable[[TdictStream, TdictStream], TdictStream] = request.param
+    builder: cabc.Callable[[TdictHop, TdictHop], TdictHop] = request.param
 
     if not callable(builder):
         raise TypeError("Indirect fixture `binary_stream` only accepts functions.")
 
     result = builder(lhs_stream, rhs_stream)
-    assert isinstance(result, TdictStream)
+    assert isinstance(result, TdictHop)
     return result
 
 
-def _zip_builder(lhs_stream: TdictStream, rhs_stream: CacheStream):
+def _zip_builder(lhs_stream: TdictHop, rhs_stream: CacheStream):
     return ZipStream(left=lhs_stream, right=rhs_stream)
 
 
 @pytest.mark.parametrize("binary_stream", [_zip_builder], indirect=True)
 def test_zip_input_len(
-    binary_stream: TdictStream,
-    concat_stream: TdictStream,
+    binary_stream: TdictHop,
+    concat_stream: TdictHop,
     rhs_stream: CacheStream,
 ):
     assert min(concat_stream.size, rhs_stream.size) == binary_stream.size
@@ -68,31 +63,41 @@ def test_zip_input_len(
 
 @pytest.mark.parametrize("binary_stream", [_zip_builder], indirect=True)
 def test_zip(
-    binary_stream: TdictStream,
-    lhs_stream: TdictStream,
-    rhs_stream: TdictStream,
+    binary_stream: ZipStream,
+    lhs_stream: CacheStream,
+    rhs_stream: CacheStream,
 ):
-    assert not lhs_stream.started
-    assert not rhs_stream.started
-    assert not binary_stream.started
+    assert isinstance(binary_stream, ZipStream)
+    assert isinstance(lhs_stream, CacheStream)
+    assert isinstance(rhs_stream, CacheStream)
+
+    lhs_stream_iter = iter(lhs_stream)
+    rhs_stream_iter = iter(rhs_stream)
+    binary_stream_iter = iter(binary_stream)
+
+    assert not lhs_stream_iter.started
+    assert not rhs_stream_iter.started
+    assert not binary_stream_iter.started
+
     assert binary_stream.left is lhs_stream
     assert binary_stream.right is rhs_stream
     for result in binary_stream:
-        assert binary_stream.idx == lhs_stream.idx == rhs_stream.idx
+        assert binary_stream_iter.idx == lhs_stream_iter.idx == rhs_stream_iter.idx
         concat = td.merge_tensordicts(
-            lhs_stream[lhs_stream.idx - 1], rhs_stream[rhs_stream.idx - 1]
+            lhs_stream.saved[lhs_stream_iter.idx - 1],
+            rhs_stream.saved[rhs_stream_iter.idx - 1],
         )
         assert tdict_all_equal(result, concat)
 
 
-def _join_builder(lhs_stream: TdictStream, rhs_stream: CacheStream):
+def _join_builder(lhs_stream: TdictHop, rhs_stream: CacheStream):
     return NestedLoopJoinStream(left=lhs_stream, right=rhs_stream, key="i1d")
 
 
 @pytest.mark.parametrize("binary_stream", [_join_builder], indirect=True)
 def test_join_input_len(
-    binary_stream: TdictStream,
-    lhs_stream: TdictStream,
+    binary_stream: TdictHop,
+    lhs_stream: TdictHop,
     rhs_stream: CacheStream,
 ):
     assert binary_stream.size == lhs_stream.size * rhs_stream.size
@@ -155,8 +160,8 @@ def test_simple_nested_loop_join(
 
 @pytest.mark.parametrize("binary_stream", [_join_builder], indirect=True)
 def test_join_equal_as_original(
-    binary_stream: TdictStream,
-    lhs_stream: TdictStream,
+    binary_stream: TdictHop,
+    lhs_stream: TdictHop,
     rhs_stream: CacheStream,
 ):
     block_frame_block = td.cat(list(lhs_stream))
@@ -186,8 +191,8 @@ def test_join_equal_as_original(
 
 @pytest.mark.parametrize("binary_stream", [_join_builder], indirect=True)
 def test_match_functionally(
-    binary_stream: TdictStream,
-    lhs_stream: TdictStream,
+    binary_stream: TdictHop,
+    lhs_stream: TdictHop,
     rhs_stream: CacheStream,
 ):
     block_frame_block = td.cat(list(lhs_stream))
@@ -219,14 +224,14 @@ def test_match_functionally(
 def test_binary_stream_in_list(
     binary_stream: NestedLoopJoinStream | ZipStream,
 ):
+    binary_stream_iter = iter(binary_stream)
     assert binary_stream.size, "The binary stream is empty."
+    assert binary_stream_iter.idx == 0, "Pre iteration stream's index starts with 0."
 
-    assert binary_stream.idx == 0, "Pre iteration stream's index starts with 0."
-
-    batches: list[Chunk] = []
-    for idx, batch in enumerate(binary_stream, start=1):
+    batches: list[td.TensorDict] = []
+    for idx, batch in enumerate(binary_stream_iter, start=1):
         # Ensure that the input is also exhausted.
-        assert idx == binary_stream.idx
+        assert idx == binary_stream_iter.idx
         batches.append(batch)
 
-    assert binary_stream.idx == binary_stream.size == len(batches)
+    assert binary_stream_iter.idx == binary_stream.size == len(batches)
