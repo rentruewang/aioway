@@ -9,6 +9,9 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
+import tensordict as td
+import torch
+
 from aioway._utils import (
     AnyDict,
     AnySet,
@@ -17,15 +20,24 @@ from aioway._utils import (
     decomp_dcls_members,
     topo_sort,
 )
+from aioway.attrs import Attr, AttrDict
 
-__all__ = ["Hop", "HopList", "HopDict", "hop_dcls", "hop_cache_on", "hop_cache"]
+__all__ = [
+    "Hop",
+    "TensorHop",
+    "TdictHop",
+    "ListHop",
+    "hop_dcls",
+    "hop_cache_on",
+    "hop_cache",
+]
 
-_hop_cache: AnyDict[Hop] | None = None
+_hop_cache: AnyDict[Hop, cabc.Iterator] | None = None
 "The cache instance for `Hop`."
 
 
 @ctxl.contextmanager
-def hop_cache_on() -> cabc.Generator[AnyDict[Hop]]:
+def hop_cache_on() -> cabc.Generator[AnyDict[Hop, cabc.Iterator]]:
     """
     Turn on caching for `Hop`. Everytime you call `hop_cache_on`,
     a new scope is created and so a new cache is created.
@@ -45,7 +57,7 @@ def hop_cache_on() -> cabc.Generator[AnyDict[Hop]]:
         _hop_cache = before
 
 
-def hop_cache() -> AnyDict[Hop]:
+def hop_cache() -> AnyDict[Hop, cabc.Iterator]:
     """
     The active cache for `Hop`. If there is no active session, raise `RuntimeError`.
     """
@@ -62,8 +74,11 @@ def hop_dcls(cls: type):
 
 
 @hop_dcls
-class Hop(abc.ABC):
+class Hop[T](cabc.Iterable[T], abc.ABC):
     """
+    The class that defines [h]igh level [op]erations.
+    It produces iterators that computes the desired batch, represented by the node.
+
     `Hop` is the node that would be evaluated during run time.
     It will output `torch.Tensor` a container that makes up of them.
     """
@@ -72,20 +87,21 @@ class Hop(abc.ABC):
         return id(self)
 
     @typing.final
-    def __call__(self) -> object:
+    def __iter__(self) -> cabc.Iterator[T]:
         if _hop_cache is None:
-            return self.forward()
+            return self.iterate()
 
         # Do the caching if enabled.
         elif self not in _hop_cache:
-            _hop_cache[self] = self.forward()
+            _hop_cache[self] = self.iterate()
 
         return _hop_cache[self]
 
     @abc.abstractmethod
-    def forward(self) -> object:
+    def iterate(self) -> cabc.Iterator[T]:
         """
-        The forwarding logic. Should invoke dependencies' `__call__` methods.
+        The iteration logic.
+        Should invoke dependencies' via `__iter__` methods (just use `for` loops).
         """
 
         raise NotImplementedError
@@ -97,10 +113,10 @@ class Hop(abc.ABC):
         If `False`, much like `torch`'s `requires_grad`,
         gradient does not need to propagate to this node, and we can do a graph break.
 
-        Defaults to `False` if not overwritten.
+        Defaults to checking if any of the `self.deps()` have any `requires_grad`.
         """
 
-        return False
+        return any(hop.requires_grad for hop in self.deps())
 
     def replace(self, function: cabc.Callable[[Hop], Hop | None]) -> Hop:
         """
@@ -166,16 +182,64 @@ class Hop(abc.ABC):
         else:
             return False
 
+    @property
+    def size(self) -> int:
+        """
+        The length of the current stream `TdictHop`.
 
-class HopTensorList:
-    """
-    An output list, using a pull strategy to pull in the data when called.
-    """
+        This should be defined for relational algebra purposes.
+        """
+
+        return NotImplemented
 
 
 @hop_dcls
-class HopList(Hop, cabc.Sequence[Hop]):
-    "A convenient list of `Hop`s."
+class TensorHop(Hop[torch.Tensor], abc.ABC):
+    """
+    An iterator of batches of `torch.Tensor`.
+    """
+
+    @property
+    @abc.abstractmethod
+    def attr(self) -> Attr:
+        """
+        The schema for the current `Stream`.
+        """
+
+        raise NotImplementedError
+
+
+@hop_dcls
+class TdictHop(Hop[td.TensorDict], abc.ABC):
+    """
+    An iterator of batches of `td.TensorDict`.
+
+    This is the core abstraction used by the relational algebra operators.
+    """
+
+    @property
+    @abc.abstractmethod
+    def attrs(self) -> AttrDict:
+        """
+        The schema for the current `Stream`.
+        """
+
+        raise NotImplementedError
+
+    def column(self, col: str) -> TensorHop:
+        from aioway.relalg import StreamColumnView
+
+        return StreamColumnView(self, col)
+
+    def select(self, *cols: str) -> TdictHop:
+        from aioway.relalg import StreamSelectView
+
+        return StreamSelectView(self, cols)
+
+
+@hop_dcls
+class ListHop(Hop[cabc.Sequence[typing.Any]]):
+    "A convenient list of `Hop`s, using a pull strategy to pull in the data when called."
 
     hops: list[Hop]
     """
@@ -203,53 +267,13 @@ class HopList(Hop, cabc.Sequence[Hop]):
 
         raise TypeError(f"Don't know how to handle {type(key)=}.")
 
-    def __iter__(self) -> cabc.Iterator[Hop]:
-        yield from self.hops
-
     @typing.override
-    def forward(self) -> list[typing.Any]:
-        return [hop() for hop in self.hops]
+    def iterate(self):
+        for hops in zip(*self.hops):
+            yield hops
 
     def dag(self) -> list[Hop]:
         "Order the `Hop`s in their topological order."
 
         dag_nodes = [DagNode(key=hop, deps=list(hop.deps())) for hop in self.nodes()]
         return topo_sort(dag_nodes)
-
-
-@hop_dcls
-class HopDict(Hop, cabc.Mapping[str, Hop]):
-    "A convenient dict of `Hop` (usually a dict)."
-
-    hops: dict[str, Hop]
-    """
-    The hop dict that this `HopDict` represents.
-    """
-
-    def __repr__(self) -> str:
-        return repr(self.hops)
-
-    def __len__(self) -> int:
-        return len(self.hops)
-
-    def __getitem__(self, key: str) -> Hop:
-        return self.hops[key]
-
-    def __contains__(self, key: object) -> bool:
-        return key in self.hops
-
-    def __iter__(self) -> cabc.Generator[str]:
-        yield from self.hops
-
-    @typing.override
-    def keys(self) -> cabc.KeysView[str]:
-        return self.hops.keys()
-
-    @typing.override
-    def forward(self) -> dict[str, typing.Any]:
-        return {key: hop() for key, hop in self.hops.items()}
-
-    def to_hop_list(self) -> HopList:
-        "Convert to `HopList` (for their utilities like `.dag()`)."
-
-        return HopList(list(self.values()))

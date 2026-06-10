@@ -81,11 +81,7 @@ class TdictFrame(Frame[td.TensorDict], abc.ABC):
         raise NotImplementedError
 
     def column(self, col: str):
-        from aioway.relalg import FrameColumnView
-
-        return FrameColumnView(self, col)
+        raise NotImplementedError
 
     def select(self, *cols: str):
-        from aioway.relalg import FrameSelectView
-
-        return FrameSelectView(self, cols)
+        raise NotImplementedError

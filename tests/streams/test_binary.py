@@ -12,55 +12,55 @@ from aioway.relalg import (
     CacheStream,
     ListStream,
     NestedLoopJoinStream,
-    TdictStream,
+    TdictHop,
     ZipStream,
 )
 
 
 @pytest.fixture
-def lhs_stream(concat_stream: TdictStream) -> CacheStream:
+def lhs_stream(concat_stream: TdictHop) -> CacheStream:
     return CacheStream(concat_stream)
 
 
 @pytest.fixture
-def rhs_stream(joinable_stream: TdictStream) -> CacheStream:
+def rhs_stream(joinable_stream: TdictHop) -> CacheStream:
     return CacheStream(joinable_stream)
 
 
-def test_lhs_stream_length(concat_stream: TdictStream, lhs_stream: TdictStream):
+def test_lhs_stream_length(concat_stream: TdictHop, lhs_stream: TdictHop):
     assert concat_stream.size == lhs_stream.size
 
 
-def test_rhs_stream_length(joinable_stream: TdictStream, rhs_stream: CacheStream):
+def test_rhs_stream_length(joinable_stream: TdictHop, rhs_stream: CacheStream):
     assert joinable_stream.size == rhs_stream.size
 
 
 @pytest.fixture
 def binary_stream(
     request: pytest.FixtureRequest,
-    lhs_stream: TdictStream,
+    lhs_stream: TdictHop,
     rhs_stream: CacheStream,
 ):
     "An indirect fixture that takes in a builder function and outputs a stream."
 
-    builder: cabc.Callable[[TdictStream, TdictStream], TdictStream] = request.param
+    builder: cabc.Callable[[TdictHop, TdictHop], TdictHop] = request.param
 
     if not callable(builder):
         raise TypeError("Indirect fixture `binary_stream` only accepts functions.")
 
     result = builder(lhs_stream, rhs_stream)
-    assert isinstance(result, TdictStream)
+    assert isinstance(result, TdictHop)
     return result
 
 
-def _zip_builder(lhs_stream: TdictStream, rhs_stream: CacheStream):
+def _zip_builder(lhs_stream: TdictHop, rhs_stream: CacheStream):
     return ZipStream(left=lhs_stream, right=rhs_stream)
 
 
 @pytest.mark.parametrize("binary_stream", [_zip_builder], indirect=True)
 def test_zip_input_len(
-    binary_stream: TdictStream,
-    concat_stream: TdictStream,
+    binary_stream: TdictHop,
+    concat_stream: TdictHop,
     rhs_stream: CacheStream,
 ):
     assert min(concat_stream.size, rhs_stream.size) == binary_stream.size
@@ -68,9 +68,9 @@ def test_zip_input_len(
 
 @pytest.mark.parametrize("binary_stream", [_zip_builder], indirect=True)
 def test_zip(
-    binary_stream: TdictStream,
-    lhs_stream: TdictStream,
-    rhs_stream: TdictStream,
+    binary_stream: TdictHop,
+    lhs_stream: TdictHop,
+    rhs_stream: TdictHop,
 ):
     assert not lhs_stream.started
     assert not rhs_stream.started
@@ -85,14 +85,14 @@ def test_zip(
         assert tdict_all_equal(result, concat)
 
 
-def _join_builder(lhs_stream: TdictStream, rhs_stream: CacheStream):
+def _join_builder(lhs_stream: TdictHop, rhs_stream: CacheStream):
     return NestedLoopJoinStream(left=lhs_stream, right=rhs_stream, key="i1d")
 
 
 @pytest.mark.parametrize("binary_stream", [_join_builder], indirect=True)
 def test_join_input_len(
-    binary_stream: TdictStream,
-    lhs_stream: TdictStream,
+    binary_stream: TdictHop,
+    lhs_stream: TdictHop,
     rhs_stream: CacheStream,
 ):
     assert binary_stream.size == lhs_stream.size * rhs_stream.size
@@ -155,8 +155,8 @@ def test_simple_nested_loop_join(
 
 @pytest.mark.parametrize("binary_stream", [_join_builder], indirect=True)
 def test_join_equal_as_original(
-    binary_stream: TdictStream,
-    lhs_stream: TdictStream,
+    binary_stream: TdictHop,
+    lhs_stream: TdictHop,
     rhs_stream: CacheStream,
 ):
     block_frame_block = td.cat(list(lhs_stream))
@@ -186,8 +186,8 @@ def test_join_equal_as_original(
 
 @pytest.mark.parametrize("binary_stream", [_join_builder], indirect=True)
 def test_match_functionally(
-    binary_stream: TdictStream,
-    lhs_stream: TdictStream,
+    binary_stream: TdictHop,
+    lhs_stream: TdictHop,
     rhs_stream: CacheStream,
 ):
     block_frame_block = td.cat(list(lhs_stream))

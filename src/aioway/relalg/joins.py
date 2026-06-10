@@ -10,25 +10,26 @@ import tensordict as td
 import torch
 
 from aioway.attrs import AttrDict
-from aioway.relalg import StreamState, TdictStream, stream_dcls
+from aioway.hop import TdictHop, hop_dcls
 
+from ._streams import StreamState
 from .sources import CacheStream
 
 __all__ = ["ZipStream", "NestedLoopJoinStream"]
 
 
-@stream_dcls
-class ZipStream(TdictStream):
+@hop_dcls
+class ZipStream(TdictHop):
     """
     `ZipStream` is similar to what `zip` does.
     """
 
-    left: TdictStream
+    left: TdictHop
     """
     The LHS stream.
     """
 
-    right: TdictStream
+    right: TdictHop
     """
     The RHS stream.
     """
@@ -59,8 +60,8 @@ class NestedState(StreamState):
     # as it would be paired with multiple RHS batches.
 
 
-@stream_dcls
-class NestedLoopJoinStream(TdictStream):
+@hop_dcls
+class NestedLoopJoinStream(TdictHop):
     """
     This is a stream that combines 2 input streams in a nested-loop matter,
     as in `[[x, y] for x in left for y in right if x.key == y.key]`.
@@ -68,7 +69,7 @@ class NestedLoopJoinStream(TdictStream):
     The end result would be merged with `tensordict.merge_tensordicts`.
     """
 
-    left: TdictStream
+    left: TdictHop
     """
     LHS is a normal stream. Will only be iterated over once.
     """

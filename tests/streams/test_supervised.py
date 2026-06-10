@@ -5,7 +5,7 @@ from torch import nn
 
 from aioway.algos import SupervisedAlgo
 from aioway.nn import NnHop, NnInit
-from aioway.relalg import FrameStream, TensorStream
+from aioway.relalg import FrameStream, TensorHop
 
 
 @pytest.fixture
@@ -19,7 +19,7 @@ def target_stream(table_stream: FrameStream):
 
 
 @pytest.fixture
-def supervised(input_stream: TensorStream, target_stream: TensorStream):
+def supervised(input_stream: TensorHop, target_stream: TensorHop):
     return SupervisedAlgo(input_stream, target_stream)
 
 

@@ -4,9 +4,8 @@ import typing
 from collections import abc as cabc
 
 from aioway.compilers import Builder, JustLinearBuilder, builder_dcls
-from aioway.hop import HopList, TensorStreamHop
+from aioway.hop import ListHop, TensorHop
 from aioway.nn import MSELoss
-from aioway.relalg import TensorStream
 from aioway.tags import AttrTag, TagDict
 
 __all__ = ["SupervisedAlgo"]
@@ -18,20 +17,19 @@ class SupervisedAlgo(Builder):
     The supervised learning algorithm. Currently supports 1 input 1 output.
     """
 
-    input_data: TensorStream
-    target_data: TensorStream
+    input_data: TensorHop
+    target_data: TensorHop
 
     @typing.no_type_check
-    def __call__(self) -> HopList:
+    def __call__(self) -> ListHop:
         builder = self.just_linear
         dag = builder()
 
-        # Getting the `HopList` (which are the outputs)'s immediate dependencies.
+        # Getting the `ListHop` (which are the outputs)'s immediate dependencies.
         [output_node] = dag.deps()
-        stream_node = TensorStreamHop(self.target_data)
-        loss_node = MSELoss().apply(output_node, stream_node)
+        loss_node = MSELoss().apply(output_node, self.target_data)
 
-        return HopList([loss_node])
+        return ListHop([loss_node])
 
     @property
     def just_linear(self) -> JustLinearBuilder:

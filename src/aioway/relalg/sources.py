@@ -15,7 +15,7 @@ from torch.utils import data
 
 from aioway._frames import TdictFrame
 from aioway.attrs import AttrDict
-from aioway.relalg import TdictStream, stream_dcls
+from aioway.hop import TdictHop, hop_dcls
 
 __all__ = [
     "BoundedStream",
@@ -28,8 +28,8 @@ __all__ = [
 LOGGER = logging.getLogger(__name__)
 
 
-@stream_dcls
-class BoundedStream(TdictStream, abc.ABC):
+@hop_dcls
+class BoundedHop(TdictHop, abc.ABC):
     """
     A stream with `__len__` and `__getitem__`.
     """
@@ -40,14 +40,8 @@ class BoundedStream(TdictStream, abc.ABC):
 
         raise NotImplementedError
 
+    @typing.final
     def __getitem__(self, key):
-        if isinstance(key, int):
-            return self._getitem_int(key)
-
-        raise TypeError(f"Do not know how to handle {type(key)=}.")
-
-    @abc.abstractmethod
-    def _getitem_int(self, idx: int) -> td.TensorDict:
         """
         Get individual items. Does not support slice input.
 
@@ -58,58 +52,42 @@ class BoundedStream(TdictStream, abc.ABC):
             The `td.TensorDict` batch.
         """
 
+        if isinstance(key, int):
+            return self._getitem_int(key)
+
+        raise TypeError(f"Do not know how to handle {type(key)=}.")
+
+    @abc.abstractmethod
+    def _getitem_int(self, idx: int) -> td.TensorDict:
+
         raise NotImplementedError
 
 
-@stream_dcls
-class CacheStream(BoundedStream):
+@hop_dcls
+class CacheStream(BoundedHop):
     """
     Exhaust the input stream, store it into a cache for repeating access.
     """
 
-    stream: TdictStream
+    stream: TdictHop
     "The input stream."
 
     saved: list[td.TensorDict] = dcls.field(default_factory=list)
     "The cache for the input `Stream`."
 
     @typing.override
-    def __iter__(self) -> typing.Self:
-        return dcls.replace(self, stream=self.stream, saved=self.saved)
-
-    @typing.override
     def __len__(self) -> int:
         return len(self.saved)
 
     @typing.override
-    def _getitem_int(self, idx):
-        return self.saved[idx]
+    def iterate(self):
+        for batch in self.stream:
+            self.saved.append(batch)
+            yield batch
 
     @typing.override
-    def read(self) -> td.TensorDict:
-        LOGGER.debug(
-            "Executing `__iter__` for `CacheStream`. self.idx=%s, stream.idx=%s",
-            self.idx,
-            self.stream.idx,
-        )
-
-        if self.idx > self.stream.idx or self.idx > len(self.saved):
-            raise AssertionError(
-                "Invalid idx. Not synced properly with stream or cache."
-            )
-
-        # Try to get from `self.saved` first.
-        if self.idx < len(self):
-            return self._getitem_int(self.idx)
-
-        # Now all the previous ones still must all have been saved.
-        assert self.idx == len(self), f"{self.idx=} for {len(self)=}"
-
-        # This shall raise `StopIteration` after done.
-        # This may be fragile.
-        item = next(self.stream)
-        self.saved.append(item)
-        return item
+    def _getitem_int(self, idx):
+        return self.saved[idx]
 
     @property
     @typing.override
@@ -122,8 +100,8 @@ class CacheStream(BoundedStream):
         return self.stream.attrs
 
 
-@stream_dcls
-class ListStream(BoundedStream):
+@hop_dcls
+class ListStream(BoundedHop):
     "A `Stream` backed by a list of `TensorDict`."
 
     sequence: cabc.Sequence[td.TensorDict]
@@ -156,15 +134,12 @@ class ListStream(BoundedStream):
 
         raise ValueError("Chunks should have the same schema.")
 
-    @typing.override
-    def read(self) -> td.TensorDict:
-        if self.idx < self.size:
-            return self._getitem_int(self.idx)
-        else:
-            raise StopIteration
+    def iterate(self):
+        for batch in self.sequence:
+            yield batch
 
 
-@stream_dcls
+@hop_dcls
 class FrameStreamLoader:
     """
     The optoins for `data.DataLoader` on `Frame` in `FrameStream`.
@@ -183,8 +158,8 @@ class FrameStreamLoader:
     "How to sample in case when want to shuffle."
 
 
-@stream_dcls
-class FrameStream(TdictStream):
+@hop_dcls
+class FrameStream(TdictHop):
     """
     A `Stream` backed by a `Frame`.
     """
@@ -198,11 +173,9 @@ class FrameStream(TdictStream):
     """
 
     @typing.override
-    def read(self) -> td.TensorDict:
-        try:
-            return self._get_batch(self.idx)
-        except IndexError as ie:
-            raise StopIteration from ie
+    def iterate(self):
+        for batch in self._dataloader:
+            yield batch
 
     @functools.cached_property
     @typing.no_type_check
@@ -230,18 +203,6 @@ class FrameStream(TdictStream):
         drop_last = self.options.drop_last
         rounding = math.floor if drop_last else math.ceil
         return rounding(len(self.frame) / batch_size)
-
-    def _get_batch(self, idx: int) -> td.TensorDict:
-        batch_size = self.options.batch_size
-
-        if not -self.size <= idx < self.size:
-            raise IndexError(
-                f"Index {idx=} out of bounds for stream {self.size=}, "
-                f"backed by {self.frame}."
-            )
-
-        idx %= self.size
-        return self.frame.__getitems__(list(range(idx, idx + batch_size)))
 
 
 def _identity[T](item: T) -> T:

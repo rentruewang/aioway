@@ -1,10 +1,10 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 
-from aioway.relalg import TdictStream
+from aioway.hop import TdictHop
 
 
-def test_column_attr(table_stream: TdictStream):
+def test_column_attr(table_stream: TdictHop):
     attrs = table_stream.attrs
     first_key = list(attrs.keys())[0]
 
@@ -12,7 +12,7 @@ def test_column_attr(table_stream: TdictStream):
     assert table_stream.select(first_key).attrs == {first_key: attrs[first_key]}
 
 
-def test_select_attr(table_stream: TdictStream):
+def test_select_attr(table_stream: TdictHop):
     attrs = table_stream.attrs
     k_0, k_1 = list(attrs.keys())[:2]
 

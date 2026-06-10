@@ -4,9 +4,7 @@
 
 import typing
 
-import torch
-
-from aioway.relalg import TensorStream
+from aioway.relalg import TensorHop
 
 from .hop import Hop, hop_dcls
 
@@ -15,10 +13,10 @@ __all__ = ["TensorStreamHop"]
 
 @hop_dcls
 class TensorStreamHop(Hop):
-    stream: TensorStream
+    stream: TensorHop
 
-    def forward(self) -> torch.Tensor:
-        return next(self.stream)
+    def iterate(self):
+        yield from self.stream
 
     @property
     @typing.override
