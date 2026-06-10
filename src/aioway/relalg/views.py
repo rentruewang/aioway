@@ -11,7 +11,7 @@ import torch
 from aioway.attrs import Attr, AttrDict
 from aioway.hop import TdictHop, TensorHop, hop_dcls
 
-__all__ = ["StreamColumnView", "StreamSelectView", "FrameColumnView", "FrameSelectView"]
+__all__ = ["StreamColumnView", "StreamSelectView"]
 
 
 @hop_dcls

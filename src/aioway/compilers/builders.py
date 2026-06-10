@@ -5,7 +5,7 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-from aioway.hop import ListHop, TensorHop
+from aioway.hop import ListHop, TensorListHop
 from aioway.nn import Linear
 from aioway.tags import AttrTag, TagDict
 
@@ -56,7 +56,7 @@ class JustLinearBuilder(Builder):
         except TypeError:
             return NotImplemented
 
-        input_node = TensorHop(in_attr.to_fake_tensor())
+        input_node = TensorListHop([in_attr.to_fake_tensor()])
 
         linear_layer = Linear(in_attr.shape[-1], out_attr.shape[-1])
         linear_node = linear_layer.apply(input_node)

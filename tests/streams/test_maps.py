@@ -10,6 +10,7 @@ import tensordict as td
 
 from aioway._torch import tdict_all_equal, tdict_rename
 from aioway.attrs import AttrDict
+from aioway.hop import TdictHop, hop_dcls
 from aioway.relalg import (
     ApplyStream,
     CacheStream,
@@ -18,8 +19,6 @@ from aioway.relalg import (
     ProjectStream,
     RenameStream,
     StreamState,
-    TdictHop,
-    stream_dcls,
 )
 
 
@@ -30,7 +29,7 @@ class SaveLastState(StreamState):
     "The last batch."
 
 
-@stream_dcls
+@hop_dcls
 class SaveLastMapStream(MapStream):
     "`Stream` that saves the last `__next__` call."
 

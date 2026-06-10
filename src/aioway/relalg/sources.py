@@ -18,7 +18,7 @@ from aioway.attrs import AttrDict
 from aioway.hop import TdictHop, hop_dcls
 
 __all__ = [
-    "BoundedStream",
+    "BoundedHop",
     "CacheStream",
     "ListStream",
     "FrameStream",

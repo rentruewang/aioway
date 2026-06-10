@@ -8,9 +8,7 @@ from collections import abc as cabc
 
 import torch
 
-from aioway.hop import TensorHop
-
-from .hop import Hop, hop_dcls
+from .hop import Hop, TensorHop, hop_dcls
 
 __all__ = ["TensorHop", "CatHop", "StackHop"]
 

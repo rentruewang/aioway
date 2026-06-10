@@ -5,7 +5,8 @@ from torch import nn
 
 from aioway.algos import SupervisedAlgo
 from aioway.nn import NnHop, NnInit
-from aioway.relalg import FrameStream, TensorHop
+from aioway.relalg import FrameStream
+from aioway.hop import TensorHop, TdictHop
 
 
 @pytest.fixture

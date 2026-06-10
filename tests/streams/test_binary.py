@@ -8,13 +8,8 @@ import tensordict as td
 import torch
 
 from aioway._torch import tdict_all_equal
-from aioway.relalg import (
-    CacheStream,
-    ListStream,
-    NestedLoopJoinStream,
-    TdictHop,
-    ZipStream,
-)
+from aioway.hop import TdictHop
+from aioway.relalg import CacheStream, ListStream, NestedLoopJoinStream, ZipStream
 
 
 @pytest.fixture

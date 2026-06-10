@@ -2,9 +2,8 @@
 
 "The binary `Stream`s that consumes 2 `Stream`s."
 
-import dataclasses as dcls
-import functools
 import typing
+from collections import abc as cabc
 
 import tensordict as td
 import torch
@@ -12,7 +11,6 @@ import torch
 from aioway.attrs import AttrDict
 from aioway.hop import TdictHop, hop_dcls
 
-from ._streams import StreamState
 from .sources import CacheStream
 
 __all__ = ["ZipStream", "NestedLoopJoinStream"]
@@ -45,19 +43,9 @@ class ZipStream(TdictHop):
         return self.left.attrs | self.right.attrs
 
     @typing.override
-    def read(self) -> td.TensorDict:
-        # Either one of those may raise `StopIteration`, at which point it is done.
-        left_batch = next(self.left)
-        right_batch = next(self.right)
-        return td.merge_tensordicts(left_batch, right_batch)
-
-
-@dcls.dataclass
-class NestedState(StreamState):
-    lhs_batch: td.TensorDict | None = None
-
-    # It is necessary to save the last batch for the LHS,
-    # as it would be paired with multiple RHS batches.
+    def iterate(self):
+        for left_batch, right_batch in zip(self.left, self.right):
+            yield td.merge_tensordicts(left_batch, right_batch)
 
 
 @hop_dcls
@@ -94,16 +82,13 @@ class NestedLoopJoinStream(TdictHop):
     def attrs(self) -> AttrDict:
         return self.left.attrs | self.right.attrs
 
-    @functools.cached_property
-    def state(self) -> NestedState:
-        "The state for the nested loop."
-        return NestedState()
-
     @typing.override
-    def read(self) -> td.TensorDict:
-        lhs_batch = self._get_lhs()
-        rhs_batch = self._get_rhs()
+    def iterate(self) -> cabc.Generator[td.TensorDict]:
+        for lhs_batch in self.left:
+            for rhs_batch in self.right:
+                yield self.__iter_batch(lhs_batch, rhs_batch)
 
+    def __iter_batch(self, lhs_batch: td.TensorDict, rhs_batch: td.TensorDict):
         lhs_select = lhs_batch[self.key]
         rhs_select = rhs_batch[self.key]
 
@@ -116,23 +101,3 @@ class NestedLoopJoinStream(TdictHop):
         out = td.merge_tensordicts(lhs_batch[l], rhs_batch[r])
         assert len(out) == torch.sum(matrix)
         return out
-
-    def _get_lhs(self) -> td.TensorDict:
-        # Clear cache and re-evalaute.
-        if self._right_idx == 0:
-            self.state.lhs_batch = next(self.left)
-        assert self.state.lhs_batch is not None
-        return self.state.lhs_batch
-
-    def _get_rhs(self) -> td.TensorDict:
-        if self.idx < self.right.size:
-            out = next(self.right)
-            assert out is self.right[self._right_idx]
-        else:
-            assert len(self.right) == self.right.size
-            assert self.left.idx > 1
-        return self.right[self._right_idx]
-
-    @property
-    def _right_idx(self):
-        return self.idx % self.right.size

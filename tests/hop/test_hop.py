@@ -7,14 +7,14 @@ import torch
 from torch import nn
 
 from aioway._torch import is_fake_tensor, torch_fake_mode
-from aioway.hop import Hop, TensorHop, hop_cache_on
+from aioway.hop import Hop, TensorHop, hop_cache_on, TensorListHop
 from aioway.modes import NnInitFn
 from aioway.nn import NnLayerHop, NnLossHop, build_nn_hop
 
 
 @pytest.fixture
 def tensor_init():
-    return TensorHop(data=torch.randn(100, 30))
+    return TensorListHop([torch.randn(100, 30)])
 
 
 @pytest.fixture
@@ -79,7 +79,7 @@ def test_hop_linear(tensor_init: TensorHop, maybe_cache_hop):
     linear = build_nn_hop(NnInitFn(nn.Linear, 30, 31), tensor_init)
     assert linear
 
-    result = linear()
+    result = next(iter(linear))
     assert isinstance(result, torch.Tensor)
     assert result.shape == (100, 31)
 
@@ -87,14 +87,14 @@ def test_hop_linear(tensor_init: TensorHop, maybe_cache_hop):
 def test_hop_replace_with_function(tensor_init: TensorHop):
     def replace(hop):
         if isinstance(hop, TensorHop):
-            return TensorHop(data=torch.randn(101, 31))
+            return TensorListHop([torch.randn(101, 31)])
 
         else:
             return None
 
     result = tensor_init.replace(replace)
-    assert isinstance(result, TensorHop)
-    assert result.data.shape == (101, 31)
+    assert isinstance(result, TensorListHop)
+    assert result.sequence[0].shape == (101, 31)
 
 
 def test_hop_no_replace_with_function(tensor_init: TensorHop):
