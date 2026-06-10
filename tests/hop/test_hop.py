@@ -7,7 +7,8 @@ import torch
 from torch import nn
 
 from aioway._torch import is_fake_tensor, torch_fake_mode
-from aioway.hop import Hop, TensorHop, TensorListHop, hop_cache_on
+from aioway._utils import AnyDict
+from aioway.hop import Hop, StackHop, TensorHop, TensorListHop, hop_cache_on
 from aioway.modes import NnInitFn
 from aioway.nn import NnLayerHop, NnLossHop, build_nn_hop
 
@@ -84,22 +85,28 @@ def test_hop_linear(tensor_init: TensorHop, maybe_cache_hop):
     assert result.shape == (100, 31)
 
 
-def test_hop_replace_with_function(tensor_init: TensorHop):
-    def replace(hop):
-        if isinstance(hop, TensorHop):
-            return TensorListHop([torch.randn(101, 31)])
+def test_hop_replace_with_function(tensor_init: TensorListHop):
+    def replace_init(hop):
+        if not isinstance(hop, TensorListHop):
+            return NotImplemented
 
-        else:
-            return None
+        return TensorListHop([torch.randn(101, 31)])
 
-    result = tensor_init.replace(replace)
-    assert isinstance(result, TensorListHop)
-    assert result.sequence[0].shape == (101, 31)
+    memo = AnyDict()
+    stacked = StackHop([tensor_init, tensor_init])
+    replaced = stacked.replace(function=replace_init, memo=memo)
+    inputs = list(replaced.deps())
+    assert len(inputs) == 2
+    assert isinstance(inputs[0], TensorListHop)
+    assert isinstance(inputs[1], TensorListHop)
+
+    assert inputs[0] is inputs[1]
+    assert inputs[0].sequence[0].shape == (101, 31)
 
 
 def test_hop_no_replace_with_function(tensor_init: TensorHop):
     def replace(hop):
-        return None
+        return NotImplemented
 
     result = next(iter(tensor_init.replace(replace)))
     assert isinstance(result, torch.Tensor)

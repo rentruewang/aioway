@@ -8,13 +8,13 @@ from collections import abc as cabc
 
 import torch
 
-from .hop import Hop, TensorHop, hop_dcls
+from .hop import Hop, hop_dcls
 
-__all__ = ["TensorHop", "CatHop", "StackHop"]
+__all__ = ["CatHop", "StackHop"]
 
 
 @hop_dcls
-class _CatStackHop(TensorHop, abc.ABC):
+class _CatStackHop(Hop, abc.ABC):
     """
     The `Hop` implementation for `torch.cat` / `torch.stack`.
     """

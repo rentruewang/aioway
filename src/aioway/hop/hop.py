@@ -12,10 +12,11 @@ import tensordict as td
 import torch
 
 from aioway._utils import (
+    AnyDict,
     AnySet,
     DagNode,
-    dcls_asdict,
     decomp_dcls_members,
+    decomp_replace,
     topo_sort,
 )
 from aioway.attrs import Attr, AttrDict
@@ -69,21 +70,29 @@ class Hop[T](cabc.Iterable[T], abc.ABC):
 
         return any(hop.requires_grad for hop in self.deps())
 
-    def replace(self, function: cabc.Callable[[Hop], Hop | None]) -> Hop:
+    def replace(
+        self,
+        function: cabc.Callable[[Hop], Hop],
+        memo: AnyDict[typing.Any, typing.Any] | None = None,
+    ) -> typing.Self:
         """
         Replace the current `node` with `function(node)` if it's not `None`,
         or else recursively invoke `.replace(function)` on `Hop` in `.inputs()`.
+
+        Args:
+            function: The function to apply to the graph.
+            memo: The memo to use if given.
         """
 
-        if mapped := function(self):
-            return mapped
+        def maybe_replace(hop):
+            if not isinstance(hop, Hop):
+                return NotImplemented
 
-        sub_dict = {
-            name: hop.replace(function)
-            for name, hop in dcls_asdict(self).items()
-            if isinstance(hop, Hop)
-        }
-        return dcls.replace(self, **sub_dict)
+            return function(hop)
+
+        result: typing.Any = decomp_replace(self, maybe_replace, memo=memo)
+        assert type(result) == type(self)
+        return result
 
     def rebuild(self):
         """

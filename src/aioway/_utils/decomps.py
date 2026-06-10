@@ -11,9 +11,12 @@ import numpy as np
 import pandas as pd
 import torch
 
+from .types import AnyDict
+
 __all__ = [
     "replace_tensors",
     "decomp_flatten",
+    "decomp_replace",
     "find_nested_tensors",
     "dcls_asdict",
     "decomp_block_items",
@@ -64,8 +67,14 @@ def replace_tensors(
 
     from aioway.modes import mode_off
 
+    def maybe_replace(item):
+        if not isinstance(item, torch.Tensor):
+            return NotImplemented
+
+        return replace(item)
+
     with mode_off():
-        return decomp_replace(obj, torch.Tensor, replace)
+        return decomp_replace(obj, maybe_replace)
 
 
 def stop_decompose(obj: object) -> bool:
@@ -79,28 +88,54 @@ def stop_decompose(obj: object) -> bool:
 
 def decomp_replace(
     obj,
-    types: type | tuple[type, ...],
     replace: cabc.Callable[..., object],
+    memo: AnyDict[typing.Any, typing.Any] | None = None,
 ) -> object:
     """
-    Decompose and replace
+    Decompose and replace. When this is called, `replace(obj)` is directly invoked.
+    If it returns `NotImplemented`, then decomposing would continue.
+
+    Args:
+        obj: The object to maybe replace.
+        types: The types to replace.
+        replace: The replacer function.
+        memo:
+            Like `memo` in `__deepcopy__`,
+            this is s.t. don't replace the same item with different ones.
     """
 
-    if isinstance(obj, types):
-        return replace(obj)
+    memo = memo or AnyDict()
+    return _decomp_replace(obj, replace, memo)
+
+
+def _decomp_replace(
+    obj,
+    replace: cabc.Callable[..., object],
+    memo: AnyDict[typing.Any, typing.Any],
+) -> typing.Any:
+
+    # If it returns a proper value, it will be replaced (if not in `memo`).
+    # Things in `memo` are prioritized.
+    if (replaced := replace(obj)) is not NotImplemented:
+        if obj not in memo:
+            memo[obj] = replaced
+
+        return memo[obj]
 
     if stop_decompose(obj):
         return obj
 
     if isinstance(obj, cabc.Sequence):
-        return [decomp_replace(elem, types, replace) for elem in obj]
+        return [_decomp_replace(elem, replace, memo) for elem in obj]
 
     if isinstance(obj, cabc.Mapping):
-        return {key: decomp_replace(elem, types, replace) for key, elem in obj.items()}
+        return {key: _decomp_replace(elem, replace, memo) for key, elem in obj.items()}
 
-    if dcls.is_dataclass(obj):
-        obj = dcls_asdict(obj)
-        return decomp_replace(obj, types, replace)
+    if not isinstance(obj, type) and dcls.is_dataclass(obj):
+        obj_type: typing.Any = type(obj)
+        fields = dcls_asdict(obj)
+        fields = _decomp_replace(fields, replace, memo)
+        return obj_type(**fields)
 
     return obj
 

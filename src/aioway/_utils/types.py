@@ -154,23 +154,26 @@ class Stack[T]:
             self.append(item)
 
 
-class AnySet[K = object]:
+class AnySet[K = typing.Any]:
     """
     `AnySet` allows to store a set of items, using their `id`s to compare equality.
     """
 
-    def __init__(self, base: type = object, /) -> None:
+    def __init__(self, base: type | tuple[type, ...] = object, /) -> None:
         self.__keys: dict[int, K] = {}
         """
         The keys that has been stored in the `AnyDict`.
         Using `dict` to avoid actually dereference `id`.
         """
 
-        self.__type: type[K] = base
+        self.__type = base
         "Store the type for `isinstance` checks."
 
     def __repr__(self):
         return "{" + ", ".join(map(repr, self.__keys.values())) + "}"
+
+    def __bool__(self):
+        return bool(len(self))
 
     def __len__(self) -> int:
         return len(self.__keys)
@@ -193,13 +196,13 @@ class AnySet[K = object]:
             del self.__keys[id(key)]
 
 
-class AnyDict[K = object, V = object](AnySet[K]):
+class AnyDict[K = typing.Any, V = typing.Any](AnySet[K]):
     """
     `AnyDict` allows you to treat `T` as if it's `Hashable` (it's not).
     Each item would be compared with `is` rather than `==`.
     """
 
-    def __init__(self, base: type = object, /) -> None:
+    def __init__(self, base: type | tuple[type, ...] = object, /) -> None:
         super().__init__(base)
 
         self.__vals: dict[int, V] = {}
@@ -233,3 +236,6 @@ class AnyDict[K = object, V = object](AnySet[K]):
 
     def __assert_same_length(self):
         assert super().__len__() == len(self.__vals)
+
+    # Delete these methods.
+    add = discard = typing.cast(typing.Any, None)
