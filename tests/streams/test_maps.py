@@ -18,12 +18,11 @@ from aioway.relalg import (
     MapStream,
     ProjectStream,
     RenameStream,
-    StreamState,
 )
 
 
 @dcls.dataclass
-class SaveLastState(StreamState):
+class SaveLastState:
 
     last: td.TensorDict = dcls.field(init=False, repr=False)
     "The last batch."
