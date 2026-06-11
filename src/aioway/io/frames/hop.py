@@ -5,13 +5,15 @@
 import functools
 import math
 import typing
+from collections import abc as cabc
 
+import tensordict as td
 from torch.utils import data
 
 from aioway.attrs import AttrDict
 from aioway.hop import TdictHop, hop_dcls
 
-from .frames import TdictFrame
+from ..dsets import TdictFrame
 
 __all__ = ["FrameHopLoader", "FrameHop"]
 
@@ -50,7 +52,7 @@ class FrameHop(TdictHop):
     """
 
     @typing.override
-    def iterate(self):
+    def iterate(self) -> cabc.Generator[td.TensorDict]:
         for batch in self._dataloader:
             yield batch
 

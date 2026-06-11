@@ -13,11 +13,11 @@ from aioway.hop import TdictHop, hop_dcls
 
 from .sources import BoundedHop
 
-__all__ = ["ZipStream", "NestedLoopJoinStream"]
+__all__ = ["ZipHop", "NestedLoopJoinHop"]
 
 
 @hop_dcls
-class ZipStream(TdictHop):
+class ZipHop(TdictHop):
     """
     `ZipStream` is similar to what `zip` does.
     """
@@ -49,7 +49,7 @@ class ZipStream(TdictHop):
 
 
 @hop_dcls
-class NestedLoopJoinStream(TdictHop):
+class NestedLoopJoinHop(TdictHop):
     """
     This is a stream that combines 2 input streams in a nested-loop matter,
     as in `[[x, y] for x in left for y in right if x.key == y.key]`.

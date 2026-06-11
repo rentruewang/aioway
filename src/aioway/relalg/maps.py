@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"The `Stream`s that apply a transformation on the input `Stream`."
+"The `Hop`s that apply a transformation on the input `Hop`."
 
 import abc
 import dataclasses as dcls
@@ -15,18 +15,18 @@ from aioway.attrs import AttrDict
 from aioway.hop import TdictHop, hop_dcls
 
 __all__ = [
-    "MapStream",
-    "ApplyStream",
-    "FuncFilterStream",
-    "ProjectStream",
-    "RenameStream",
+    "MapHop",
+    "ApplyHop",
+    "FuncFilterHop",
+    "ProjectHop",
+    "RenameHop",
 ]
 
 
 @hop_dcls
-class MapStream(TdictHop, abc.ABC):
+class MapHop(TdictHop, abc.ABC):
     """
-    The shared base class for all the `map` like `Stream`s,
+    The shared base class for all the `map` like `Hop`s,
     which share the trait of::
 
         #. Having 1 child, named `source`.
@@ -83,9 +83,9 @@ class MapStream(TdictHop, abc.ABC):
 
 
 @hop_dcls
-class ApplyStream(MapStream):
+class ApplyHop(MapHop):
     """
-    A `Stream` that you can customize what the `__next__` function do.
+    A `Hop` that you can customize what the `__next__` function do.
 
     The full loop would be something like:
 
@@ -115,9 +115,9 @@ class ApplyStream(MapStream):
 
 
 @hop_dcls
-class FuncFilterStream(MapStream):
+class FuncFilterHop(MapHop):
     """
-    A `Stream` that filteres on its inputs, based on a preducate function.
+    A `Hop` that filteres on its inputs, based on a preducate function.
 
     The input is being used to generate predicate,
     and the output of predicate must be a boolean `torch.Tensor` of the same length as the input.
@@ -153,7 +153,7 @@ class FuncFilterStream(MapStream):
 
 
 @hop_dcls
-class ProjectStream(MapStream):
+class ProjectHop(MapHop):
     """
     Projection of the input table. The `subset` should be a subset of the input columns.
     """
@@ -174,7 +174,7 @@ class ProjectStream(MapStream):
 
 
 @hop_dcls
-class RenameStream(MapStream):
+class RenameHop(MapHop):
     """
     Renames some columns in the inputs in the outputs.
     """

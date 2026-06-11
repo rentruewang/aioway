@@ -12,13 +12,13 @@ import tensordict as td
 from aioway._utils import IntArray, is_list_of
 from aioway.attrs import AttrDict
 
-from .frames import TdictFrame, frame_dcls
+from ..dsets import TdictFrame, dset_dcls
 
 __all__ = ["TensorDictFrame", "TensorDictListFrame"]
 
 
 @typing.final
-@frame_dcls
+@dset_dcls
 class TensorDictFrame(TdictFrame):
     """
     A `Frame` backed by a `td.TensorDict` (aka a batch in `aioway`).
@@ -45,7 +45,7 @@ class TensorDictFrame(TdictFrame):
 
 
 @typing.final
-@frame_dcls
+@dset_dcls
 class TensorDictListFrame(TdictFrame):
     """
     A `Frame` backed by a `list[td.TensorDict]` (aka a batch in `aioway`).
