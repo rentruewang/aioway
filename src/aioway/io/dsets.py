@@ -13,13 +13,15 @@ from torch.utils import data
 
 from aioway.attrs import Attr, AttrDict
 from aioway.hop import Hop, hop_dcls
+from aioway.hop import TdictHop, TensorHop
 
 __all__ = [
-    "DataLoaderOpt",
-    "DataLoaderHop",
+    "LoaderOpt",
+    "LoaderHop",
     "Stream",
     "Sink",
     "Frame",
+    "dset_dcls",
     "TensorStream",
     "TdictStream",
     "TensorFrame",
@@ -28,7 +30,7 @@ __all__ = [
 
 
 @dcls.dataclass(frozen=True)
-class DataLoaderOpt:
+class LoaderOpt:
     """
     The optoins for `data.DataLoader` on `Frame` in `FrameStream`.
     """
@@ -47,17 +49,19 @@ class DataLoaderOpt:
 
 
 @hop_dcls
-class DataLoaderHop[T = typing.Any](Hop):
+class LoaderHop[T = typing.Any](Hop[T]):
     """
     A `Hop` backed by a `torch` `DataLoader`.
     """
+
+    _: dcls.KW_ONLY
 
     dset: data.Dataset[T]
     """
     The data loader that would be iterated over.
     """
 
-    opts: DataLoaderOpt
+    opts: LoaderOpt = LoaderOpt()
     """
     The options to pass to `DataLoader`.
     """
@@ -67,10 +71,68 @@ class DataLoaderHop[T = typing.Any](Hop):
         yield from loader
 
 
+@hop_dcls
+class TensorLoaderHop(LoaderHop[torch.Tensor], TensorHop):
+    """
+    Load tensors.
+    """
+
+    schema: Attr
+    "The attribute to check against."
+
+    @property
+    @typing.override
+    def attr(self) -> Attr:
+        return self.schema
+
+    @typing.override
+    def iterate(self) -> cabc.Generator[torch.Tensor]:
+        for batch in super().iterate():
+            if Attr.parse(batch) != self.attr:
+                raise ValueError(
+                    f"The yielded {batch=} does not match the {self.attr=}."
+                )
+
+            yield batch
+
+
+@hop_dcls
+class TdictLoaderHop(LoaderHop[td.TensorDict], TdictHop):
+    """
+    Load tensors.
+    """
+
+    schema: AttrDict
+    "The attribute to check against."
+
+    @property
+    @typing.override
+    def attrs(self) -> AttrDict:
+        return self.schema
+
+    @typing.override
+    def iterate(self) -> cabc.Generator[td.TensorDict]:
+        for batch in super().iterate():
+            if AttrDict.parse(batch) != self.attrs:
+                raise ValueError(
+                    f"The yielded {batch=} does not match the {self.attrs=}."
+                )
+
+            yield batch
+
+
+@typing.dataclass_transform()
+def dset_dcls(cls):
+    return dcls.dataclass(cls)
+
+
 class TensorAttrMixin(abc.ABC):
     """
     A `torch.Tensor` `Dataset` should also provide `.attr`.
     """
+
+    def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> TensorLoaderHop:
+        return TensorLoaderHop(dset=self, opts=opts, schema=self.attr)
 
     @property
     @abc.abstractmethod
@@ -83,41 +145,44 @@ class TdictAttrsMixin(abc.ABC):
     A `td.TensorDict` `Dataset` should also provide `.attr`.
     """
 
+    def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> TdictLoaderHop:
+        return TdictLoaderHop(dset=self, opts=opts, schema=self.attrs)
+
     @property
     @abc.abstractmethod
     def attrs(self) -> AttrDict:
         raise NotImplementedError
 
 
+@dset_dcls
 class Stream[T = typing.Any](data.IterableDataset[T], abc.ABC):
     """
     `Stream` represents a set of sequential data stored somewhere.
     Each item is a single row of data.
     """
 
-    def __init__(self):
-        super().__init__()
-
     @abc.abstractmethod
     def __iter__(self) -> cabc.Iterator[T]:
         raise NotImplementedError
 
-    def __call__(self, opts: DataLoaderOpt = DataLoaderOpt(), /) -> DataLoaderHop:
-        return DataLoaderHop(self, opts)
+    @abc.abstractmethod
+    def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> LoaderHop:
+        raise NotImplementedError
 
 
-class TensorStream(Stream[torch.Tensor], TensorAttrMixin, abc.ABC):
+class TensorStream(TensorAttrMixin, Stream[torch.Tensor], abc.ABC):
     """
     A `TensorStream` is a `Stream` of `torch.Tensor`s.
     """
 
 
-class TdictStream(Stream[td.TensorDict], TdictAttrsMixin, abc.ABC):
+class TdictStream(TdictAttrsMixin, Stream[td.TensorDict], abc.ABC):
     """
     A `TdictStream` is a `Stream` of `torch.Tensor`s.
     """
 
 
+@dset_dcls
 class Sink[T = typing.Any](abc.ABC):
     """
     Consumes a `Hop` and writes to some external location.
@@ -140,6 +205,7 @@ class Sink[T = typing.Any](abc.ABC):
         raise NotImplementedError
 
 
+@dset_dcls
 class Frame[T = typing.Any](data.Dataset[T], abc.ABC):
     """
     `Frame` is a `Stream` that supports random access.
@@ -170,17 +236,17 @@ class Frame[T = typing.Any](data.Dataset[T], abc.ABC):
 
         raise NotImplementedError
 
-    def __call__(self, opts: DataLoaderOpt = DataLoaderOpt(), /) -> DataLoaderHop:
-        return DataLoaderHop(self, opts)
+    def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> LoaderHop:
+        return LoaderHop(dset=self, opts=opts)
 
 
-class TensorFrame(Frame[torch.Tensor], TensorAttrMixin):
+class TensorFrame(TensorAttrMixin, Frame[torch.Tensor], abc.ABC):
     """
     A `torch.Tensor` dataset that supports random access.
     """
 
 
-class TdictFrame(Frame[torch.Tensor], TdictAttrsMixin):
+class TdictFrame(TdictAttrsMixin, Frame[td.TensorDict], abc.ABC):
     """
     A dataset of `td.TensorDict` that supports random access.
     """

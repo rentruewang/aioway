@@ -5,13 +5,7 @@ import pytest
 import tensordict as td
 from numpy import random
 
-from aioway.io import (
-    FrameHop,
-    FrameHopLoader,
-    TdictFrame,
-    TensorDictFrame,
-    TensorDictListFrame,
-)
+from aioway.io import LoaderHop, LoaderOpt, TdictFrame, TensorDictFrame
 from tests.fake import chunk_ok
 
 
@@ -21,11 +15,13 @@ def block_table(device: str, batch_size: int, data_size: int):
 
 
 def list_table(device: str, batch_size: int, data_size: int):
-    return TensorDictListFrame(
-        [
-            chunk_ok(size=batch_size, device=device)
-            for _ in range(0, data_size, batch_size)
-        ]
+    return TensorDictFrame(
+        td.cat(
+            [
+                chunk_ok(size=batch_size, device=device)
+                for _ in range(0, data_size, batch_size)
+            ]
+        )
     )
 
 
@@ -38,7 +34,7 @@ def frame(
 
 @pytest.fixture
 def table_stream(frame: TdictFrame, batch_size: int):
-    return FrameHop(frame, FrameHopLoader(batch_size=batch_size))
+    return frame(opts=LoaderOpt(batch_size=batch_size))
 
 
 def test_table_not_empty(frame: TdictFrame):

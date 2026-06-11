@@ -5,17 +5,17 @@ from torch import nn
 
 from aioway.algos import SupervisedAlgo
 from aioway.hop import TensorHop
-from aioway.io import FrameHop
+from aioway.io import LoaderHop
 from aioway.nn import NnHop, NnInit
 
 
 @pytest.fixture
-def input_stream(table_stream: FrameHop):
+def input_stream(table_stream: LoaderHop):
     return table_stream.column("f1d")
 
 
 @pytest.fixture
-def target_stream(table_stream: FrameHop):
+def target_stream(table_stream: LoaderHop):
     return table_stream.column("f2d")
 
 
