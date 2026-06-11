@@ -154,6 +154,7 @@ class TensorAttrMixin(data.Dataset[torch.Tensor], metaclass=abc.ABCMeta):
     """
 
     def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> TensorLoaderHop:
+        # Set batch size to the ones provided.
         attr = self.attr.set_dims({0: opts.batch_size})
         return TensorLoaderHop(dset=self, opts=opts, schema=attr)
 
@@ -175,11 +176,10 @@ class TdictAttrsMixin(data.Dataset[td.TensorDict], metaclass=abc.ABCMeta):
     """
 
     def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> TdictLoaderHop:
+        # Set batch size to the ones provided.
         attrs = AttrDict(
-            {
-                key: attr.set_dims({0: opts.batch_size})
-                for key, attr in self.attrs.items()
-            }
+            (key, attr.set_dims({0: opts.batch_size}))
+            for key, attr in self.attrs.items()
         )
 
         return TdictLoaderHop(dset=self, opts=opts, schema=attrs)
