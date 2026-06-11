@@ -3,6 +3,7 @@
 import pathlib
 import random
 import typing
+from collections import abc as cabc
 
 import git
 import pytest
@@ -18,6 +19,8 @@ _PROJECT_ROOT = pathlib.Path(__file__).parent.parent.resolve()
 _REPO = git.Repo(_PROJECT_ROOT)
 _MEDIA_DIR = _PROJECT_ROOT / "media"
 _NOTEBOOKS_DIR = _PROJECT_ROOT / "notebooks"
+_SRC_DIR = _PROJECT_ROOT / "src"
+_TESTS_DIR = _PROJECT_ROOT / "tests"
 _GITIGNORE = _PROJECT_ROOT / ".gitignore"
 
 
@@ -38,13 +41,16 @@ def _file_paths():
         yield a_path
 
 
-def file_paths():
+def file_paths() -> cabc.Generator[pathlib.Path]:
+    "The file paths that are in this repo, tracked or not."
+
     for fp in _file_paths():
         if (path := pathlib.Path(fp).resolve()).exists():
             yield path
 
 
-def git_files(folder: pathlib.Path):
+def git_files(folder: pathlib.Path) -> cabc.Generator[pathlib.Path]:
+    "The git files under `folder`."
     files = set(file_paths())
 
     for path in files:
@@ -52,10 +58,16 @@ def git_files(folder: pathlib.Path):
             yield path
 
 
-def python_git_files(folder: pathlib.Path):
+def python_git_files(folder: pathlib.Path) -> cabc.Generator[pathlib.Path]:
+    "The git files that are python."
+
     for file in git_files(folder):
         if file.suffix == ".py":
             yield file
+
+
+def _relative_to_root(path: pathlib.Path) -> pathlib.Path:
+    return path.relative_to(_PROJECT_ROOT)
 
 
 @pytest.fixture(scope="module")
@@ -81,6 +93,20 @@ def _notebooks():
 
 @pytest.fixture(scope="module", params=_notebooks(), ids=lambda path: path.name)
 def notebook(request: pytest.FixtureRequest):
+    return request.param
+
+
+def _src_tests():
+    yield from python_git_files(_SRC_DIR)
+    yield from python_git_files(_TESTS_DIR)
+
+
+@pytest.fixture(
+    scope="module",
+    params=_src_tests(),
+    ids=lambda path: str(_relative_to_root(path)),
+)
+def src_test_py(request: pytest.FixtureRequest):
     return request.param
 
 
