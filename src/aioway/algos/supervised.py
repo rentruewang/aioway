@@ -6,7 +6,7 @@ from collections import abc as cabc
 from aioway.compilers import Builder, JustLinearBuilder, builder_dcls
 from aioway.hop import ListHop, TensorHop
 from aioway.nn import MSELoss
-from aioway.tags import AttrTag, TagDict
+from aioway.tags import TagDict
 
 __all__ = ["SupervisedAlgo"]
 
@@ -33,13 +33,16 @@ class SupervisedAlgo(Builder):
 
     @property
     def just_linear(self) -> JustLinearBuilder:
-        return JustLinearBuilder(
-            AttrTag.from_attr(self.input_data.attr),
-            AttrTag.from_attr(self.target_data.attr),
-        )
+        raise NotImplementedError
+        # return JustLinearBuilder(
+        #     AttrTag.from_attr(self.input_data.attr),
+        #     AttrTag.from_attr(self.target_data.attr),
+        # )
 
     def inputs(self) -> cabc.Iterator[TagDict]:
-        yield TagDict.from_tags(AttrTag.from_attr(self.input_data.attr))
+        raise NotImplementedError
+        # yield TagDict.from_tags(AttrTag.from_attr(self.input_data.attr))
 
     def outputs(self) -> cabc.Iterator[TagDict]:
-        yield TagDict.from_tags(AttrTag.from_attr(self.target_data.attr))
+        raise NotImplementedError
+        # yield TagDict.from_tags(AttrTag.from_attr(self.target_data.attr))

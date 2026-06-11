@@ -48,12 +48,6 @@ class TensorDictFrame(TdictFrame):
         assert isinstance(ret, td.TensorDict)
         return ret.auto_batch_size_()
 
-    @typing.override
-    def _batch_attrs(self) -> AttrDict:
-        attrs = AttrDict.parse(self.data)
-        attrs = AttrDict({key: attr.set_dims({0: -1}) for key, attr in attrs.items()})
-        return attrs
-
 
 @hop_dcls
 class SourceListHop(BoundedHop):
@@ -74,11 +68,6 @@ class SourceListHop(BoundedHop):
     @typing.override
     def size(self) -> int:
         return len(self.sequence)
-
-    @property
-    @typing.override
-    def attrs(self) -> AttrDict:
-        return self._schema
 
     @functools.cached_property
     def _schema(self) -> AttrDict:

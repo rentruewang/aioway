@@ -8,7 +8,6 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway.attrs import AttrDict
 from aioway.hop import BoundedHop, TdictHop, hop_dcls
 
 __all__ = ["ZipHop", "NestedLoopJoinHop"]
@@ -34,11 +33,6 @@ class ZipHop(TdictHop):
     @typing.override
     def size(self) -> int:
         return min(self.left.size, self.right.size)
-
-    @property
-    @typing.override
-    def attrs(self) -> AttrDict:
-        return self.left.attrs | self.right.attrs
 
     @typing.override
     def iterate(self):
@@ -74,11 +68,6 @@ class NestedLoopJoinHop(TdictHop):
     @typing.override
     def size(self) -> int:
         return self.left.size * self.right.size
-
-    @property
-    @typing.override
-    def attrs(self) -> AttrDict:
-        return self.left.attrs | self.right.attrs
 
     @typing.override
     def iterate(self) -> cabc.Generator[td.TensorDict]:

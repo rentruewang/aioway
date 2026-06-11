@@ -12,7 +12,6 @@ import torch
 from torch.utils import data
 
 from aioway._utils import HasLen
-from aioway.attrs import Attr, AttrDict
 from aioway.hop import Hop, TdictHop, TensorHop, hop_dcls
 
 __all__ = [
@@ -92,51 +91,15 @@ class LoaderHop[T = typing.Any](Hop[T]):
 @hop_dcls
 class TensorLoaderHop(LoaderHop[torch.Tensor], TensorHop):
     """
-    Load tensors.
+    A `Hop` to load `torch.Tensor`.
     """
-
-    schema: Attr
-    "The attribute to check against."
-
-    @property
-    @typing.override
-    def attr(self) -> Attr:
-        return self.schema
-
-    @typing.override
-    def iterate(self) -> cabc.Generator[torch.Tensor]:
-        for batch in super().iterate():
-            if Attr.parse(batch) != self.attr:
-                raise ValueError(
-                    f"The yielded {batch=} does not match the {self.attr=}."
-                )
-
-            yield batch
 
 
 @hop_dcls
 class TdictLoaderHop(LoaderHop[td.TensorDict], TdictHop):
     """
-    Load tensors.
+    A `Hop` to load `td.TensorDict`.
     """
-
-    schema: AttrDict
-    "The attribute to check against."
-
-    @property
-    @typing.override
-    def attrs(self) -> AttrDict:
-        return self.schema
-
-    @typing.override
-    def iterate(self) -> cabc.Generator[td.TensorDict]:
-        for batch in super().iterate():
-            if AttrDict.parse(batch) != self.attrs:
-                raise ValueError(
-                    f"The yielded {batch=} does not match the {self.attrs=}."
-                )
-
-            yield batch
 
     @typing.override
     def _dataloader(self) -> data.DataLoader[td.TensorDict]:
@@ -155,19 +118,7 @@ class TensorAttrMixin(data.Dataset[torch.Tensor], metaclass=abc.ABCMeta):
 
     def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> TensorLoaderHop:
         # Set batch size to the ones provided.
-        attr = self.attr.set_dims({0: opts.batch_size})
-        return TensorLoaderHop(dset=self, opts=opts, schema=attr)
-
-    @property
-    @typing.final
-    def attr(self) -> Attr:
-        attr = self._batch_attr()
-        assert attr.shape[0] == -1
-        return attr
-
-    @abc.abstractmethod
-    def _batch_attr(self) -> Attr:
-        raise NotImplementedError
+        return TensorLoaderHop(dset=self, opts=opts)
 
 
 class TdictAttrsMixin(data.Dataset[td.TensorDict], metaclass=abc.ABCMeta):
@@ -176,27 +127,7 @@ class TdictAttrsMixin(data.Dataset[td.TensorDict], metaclass=abc.ABCMeta):
     """
 
     def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> TdictLoaderHop:
-        # Set batch size to the ones provided.
-        attrs = AttrDict(
-            (key, attr.set_dims({0: opts.batch_size}))
-            for key, attr in self.attrs.items()
-        )
-
-        return TdictLoaderHop(dset=self, opts=opts, schema=attrs)
-
-    @property
-    @typing.final
-    def attrs(self) -> AttrDict:
-        attrs = self._batch_attrs()
-
-        for key, attr in attrs.items():
-            assert attr.shape[0] == -1, f"{key=} first dimension should be -1."
-
-        return attrs
-
-    @abc.abstractmethod
-    def _batch_attrs(self) -> AttrDict:
-        raise NotImplementedError
+        return TdictLoaderHop(dset=self, opts=opts)
 
 
 @dset_dcls

@@ -5,7 +5,7 @@ import typing
 from collections import abc as cabc
 
 import numpy as np
-import torch, types
+import torch
 
 from aioway._utils import is_list_of, is_tuple_of
 

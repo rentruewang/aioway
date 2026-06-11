@@ -19,7 +19,6 @@ from aioway._utils import (
     decomp_replace,
     topo_sort,
 )
-from aioway.attrs import Attr, AttrDict
 
 __all__ = ["hop_dcls", "Hop", "TensorHop", "TdictHop", "ListHop", "BoundedHop"]
 
@@ -159,15 +158,6 @@ class TensorHop(Hop[torch.Tensor], abc.ABC):
     An iterator of batches of `torch.Tensor`.
     """
 
-    @property
-    @abc.abstractmethod
-    def attr(self) -> Attr:
-        """
-        The schema for the current `Hop`.
-        """
-
-        raise NotImplementedError
-
 
 @hop_dcls
 class TdictHop(Hop[td.TensorDict], abc.ABC):
@@ -176,15 +166,6 @@ class TdictHop(Hop[td.TensorDict], abc.ABC):
 
     This is the core abstraction used by the relational algebra operators.
     """
-
-    @property
-    @abc.abstractmethod
-    def attrs(self) -> AttrDict:
-        """
-        The schema for the current `Hop`.
-        """
-
-        raise NotImplementedError
 
     def column(self, col: str) -> TensorHop:
         from aioway.relalg import HopColumnView

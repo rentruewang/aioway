@@ -108,11 +108,6 @@ class ApplyHop(MapHop):
     def _apply(self, batch: td.TensorDict) -> td.TensorDict:
         return self.apply(batch)
 
-    @property
-    @typing.override
-    def attrs(self) -> AttrDict:
-        return self.schema(self.source.attrs)
-
 
 @hop_dcls
 class FuncFilterHop(MapHop):
@@ -146,11 +141,6 @@ class FuncFilterHop(MapHop):
         assert isinstance(result, td.TensorDict)
         return result
 
-    @property
-    @typing.override
-    def attrs(self) -> AttrDict:
-        return self.source.attrs
-
 
 @hop_dcls
 class ProjectHop(MapHop):
@@ -167,11 +157,6 @@ class ProjectHop(MapHop):
     def _apply(self, batch: td.TensorDict) -> td.TensorDict:
         return batch.select(*self.subset)
 
-    @property
-    @typing.override
-    def attrs(self) -> AttrDict:
-        return self.attrs.select(*self.subset)
-
 
 @hop_dcls
 class RenameHop(MapHop):
@@ -187,8 +172,3 @@ class RenameHop(MapHop):
     @typing.override
     def _apply(self, batch: td.TensorDict) -> td.TensorDict:
         return tdict_rename(batch, **self.renames)
-
-    @property
-    @typing.override
-    def attrs(self) -> AttrDict:
-        return self.source.attrs.rename(**self.renames)

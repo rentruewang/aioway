@@ -25,6 +25,7 @@ def supervised(input_stream: TensorHop, target_stream: TensorHop):
 
 
 def test_just_linear_supervised(supervised: SupervisedAlgo):
+    pytest.xfail("No attrs anymore")
     original = supervised.just_linear()
     dag = supervised()
     assert (

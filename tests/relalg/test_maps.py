@@ -9,7 +9,6 @@ import pytest
 import tensordict as td
 
 from aioway._torch import tdict_all_equal, tdict_rename
-from aioway.attrs import AttrDict
 from aioway.hop import TdictHop, hop_dcls
 from aioway.io import SourceListHop
 from aioway.relalg import (
@@ -36,10 +35,6 @@ class SaveLastMapStream(MapHop):
     def _apply(self, batch: td.TensorDict) -> td.TensorDict:
         self.state.last = batch
         return batch
-
-    @property
-    def attrs(self) -> AttrDict:
-        return self.source.attrs
 
     @property
     def last(self) -> td.TensorDict:
