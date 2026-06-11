@@ -12,7 +12,7 @@ import tensordict as td
 from aioway._utils import IntArray, is_list_of
 from aioway.attrs import AttrDict
 
-from ._frames import TdictFrame, frame_dcls
+from .frames import TdictFrame, frame_dcls
 
 __all__ = ["TensorDictFrame", "TensorDictListFrame"]
 

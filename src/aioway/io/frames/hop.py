@@ -11,7 +11,7 @@ from torch.utils import data
 from aioway.attrs import AttrDict
 from aioway.hop import TdictHop, hop_dcls
 
-from ._frames import TdictFrame
+from .frames import TdictFrame
 
 __all__ = ["FrameHopLoader", "FrameHop"]
 
