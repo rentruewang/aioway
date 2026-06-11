@@ -47,7 +47,9 @@ class Shape(TorchAttrBase[torch.Size], cabc.Sequence[int]):
     @typing.no_type_check
     def __eq__(self, other: object) -> bool:
         if isinstance(other, Shape):
-            return self._data == other._data
+            return len(self) == len(other) and all(
+                l == r for l, r in zip(self, other) if l >= 0 and r >= 0
+            )
 
         if isinstance(other, np.ndarray):
             return other.ndim == 1 and self == other.tolist()
@@ -102,18 +104,24 @@ class Shape(TorchAttrBase[torch.Size], cabc.Sequence[int]):
         dims.insert(dim, 1)
         return self.parse(dims)
 
-    def concrete(self) -> tuple[int, ...]:
+    def set_dims(self, dims: cabc.Mapping[int, int]) -> typing.Self:
         """
-        Since `Shape` may have negative dimensions, this generates a valid dimension.
+        Set the dimension according to the `dims` mapping.
+        Raises `ValueError` if the `dims` are not 0 <= dim < len(self).
         """
-        return tuple(self._concrete())
 
-    def _concrete(self):
-        for i in self:
-            if i < 0:
-                yield 1
+        if not all(0 <= dim < len(self) for dim in dims):
+            raise ValueError(f"{dims=} contains invalid dimension values for {self=}.")
+
+        result: list[int] = []
+
+        for idx, size in enumerate(self):
+            if idx in dims:
+                result.append(dims[idx])
             else:
-                yield i
+                result.append(size)
+
+        return self.parse(result)
 
     def broadcastable(self, other: ShapeLike):
         try:

@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"The binary `Stream`s that consumes 2 `Stream`s."
+"The binary `Hop`s that consumes 2 `Hop`s."
 
 import typing
 from collections import abc as cabc
@@ -8,16 +8,13 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway.attrs import AttrDict
-from aioway.hop import TdictHop, hop_dcls
+from aioway.hop import BoundedHop, TdictHop, hop_dcls
 
-from .sources import CacheStream
-
-__all__ = ["ZipStream", "NestedLoopJoinStream"]
+__all__ = ["ZipHop", "NestedLoopJoinHop"]
 
 
 @hop_dcls
-class ZipStream(TdictHop):
+class ZipHop(TdictHop):
     """
     `ZipStream` is similar to what `zip` does.
     """
@@ -37,11 +34,6 @@ class ZipStream(TdictHop):
     def size(self) -> int:
         return min(self.left.size, self.right.size)
 
-    @property
-    @typing.override
-    def attrs(self) -> AttrDict:
-        return self.left.attrs | self.right.attrs
-
     @typing.override
     def iterate(self):
         for left_batch, right_batch in zip(self.left, self.right):
@@ -49,7 +41,7 @@ class ZipStream(TdictHop):
 
 
 @hop_dcls
-class NestedLoopJoinStream(TdictHop):
+class NestedLoopJoinHop(TdictHop):
     """
     This is a stream that combines 2 input streams in a nested-loop matter,
     as in `[[x, y] for x in left for y in right if x.key == y.key]`.
@@ -62,7 +54,7 @@ class NestedLoopJoinStream(TdictHop):
     LHS is a normal stream. Will only be iterated over once.
     """
 
-    right: CacheStream
+    right: BoundedHop
     """
     RHS is a `Stream` supporting index access, thus requiring materialization.
     """
@@ -76,11 +68,6 @@ class NestedLoopJoinStream(TdictHop):
     @typing.override
     def size(self) -> int:
         return self.left.size * self.right.size
-
-    @property
-    @typing.override
-    def attrs(self) -> AttrDict:
-        return self.left.attrs | self.right.attrs
 
     @typing.override
     def iterate(self) -> cabc.Generator[td.TensorDict]:

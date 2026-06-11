@@ -75,7 +75,17 @@ class Attr:
     @typing.no_type_check
     def __eq__(self, other: object, /) -> bool:
         if isinstance(other, Attr):
-            return self.__getstate__() == other.__getstate__()
+            for func in [
+                lambda x: x.dtype,
+                lambda x: x.shape,
+                lambda x: x.device,
+                lambda x: x.requires_grad,
+                lambda x: x.layout,
+            ]:
+                if not func(self) == func(other):
+                    return False
+            else:
+                return True
 
         if parsed := self._try_parse_attr_like_dict(other):
             return self == parsed
@@ -125,6 +135,12 @@ class Attr:
                 layout=self.layout.torch(),
                 requires_grad=self.requires_grad,
             )
+
+    def set_dims(self, dims: cabc.Mapping[int, int]) -> typing.Self:
+        "Set shape dims according to `dims` dictionary."
+
+        new_shape = self.shape.set_dims(dims)
+        return dcls.replace(self, shape=new_shape)
 
     @property
     def ndim(self) -> int:

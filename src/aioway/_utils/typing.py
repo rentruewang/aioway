@@ -7,9 +7,6 @@ from collections import abc as cabc
 import numpy as np
 from numpy import typing as npt
 
-if typing.TYPE_CHECKING:
-    from aioway.attrs import Attr, AttrDict
-
 __all__ = [
     "IntArray",
     "IntArrayLike",
@@ -21,10 +18,9 @@ __all__ = [
     "is_tuple_of",
     "is_seq_of",
     "is_dict_of_str_to",
+    "HasLen",
     "SeqKeysView",
     "SetKeysView",
-    "TensorDataset",
-    "TdictDataset",
 ]
 
 type IntArray = npt.NDArray[np.int_]
@@ -96,6 +92,11 @@ def is_dict_of_str_to[T](
     return _mapping_check(dict, str, typ)
 
 
+@typing.runtime_checkable
+class HasLen(typing.Protocol):
+    def __len__(self) -> int: ...
+
+
 @dcls.dataclass(frozen=True)
 class _ContainerKeysView[C: cabc.Sequence[str] | cabc.Set[str]](cabc.KeysView[str]):
     seq: C
@@ -113,19 +114,3 @@ class SeqKeysView(_ContainerKeysView[cabc.Sequence[str]]): ...
 
 
 class SetKeysView(_ContainerKeysView[set[str]]): ...
-
-
-@typing.runtime_checkable
-class TensorDataset(typing.Protocol):
-    @property
-    def attr(self) -> Attr: ...
-
-
-@typing.runtime_checkable
-class TdictDataset(typing.Protocol):
-    @property
-    def attrs(self) -> AttrDict: ...
-
-    def column(self, col: str) -> TensorDataset: ...
-
-    def select(self, *cols: str) -> typing.Self: ...

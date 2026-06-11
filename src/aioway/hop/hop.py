@@ -19,9 +19,8 @@ from aioway._utils import (
     decomp_replace,
     topo_sort,
 )
-from aioway.attrs import Attr, AttrDict
 
-__all__ = ["Hop", "TensorHop", "TdictHop", "ListHop", "hop_dcls"]
+__all__ = ["hop_dcls", "Hop", "TensorHop", "TdictHop", "ListHop", "BoundedHop"]
 
 
 @typing.dataclass_transform()
@@ -159,15 +158,6 @@ class TensorHop(Hop[torch.Tensor], abc.ABC):
     An iterator of batches of `torch.Tensor`.
     """
 
-    @property
-    @abc.abstractmethod
-    def attr(self) -> Attr:
-        """
-        The schema for the current `Stream`.
-        """
-
-        raise NotImplementedError
-
 
 @hop_dcls
 class TdictHop(Hop[td.TensorDict], abc.ABC):
@@ -177,24 +167,15 @@ class TdictHop(Hop[td.TensorDict], abc.ABC):
     This is the core abstraction used by the relational algebra operators.
     """
 
-    @property
-    @abc.abstractmethod
-    def attrs(self) -> AttrDict:
-        """
-        The schema for the current `Stream`.
-        """
-
-        raise NotImplementedError
-
     def column(self, col: str) -> TensorHop:
-        from aioway.relalg import StreamColumnView
+        from aioway.relalg import HopColumnView
 
-        return StreamColumnView(self, col)
+        return HopColumnView(self, col)
 
     def select(self, *cols: str) -> TdictHop:
-        from aioway.relalg import StreamSelectView
+        from aioway.relalg import HopSelectView
 
-        return StreamSelectView(self, cols)
+        return HopSelectView(self, cols)
 
 
 @hop_dcls
@@ -237,3 +218,30 @@ class ListHop(Hop[cabc.Sequence[typing.Any]]):
 
         dag_nodes = [DagNode(key=hop, deps=list(hop.deps())) for hop in self.nodes()]
         return topo_sort(dag_nodes)
+
+
+@hop_dcls
+class BoundedHop(TdictHop, abc.ABC):
+    """
+    A stream with `__len__` and `__getitem__`.
+    """
+
+    @abc.abstractmethod
+    def __len__(self) -> int:
+        "The number of batches saved in the current `Stream`."
+
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def __getitem__(self, key: int, /) -> td.TensorDict:
+        """
+        Get individual items. Does not support slice input.
+
+        Args:
+            idx: An integer. Must be in the range `[-len(self), len(self))`.
+
+        Returns:
+            The `td.TensorDict` batch.
+        """
+
+        raise NotImplementedError

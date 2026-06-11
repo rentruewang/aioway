@@ -2,13 +2,10 @@
 
 "The dataset related `Hop`s."
 
-import functools
 import typing
 from collections import abc as cabc
 
 import torch
-
-from aioway.attrs import Attr
 
 from .hop import TensorHop, hop_dcls
 
@@ -26,20 +23,6 @@ class TensorListHop(TensorHop):
     @typing.override
     def size(self) -> int:
         return len(self.sequence)
-
-    @property
-    @typing.override
-    def attr(self) -> Attr:
-        return self._schema
-
-    @functools.cached_property
-    def _schema(self) -> Attr:
-        schemas = [Attr.parse(tensor) for tensor in self.sequence]
-
-        if len({*schemas}) == 1:
-            return schemas[0]
-
-        raise ValueError("Chunks should have the same schema.")
 
     def iterate(self):
         for batch in self.sequence:
