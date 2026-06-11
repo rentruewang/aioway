@@ -148,31 +148,54 @@ def dset_dcls(cls):
     return dcls.dataclass(cls)
 
 
-class TensorAttrMixin(data.Dataset[torch.Tensor]):
+class TensorAttrMixin(data.Dataset[torch.Tensor], metaclass=abc.ABCMeta):
     """
     A `torch.Tensor` `Dataset` should also provide `.attr`.
     """
 
     def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> TensorLoaderHop:
-        return TensorLoaderHop(dset=self, opts=opts, schema=self.attr)
+        attr = self.attr.set_dims({0: opts.batch_size})
+        return TensorLoaderHop(dset=self, opts=opts, schema=attr)
 
     @property
-    @abc.abstractmethod
+    @typing.final
     def attr(self) -> Attr:
+        attr = self._batch_attr()
+        assert attr.shape[0] == -1
+        return attr
+
+    @abc.abstractmethod
+    def _batch_attr(self) -> Attr:
         raise NotImplementedError
 
 
-class TdictAttrsMixin(data.Dataset[td.TensorDict]):
+class TdictAttrsMixin(data.Dataset[td.TensorDict], metaclass=abc.ABCMeta):
     """
     A `td.TensorDict` `Dataset` should also provide `.attr`.
     """
 
     def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> TdictLoaderHop:
-        return TdictLoaderHop(dset=self, opts=opts, schema=self.attrs)
+        attrs = AttrDict(
+            {
+                key: attr.set_dims({0: opts.batch_size})
+                for key, attr in self.attrs.items()
+            }
+        )
+
+        return TdictLoaderHop(dset=self, opts=opts, schema=attrs)
 
     @property
-    @abc.abstractmethod
+    @typing.final
     def attrs(self) -> AttrDict:
+        attrs = self._batch_attrs()
+
+        for key, attr in attrs.items():
+            assert attr.shape[0] == -1, f"{key=} first dimension should be -1."
+
+        return attrs
+
+    @abc.abstractmethod
+    def _batch_attrs(self) -> AttrDict:
         raise NotImplementedError
 
 
@@ -192,13 +215,13 @@ class Stream[T = typing.Any](data.IterableDataset[T], abc.ABC):
         raise NotImplementedError
 
 
-class TensorStream(TensorAttrMixin, Stream[torch.Tensor]):
+class TensorStream(TensorAttrMixin, Stream[torch.Tensor], abc.ABC):
     """
     A `TensorStream` is a `Stream` of `torch.Tensor`s.
     """
 
 
-class TdictStream(TdictAttrsMixin, Stream[td.TensorDict]):
+class TdictStream(TdictAttrsMixin, Stream[td.TensorDict], abc.ABC):
     """
     A `TdictStream` is a `Stream` of `torch.Tensor`s.
     """

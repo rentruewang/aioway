@@ -48,10 +48,11 @@ class TensorDictFrame(TdictFrame):
         assert isinstance(ret, td.TensorDict)
         return ret.auto_batch_size_()
 
-    @property
     @typing.override
-    def attrs(self) -> AttrDict:
-        return AttrDict.parse(self.data)
+    def _batch_attrs(self) -> AttrDict:
+        attrs = AttrDict.parse(self.data)
+        attrs = AttrDict({key: attr.set_dims({0: -1}) for key, attr in attrs.items()})
+        return attrs
 
 
 @hop_dcls
