@@ -2,3 +2,4 @@
 
 from .chunks import *
 from .frames import *
+from .hop import *

@@ -8,7 +8,6 @@ import typing
 
 import tensordict as td
 import torch
-from torch.utils import data
 
 from aioway.attrs import Attr, AttrDict
 

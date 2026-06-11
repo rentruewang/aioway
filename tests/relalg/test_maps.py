@@ -13,11 +13,11 @@ from aioway.attrs import AttrDict
 from aioway.hop import TdictHop, hop_dcls
 from aioway.relalg import (
     ApplyStream,
-    CacheStream,
     FuncFilterStream,
     MapStream,
     ProjectStream,
     RenameStream,
+    SourceListHop,
 )
 
 
@@ -159,5 +159,5 @@ def test_map_stream_one_to_one(map_stream: MapStream, save_last: SaveLastMapStre
     "map_stream", [_project_builder, _apply_builder], indirect=True
 )
 def test_caching(map_stream: TdictHop):
-    cached = CacheStream(map_stream)
+    cached = SourceListHop.exhaust(map_stream)
     assert cached.size == map_stream.size

@@ -5,9 +5,13 @@ import pytest
 import tensordict as td
 from numpy import random
 
-from aioway._frames import TdictFrame
-from aioway.io import TensorDictFrame, TensorDictListFrame
-from aioway.relalg import FrameStream, FrameStreamLoader
+from aioway.io import (
+    FrameHop,
+    FrameHopLoader,
+    TdictFrame,
+    TensorDictFrame,
+    TensorDictListFrame,
+)
 from tests.fake import chunk_ok
 
 
@@ -34,10 +38,7 @@ def frame(
 
 @pytest.fixture
 def table_stream(frame: TdictFrame, batch_size: int):
-    return FrameStream(
-        frame,
-        FrameStreamLoader(batch_size=batch_size),
-    )
+    return FrameHop(frame, FrameHopLoader(batch_size=batch_size))
 
 
 def test_table_not_empty(frame: TdictFrame):

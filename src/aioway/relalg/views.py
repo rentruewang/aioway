@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"`StreamColumn`s are a column of `Stream`."
+"`HopColumn`s are a column of `Hop`."
 
 import typing
 from collections import abc as cabc
@@ -11,13 +11,13 @@ import torch
 from aioway.attrs import Attr, AttrDict
 from aioway.hop import TdictHop, TensorHop, hop_dcls
 
-__all__ = ["StreamColumnView", "StreamSelectView"]
+__all__ = ["HopColumnView", "HopSelectView"]
 
 
 @hop_dcls
-class StreamColumnView(TensorHop):
+class HopColumnView(TensorHop):
     """
-    A column reference (on a stream).
+    A column reference (on a `Hop`).
     Performs `__next__` and yield `torch.Tensor`s.
     """
 
@@ -46,9 +46,9 @@ class StreamColumnView(TensorHop):
 
 
 @hop_dcls
-class StreamSelectView(TdictHop):
+class HopSelectView(TdictHop):
     """
-    The view generated when calling `Stream.select`.
+    The view generated when calling `Hop.select`.
     """
 
     input: TdictHop

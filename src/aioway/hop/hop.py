@@ -163,7 +163,7 @@ class TensorHop(Hop[torch.Tensor], abc.ABC):
     @abc.abstractmethod
     def attr(self) -> Attr:
         """
-        The schema for the current `Stream`.
+        The schema for the current `Hop`.
         """
 
         raise NotImplementedError
@@ -181,20 +181,20 @@ class TdictHop(Hop[td.TensorDict], abc.ABC):
     @abc.abstractmethod
     def attrs(self) -> AttrDict:
         """
-        The schema for the current `Stream`.
+        The schema for the current `Hop`.
         """
 
         raise NotImplementedError
 
     def column(self, col: str) -> TensorHop:
-        from aioway.relalg import StreamColumnView
+        from aioway.relalg import HopColumnView
 
-        return StreamColumnView(self, col)
+        return HopColumnView(self, col)
 
     def select(self, *cols: str) -> TdictHop:
-        from aioway.relalg import StreamSelectView
+        from aioway.relalg import HopSelectView
 
-        return StreamSelectView(self, cols)
+        return HopSelectView(self, cols)
 
 
 @hop_dcls

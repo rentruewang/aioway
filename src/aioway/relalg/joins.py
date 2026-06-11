@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"The binary `Stream`s that consumes 2 `Stream`s."
+"The binary `Hop`s that consumes 2 `Hop`s."
 
 import typing
 from collections import abc as cabc
@@ -11,7 +11,7 @@ import torch
 from aioway.attrs import AttrDict
 from aioway.hop import TdictHop, hop_dcls
 
-from .sources import CacheStream
+from .sources import BoundedHop
 
 __all__ = ["ZipStream", "NestedLoopJoinStream"]
 
@@ -62,7 +62,7 @@ class NestedLoopJoinStream(TdictHop):
     LHS is a normal stream. Will only be iterated over once.
     """
 
-    right: CacheStream
+    right: BoundedHop
     """
     RHS is a `Stream` supporting index access, thus requiring materialization.
     """
