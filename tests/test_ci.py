@@ -3,7 +3,7 @@
 import pathlib
 
 
-def test_header(src_test_py: pathlib.Path):
+def test_copyright_header(src_test_py: pathlib.Path):
     with src_test_py.open("r") as f:
         first = f.readline().rstrip("\n")
 
