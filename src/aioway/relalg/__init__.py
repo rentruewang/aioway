@@ -4,5 +4,4 @@
 
 from .joins import *
 from .maps import *
-from .sources import *
 from .views import *

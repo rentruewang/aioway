@@ -11,9 +11,9 @@ import tensordict as td
 import torch
 from torch.utils import data
 
+from aioway._utils import HasLen
 from aioway.attrs import Attr, AttrDict
-from aioway.hop import Hop, hop_dcls
-from aioway.hop import TdictHop, TensorHop
+from aioway.hop import Hop, TdictHop, TensorHop, hop_dcls
 
 __all__ = [
     "LoaderOpt",
@@ -66,9 +66,27 @@ class LoaderHop[T = typing.Any](Hop[T]):
     The options to pass to `DataLoader`.
     """
 
+    @property
+    @typing.override
+    def size(self) -> int:
+        # May be a frame or stream, so we need to test.
+        # Perhaps this is a bad design.
+        if not isinstance(self.dset, HasLen):
+            return NotImplemented
+
+        # Drop last or not would affect counts.
+        count, remain = divmod(len(self.dset), self.opts.batch_size)
+
+        if remain and not self.opts.drop_last:
+            count += 1
+
+        return count
+
     def iterate(self) -> cabc.Generator[T]:
-        loader = data.DataLoader(self.dset, **dcls.asdict(self.opts))
-        yield from loader
+        yield from self._dataloader()
+
+    def _dataloader(self) -> data.DataLoader[T]:
+        return data.DataLoader(self.dset, **dcls.asdict(self.opts))
 
 
 @hop_dcls
@@ -120,13 +138,17 @@ class TdictLoaderHop(LoaderHop[td.TensorDict], TdictHop):
 
             yield batch
 
+    @typing.override
+    def _dataloader(self) -> data.DataLoader[td.TensorDict]:
+        return data.DataLoader(self.dset, collate_fn=td.stack, **dcls.asdict(self.opts))
+
 
 @typing.dataclass_transform()
 def dset_dcls(cls):
     return dcls.dataclass(cls)
 
 
-class TensorAttrMixin(abc.ABC):
+class TensorAttrMixin(data.Dataset[torch.Tensor]):
     """
     A `torch.Tensor` `Dataset` should also provide `.attr`.
     """
@@ -140,7 +162,7 @@ class TensorAttrMixin(abc.ABC):
         raise NotImplementedError
 
 
-class TdictAttrsMixin(abc.ABC):
+class TdictAttrsMixin(data.Dataset[td.TensorDict]):
     """
     A `td.TensorDict` `Dataset` should also provide `.attr`.
     """
@@ -170,13 +192,13 @@ class Stream[T = typing.Any](data.IterableDataset[T], abc.ABC):
         raise NotImplementedError
 
 
-class TensorStream(TensorAttrMixin, Stream[torch.Tensor], abc.ABC):
+class TensorStream(TensorAttrMixin, Stream[torch.Tensor]):
     """
     A `TensorStream` is a `Stream` of `torch.Tensor`s.
     """
 
 
-class TdictStream(TdictAttrsMixin, Stream[td.TensorDict], abc.ABC):
+class TdictStream(TdictAttrsMixin, Stream[td.TensorDict]):
     """
     A `TdictStream` is a `Stream` of `torch.Tensor`s.
     """

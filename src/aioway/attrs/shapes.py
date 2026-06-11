@@ -47,7 +47,9 @@ class Shape(TorchAttrBase[torch.Size], cabc.Sequence[int]):
     @typing.no_type_check
     def __eq__(self, other: object) -> bool:
         if isinstance(other, Shape):
-            return self._data == other._data
+            return len(self) == len(other) and all(
+                l == r for l, r in zip(self, other) if l >= 0 and r >= 0
+            )
 
         if isinstance(other, np.ndarray):
             return other.ndim == 1 and self == other.tolist()
@@ -106,6 +108,7 @@ class Shape(TorchAttrBase[torch.Size], cabc.Sequence[int]):
         """
         Since `Shape` may have negative dimensions, this generates a valid dimension.
         """
+
         return tuple(self._concrete())
 
     def _concrete(self):

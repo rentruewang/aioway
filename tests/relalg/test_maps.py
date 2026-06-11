@@ -11,13 +11,13 @@ import tensordict as td
 from aioway._torch import tdict_all_equal, tdict_rename
 from aioway.attrs import AttrDict
 from aioway.hop import TdictHop, hop_dcls
+from aioway.io import SourceListHop
 from aioway.relalg import (
     ApplyHop,
     FuncFilterHop,
     MapHop,
     ProjectHop,
     RenameHop,
-    SourceListHop,
 )
 
 

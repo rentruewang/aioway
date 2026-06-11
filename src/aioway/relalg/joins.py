@@ -9,9 +9,7 @@ import tensordict as td
 import torch
 
 from aioway.attrs import AttrDict
-from aioway.hop import TdictHop, hop_dcls
-
-from .sources import BoundedHop
+from aioway.hop import BoundedHop, TdictHop, hop_dcls
 
 __all__ = ["ZipHop", "NestedLoopJoinHop"]
 

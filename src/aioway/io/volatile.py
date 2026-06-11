@@ -2,15 +2,18 @@
 
 "The sources that are already in memory."
 
+import functools
 import typing
+from collections import abc as cabc
 
 import tensordict as td
 
 from aioway.attrs import AttrDict
+from aioway.hop import BoundedHop, TdictHop, hop_dcls
 
 from .dsets import TdictFrame, dset_dcls
 
-__all__ = ["TensorDictFrame"]
+__all__ = ["TensorDictFrame", "SourceListHop"]
 
 
 @typing.final
@@ -26,10 +29,14 @@ class TensorDictFrame(TdictFrame):
     The `td.TensorDict` source.
     """
 
+    def __post_init__(self) -> None:
+        self.data.auto_batch_size_()
+
     @typing.override
     def __len__(self) -> int:
         return len(self.data)
 
+    @typing.override
     def __getitem__(self, idx: int) -> td.TensorDict:
         ret = self.data[idx]
         assert isinstance(ret, td.TensorDict)
@@ -45,3 +52,46 @@ class TensorDictFrame(TdictFrame):
     @typing.override
     def attrs(self) -> AttrDict:
         return AttrDict.parse(self.data)
+
+
+@hop_dcls
+class SourceListHop(BoundedHop):
+    "A `Stream` backed by a list of `TensorDict`."
+
+    sequence: cabc.Sequence[td.TensorDict]
+    "List of `td.TensorDict`s."
+
+    @typing.override
+    def __len__(self) -> int:
+        return self.size
+
+    @typing.override
+    def __getitem__(self, idx: int) -> td.TensorDict:
+        return self.sequence[idx]
+
+    @property
+    @typing.override
+    def size(self) -> int:
+        return len(self.sequence)
+
+    @property
+    @typing.override
+    def attrs(self) -> AttrDict:
+        return self._schema
+
+    @functools.cached_property
+    def _schema(self) -> AttrDict:
+        schemas = [AttrDict.parse(chunk) for chunk in self.sequence]
+
+        if len({*schemas}) == 1:
+            return schemas[0]
+
+        raise ValueError("Chunks should have the same schema.")
+
+    def iterate(self):
+        for batch in self.sequence:
+            yield batch
+
+    @classmethod
+    def exhaust(cls, stream: TdictHop) -> typing.Self:
+        return cls(list(stream))

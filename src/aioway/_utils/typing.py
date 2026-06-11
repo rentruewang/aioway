@@ -21,6 +21,7 @@ __all__ = [
     "is_tuple_of",
     "is_seq_of",
     "is_dict_of_str_to",
+    "HasLen",
     "SeqKeysView",
     "SetKeysView",
     "TensorDataset",
@@ -94,6 +95,11 @@ def is_dict_of_str_to[T](
     typ: type[T], /
 ) -> cabc.Callable[[typing.Any], typing.TypeGuard[dict[str, T]]]:
     return _mapping_check(dict, str, typ)
+
+
+@typing.runtime_checkable
+class HasLen(typing.Protocol):
+    def __len__(self) -> int: ...
 
 
 @dcls.dataclass(frozen=True)
