@@ -29,7 +29,7 @@ class TensorDictFrame(TdictFrame):
     The `td.TensorDict` source.
     """
 
-    def __post_init__(self) -> None:
+    def _setup(self) -> None:
         self.data.auto_batch_size_()
 
     @typing.override
