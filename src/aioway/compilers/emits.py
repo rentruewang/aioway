@@ -9,16 +9,16 @@ from aioway.hop import ListHop, TensorListHop
 from aioway.nn import Linear
 from aioway.tags import AttrTag, TagDict
 
-__all__ = ["Builder", "builder_dcls", "JustLinearBuilder"]
+__all__ = ["Emitter", "emitter_dcls", "JustLinearEmitter"]
 
 
 @typing.dataclass_transform(frozen_default=True)
-def builder_dcls(cls):
+def emitter_dcls(cls):
     return dcls.dataclass(frozen=True)(cls)
 
 
-@builder_dcls
-class Builder(abc.ABC):
+@emitter_dcls
+class Emitter(abc.ABC):
     @abc.abstractmethod
     def __call__(self) -> ListHop:
         """
@@ -37,8 +37,8 @@ class Builder(abc.ABC):
         raise NotImplementedError
 
 
-@builder_dcls
-class JustLinearBuilder(Builder):
+@emitter_dcls
+class JustLinearEmitter(Emitter):
     """
     A builder that outputs 1 linear layer, supporting 1 input and 1 output.
     """

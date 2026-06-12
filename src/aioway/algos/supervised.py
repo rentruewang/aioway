@@ -3,7 +3,7 @@
 import typing
 from collections import abc as cabc
 
-from aioway.compilers import Builder, JustLinearBuilder, builder_dcls
+from aioway.compilers import Emitter, JustLinearEmitter, emitter_dcls
 from aioway.hop import ListHop, TensorHop
 from aioway.nn import MSELoss
 from aioway.tags import TagDict
@@ -11,8 +11,8 @@ from aioway.tags import TagDict
 __all__ = ["SupervisedAlgo"]
 
 
-@builder_dcls
-class SupervisedAlgo(Builder):
+@emitter_dcls
+class SupervisedAlgo(Emitter):
     """
     The supervised learning algorithm. Currently supports 1 input 1 output.
     """
@@ -32,7 +32,7 @@ class SupervisedAlgo(Builder):
         return ListHop([loss_node])
 
     @property
-    def just_linear(self) -> JustLinearBuilder:
+    def just_linear(self) -> JustLinearEmitter:
         raise NotImplementedError
         # return JustLinearBuilder(
         #     AttrTag.from_attr(self.input_data.attr),
