@@ -10,6 +10,7 @@ from numpy import typing as npt
 __all__ = [
     "IntArray",
     "IntArrayLike",
+    "UIntArray",
     "FloatArray",
     "FloatArrayLike",
     "BoolArray",
@@ -29,6 +30,7 @@ type FloatArray = npt.NDArray[np.floating]
 type FloatArrayLike = tuple[float, ...] | list[float] | FloatArray
 type BoolArray = npt.NDArray[np.bool_]
 type BoolArrayLike = tuple[bool, ...] | list[bool] | BoolArray
+type UIntArray = npt.NDArray[np.uint]
 
 
 @typing.no_type_check

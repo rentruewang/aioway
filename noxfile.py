@@ -23,23 +23,6 @@ _setup_is_done: bool = False
 "If the `setup_env` is called."
 
 
-def setup_env():
-    "Setup environment."
-
-    global _setup_is_done
-
-    if _setup_is_done:
-        return
-
-    if in_github():
-        _github_cleanup()
-        run("pdm", "config", "python.use_venv", "true")
-
-    _install_ffmpeg()
-
-    _setup_is_done = True
-
-
 @ctxl.contextmanager
 def enter_session(session: nox.Session):
     global _session
@@ -69,12 +52,19 @@ def nox_cmd(func: cabc.Callable[[], None]) -> cabc.Callable[[], None]:
     @functools.wraps(func)
     def wrapper(session: nox.Session):
         with enter_session(session):
-            setup_env()
             func()
 
     _ = nox.session(wrapper)
 
     return func
+
+
+@nox_cmd
+def setup():
+    "Check if `nox` can be run (side effect will cleanup github)."
+
+    _github_cleanup()
+    _install_ffmpeg()
 
 
 @nox_cmd

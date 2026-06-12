@@ -10,13 +10,14 @@ jobs:
         with:
           lfs: true
 
+      - name: 💣 Prepare
+        run: pip install nox[pbs] && nox -rs setup
+
       - name: ⬇️ Python PDM
         uses: pdm-project/setup-pdm@v4
-        with:
-          cache: true
 
       - name: 🧪 Test with pytest
-        run: pip install nox[pbs] && nox -rs test
+        run: nox -rs test
 
   build:
     name: 👷 Build
@@ -25,10 +26,11 @@ jobs:
       - name: 🔔 Check out
         uses: actions/checkout@v3
 
+      - name: 💣 Prepare
+        run: pip install nox[pbs] && nox -rs setup
+
       - name: ⬇️ Python PDM
         uses: pdm-project/setup-pdm@v4
-        with:
-          cache: true
 
       - name: 👷‍♂️ Build
-        run: pip install nox[pbs] && nox -rs build
+        run: nox -rs build
