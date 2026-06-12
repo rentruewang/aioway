@@ -1,11 +1,12 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import numpy as np
 import pytest
 import torch
 from torch.utils import data
 
 from aioway.hop import TensorHop
-from aioway.io import HnswIndex, HnswIndexHop, TensorLoaderHop
+from aioway.io import FaissIndex, FaissIndexHop, TensorLoaderHop
 
 
 @pytest.fixture
@@ -19,13 +20,13 @@ def testing_data():
 
 
 @pytest.fixture
-def hnswlib_index(training_data: torch.Tensor):
+def faiss_index(training_data: torch.Tensor):
     try:
-        import hnswlib
+        import faiss
     except ImportError:
-        pytest.xfail("`hnswlib` not installed")
+        pytest.xfail("`faiss` not installed")
     else:
-        return HnswIndex.from_tensors(training_data)
+        return FaissIndex.from_tensors(training_data)
 
 
 @pytest.fixture
@@ -46,14 +47,15 @@ def k(request: pytest.FixtureRequest):
 
 
 @pytest.fixture
-def hnswlib_index_hop(
-    query_hop: TensorHop, k: int, hnswlib_index: HnswIndex, training_data: torch.Tensor
+def index_hop(
+    query_hop: TensorHop, k: int, faiss_index: FaissIndex, training_data: torch.Tensor
 ):
-    return HnswIndexHop(index=hnswlib_index, source=training_data, query=query_hop, k=k)
+    faiss_index.train(np.asarray(training_data, dtype="float32"))
+    return FaissIndexHop(index=faiss_index, source=training_data, query=query_hop, k=k)
 
 
-def test_index_hop(hnswlib_index_hop: TensorHop, k: int):
-    for found in hnswlib_index_hop:
+def test_index_hop(index_hop: TensorHop, k: int):
+    for found in index_hop:
         assert isinstance(found, torch.Tensor)
         assert found.ndim == 2
         assert len(found) == k

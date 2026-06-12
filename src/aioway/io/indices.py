@@ -1,41 +1,44 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"The index (currently only `hnswlib`)."
+"The index (currently only faiss)."
 
 import typing
 from collections import abc as cabc
 
-import numpy as np
-import torch
+import torch, numpy as np
 
-from aioway._utils import FloatArray, UIntArray
+from aioway._utils import FloatArray, IntArray
 from aioway.hop import TensorHop, hop_dcls
 
-__all__ = ["HnswIndex", "HnswIndexHop"]
+__all__ = ["FaissIndex", "FaissIndexHop"]
 
 
-class HnswIndex:
+class FaissIndex:
     """
     An index exposing `hnswlib` API.
-    This has a lot of defaults, change this in the future.
     """
 
-    def __init__(
-        self, dim: int, space: typing.Literal["cosine", "ip", "l2"] = "cosine"
-    ):
-        import hnswlib
+    def __init__(self, dim: int, spec: str = "Flat"):
+        import faiss
 
-        self.idx = hnswlib.Index(space=space, dim=dim)
+        self._idx = faiss.index_factory(dim, spec)
+        self._dim = dim
 
-    def train(self, x: FloatArray, ef_construction: int = 100, m: int = 10):
-        self.idx.init_index(max_elements=len(x), ef_construction=ef_construction, M=m)
-        self.idx.add_items(x, ids=np.arange(len(x)))
+    def train(self, x: FloatArray):
+        self._idx.train(x)
 
-    def search(self, query: FloatArray, k: int = 1):
+    def search(self, query: FloatArray, k: int = 1) -> tuple[FloatArray, IntArray]:
+        if not isinstance(query, np.ndarray):
+            raise TypeError(f"{type(query)=} should be numpy.")
+
         if k <= 0:
             raise ValueError(f"The neighbor count {k} must be positive.")
 
-        return self.idx.knn_query(query, k)
+        assert query.ndim == 2
+        assert query.shape[-1] == self._dim
+
+        breakpoint()
+        return self._idx.search(query, k)
 
     @classmethod
     def from_tensors(cls, training: torch.Tensor) -> typing.Self:
@@ -50,10 +53,10 @@ class HnswIndex:
 
 
 @hop_dcls
-class HnswIndexHop(TensorHop):
-    index: HnswIndex
+class FaissIndexHop(TensorHop):
+    index: FaissIndex
     """
-    The index backed by the `hnswlib` library.
+    The index backed by the `faiss` library.
     """
 
     source: torch.Tensor
@@ -73,6 +76,5 @@ class HnswIndexHop(TensorHop):
 
     def iterate(self) -> cabc.Generator[torch.Tensor]:
         for query in self.query:
-            _, index = self.index.search(query)
-
-            yield self.source[torch.from_numpy(index)]
+            _, index = self.index.search(query.cpu().numpy())
+            yield self.source[index]
