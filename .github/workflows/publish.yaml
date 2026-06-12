@@ -22,8 +22,6 @@ jobs:
 
       - name: ⬇️ Python PDM
         uses: pdm-project/setup-pdm@v4
-        with:
-          cache: true
 
       - name: 📦 Release
         run: nox -rs publish

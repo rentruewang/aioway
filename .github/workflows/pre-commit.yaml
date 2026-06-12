@@ -13,8 +13,6 @@ jobs:
 
       - name: ⬇️ Python PDM
         uses: pdm-project/setup-pdm@v4
-        with:
-          cache: true
 
       - name: 🏃 Formatting
         run: nox -rs format_check
@@ -31,8 +29,6 @@ jobs:
 
       - name: ⬇️ Python PDM
         uses: pdm-project/setup-pdm@v4
-        with:
-          cache: true
 
       - name: 🏃 Type checking
         run: nox -rs type

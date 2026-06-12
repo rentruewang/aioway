@@ -15,8 +15,6 @@ jobs:
 
       - name: ⬇️ Python PDM
         uses: pdm-project/setup-pdm@v4
-        with:
-          cache: true
 
       - name: 🧪 Test with pytest
         run: nox -rs test
@@ -33,8 +31,6 @@ jobs:
 
       - name: ⬇️ Python PDM
         uses: pdm-project/setup-pdm@v4
-        with:
-          cache: true
 
       - name: 👷‍♂️ Build
         run: nox -rs build
