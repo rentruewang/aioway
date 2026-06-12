@@ -6,7 +6,7 @@ import typing
 
 from torch import nn
 
-from aioway.hop import Hop, TensorHop, hop_dcls
+from aioway.hop import TensorHop, hop_dcls
 
 if typing.TYPE_CHECKING:
     from .modules import NnInit
@@ -15,7 +15,7 @@ __all__ = ["NnHop", "NnLayerHop", "NnLossHop"]
 
 
 @hop_dcls
-class NnHop(Hop, abc.ABC):
+class NnHop(TensorHop, abc.ABC):
     nn_init: NnInit
     "The config used to initialize the `Hop`."
 

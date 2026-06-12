@@ -2,6 +2,8 @@
 
 "The builder for `Hop`s."
 
+from mypyc.primitives.bytearray_ops import isinstance_bytearray
+
 import dataclasses as dcls
 import typing
 from collections import abc as cabc
@@ -11,6 +13,7 @@ import torch
 
 from aioway.hop import BoundedHop, Hop, StackHop, TdictHop, TensorHop
 from aioway.io import FaissIndex, FaissIndexHop
+from aioway.nn import NnInit, NnLayerHop, NnLossHop, BaseLoss
 from aioway.relalg import (
     ApplyHop,
     ColumnViewHop,
@@ -41,10 +44,19 @@ class Builder[H: Hop]:
 class TensorBuilder(Builder[TensorHop]):
     hop: TensorHop
 
-    def create_index(self, query: TdictHop, k: int) -> typing.Self:
-        index = FaissIndex.from_hop(self)
+    def create_index(self, query: TensorBuilder, k: int) -> typing.Self:
+        index = FaissIndex.from_hop(self.hop)
         source = torch.cat(list(self.hop))
-        return type(self)(FaissIndexHop(index, source=source, query=query, k=k))
+        return type(self)(FaissIndexHop(index, source=source, query=query.hop, k=k))
+
+    def apply_layer(self, nn_init: NnInit) -> typing.Self:
+        return type(self)(NnLayerHop(nn_init, module=nn_init.init_nn(), input=self.hop))
+
+    def apply_loss(self, target: TensorBuilder, nn_init: NnInit) -> typing.Self:
+        assert isinstance(nn_init, BaseLoss), type(nn_init)
+        return type(self)(
+            NnLossHop(nn_init, nn_init.init_nn(), input=self.hop, target=target.hop)
+        )
 
     @classmethod
     def cat(cls, items: cabc.Sequence[TensorHop], dim: int = 0) -> typing.Self:
