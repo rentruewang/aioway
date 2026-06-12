@@ -64,7 +64,6 @@ def setup():
     "Check if `nox` can be run (side effect will cleanup github)."
 
     _github_cleanup()
-
     _install_ffmpeg()
 
 
