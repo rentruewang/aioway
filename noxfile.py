@@ -78,6 +78,11 @@ def nox_cmd(func: cabc.Callable[[], None]) -> cabc.Callable[[], None]:
 
 
 @nox_cmd
+def hello():
+    "Check if `nox` can be run (side effect will cleanup github)."
+
+
+@nox_cmd
 def publish():
     "Calls `pdm publish`."
     pdm_publish()
