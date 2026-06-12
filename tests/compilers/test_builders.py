@@ -4,7 +4,7 @@ import pytest
 from torch import nn
 
 from aioway.attrs import Attr
-from aioway.compilers import JustLinearBuilder
+from aioway.compilers import JustLinearEmitter
 from aioway.hop import ListHop, TensorHop
 from aioway.nn import Linear, NnLayerHop
 from aioway.tags import AttrTag
@@ -21,7 +21,7 @@ def output_space():
 
 
 def test_just_linear(input_space: AttrTag, output_space: AttrTag):
-    builder = JustLinearBuilder(input_space, output_space)
+    builder = JustLinearEmitter(input_space, output_space)
     built = builder()
     [tensor_node, linear_node, list_node] = built.dag()
     assert isinstance(linear_node, NnLayerHop)
