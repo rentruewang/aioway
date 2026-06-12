@@ -68,8 +68,6 @@ def setup():
 
     _install_ffmpeg()
 
-    run("df", "-h")
-
 
 @nox_cmd
 def publish():
