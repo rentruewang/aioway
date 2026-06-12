@@ -63,8 +63,7 @@ def nox_cmd(func: cabc.Callable[[], None]) -> cabc.Callable[[], None]:
 def setup():
     "Check if `nox` can be run (side effect will cleanup github)."
 
-    if in_github():
-        _github_cleanup()
+    _github_cleanup()
 
     _install_ffmpeg()
 
