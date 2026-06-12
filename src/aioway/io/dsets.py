@@ -17,6 +17,8 @@ from aioway.hop import Hop, TdictHop, TensorHop, hop_dcls
 __all__ = [
     "LoaderOpt",
     "LoaderHop",
+    "TensorLoaderHop",
+    "TdictLoaderHop",
     "Stream",
     "Sink",
     "Frame",

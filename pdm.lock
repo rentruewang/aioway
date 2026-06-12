@@ -2,10 +2,10 @@
 # It is not intended for manual editing.
 
 [metadata]
-groups = ["default", "build", "debugging", "faiss", "networkx", "pre-commit", "tests"]
+groups = ["default", "build", "debugging", "hnswlib", "networkx", "pre-commit", "tests"]
 strategy = []
 lock_version = "4.5.0"
-content_hash = "sha256:884b084188cc2faa4b51bdd79ce2dd1b0e878f07aa6e4e377cc1b75a2b6ac6b9"
+content_hash = "sha256:a1d448cce6af8d84a2571ae0f737f08c6556d1ceca60033a3d8833a96630b92c"
 
 [[metadata.targets]]
 requires_python = ">=3.14,<3.15"
@@ -607,22 +607,6 @@ files = [
 ]
 
 [[package]]
-name = "faiss-cpu"
-version = "1.14.2"
-summary = ""
-dependencies = [
-    "numpy",
-    "packaging",
-]
-files = [
-    {file = "faiss_cpu-1.14.2-cp310-abi3-macosx_14_0_arm64.whl", hash = "sha256:a20011b8a97318e6d5e29143a773277ca71f1c33140024aeec91f05ad56cdd04"},
-    {file = "faiss_cpu-1.14.2-cp310-abi3-macosx_15_0_x86_64.whl", hash = "sha256:6ba528b5803fe5206bbb38e6ea2c537de0d1482a47c5765982af4e4a48c135e2"},
-    {file = "faiss_cpu-1.14.2-cp310-abi3-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:b340c33212351f04d4f167cb7b22c9e756705a634d3b7b58987651f3ba1f6217"},
-    {file = "faiss_cpu-1.14.2-cp310-abi3-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:ec4784d9a14973f2eead3a3480e6d14e74253b234e2c12717d4319f21dfadfcd"},
-    {file = "faiss_cpu-1.14.2-cp314-cp314-win_amd64.whl", hash = "sha256:b736813d853d36693f7b5affdc8788adfa73efa2f45ac6493c8ce2cbb2584f19"},
-]
-
-[[package]]
 name = "fastjsonschema"
 version = "2.21.2"
 summary = ""
@@ -738,6 +722,17 @@ files = [
     {file = "hf_xet-1.5.0-cp37-abi3-win_amd64.whl", hash = "sha256:2806c7c17b4d23f8d88f7c4814f838c3b6150773fe339c20af23e1cfaf2797e4"},
     {file = "hf_xet-1.5.0-cp37-abi3-win_arm64.whl", hash = "sha256:b6c9df403040248c76d808d3e047d64db2d923bae593eb244c41e425cf6cd7be"},
     {file = "hf_xet-1.5.0.tar.gz", hash = "sha256:e0fb0a34d9f406eed88233e829a67ec016bec5af19e480eac65a233ea289a948"},
+]
+
+[[package]]
+name = "hnswlib"
+version = "0.8.0"
+summary = ""
+dependencies = [
+    "numpy",
+]
+files = [
+    {file = "hnswlib-0.8.0.tar.gz", hash = "sha256:cb6d037eedebb34a7134e7dc78966441dfd04c9cf5ee93911be911ced951c44c"},
 ]
 
 [[package]]
