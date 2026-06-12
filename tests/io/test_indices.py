@@ -50,12 +50,11 @@ def k(request: pytest.FixtureRequest):
 def index_hop(
     query_hop: TensorHop, k: int, faiss_index: FaissIndex, training_data: torch.Tensor
 ):
-    faiss_index.train(np.asarray(training_data, dtype="float32"))
     return FaissIndexHop(index=faiss_index, source=training_data, query=query_hop, k=k)
 
 
 def test_index_hop(index_hop: TensorHop, k: int):
     for found in index_hop:
         assert isinstance(found, torch.Tensor)
-        assert found.ndim == 2
-        assert len(found) == k
+        assert found.ndim == 3
+        assert found.shape[1] == k
