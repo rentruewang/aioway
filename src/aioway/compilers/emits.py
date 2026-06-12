@@ -5,7 +5,8 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-from aioway.hop import ListHop, TensorListHop
+from aioway.hop import ListHop
+from aioway.io import TensorListHop
 from aioway.nn import Linear
 from aioway.tags import AttrTag, TagDict
 

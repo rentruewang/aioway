@@ -2,18 +2,17 @@
 
 "The sources that are already in memory."
 
-import functools
 import typing
 from collections import abc as cabc
 
 import tensordict as td
+import torch
 
-from aioway.attrs import AttrDict
-from aioway.hop import BoundedHop, TdictHop, hop_dcls
+from aioway.hop import BoundedHop, TensorHop, hop_dcls
 
 from .dsets import TdictFrame, dset_dcls
 
-__all__ = ["TensorDictFrame", "SourceListHop"]
+__all__ = ["TensorDictFrame", "TensorListHop", "TdictListHop"]
 
 
 @typing.final
@@ -50,7 +49,30 @@ class TensorDictFrame(TdictFrame):
 
 
 @hop_dcls
-class SourceListHop(BoundedHop):
+class TensorListHop(TensorHop):
+    "A `Hop` backed by a list of `torch.Tensor`."
+
+    sequence: cabc.Sequence[torch.Tensor]
+    "List of `torch.Tensor`s."
+
+    def __len__(self) -> int:
+        return self.size
+
+    def __getitem__(self, idx: int) -> td.TensorDict:
+        return self.sequence[idx]
+
+    @property
+    @typing.override
+    def size(self) -> int:
+        return len(self.sequence)
+
+    def iterate(self):
+        for batch in self.sequence:
+            yield batch
+
+
+@hop_dcls
+class TdictListHop(BoundedHop):
     "A `Stream` backed by a list of `TensorDict`."
 
     sequence: cabc.Sequence[td.TensorDict]
@@ -69,19 +91,6 @@ class SourceListHop(BoundedHop):
     def size(self) -> int:
         return len(self.sequence)
 
-    @functools.cached_property
-    def _schema(self) -> AttrDict:
-        schemas = [AttrDict.parse(chunk) for chunk in self.sequence]
-
-        if len({*schemas}) == 1:
-            return schemas[0]
-
-        raise ValueError("Chunks should have the same schema.")
-
     def iterate(self):
         for batch in self.sequence:
             yield batch
-
-    @classmethod
-    def exhaust(cls, stream: TdictHop) -> typing.Self:
-        return cls(list(stream))
