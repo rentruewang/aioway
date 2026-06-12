@@ -104,8 +104,7 @@ def test_rename(map_stream: TdictHop, save_last: SaveLastMapStream):
 def _apply_builder(save_last: SaveLastMapStream):
 
     func = lambda td: tdict_rename(td, f1d="f", i1d="i")
-    schema = lambda attrs: attrs.rename(f1d="f", i1d="i")
-    return ApplyHop(source=save_last, apply=func, schema=schema)
+    return ApplyHop(source=save_last, apply=func)
 
 
 @pytest.mark.parametrize("map_stream", [_apply_builder], indirect=True)

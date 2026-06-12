@@ -168,14 +168,14 @@ class TdictHop(Hop[td.TensorDict], abc.ABC):
     """
 
     def column(self, col: str) -> TensorHop:
-        from aioway.relalg import HopColumnView
+        from aioway.relalg import ColumnViewHop
 
-        return HopColumnView(self, col)
+        return ColumnViewHop(self, col)
 
     def select(self, *cols: str) -> TdictHop:
-        from aioway.relalg import HopSelectView
+        from aioway.relalg import ProjectHop
 
-        return HopSelectView(self, cols)
+        return ProjectHop(self, subset=list(cols))
 
 
 @hop_dcls

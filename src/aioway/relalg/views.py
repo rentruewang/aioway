@@ -2,6 +2,7 @@
 
 "`HopColumn`s are a column of `Hop`."
 
+import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
@@ -10,11 +11,13 @@ import torch
 
 from aioway.hop import TdictHop, TensorHop, hop_dcls
 
-__all__ = ["HopColumnView", "HopSelectView"]
+from .maps import MapHop
+
+__all__ = ["ColumnViewHop", "ProjectHop"]
 
 
 @hop_dcls
-class HopColumnView(TensorHop):
+class ColumnViewHop(TensorHop):
     """
     A column reference (on a `Hop`).
     Performs `__next__` and yield `torch.Tensor`s.
@@ -40,23 +43,16 @@ class HopColumnView(TensorHop):
 
 
 @hop_dcls
-class HopSelectView(TdictHop):
+class ProjectHop(MapHop):
     """
-    The view generated when calling `Hop.select`.
+    Projection of the input table. The `subset` should be a subset of the input columns.
     """
 
-    input: TdictHop
-    "The input `TdictHop` to perform views on."
-
-    cols: cabc.Sequence[str]
-    "The column to view on."
+    subset: list[str] = dcls.field(default_factory=list)
+    """
+    Input columns that appears in the outputs.
+    """
 
     @typing.override
-    def iterate(self) -> cabc.Generator[td.TensorDict]:
-        for batch in self.input:
-            yield batch.select(*self.cols)
-
-    @property
-    @typing.override
-    def size(self) -> int:
-        return self.input.size
+    def _apply(self, batch: td.TensorDict) -> td.TensorDict:
+        return batch.select(*self.subset)
