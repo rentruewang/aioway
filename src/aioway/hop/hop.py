@@ -182,7 +182,7 @@ class TdictHop(Hop[td.TensorDict], abc.ABC):
 class ListHop[T = typing.Any](Hop[cabc.Sequence[T]]):
     "A convenient list of `Hop`s, using a pull strategy to pull in the data when called."
 
-    hops: list[Hop[T]]
+    hops: cabc.Sequence[Hop[T]]
     """
     The hop list that this `HopList` represents.
     """

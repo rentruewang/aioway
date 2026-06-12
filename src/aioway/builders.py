@@ -31,17 +31,17 @@ def builder_dcls(cls):
 
 
 @builder_dcls
-class Builder[H: Hop]:
-    hop: H
+class Builder:
+    hop: Hop
 
     @classmethod
-    def from_list(cls, items: cabc.Sequence[typing.Self]) -> typing.Self:
+    def from_list(cls, items: cabc.Sequence[typing.Self]):
         hops = [item.hop for item in items]
         return cls(ListHop(hops))
 
 
 @builder_dcls
-class TensorBuilder(Builder[TensorHop]):
+class TensorBuilder(Builder):
     hop: TensorHop
 
     def create_index(self, query: TensorBuilder, k: int) -> typing.Self:
@@ -68,7 +68,7 @@ class TensorBuilder(Builder[TensorHop]):
 
 
 @builder_dcls
-class TdictBuilder(Builder[TdictHop]):
+class TdictBuilder(Builder):
     hop: TdictHop
 
     def column(self, col: str) -> TensorBuilder:
