@@ -11,8 +11,8 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway.hop import BoundedHop, Hop, StackHop, TdictHop, TensorHop
-from aioway.io import FaissIndex, FaissIndexHop
+from aioway.hop import BoundedHop, Hop, StackHop, TdictHop, TensorHop, ListHop
+from aioway.io import FaissIndex, FaissIndexHop, TensorListHop
 from aioway.nn import NnInit, NnLayerHop, NnLossHop, BaseLoss
 from aioway.relalg import (
     ApplyHop,
@@ -36,8 +36,10 @@ def builder_dcls(cls):
 class Builder[H: Hop]:
     hop: H
 
-    def unwrap(self) -> H:
-        return self.hop
+    @classmethod
+    def from_list(cls, items: cabc.Sequence[typing.Self]) -> typing.Self:
+        hops = [item.hop for item in items]
+        return cls(ListHop(hops))
 
 
 @builder_dcls

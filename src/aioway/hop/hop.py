@@ -179,10 +179,10 @@ class TdictHop(Hop[td.TensorDict], abc.ABC):
 
 
 @hop_dcls
-class ListHop(Hop[cabc.Sequence[typing.Any]]):
+class ListHop[T = typing.Any](Hop[cabc.Sequence[T]]):
     "A convenient list of `Hop`s, using a pull strategy to pull in the data when called."
 
-    hops: list[Hop]
+    hops: list[Hop[T]]
     """
     The hop list that this `HopList` represents.
     """
@@ -194,7 +194,7 @@ class ListHop(Hop[cabc.Sequence[typing.Any]]):
         return len(self.hops)
 
     @typing.overload
-    def __getitem__(self, key: int) -> Hop: ...
+    def __getitem__(self, key: int) -> Hop[T]: ...
 
     @typing.overload
     def __getitem__(self, key: slice) -> typing.Self: ...
@@ -213,7 +213,7 @@ class ListHop(Hop[cabc.Sequence[typing.Any]]):
         for hops in zip(*self.hops):
             yield hops
 
-    def dag(self) -> list[Hop]:
+    def dag(self) -> list[Hop[T]]:
         "Order the `Hop`s in their topological order."
 
         dag_nodes = [DagNode(key=hop, deps=list(hop.deps())) for hop in self.nodes()]
