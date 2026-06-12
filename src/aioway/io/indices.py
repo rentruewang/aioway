@@ -2,16 +2,17 @@
 
 "The index (currently only faiss)."
 
+import abc
 import typing
 from collections import abc as cabc
 
-import torch, numpy as np
+import numpy as np
+import torch
 
 from aioway._utils import FloatArray, IntArray
 from aioway.hop import TensorHop, hop_dcls
-import abc
 
-__all__ = ["FaissIndex", "FaissIndexHop"]
+__all__ = ["Index", "FaissIndex", "FaissIndexHop"]
 
 
 class Index(abc.ABC):

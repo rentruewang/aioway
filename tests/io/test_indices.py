@@ -1,6 +1,5 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import numpy as np
 import pytest
 import torch
 from torch.utils import data
@@ -22,7 +21,7 @@ def testing_data():
 @pytest.fixture
 def faiss_index(training_data: torch.Tensor):
     try:
-        import faiss
+        pass
     except ImportError:
         pytest.xfail("`faiss` not installed")
     else:
