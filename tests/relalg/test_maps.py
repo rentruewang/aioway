@@ -10,7 +10,7 @@ import tensordict as td
 
 from aioway._torch import tdict_all_equal, tdict_rename
 from aioway.hop import TdictHop, hop_dcls
-from aioway.io import SourceListHop
+from aioway.io import TdictListHop
 from aioway.relalg import (
     ApplyHop,
     FuncFilterHop,
@@ -104,8 +104,7 @@ def test_rename(map_stream: TdictHop, save_last: SaveLastMapStream):
 def _apply_builder(save_last: SaveLastMapStream):
 
     func = lambda td: tdict_rename(td, f1d="f", i1d="i")
-    schema = lambda attrs: attrs.rename(f1d="f", i1d="i")
-    return ApplyHop(source=save_last, apply=func, schema=schema)
+    return ApplyHop(source=save_last, apply=func)
 
 
 @pytest.mark.parametrize("map_stream", [_apply_builder], indirect=True)
@@ -154,5 +153,5 @@ def test_map_stream_one_to_one(map_stream: MapHop, save_last: SaveLastMapStream)
     "map_stream", [_project_builder, _apply_builder], indirect=True
 )
 def test_caching(map_stream: TdictHop):
-    cached = SourceListHop.exhaust(map_stream)
+    cached = TdictListHop(list(map_stream))
     assert cached.size == map_stream.size

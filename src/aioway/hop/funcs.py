@@ -8,13 +8,13 @@ from collections import abc as cabc
 
 import torch
 
-from .hop import Hop, hop_dcls
+from .hop import Hop, TensorHop, hop_dcls
 
 __all__ = ["CatHop", "StackHop"]
 
 
 @hop_dcls
-class _CatStackHop(Hop, abc.ABC):
+class _CatStackHop(TensorHop, abc.ABC):
     """
     The `Hop` implementation for `torch.cat` / `torch.stack`.
     """
@@ -26,7 +26,7 @@ class _CatStackHop(Hop, abc.ABC):
     because `torch` has complicated type stubs, annoying to deal with.
     """
 
-    tensors: list[Hop]
+    tensors: list[Hop[torch.Tensor]]
     "The list of `Hop` that would evaluate each to a `torch.Tensor`."
 
     dim: int = 0

@@ -11,16 +11,9 @@ import tensordict as td
 import torch
 
 from aioway._torch import tdict_rename
-from aioway.attrs import AttrDict
 from aioway.hop import TdictHop, hop_dcls
 
-__all__ = [
-    "MapHop",
-    "ApplyHop",
-    "FuncFilterHop",
-    "ProjectHop",
-    "RenameHop",
-]
+__all__ = ["MapHop", "ApplyHop", "FuncFilterHop", "RenameHop"]
 
 
 @hop_dcls
@@ -101,9 +94,6 @@ class ApplyHop(MapHop):
     Compute the output of `__next__` based on the input.
     """
 
-    schema: cabc.Callable[[AttrDict], AttrDict]
-    "Map the schema."
-
     @typing.override
     def _apply(self, batch: td.TensorDict) -> td.TensorDict:
         return self.apply(batch)
@@ -140,22 +130,6 @@ class FuncFilterHop(MapHop):
         result = batch[pred]
         assert isinstance(result, td.TensorDict)
         return result
-
-
-@hop_dcls
-class ProjectHop(MapHop):
-    """
-    Projection of the input table. The `subset` should be a subset of the input columns.
-    """
-
-    subset: list[str] = dcls.field(default_factory=list)
-    """
-    Input columns that appears in the outputs.
-    """
-
-    @typing.override
-    def _apply(self, batch: td.TensorDict) -> td.TensorDict:
-        return batch.select(*self.subset)
 
 
 @hop_dcls

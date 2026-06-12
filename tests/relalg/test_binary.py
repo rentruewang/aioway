@@ -9,25 +9,25 @@ import torch
 
 from aioway._torch import tdict_all_equal
 from aioway.hop import TdictHop
-from aioway.io import SourceListHop
+from aioway.io import TdictListHop
 from aioway.relalg import NestedLoopJoinHop, ZipHop
 
 
 @pytest.fixture
-def lhs_stream(concat_stream: TdictHop) -> SourceListHop:
-    return SourceListHop.exhaust(concat_stream)
+def lhs_stream(concat_stream: TdictHop) -> TdictListHop:
+    return TdictListHop(list(concat_stream))
 
 
 @pytest.fixture
-def rhs_stream(joinable_stream: TdictHop) -> SourceListHop:
-    return SourceListHop.exhaust(joinable_stream)
+def rhs_stream(joinable_stream: TdictHop) -> TdictListHop:
+    return TdictListHop(list(joinable_stream))
 
 
 def test_lhs_stream_length(concat_stream: TdictHop, lhs_stream: TdictHop):
     assert concat_stream.size == lhs_stream.size
 
 
-def test_rhs_stream_length(joinable_stream: TdictHop, rhs_stream: SourceListHop):
+def test_rhs_stream_length(joinable_stream: TdictHop, rhs_stream: TdictListHop):
     assert joinable_stream.size == rhs_stream.size
 
 
@@ -35,7 +35,7 @@ def test_rhs_stream_length(joinable_stream: TdictHop, rhs_stream: SourceListHop)
 def binary_stream(
     request: pytest.FixtureRequest,
     lhs_stream: TdictHop,
-    rhs_stream: SourceListHop,
+    rhs_stream: TdictListHop,
 ):
     "An indirect fixture that takes in a builder function and outputs a stream."
 
@@ -49,7 +49,7 @@ def binary_stream(
     return result
 
 
-def _zip_builder(lhs_stream: TdictHop, rhs_stream: SourceListHop):
+def _zip_builder(lhs_stream: TdictHop, rhs_stream: TdictListHop):
     return ZipHop(left=lhs_stream, right=rhs_stream)
 
 
@@ -57,7 +57,7 @@ def _zip_builder(lhs_stream: TdictHop, rhs_stream: SourceListHop):
 def test_zip_input_len(
     binary_stream: TdictHop,
     concat_stream: TdictHop,
-    rhs_stream: SourceListHop,
+    rhs_stream: TdictListHop,
 ):
     assert min(concat_stream.size, rhs_stream.size) == binary_stream.size
 
@@ -65,12 +65,12 @@ def test_zip_input_len(
 @pytest.mark.parametrize("binary_stream", [_zip_builder], indirect=True)
 def test_zip(
     binary_stream: ZipHop,
-    lhs_stream: SourceListHop,
-    rhs_stream: SourceListHop,
+    lhs_stream: TdictListHop,
+    rhs_stream: TdictListHop,
 ):
     assert isinstance(binary_stream, ZipHop)
-    assert isinstance(lhs_stream, SourceListHop)
-    assert isinstance(rhs_stream, SourceListHop)
+    assert isinstance(lhs_stream, TdictListHop)
+    assert isinstance(rhs_stream, TdictListHop)
 
     binary_stream_iter = iter(binary_stream)
 
@@ -86,7 +86,7 @@ def test_zip(
         assert tdict_all_equal(result, concat)
 
 
-def _join_builder(lhs_stream: TdictHop, rhs_stream: SourceListHop):
+def _join_builder(lhs_stream: TdictHop, rhs_stream: TdictListHop):
     return NestedLoopJoinHop(left=lhs_stream, right=rhs_stream, key="i1d")
 
 
@@ -94,7 +94,7 @@ def _join_builder(lhs_stream: TdictHop, rhs_stream: SourceListHop):
 def test_join_input_len(
     binary_stream: TdictHop,
     lhs_stream: TdictHop,
-    rhs_stream: SourceListHop,
+    rhs_stream: TdictListHop,
 ):
     assert binary_stream.size == lhs_stream.size * rhs_stream.size
 
@@ -123,8 +123,8 @@ def test_simple_nested_loop_join(
         }
     ).auto_batch_size_()
 
-    left_stream = SourceListHop(to_slice(left))
-    right_stream = SourceListHop(to_slice(right))
+    left_stream = TdictListHop(to_slice(left))
+    right_stream = TdictListHop(to_slice(right))
 
     out = td.cat(list(NestedLoopJoinHop(left_stream, right_stream, key="a")))
 
@@ -150,7 +150,7 @@ def test_simple_nested_loop_join(
 def test_join_equal_as_original(
     binary_stream: TdictHop,
     lhs_stream: TdictHop,
-    rhs_stream: SourceListHop,
+    rhs_stream: TdictListHop,
 ):
     block_frame_block = td.cat(list(lhs_stream))
     joinable_frame_block = td.cat(list(rhs_stream))
@@ -164,8 +164,8 @@ def test_join_equal_as_original(
     ground_truth = td.cat(
         list(
             NestedLoopJoinHop(
-                left=SourceListHop([block_frame_block]),
-                right=SourceListHop([joinable_frame_block]),
+                left=TdictListHop([block_frame_block]),
+                right=TdictListHop([joinable_frame_block]),
                 key="i1d",
             )
         )
@@ -181,7 +181,7 @@ def test_join_equal_as_original(
 def test_match_functionally(
     binary_stream: TdictHop,
     lhs_stream: TdictHop,
-    rhs_stream: SourceListHop,
+    rhs_stream: TdictListHop,
 ):
     block_frame_block = td.cat(list(lhs_stream))
     joinable_frame_block = td.cat(list(rhs_stream))
