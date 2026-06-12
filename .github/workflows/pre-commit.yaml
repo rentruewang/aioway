@@ -9,7 +9,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: 💣 Prepare
-        run: pip install nox[pbs] && nox -rs hello
+        run: pip install nox[pbs] && nox -rs setup
 
       - name: ⬇️ Python PDM
         uses: pdm-project/setup-pdm@v4
@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: 💣 Prepare
-        run: pip install nox[pbs] && nox -rs hello
+        run: pip install nox[pbs] && nox -rs setup
 
       - name: ⬇️ Python PDM
         uses: pdm-project/setup-pdm@v4
