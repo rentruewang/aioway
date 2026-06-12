@@ -2,5 +2,5 @@
 
 from ._media import *
 from .dsets import *
-from .sessions import *
+from .sess import *
 from .volatile import *

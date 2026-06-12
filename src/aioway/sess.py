@@ -90,12 +90,12 @@ class Session[T](abc.ABC):
             self.__is_active = False
 
     @property
-    def is_active(self):
+    def is_active(self) -> bool:
         """
         Whether we are in the scope of this current `Session`.
         """
 
-        if self._active is self:
+        if type(self)._active is self:
             return True
 
         if self._child is not None:

@@ -111,7 +111,7 @@ def dset_dcls(cls):
     return dcls.dataclass(cls)
 
 
-class TensorAttrMixin(data.Dataset[torch.Tensor], metaclass=abc.ABCMeta):
+class _TensorAttrMixin(data.Dataset[torch.Tensor], metaclass=abc.ABCMeta):
     """
     A `torch.Tensor` `Dataset` should also provide `.attr`.
     """
@@ -121,7 +121,7 @@ class TensorAttrMixin(data.Dataset[torch.Tensor], metaclass=abc.ABCMeta):
         return TensorLoaderHop(dset=self, opts=opts)
 
 
-class TdictAttrsMixin(data.Dataset[td.TensorDict], metaclass=abc.ABCMeta):
+class _TdictAttrsMixin(data.Dataset[td.TensorDict], metaclass=abc.ABCMeta):
     """
     A `td.TensorDict` `Dataset` should also provide `.attr`.
     """
@@ -131,11 +131,43 @@ class TdictAttrsMixin(data.Dataset[td.TensorDict], metaclass=abc.ABCMeta):
 
 
 @dset_dcls
-class Stream[T = typing.Any](data.IterableDataset[T], abc.ABC):
+class _DsetBase:
+    """
+    The base class for I/O.
+    """
+
+    @typing.final
+    def __post_init__(self) -> None:
+        self._setup()
+        self._register()
+
+    def _setup(self) -> None:
+        """
+        Subclass should overwrite this function to perform setup. Can raise errors.
+        """
+
+    @abc.abstractmethod
+    def _register(self) -> None:
+        """
+        Register the instance to a session.
+        """
+
+        raise NotImplementedError
+
+
+@dset_dcls
+class Stream[T = typing.Any](_DsetBase, data.IterableDataset[T], abc.ABC):
     """
     `Stream` represents a set of sequential data stored somewhere.
     Each item is a single row of data.
     """
+
+    @typing.override
+    def _register(self) -> None:
+        from .sess import StreamSession
+
+        if sess := StreamSession.current():
+            sess.push(self)
 
     @abc.abstractmethod
     def __iter__(self) -> cabc.Iterator[T]:
@@ -146,20 +178,20 @@ class Stream[T = typing.Any](data.IterableDataset[T], abc.ABC):
         raise NotImplementedError
 
 
-class TensorStream(TensorAttrMixin, Stream[torch.Tensor], abc.ABC):
+class TensorStream(_TensorAttrMixin, Stream[torch.Tensor], abc.ABC):
     """
     A `TensorStream` is a `Stream` of `torch.Tensor`s.
     """
 
 
-class TdictStream(TdictAttrsMixin, Stream[td.TensorDict], abc.ABC):
+class TdictStream(_TdictAttrsMixin, Stream[td.TensorDict], abc.ABC):
     """
     A `TdictStream` is a `Stream` of `torch.Tensor`s.
     """
 
 
 @dset_dcls
-class Sink[T = typing.Any](abc.ABC):
+class Sink[T = typing.Any](_DsetBase, abc.ABC):
     """
     Consumes a `Hop` and writes to some external location.
     """
@@ -180,9 +212,16 @@ class Sink[T = typing.Any](abc.ABC):
     def write(self, batch: T) -> None:
         raise NotImplementedError
 
+    @typing.override
+    def _register(self) -> None:
+        from .sess import SinkSession
+
+        if sess := SinkSession.current():
+            sess.push(self)
+
 
 @dset_dcls
-class Frame[T = typing.Any](data.Dataset[T], abc.ABC):
+class Frame[T = typing.Any](_DsetBase, data.Dataset[T], abc.ABC):
     """
     `Frame` is a `Stream` that supports random access.
     Each item retrieved from `Frame` is a single row of data.
@@ -215,14 +254,21 @@ class Frame[T = typing.Any](data.Dataset[T], abc.ABC):
     def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> LoaderHop:
         return LoaderHop(dset=self, opts=opts)
 
+    @typing.override
+    def _register(self) -> None:
+        from .sess import FrameSession
 
-class TensorFrame(TensorAttrMixin, Frame[torch.Tensor], abc.ABC):
+        if sess := FrameSession.current():
+            sess.push(self)
+
+
+class TensorFrame(_TensorAttrMixin, Frame[torch.Tensor], abc.ABC):
     """
     A `torch.Tensor` dataset that supports random access.
     """
 
 
-class TdictFrame(TdictAttrsMixin, Frame[td.TensorDict], abc.ABC):
+class TdictFrame(_TdictAttrsMixin, Frame[td.TensorDict], abc.ABC):
     """
     A dataset of `td.TensorDict` that supports random access.
     """
