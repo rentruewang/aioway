@@ -2,8 +2,6 @@
 
 "The builder for `Hop`s."
 
-from mypyc.primitives.bytearray_ops import isinstance_bytearray
-
 import dataclasses as dcls
 import typing
 from collections import abc as cabc
@@ -11,9 +9,9 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway.hop import BoundedHop, Hop, StackHop, TdictHop, TensorHop, ListHop
-from aioway.io import FaissIndex, FaissIndexHop, TensorListHop
-from aioway.nn import NnInit, NnLayerHop, NnLossHop, BaseLoss
+from aioway.hop import BoundedHop, Hop, ListHop, StackHop, TdictHop, TensorHop
+from aioway.io import FaissIndex, FaissIndexHop
+from aioway.nn import BaseLoss, NnInit, NnLayerHop, NnLossHop
 from aioway.relalg import (
     ApplyHop,
     ColumnViewHop,

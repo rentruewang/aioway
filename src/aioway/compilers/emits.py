@@ -5,11 +5,11 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
+from aioway.builders import TensorBuilder
 from aioway.hop import ListHop
 from aioway.io import TensorListHop
 from aioway.nn import Linear
 from aioway.tags import AttrTag, TagDict
-from aioway.builders import TensorBuilder, Builder
 
 __all__ = ["Emitter", "emitter_dcls", "JustLinearEmitter"]
 
