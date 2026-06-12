@@ -65,9 +65,10 @@ def setup():
 
     if in_github():
         _github_cleanup()
-        run("pdm", "config", "python.use_venv", "true")
 
     _install_ffmpeg()
+
+    run("df", "-h")
 
 
 @nox_cmd
