@@ -10,7 +10,7 @@ from aioway._fn import Fn
 from aioway._torch import is_aten_op
 
 from ..fate import Fate, find_fate
-from ..modes import TorchDispFn
+from .tensors import TorchDispFn
 
 __all__ = ["FateFn"]
 
