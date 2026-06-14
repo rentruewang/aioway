@@ -15,7 +15,7 @@ from torch import _ops, overrides
 from torch.utils import _python_dispatch as pyd
 
 from aioway._fn import TorchThunk
-from aioway._torch import is_aten_op, is_prim_op, render_function_body_prefix
+from aioway._utils import is_aten_op, is_prim_op, render_function_body_prefix
 
 from .modes import Mode, ModeStack
 

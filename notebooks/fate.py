@@ -15,7 +15,7 @@
 # %%
 import torch
 
-from aioway._torch import *
+from aioway._utils import *
 from aioway.fake import *
 
 # %%

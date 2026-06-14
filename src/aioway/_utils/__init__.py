@@ -7,5 +7,6 @@ from .decomps import *
 from .logging import *
 from .platforms import *
 from .renders import *
+from .torch import *
 from .types import *
 from .typing import *

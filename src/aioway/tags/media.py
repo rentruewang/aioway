@@ -7,7 +7,7 @@ from collections import abc as cabc
 
 import torch
 
-from aioway._torch import is_fake_tensor
+from aioway._utils import is_fake_tensor
 
 from ..attrs import Attr, DType
 from .tags import TensorTag, tags_dcls

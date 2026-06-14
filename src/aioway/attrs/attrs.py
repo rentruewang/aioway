@@ -12,7 +12,7 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway._torch import torch_fake_mode
+from aioway._utils import torch_fake_mode
 
 from .devices import Device, DeviceLike
 from .dtypes import DType, DTypeLike
