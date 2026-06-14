@@ -6,14 +6,19 @@ import graphlib
 import typing
 from collections import abc as cabc
 
-__all__ = ["DagNode", "topo_sort"]
+__all__ = ["DagNodeKey", "dag_node_key", "topo_sort"]
 
 
-type DagNodeLike[T] = DagNode[T] | tuple[T, cabc.Iterable[T]]
-"A type that looks like `DagNode`."
+@typing.runtime_checkable
+class DagNode(typing.Protocol):
+    def deps(self) -> cabc.Iterator[typing.Self]: ...
 
 
-class DagNode[T](typing.NamedTuple):
+type DagNodeKeyLike[T] = DagNodeKey[T] | tuple[T, cabc.Iterable[T]]
+"A type that looks like `DagNodeKey`."
+
+
+class DagNodeKey[T](typing.NamedTuple):
     """
     `DagNode` essentially is a `key: list[value]` mapping pair,
     but `key` does not need to be hashable. Each data must have unique `id`.
@@ -30,23 +35,30 @@ class DagNode[T](typing.NamedTuple):
     """
 
     @classmethod
-    def coerce(cls, item: DagNodeLike[T]) -> typing.Self:
+    def coerce(cls, item: DagNodeKeyLike[T]) -> typing.Self:
         key, deps = item
         return cls(key=key, deps=list(deps))
 
 
 def _as_dag_nodes[T](
-    obj: cabc.Iterable[DagNodeLike[T]] | dict[T, cabc.Iterable[T]],
-) -> cabc.Generator[DagNode[T]]:
+    obj: cabc.Iterable[DagNodeKeyLike[T]] | dict[T, cabc.Iterable[T]],
+) -> cabc.Generator[DagNodeKey[T]]:
     if isinstance(obj, cabc.Mapping):
-        obj = typing.cast(cabc.Iterable[DagNodeLike[T]], obj.items())
+        obj = typing.cast(cabc.Iterable[DagNodeKeyLike[T]], obj.items())
 
     for key, deps in obj:
-        yield DagNode(key=key, deps=list(deps))
+        yield DagNodeKey(key=key, deps=list(deps))
+
+
+def dag_node_key(node: DagNode) -> DagNodeKey:
+    if not isinstance(node, DagNode):
+        raise TypeError(f"{type(node)=} does not conform to the `DagNode` API.")
+
+    return DagNodeKey(key=node, deps=list(node.deps()))
 
 
 def topo_sort[T](
-    graph: cabc.Iterable[DagNodeLike[T]] | dict[T, cabc.Iterable[T]], /
+    graph: cabc.Iterable[DagNodeKeyLike[T]] | dict[T, cabc.Iterable[T]], /
 ) -> list[T]:
     """
     Create a topological sorted list from the given `graph`.
@@ -70,8 +82,8 @@ def topo_sort[T](
 
 
 def _validate_graph_ids[T](
-    graph: cabc.Sequence[DagNode[T]],
-) -> dict[int, DagNode[T]]:
+    graph: cabc.Sequence[DagNodeKey[T]],
+) -> dict[int, DagNodeKey[T]]:
     "Validate the graph and return a dictionary used to deref the `id`s."
 
     # Check if data all have unique ids.
