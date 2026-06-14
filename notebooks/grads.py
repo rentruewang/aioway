@@ -16,7 +16,7 @@
 # %%
 import torch
 
-from aioway.modes import TorchDispMode
+from aioway.fake import TorchDispMode
 
 
 # %%

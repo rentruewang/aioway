@@ -12,8 +12,9 @@ from torch import nn
 
 from aioway._torch import current_fake_mode, replace_tensors_with_attr, torch_fake_mode
 from aioway._utils import replace_tensors
-from aioway.fate import FateFn
-from aioway.modes import (
+
+from ..fn import (
+    FateFn,
     NnFwdFn,
     NnFwdMode,
     NnInitFn,
@@ -23,7 +24,6 @@ from aioway.modes import (
     TorchFuncFn,
     TorchFuncMode,
 )
-
 from .hists import Hist, HistTensorGraph
 
 __all__ = [
