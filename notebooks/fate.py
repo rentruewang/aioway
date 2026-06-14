@@ -17,7 +17,7 @@ import torch
 
 from aioway._torch import *
 from aioway.ctx import *
-from aioway.fate import *
+from aioway.fake import *
 from aioway.modes import *
 
 # %%

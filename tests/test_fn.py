@@ -4,7 +4,7 @@ import pytest
 
 from aioway._fn import Fn, TensorInput, TorchThunk
 from aioway.ctx import HistTensorGraph
-from aioway.fate import Fate, FateFn
+from aioway.fake import Fate, FateFn
 from aioway.modes import NnFwdFn, NnInitFn, TorchDispFn, TorchFuncFn
 
 
