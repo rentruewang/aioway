@@ -6,8 +6,7 @@ import pytest
 import torch
 from torch import nn
 
-from aioway._torch import is_fake_tensor, torch_fake_mode
-from aioway._utils import AnyDict
+from aioway._utils import AnyDict, is_fake_tensor, torch_fake_mode
 from aioway.fake import NnInitFn
 from aioway.hop import Hop, StackHop, TensorHop, hop_cache_on
 from aioway.io import TensorListHop

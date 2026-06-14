@@ -14,7 +14,7 @@ import torch
 from aioway._utils import (
     AnyDict,
     AnySet,
-    DagNode,
+    dag_node_key,
     decomp_dcls_members,
     decomp_replace,
     topo_sort,
@@ -216,7 +216,7 @@ class ListHop[T = typing.Any](Hop[cabc.Sequence[T]]):
     def dag(self) -> list[Hop[T]]:
         "Order the `Hop`s in their topological order."
 
-        dag_nodes = [DagNode(key=hop, deps=list(hop.deps())) for hop in self.nodes()]
+        dag_nodes = [dag_node_key(hop) for hop in self.nodes()]
         return topo_sort(dag_nodes)
 
 

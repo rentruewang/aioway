@@ -8,7 +8,7 @@ from collections import abc as cabc
 import pytest
 import tensordict as td
 
-from aioway._torch import tdict_all_equal, tdict_rename
+from aioway._utils import tdict_all_equal, tdict_rename
 from aioway.hop import TdictHop, hop_dcls
 from aioway.io import TdictListHop
 from aioway.relalg import (
