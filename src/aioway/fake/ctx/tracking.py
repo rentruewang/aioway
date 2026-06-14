@@ -12,7 +12,7 @@ from torch import nn
 
 from aioway._torch import current_fake_mode, replace_tensors_with_attr, torch_fake_mode
 from aioway._utils import replace_tensors
-from aioway.fake import (
+from ..fn import (
     FateFn,
     NnFwdFn,
     NnFwdMode,

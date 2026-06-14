@@ -5,7 +5,7 @@ import operator
 import pytest
 import torch
 
-from aioway.ctx import fake_fn
+from aioway.fake import fake_fn
 
 
 @pytest.fixture

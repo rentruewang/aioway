@@ -3,8 +3,15 @@
 import pytest
 
 from aioway._fn import Fn, TensorInput, TorchThunk
-from aioway.ctx import HistTensorGraph
-from aioway.fake import Fate, FateFn, NnFwdFn, NnInitFn, TorchDispFn, TorchFuncFn
+from aioway.fake import (
+    Fate,
+    FateFn,
+    HistTensorGraph,
+    NnFwdFn,
+    NnInitFn,
+    TorchDispFn,
+    TorchFuncFn,
+)
 
 
 def _fn_cls():

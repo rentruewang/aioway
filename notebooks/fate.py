@@ -16,7 +16,6 @@
 import torch
 
 from aioway._torch import *
-from aioway.ctx import *
 from aioway.fake import *
 
 # %%
