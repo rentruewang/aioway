@@ -8,10 +8,9 @@ from torch import nn
 from aioway.algos import SupervisedAlgo
 from aioway.attrs import Attr
 from aioway.compilers import JustLinearEmitter
-from aioway.hop import ListHop, TensorHop
-from aioway.io import Sink, Stream, TensorListHop
-from aioway.nn import Linear, NnHop, NnInit, NnLayerHop
-from aioway.tags import AttrTag, TagDict
+from aioway.dsets import AttrTag, Stream, TagDict, TensorListHop
+from aioway.hop import Linear, ListHop, NnHop, NnInit, NnLayerHop, TensorHop
+from aioway.sinks import Sink
 
 
 @pytest.fixture

@@ -13,7 +13,7 @@ from rich import traceback
 
 from aioway.fake import fake_fn, track_fn
 
-from .fake import batch_sizes, cpu_and_maybe_cuda
+from .mock import batch_sizes, cpu_and_maybe_cuda
 
 _PROJECT_ROOT = pathlib.Path(__file__).parent.parent.resolve()
 _REPO = git.Repo(_PROJECT_ROOT)
