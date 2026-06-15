@@ -28,9 +28,6 @@ class Sink[T = typing.Any](abc.ABC):
     The type to check
     """
 
-    def __post_init__(self):
-        self._register()
-
     def __call__(self, hop: Hop[T]) -> None:
         for batch in hop:
             if not isinstance(batch, self.TYPE):
@@ -41,12 +38,6 @@ class Sink[T = typing.Any](abc.ABC):
     @abc.abstractmethod
     def write(self, batch: T, /) -> None:
         raise NotImplementedError
-
-    def _register(self) -> None:
-        from .sess import SinkSession
-
-        if sess := SinkSession.current():
-            sess.push(self)
 
     @property
     def tags(self):

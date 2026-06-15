@@ -8,8 +8,8 @@ import tensordict as td
 import torch
 
 from aioway._utils import tdict_all_equal
+from aioway.dsets import TdictListHop
 from aioway.hop import TdictHop
-from aioway.io import TdictListHop
 from aioway.relalg import NestedLoopJoinHop, ZipHop
 
 

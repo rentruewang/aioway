@@ -9,8 +9,8 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
+from aioway.dsets import FaissIndex, FaissIndexHop
 from aioway.hop import BoundedHop, Hop, ListHop, StackHop, TdictHop, TensorHop
-from aioway.io import FaissIndex, FaissIndexHop
 from aioway.nn import BaseLoss, NnInit, NnLayerHop, NnLossHop
 from aioway.relalg import (
     ApplyHop,

@@ -9,16 +9,11 @@ from aioway._utils import Stack
 from aioway.sess import Session
 
 from .dsets import Dset
-from .sinks import Sink
 
-__all__ = ["DsetSession", "SinkSession"]
+__all__ = ["DsetSession"]
 
 _DATASETS: Stack[Dset] = Stack()
 "The datasets that are in scope."
-
-
-_SINKS: Stack[Sink] = Stack()
-"The list of sinks."
 
 
 class _DsetSession[T](Session):
@@ -54,9 +49,3 @@ class DsetSession(_DsetSession[Dset]):
     "The dataset session for streams and frames."
 
     STACK: typing.ClassVar = _DATASETS
-
-
-class SinkSession(_DsetSession[Sink]):
-    "The dataset session for sinks."
-
-    STACK: typing.ClassVar = _SINKS

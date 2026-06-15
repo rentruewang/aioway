@@ -4,8 +4,8 @@ import pytest
 import torch
 from torch.utils import data
 
+from aioway.dsets import FaissIndex, FaissIndexHop, TensorLoaderHop
 from aioway.hop import TensorHop
-from aioway.io import FaissIndex, FaissIndexHop, TensorLoaderHop
 
 
 @pytest.fixture
