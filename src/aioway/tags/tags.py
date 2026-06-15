@@ -138,6 +138,15 @@ class Tag[T = typing.Any](abc.ABC):
 
         return tag
 
+    @classmethod
+    def get(cls, mapping: TagDict) -> typing.Self:
+        if cls not in mapping:
+            raise KeyError(cls)
+
+        result = mapping[cls.NAME]
+        assert isinstance(result, cls)
+        return result
+
 
 @tags_dcls
 class TensorTag(Tag[torch.Tensor]):
@@ -213,8 +222,17 @@ class TagDict[T = typing.Any]:
     def __init__(self, mapping: dict[str, Tag[T]] | None = None, /) -> None:
         self._mapping: dict[str, Tag[T]] = mapping or {}
 
-    def __contains__(self, item: Tag[T]) -> bool:
-        return item.NAME in self._mapping and self._mapping[item.NAME] == item
+    def __contains__(self, item: str | type[Tag[T]] | Tag[T]) -> bool:
+        if isinstance(item, str):
+            return item in self._mapping
+
+        if isinstance(item, type) and issubclass(item, Tag):
+            return item.NAME in self._mapping
+
+        if isinstance(item, Tag):
+            return item.NAME in self._mapping and self._mapping[item.NAME] == item
+
+        raise TypeError(f"Do not know how to handle {item=}.")
 
     def __iter__(self) -> cabc.Iterator[Tag[T]]:
         yield from self._mapping.values()

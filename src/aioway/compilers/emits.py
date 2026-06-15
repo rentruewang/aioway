@@ -45,11 +45,15 @@ class JustLinearEmitter(Emitter):
     A builder that outputs 1 linear layer, supporting 1 input and 1 output.
     """
 
-    in_attr: AttrTag
+    in_dset: Dset
     "The input shape."
 
-    out_attr: AttrTag
+    out_dset: Sink
     "The output shape."
+
+    def __post_init__(self) -> None:
+        assert isinstance(self.in_dset, Dset)
+        assert isinstance(self.out_dset, Sink)
 
     def __call__(self) -> ListHop:
         try:
@@ -64,8 +68,20 @@ class JustLinearEmitter(Emitter):
         )
         return ListHop([linear_node.hop])
 
+    @property
+    def in_attr(self) -> AttrTag:
+        result = self.in_dset.tags[AttrTag.NAME]
+        assert isinstance(result, AttrTag)
+        return result
+
+    @property
+    def out_attr(self) -> AttrTag:
+        result = self.out_dset.tags[AttrTag.NAME]
+        assert isinstance(result, AttrTag)
+        return result
+
     def inputs(self) -> cabc.Iterator[Dset]:
-        raise NotImplementedError
+        yield self.in_dset
 
     def outputs(self) -> cabc.Iterator[Sink]:
-        raise NotImplementedError
+        yield self.out_dset

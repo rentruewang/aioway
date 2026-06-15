@@ -161,6 +161,10 @@ class Dset:
 
     @property
     def tags(self) -> TagDict:
+        """
+        The tags associated with the data.
+        """
+
         return TagDict()
 
 
@@ -175,9 +179,8 @@ class Stream[T = typing.Any](Dset, data.IterableDataset[T], abc.ABC):
     def __iter__(self) -> cabc.Iterator[T]:
         raise NotImplementedError
 
-    @abc.abstractmethod
     def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> LoaderHop:
-        raise NotImplementedError
+        return LoaderHop(dset=self, opts=opts)
 
 
 class TensorStream(_TensorAttrMixin, Stream[torch.Tensor], abc.ABC):

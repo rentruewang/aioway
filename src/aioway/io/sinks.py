@@ -31,7 +31,7 @@ class Sink[T = typing.Any](Dset, abc.ABC):
             self.write(batch)
 
     @abc.abstractmethod
-    def write(self, batch: T) -> None:
+    def write(self, batch: T, /) -> None:
         raise NotImplementedError
 
     @typing.override
