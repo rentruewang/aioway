@@ -19,6 +19,7 @@ __all__ = [
     "LoaderHop",
     "TensorLoaderHop",
     "TdictLoaderHop",
+    "Dset",
     "Stream",
     "Sink",
     "Frame",
@@ -133,7 +134,7 @@ class _TdictAttrsMixin(data.Dataset[td.TensorDict], metaclass=abc.ABCMeta):
 
 
 @dset_dcls
-class _DsetBase:
+class Dset:
     """
     The base class for I/O.
     """
@@ -148,28 +149,23 @@ class _DsetBase:
         Subclass should overwrite this function to perform setup. Can raise errors.
         """
 
-    @abc.abstractmethod
     def _register(self) -> None:
         """
         Register the instance to a session.
         """
 
-        raise NotImplementedError
+        from .sess import DsetSession
+
+        if sess := DsetSession.current():
+            sess.push(self)
 
 
 @dset_dcls
-class Stream[T = typing.Any](_DsetBase, data.IterableDataset[T], abc.ABC):
+class Stream[T = typing.Any](Dset, data.IterableDataset[T], abc.ABC):
     """
     `Stream` represents a set of sequential data stored somewhere.
     Each item is a single row of data.
     """
-
-    @typing.override
-    def _register(self) -> None:
-        from .sess import StreamSession
-
-        if sess := StreamSession.current():
-            sess.push(self)
 
     @abc.abstractmethod
     def __iter__(self) -> cabc.Iterator[T]:
@@ -193,7 +189,7 @@ class TdictStream(_TdictAttrsMixin, Stream[td.TensorDict], abc.ABC):
 
 
 @dset_dcls
-class Sink[T = typing.Any](_DsetBase, abc.ABC):
+class Sink[T = typing.Any](Dset, abc.ABC):
     """
     Consumes a `Hop` and writes to some external location.
     """
@@ -223,7 +219,7 @@ class Sink[T = typing.Any](_DsetBase, abc.ABC):
 
 
 @dset_dcls
-class Frame[T = typing.Any](_DsetBase, data.Dataset[T], abc.ABC):
+class Frame[T = typing.Any](Dset, data.Dataset[T], abc.ABC):
     """
     `Frame` is a `Stream` that supports random access.
     Each item retrieved from `Frame` is a single row of data.
@@ -255,13 +251,6 @@ class Frame[T = typing.Any](_DsetBase, data.Dataset[T], abc.ABC):
 
     def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> LoaderHop:
         return LoaderHop(dset=self, opts=opts)
-
-    @typing.override
-    def _register(self) -> None:
-        from .sess import FrameSession
-
-        if sess := FrameSession.current():
-            sess.push(self)
 
 
 class TensorFrame(_TensorAttrMixin, Frame[torch.Tensor], abc.ABC):
