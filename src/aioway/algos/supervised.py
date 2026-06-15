@@ -5,8 +5,8 @@ from collections import abc as cabc
 
 from aioway.compilers import Emitter, JustLinearEmitter, emitter_dcls
 from aioway.hop import ListHop, TensorHop
+from aioway.io import Dset, Sink
 from aioway.nn import MSELoss
-from aioway.tags import TagDict
 
 __all__ = ["SupervisedAlgo"]
 
@@ -34,15 +34,11 @@ class SupervisedAlgo(Emitter):
     @property
     def just_linear(self) -> JustLinearEmitter:
         raise NotImplementedError
-        # return JustLinearBuilder(
-        #     AttrTag.from_attr(self.input_data.attr),
-        #     AttrTag.from_attr(self.target_data.attr),
-        # )
 
-    def inputs(self) -> cabc.Iterator[TagDict]:
+    def inputs(self) -> cabc.Iterator[Dset]:
         raise NotImplementedError
         # yield TagDict.from_tags(AttrTag.from_attr(self.input_data.attr))
 
-    def outputs(self) -> cabc.Iterator[TagDict]:
+    def outputs(self) -> cabc.Iterator[Sink]:
         raise NotImplementedError
         # yield TagDict.from_tags(AttrTag.from_attr(self.target_data.attr))

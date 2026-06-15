@@ -7,9 +7,9 @@ from collections import abc as cabc
 
 from aioway.builders import TensorBuilder
 from aioway.hop import ListHop
-from aioway.io import TensorListHop
+from aioway.io import Dset, Sink, TensorListHop
 from aioway.nn import Linear
-from aioway.tags import AttrTag, TagDict
+from aioway.tags import AttrTag
 
 __all__ = ["Emitter", "emitter_dcls", "JustLinearEmitter"]
 
@@ -31,11 +31,11 @@ class Emitter(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def inputs(self) -> cabc.Iterator[TagDict]:
+    def inputs(self) -> cabc.Iterator[Dset]:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def outputs(self) -> cabc.Iterator[TagDict]:
+    def outputs(self) -> cabc.Iterator[Sink]:
         raise NotImplementedError
 
 
@@ -64,8 +64,8 @@ class JustLinearEmitter(Emitter):
         )
         return ListHop([linear_node.hop])
 
-    def inputs(self) -> cabc.Iterator[TagDict]:
-        yield TagDict.from_tags(self.in_attr)
+    def inputs(self) -> cabc.Iterator[Dset]:
+        raise NotImplementedError
 
-    def outputs(self) -> cabc.Iterator[TagDict]:
-        yield TagDict.from_tags(self.out_attr)
+    def outputs(self) -> cabc.Iterator[Sink]:
+        raise NotImplementedError
