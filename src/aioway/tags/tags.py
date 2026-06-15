@@ -210,8 +210,8 @@ class TagDict[T = typing.Any]:
     which supports both fast lookup and conveniently unpacks to only `Tag`s.
     """
 
-    def __init__(self, mapping: dict[str, Tag[T]], /) -> None:
-        self._mapping = mapping
+    def __init__(self, mapping: dict[str, Tag[T]] | None = None, /) -> None:
+        self._mapping: dict[str, Tag[T]] = mapping or {}
 
     def __contains__(self, item: Tag[T]) -> bool:
         return item.NAME in self._mapping and self._mapping[item.NAME] == item
