@@ -13,14 +13,15 @@ from torch.utils import data
 
 from aioway._utils import HasLen
 from aioway.hop import Hop, TdictHop, TensorHop, hop_dcls
+from aioway.tags import TagDict
 
 __all__ = [
     "LoaderOpt",
     "LoaderHop",
     "TensorLoaderHop",
     "TdictLoaderHop",
+    "Dset",
     "Stream",
-    "Sink",
     "Frame",
     "dset_dcls",
     "TensorStream",
@@ -108,9 +109,9 @@ class TdictLoaderHop(LoaderHop[td.TensorDict], TdictHop):
         return data.DataLoader(self.dset, collate_fn=td.stack, **dcls.asdict(self.opts))
 
 
-@typing.dataclass_transform()
+@typing.dataclass_transform(frozen_default=True)
 def dset_dcls(cls):
-    return dcls.dataclass(cls)
+    return dcls.dataclass(frozen=True)(cls)
 
 
 class _TensorAttrMixin(data.Dataset[torch.Tensor], metaclass=abc.ABCMeta):
@@ -133,7 +134,7 @@ class _TdictAttrsMixin(data.Dataset[td.TensorDict], metaclass=abc.ABCMeta):
 
 
 @dset_dcls
-class _DsetBase:
+class Dset[T](data.Dataset[T]):
     """
     The base class for I/O.
     """
@@ -143,40 +144,42 @@ class _DsetBase:
         self._setup()
         self._register()
 
+    def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> LoaderHop:
+        return LoaderHop(dset=self, opts=opts)
+
     def _setup(self) -> None:
         """
         Subclass should overwrite this function to perform setup. Can raise errors.
         """
 
-    @abc.abstractmethod
     def _register(self) -> None:
         """
         Register the instance to a session.
         """
 
-        raise NotImplementedError
+        from .sess import DsetSession
+
+        if sess := DsetSession.current():
+            sess.push(self)
+
+    @property
+    def tags(self) -> TagDict:
+        """
+        The tags associated with the data.
+        """
+
+        return TagDict()
 
 
 @dset_dcls
-class Stream[T = typing.Any](_DsetBase, data.IterableDataset[T], abc.ABC):
+class Stream[T = typing.Any](Dset[T], data.IterableDataset[T], abc.ABC):
     """
     `Stream` represents a set of sequential data stored somewhere.
     Each item is a single row of data.
     """
 
-    @typing.override
-    def _register(self) -> None:
-        from .sess import StreamSession
-
-        if sess := StreamSession.current():
-            sess.push(self)
-
     @abc.abstractmethod
     def __iter__(self) -> cabc.Iterator[T]:
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> LoaderHop:
         raise NotImplementedError
 
 
@@ -193,37 +196,7 @@ class TdictStream(_TdictAttrsMixin, Stream[td.TensorDict], abc.ABC):
 
 
 @dset_dcls
-class Sink[T = typing.Any](_DsetBase, abc.ABC):
-    """
-    Consumes a `Hop` and writes to some external location.
-    """
-
-    TYPE: typing.ClassVar[type[T]]
-    """
-    The type to check
-    """
-
-    def __call__(self, hop: Hop[T]) -> None:
-        for batch in hop:
-            if not isinstance(batch, self.TYPE):
-                raise TypeError(f"The batch has {type(batch)=}, expected {self.TYPE}.")
-
-            self.write(batch)
-
-    @abc.abstractmethod
-    def write(self, batch: T) -> None:
-        raise NotImplementedError
-
-    @typing.override
-    def _register(self) -> None:
-        from .sess import SinkSession
-
-        if sess := SinkSession.current():
-            sess.push(self)
-
-
-@dset_dcls
-class Frame[T = typing.Any](_DsetBase, data.Dataset[T], abc.ABC):
+class Frame[T = typing.Any](Dset[T], data.Dataset[T], abc.ABC):
     """
     `Frame` is a `Stream` that supports random access.
     Each item retrieved from `Frame` is a single row of data.
@@ -252,16 +225,6 @@ class Frame[T = typing.Any](_DsetBase, data.Dataset[T], abc.ABC):
         """
 
         raise NotImplementedError
-
-    def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> LoaderHop:
-        return LoaderHop(dset=self, opts=opts)
-
-    @typing.override
-    def _register(self) -> None:
-        from .sess import FrameSession
-
-        if sess := FrameSession.current():
-            sess.push(self)
 
 
 class TensorFrame(_TensorAttrMixin, Frame[torch.Tensor], abc.ABC):

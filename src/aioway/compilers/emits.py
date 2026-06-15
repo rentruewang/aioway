@@ -7,9 +7,9 @@ from collections import abc as cabc
 
 from aioway.builders import TensorBuilder
 from aioway.hop import ListHop
-from aioway.io import TensorListHop
+from aioway.io import Dset, LoaderOpt, Sink, TensorStream
 from aioway.nn import Linear
-from aioway.tags import AttrTag, TagDict
+from aioway.tags import AttrTag
 
 __all__ = ["Emitter", "emitter_dcls", "JustLinearEmitter"]
 
@@ -31,11 +31,11 @@ class Emitter(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def inputs(self) -> cabc.Iterator[TagDict]:
+    def inputs(self) -> cabc.Iterator[Dset]:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def outputs(self) -> cabc.Iterator[TagDict]:
+    def outputs(self) -> cabc.Iterator[Sink]:
         raise NotImplementedError
 
 
@@ -45,11 +45,18 @@ class JustLinearEmitter(Emitter):
     A builder that outputs 1 linear layer, supporting 1 input and 1 output.
     """
 
-    in_attr: AttrTag
+    in_dset: TensorStream
     "The input shape."
 
-    out_attr: AttrTag
+    out_dset: Sink
     "The output shape."
+
+    opts: LoaderOpt = LoaderOpt()
+    "The default data loader options."
+
+    def __post_init__(self) -> None:
+        assert isinstance(self.in_dset, Dset)
+        assert isinstance(self.out_dset, Sink)
 
     def __call__(self) -> ListHop:
         try:
@@ -58,14 +65,26 @@ class JustLinearEmitter(Emitter):
         except TypeError:
             return NotImplemented
 
-        input_node = TensorBuilder(TensorListHop([in_attr.to_fake_tensor()]))
+        input_node = TensorBuilder(self.in_dset(self.opts))
         linear_node = input_node.apply_layer(
             Linear(in_attr.shape[-1], out_attr.shape[-1]),
         )
         return ListHop([linear_node.hop])
 
-    def inputs(self) -> cabc.Iterator[TagDict]:
-        yield TagDict.from_tags(self.in_attr)
+    @property
+    def in_attr(self) -> AttrTag:
+        result = self.in_dset.tags[AttrTag.NAME]
+        assert isinstance(result, AttrTag)
+        return result
 
-    def outputs(self) -> cabc.Iterator[TagDict]:
-        yield TagDict.from_tags(self.out_attr)
+    @property
+    def out_attr(self) -> AttrTag:
+        result = self.out_dset.tags[AttrTag.NAME]
+        assert isinstance(result, AttrTag)
+        return result
+
+    def inputs(self) -> cabc.Iterator[Dset]:
+        yield self.in_dset
+
+    def outputs(self) -> cabc.Iterator[Sink]:
+        yield self.out_dset

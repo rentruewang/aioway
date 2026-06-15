@@ -4,9 +4,9 @@ import typing
 from collections import abc as cabc
 
 from aioway.compilers import Emitter, JustLinearEmitter, emitter_dcls
-from aioway.hop import ListHop, TensorHop
+from aioway.hop import ListHop
+from aioway.io import Dset, Sink, TensorStream
 from aioway.nn import MSELoss
-from aioway.tags import TagDict
 
 __all__ = ["SupervisedAlgo"]
 
@@ -17,8 +17,8 @@ class SupervisedAlgo(Emitter):
     The supervised learning algorithm. Currently supports 1 input 1 output.
     """
 
-    input_data: TensorHop
-    target_data: TensorHop
+    input_data: TensorStream
+    target_data: Sink
 
     @typing.no_type_check
     def __call__(self) -> ListHop:
@@ -33,16 +33,10 @@ class SupervisedAlgo(Emitter):
 
     @property
     def just_linear(self) -> JustLinearEmitter:
-        raise NotImplementedError
-        # return JustLinearBuilder(
-        #     AttrTag.from_attr(self.input_data.attr),
-        #     AttrTag.from_attr(self.target_data.attr),
-        # )
+        return JustLinearEmitter(self.input_data, self.target_data)
 
-    def inputs(self) -> cabc.Iterator[TagDict]:
-        raise NotImplementedError
-        # yield TagDict.from_tags(AttrTag.from_attr(self.input_data.attr))
+    def inputs(self) -> cabc.Iterator[Dset]:
+        yield self.input_data
 
-    def outputs(self) -> cabc.Iterator[TagDict]:
-        raise NotImplementedError
-        # yield TagDict.from_tags(AttrTag.from_attr(self.target_data.attr))
+    def outputs(self) -> cabc.Iterator[Sink]:
+        yield self.target_data

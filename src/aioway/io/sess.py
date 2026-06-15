@@ -8,15 +8,14 @@ import typing
 from aioway._utils import Stack
 from aioway.sess import Session
 
-from .dsets import Frame, Sink, Stream
+from .dsets import Dset
+from .sinks import Sink
 
-__all__ = ["StreamSession", "SinkSession", "FrameSession"]
+__all__ = ["DsetSession", "SinkSession"]
 
-_STREAMS: Stack[Stream] = Stack()
-"The streams that are in scope."
+_DATASETS: Stack[Dset] = Stack()
+"The datasets that are in scope."
 
-_FRAMES: Stack[Frame] = Stack()
-"The frames that are in scope."
 
 _SINKS: Stack[Sink] = Stack()
 "The list of sinks."
@@ -51,19 +50,13 @@ class _DsetSession[T](Session):
             self.STACK.truncate(self._before_len)
 
 
-class StreamSession(_DsetSession[Stream]):
-    "The dataset session for streams."
+class DsetSession(_DsetSession[Dset]):
+    "The dataset session for streams and frames."
 
-    STACK: typing.ClassVar = _STREAMS
+    STACK: typing.ClassVar = _DATASETS
 
 
 class SinkSession(_DsetSession[Sink]):
     "The dataset session for sinks."
 
     STACK: typing.ClassVar = _SINKS
-
-
-class FrameSession(_DsetSession[Frame]):
-    "The dataset session for frames."
-
-    STACK: typing.ClassVar = _FRAMES
