@@ -3,17 +3,22 @@
 "The interface for the `io` package."
 
 import abc
+import dataclasses as dcls
 import typing
 
 from aioway.hop import Hop
+from aioway.tags import TagDict
 
-from .dsets import Dset, dset_dcls
-
-__all__ = ["Sink"]
+__all__ = ["Sink", "sink_dcls"]
 
 
-@dset_dcls
-class Sink[T = typing.Any](Dset, abc.ABC):
+@typing.dataclass_transform(frozen_default=True)
+def sink_dcls(cls):
+    return dcls.dataclass(frozen=True)(cls)
+
+
+@sink_dcls
+class Sink[T = typing.Any](abc.ABC):
     """
     Consumes a `Hop` and writes to some external location.
     """
@@ -22,6 +27,9 @@ class Sink[T = typing.Any](Dset, abc.ABC):
     """
     The type to check
     """
+
+    def __post_init__(self):
+        self._register()
 
     def __call__(self, hop: Hop[T]) -> None:
         for batch in hop:
@@ -34,9 +42,12 @@ class Sink[T = typing.Any](Dset, abc.ABC):
     def write(self, batch: T, /) -> None:
         raise NotImplementedError
 
-    @typing.override
     def _register(self) -> None:
         from .sess import SinkSession
 
         if sess := SinkSession.current():
             sess.push(self)
+
+    @property
+    def tags(self):
+        return TagDict()

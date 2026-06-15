@@ -7,7 +7,7 @@ from collections import abc as cabc
 
 from aioway.builders import TensorBuilder
 from aioway.hop import ListHop
-from aioway.io import Dset, Sink, TensorListHop
+from aioway.io import Dset, LoaderOpt, Sink, TensorStream
 from aioway.nn import Linear
 from aioway.tags import AttrTag
 
@@ -45,11 +45,14 @@ class JustLinearEmitter(Emitter):
     A builder that outputs 1 linear layer, supporting 1 input and 1 output.
     """
 
-    in_dset: Dset
+    in_dset: TensorStream
     "The input shape."
 
     out_dset: Sink
     "The output shape."
+
+    opts: LoaderOpt = LoaderOpt()
+    "The default data loader options."
 
     def __post_init__(self) -> None:
         assert isinstance(self.in_dset, Dset)
@@ -62,7 +65,7 @@ class JustLinearEmitter(Emitter):
         except TypeError:
             return NotImplemented
 
-        input_node = TensorBuilder(TensorListHop([in_attr.to_fake_tensor()]))
+        input_node = TensorBuilder(self.in_dset(self.opts))
         linear_node = input_node.apply_layer(
             Linear(in_attr.shape[-1], out_attr.shape[-1]),
         )

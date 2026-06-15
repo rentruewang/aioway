@@ -109,9 +109,9 @@ class TdictLoaderHop(LoaderHop[td.TensorDict], TdictHop):
         return data.DataLoader(self.dset, collate_fn=td.stack, **dcls.asdict(self.opts))
 
 
-@typing.dataclass_transform()
+@typing.dataclass_transform(frozen_default=True)
 def dset_dcls(cls):
-    return dcls.dataclass(cls)
+    return dcls.dataclass(frozen=True)(cls)
 
 
 class _TensorAttrMixin(data.Dataset[torch.Tensor], metaclass=abc.ABCMeta):
@@ -134,7 +134,7 @@ class _TdictAttrsMixin(data.Dataset[td.TensorDict], metaclass=abc.ABCMeta):
 
 
 @dset_dcls
-class Dset:
+class Dset[T](data.Dataset[T]):
     """
     The base class for I/O.
     """
@@ -143,6 +143,9 @@ class Dset:
     def __post_init__(self) -> None:
         self._setup()
         self._register()
+
+    def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> LoaderHop:
+        return LoaderHop(dset=self, opts=opts)
 
     def _setup(self) -> None:
         """
@@ -169,7 +172,7 @@ class Dset:
 
 
 @dset_dcls
-class Stream[T = typing.Any](Dset, data.IterableDataset[T], abc.ABC):
+class Stream[T = typing.Any](Dset[T], data.IterableDataset[T], abc.ABC):
     """
     `Stream` represents a set of sequential data stored somewhere.
     Each item is a single row of data.
@@ -178,9 +181,6 @@ class Stream[T = typing.Any](Dset, data.IterableDataset[T], abc.ABC):
     @abc.abstractmethod
     def __iter__(self) -> cabc.Iterator[T]:
         raise NotImplementedError
-
-    def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> LoaderHop:
-        return LoaderHop(dset=self, opts=opts)
 
 
 class TensorStream(_TensorAttrMixin, Stream[torch.Tensor], abc.ABC):
@@ -196,7 +196,7 @@ class TdictStream(_TdictAttrsMixin, Stream[td.TensorDict], abc.ABC):
 
 
 @dset_dcls
-class Frame[T = typing.Any](Dset, data.Dataset[T], abc.ABC):
+class Frame[T = typing.Any](Dset[T], data.Dataset[T], abc.ABC):
     """
     `Frame` is a `Stream` that supports random access.
     Each item retrieved from `Frame` is a single row of data.
@@ -225,9 +225,6 @@ class Frame[T = typing.Any](Dset, data.Dataset[T], abc.ABC):
         """
 
         raise NotImplementedError
-
-    def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> LoaderHop:
-        return LoaderHop(dset=self, opts=opts)
 
 
 class TensorFrame(_TensorAttrMixin, Frame[torch.Tensor], abc.ABC):
