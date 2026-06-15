@@ -11,24 +11,22 @@ import torch
 
 from aioway.dsets import FaissIndex, FaissIndexHop
 from aioway.hop import (
+    ApplyHop,
     BaseLoss,
     BoundedHop,
+    ColumnViewHop,
+    FuncFilterHop,
     Hop,
     ListHop,
+    NestedLoopJoinHop,
     NnInit,
     NnLayerHop,
     NnLossHop,
+    ProjectHop,
+    RenameHop,
     StackHop,
     TdictHop,
     TensorHop,
-)
-from aioway.relalg import (
-    ApplyHop,
-    ColumnViewHop,
-    FuncFilterHop,
-    NestedLoopJoinHop,
-    ProjectHop,
-    RenameHop,
     ZipHop,
 )
 

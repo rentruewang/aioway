@@ -9,8 +9,7 @@ import torch
 
 from aioway._utils import tdict_all_equal
 from aioway.dsets import TdictListHop
-from aioway.hop import TdictHop
-from aioway.relalg import NestedLoopJoinHop, ZipHop
+from aioway.hop import NestedLoopJoinHop, TdictHop, ZipHop
 
 
 @pytest.fixture

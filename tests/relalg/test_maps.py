@@ -10,13 +10,14 @@ import tensordict as td
 
 from aioway._utils import tdict_all_equal, tdict_rename
 from aioway.dsets import TdictListHop
-from aioway.hop import TdictHop, hop_dcls
-from aioway.relalg import (
+from aioway.hop import (
     ApplyHop,
     FuncFilterHop,
     MapHop,
     ProjectHop,
     RenameHop,
+    TdictHop,
+    hop_dcls,
 )
 
 
