@@ -5,13 +5,13 @@ import pathlib
 import pytest
 import torch
 
-from aioway.dsets import (
+from aioway._media import (
     AudioLoader,
     AvAudioLoader,
     TorchCodecAudioLoader,
     encode_with_stft,
 )
-from aioway.tags import SampleRateTag
+from aioway.dsets import SampleRateTag
 
 
 def _loaders():

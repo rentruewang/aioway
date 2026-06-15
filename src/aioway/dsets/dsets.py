@@ -13,7 +13,8 @@ from torch.utils import data
 
 from aioway._utils import HasLen
 from aioway.hop import Hop, TdictHop, TensorHop, hop_dcls
-from aioway.tags import TagDict
+
+from .tags import TagDict
 
 __all__ = [
     "LoaderOpt",

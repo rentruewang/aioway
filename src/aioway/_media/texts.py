@@ -7,7 +7,7 @@ import pathlib
 import torch
 import transformers
 
-from aioway.tags import IsTokenizedTag
+from aioway.dsets import IsTokenizedTag
 
 from ._bases import TorchCompatible
 

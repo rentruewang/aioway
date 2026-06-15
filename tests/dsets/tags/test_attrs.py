@@ -4,7 +4,7 @@ import pytest
 import torch
 
 from aioway.attrs import Attr
-from aioway.tags import AttrTag, TagDict
+from aioway.dsets import AttrTag, TagDict
 
 
 @pytest.fixture

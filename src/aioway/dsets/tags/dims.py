@@ -7,7 +7,8 @@ import functools
 import re
 import typing
 
-from ..attrs import Attr
+from aioway.attrs import Attr
+
 from .tags import TensorTag, tags_dcls
 
 __all__ = ["DimTag", "DimInfo"]

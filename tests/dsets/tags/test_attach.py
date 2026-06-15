@@ -6,7 +6,7 @@ import pytest
 import tensordict as td
 import torch
 
-from aioway.tags import DimTag, TagDict
+from aioway.dsets import DimTag, TagDict
 
 
 def _valid_tags():

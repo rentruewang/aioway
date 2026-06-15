@@ -12,7 +12,7 @@ from torchvision.transforms import v2 as tt
 
 from aioway._utils import current_fake_mode, torch_set_fake_mode_func
 from aioway.attrs import Attr, AttrLike
-from aioway.tags import IsImageTag
+from aioway.dsets import IsImageTag
 
 from ._bases import TorchCompatible
 

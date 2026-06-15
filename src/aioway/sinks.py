@@ -6,8 +6,8 @@ import abc
 import dataclasses as dcls
 import typing
 
+from aioway.dsets import TagDict
 from aioway.hop import Hop
-from aioway.tags import TagDict
 
 __all__ = ["Sink", "sink_dcls"]
 

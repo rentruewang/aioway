@@ -5,7 +5,7 @@ import typing
 import pytest
 import torch
 
-from aioway.dsets import chunk_collate_decompose_dim
+from aioway._media import chunk_collate_decompose_dim
 
 
 class SamplesCollateDim(typing.NamedTuple):

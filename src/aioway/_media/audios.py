@@ -11,7 +11,7 @@ from torchcodec import decoders as dec
 
 from aioway._utils import current_fake_mode, torch_set_fake_mode_func
 from aioway.attrs import Attr
-from aioway.tags import IsStftTag, SampleRateTag
+from aioway.dsets import IsStftTag, SampleRateTag
 
 from ._av import AudioStream
 from ._bases import TorchCompatible

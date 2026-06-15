@@ -6,7 +6,7 @@ import tensordict as td
 from numpy import random
 
 from aioway.dsets import LoaderOpt, TdictFrame, TensorDictFrame
-from tests.fake import chunk_ok
+from tests.mock import chunk_ok
 
 
 def block_table(device: str, batch_size: int, data_size: int):
