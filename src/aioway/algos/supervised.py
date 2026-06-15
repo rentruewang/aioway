@@ -5,8 +5,7 @@ from collections import abc as cabc
 
 from aioway.compilers import Emitter, JustLinearEmitter, emitter_dcls
 from aioway.dsets import Dset, TensorStream
-from aioway.hop import ListHop
-from aioway.nn import MSELoss
+from aioway.hop import ListHop, MSELoss
 from aioway.sinks import Sink
 
 __all__ = ["SupervisedAlgo"]

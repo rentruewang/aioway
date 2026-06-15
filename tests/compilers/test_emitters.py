@@ -9,10 +9,9 @@ from aioway.algos import SupervisedAlgo
 from aioway.attrs import Attr
 from aioway.compilers import JustLinearEmitter
 from aioway.dsets import Stream, TensorListHop
-from aioway.hop import ListHop, TensorHop
-from aioway.nn import Linear, NnHop, NnInit, NnLayerHop
-from aioway.tags import AttrTag, TagDict
+from aioway.hop import Linear, ListHop, NnHop, NnInit, NnLayerHop, TensorHop
 from aioway.sinks import Sink
+from aioway.tags import AttrTag, TagDict
 
 
 @pytest.fixture

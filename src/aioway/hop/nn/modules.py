@@ -14,15 +14,16 @@ from aioway.fake import NnInitFn
 from ..hop import Hop
 from .hop import NnHop
 
-__all__ = ["NnInit", "find_nn_init", "build_nn_hop"]
+__all__ = ["NnInit", "nn_init_dcls", "find_nn_init", "build_nn_hop"]
 
 _NN_INITS: dict[cabc.Callable[..., nn.Module], type[NnInit]] = {}
 
 
-@typing.dataclass_transform(frozen_default=False)
+@typing.dataclass_transform()
+@typing.no_type_check
 def nn_init_dcls(cls):
     "Decorator of dataclass for `NnInit`."
-    return dcls.dataclass(frozen=False, repr=False)(cls)
+    return dcls.dataclass(repr=False)(cls)
 
 
 @nn_init_dcls

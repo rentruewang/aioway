@@ -7,8 +7,7 @@ from collections import abc as cabc
 
 from aioway.builders import TensorBuilder
 from aioway.dsets import Dset, LoaderOpt, TensorStream
-from aioway.hop import ListHop
-from aioway.nn import Linear
+from aioway.hop import Linear, ListHop
 from aioway.sinks import Sink
 from aioway.tags import AttrTag
 
