@@ -1,13 +1,56 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+"The contract that forces the checked data to be exact."
+
 import dataclasses as dcls
 import typing
+from collections import abc as cabc
 
 from aioway.spaces import Attr, Device, DType, Layout, Shape
 
 from .spaces import TensorSpace, space_dcls
 
-__all__ = ["AttrSpace"]
+__all__ = ["AttrSpace", "ShapeSpace", "DTypeSpace"]
+
+
+@space_dcls
+class ShapeSpace(TensorSpace):
+    """
+    Check if the `torch.Tensor` has the same shape.
+    """
+
+    shape: Shape
+    """
+    The shape to check.
+    """
+
+    def __len__(self) -> int:
+        return len(self.shape)
+
+    def __getitem__(self, idx: int) -> int:
+        return self.shape[idx]
+
+    def _check_attr(self, attr: Attr) -> None:
+        if self.shape == attr.shape:
+            return
+
+        raise ValueError
+
+
+@space_dcls
+class DTypeSpace(TensorSpace):
+    """
+    Check if the `torch.Tensor` has one of the dtypes.
+    """
+
+    dtypes: cabc.Sequence[DType]
+    """
+    The shape to check.
+    """
+
+    def _check_attr(self, attr: Attr) -> None:
+        if attr.dtype not in self.dtypes:
+            raise ValueError
 
 
 @space_dcls
@@ -15,8 +58,6 @@ class AttrSpace(TensorSpace):
     """
     Tag that specify `Attr`s that should be respected.
     """
-
-    NAME = "__aioway_attr__"
 
     _: dcls.KW_ONLY
 

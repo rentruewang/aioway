@@ -59,7 +59,7 @@ class Space[T = typing.Any](abc.ABC):
 
 @space_dcls
 class TensorSpace(Space[torch.Tensor]):
-    "A `Tag` that tags itself onto a `torch.Tensor`."
+    "A `Space` that enforces constraints on a `torch.Tensor`."
 
     @typing.override
     def contains(self, value: torch.Tensor, /) -> bool:
@@ -89,7 +89,7 @@ class TensorSpace(Space[torch.Tensor]):
 
 @space_dcls
 class TdictSpace(Space[td.TensorDict]):
-    "A `Tag` that tags `td.TensorDict`."
+    "A `Space` that checks a `td.TensorDict`."
 
     @typing.override
     def contains(self, value: td.TensorDict, /) -> bool:
@@ -121,7 +121,7 @@ class TdictSpace(Space[td.TensorDict]):
 class SpaceList[T = typing.Any](Space[T]):
     """
     The tags stored on an object can be extracted into a `TagDict`,
-    which supports both fast lookup and conveniently unpacks to only `Tag`s.
+    which supports both fast lookup and conveniently unpacks to only `Space`s.
     """
 
     spaces: cabc.Sequence[Space[T]] = ()
