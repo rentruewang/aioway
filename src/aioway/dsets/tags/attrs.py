@@ -3,7 +3,7 @@
 import dataclasses as dcls
 import typing
 
-from aioway.attrs import Attr, Device, DType, Layout, Shape
+from aioway.spaces import Attr, Device, DType, Layout, Shape
 
 from .tags import TensorTag, tags_dcls
 

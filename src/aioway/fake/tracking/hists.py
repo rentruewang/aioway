@@ -17,7 +17,7 @@ from aioway._utils import (
     is_leaf_has_grad,
     replace_tensors_with_attr,
 )
-from aioway.attrs import Attr
+from aioway.spaces import Attr
 
 LOGGER = logging.getLogger(__name__)
 

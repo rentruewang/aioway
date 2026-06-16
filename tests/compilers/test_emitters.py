@@ -6,7 +6,7 @@ import pytest
 from torch import nn
 
 from aioway.algos import SupervisedAlgo
-from aioway.attrs import Attr
+from aioway.spaces import Attr
 from aioway.compilers import JustLinearEmitter
 from aioway.dsets import AttrTag, Stream, TagDict, TensorListHop
 from aioway.hop import Linear, ListHop, NnHop, NnInit, NnLayerHop, TensorHop

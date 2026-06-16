@@ -14,7 +14,7 @@ import tensordict as td
 import torch
 
 from aioway._utils import SeqKeysView
-from aioway.attrs import Attr, AttrDict
+from aioway.spaces import Attr, AttrDict
 
 __all__ = ["Tag", "TensorTag", "TagDict", "tags_dcls", "attach_tags"]
 

@@ -6,7 +6,7 @@ import pytest
 import torch
 
 from aioway._media import TokenizerLoader
-from aioway.attrs import DType
+from aioway.spaces import DType
 from aioway.dsets import IsTokenizedTag
 
 

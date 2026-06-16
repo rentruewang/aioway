@@ -7,7 +7,7 @@ import functools
 import re
 import typing
 
-from aioway.attrs import Attr
+from aioway.spaces import Attr
 
 from .tags import TensorTag, tags_dcls
 

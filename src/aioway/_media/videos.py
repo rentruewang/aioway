@@ -9,7 +9,7 @@ import torch
 from torchcodec import decoders as dec
 
 from aioway._utils import current_fake_mode, num_threads, torch_set_fake_mode_func
-from aioway.attrs import Attr
+from aioway.spaces import Attr
 from aioway.dsets import IsVideoTag
 
 from ._av import VideoStream
