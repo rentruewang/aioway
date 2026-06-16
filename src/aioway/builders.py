@@ -9,7 +9,6 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway.dsets import FaissIndex, FaissIndexHop
 from aioway.hop import (
     ApplyHop,
     BoundedHop,
@@ -25,6 +24,7 @@ from aioway.hop import (
     TensorHop,
     ZipHop,
 )
+from aioway.indices import AnnIndexTrainerHop, FaissIndex
 from aioway.nn import BaseLoss, NnInit, NnLayerHop, NnLossHop
 
 __all__ = ["Builder"]
@@ -49,10 +49,18 @@ class Builder:
 class TensorBuilder(Builder):
     hop: TensorHop
 
-    def create_index(self, query: TensorBuilder, k: int) -> typing.Self:
-        index = FaissIndex.from_hop(self.hop)
-        source = torch.cat(list(self.hop))
-        return type(self)(FaissIndexHop(index, source=source, query=query.hop, k=k))
+    def create_ann_index(self) -> Builder:
+        "Create an ANN index builder that trains an index when evaluated."
+
+        shape = self.hop.attr.shape
+
+        if shape.ndim != 2:
+            raise RuntimeError(f"Since {shape} is not 2D, cannot create ANN index.")
+
+        index = FaissIndex(dim=self.hop.attr.shape[-1])
+
+        trainer = AnnIndexTrainerHop(index, self.hop)
+        return Builder(trainer)
 
     def apply_layer(self, nn_init: NnInit) -> typing.Self:
         return type(self)(NnLayerHop(nn_init, module=nn_init.init_nn(), input=self.hop))
