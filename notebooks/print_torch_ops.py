@@ -16,15 +16,15 @@
 import torch
 
 # %%
-from aioway._torch import torch_fake_mode
-from aioway.modes import PrintTorchDisp, PrintTorchFunc
+from aioway._utils import torch_fake_mode
+from aioway.fake import PrintTorchDisp, PrintTorchFunc
 
 # %%
 a = torch.randn(3, 4)
 b = torch.randn(1, 1)
 
 # %%
-with PrintTorchDisp().enter(), PrintTorchFunc().enter():
+with PrintTorchDisp()(), PrintTorchFunc()():
     c = a + b
 
 # %%
@@ -36,7 +36,7 @@ with torch_fake_mode():
     b = torch.randn(1, 1)
 
 # %%
-with PrintTorchDisp().enter(), PrintTorchFunc().enter():
+with PrintTorchDisp()(), PrintTorchFunc()():
     c = a + b
 
 # %%

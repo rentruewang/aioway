@@ -2,5 +2,7 @@
 
 from .funcs import *
 from .hop import *
+from .iters import *
+from .loaders import *
 from .nn import *
-from .tensors import *
+from .relalg import *

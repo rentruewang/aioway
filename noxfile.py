@@ -23,23 +23,6 @@ _setup_is_done: bool = False
 "If the `setup_env` is called."
 
 
-def setup_env():
-    "Setup environment."
-
-    global _setup_is_done
-
-    if _setup_is_done:
-        return
-
-    if in_github():
-        _github_cleanup()
-        run("pdm", "config", "python.use_venv", "true")
-
-    _install_ffmpeg()
-
-    _setup_is_done = True
-
-
 @ctxl.contextmanager
 def enter_session(session: nox.Session):
     global _session
@@ -69,7 +52,6 @@ def nox_cmd(func: cabc.Callable[[], None]) -> cabc.Callable[[], None]:
     @functools.wraps(func)
     def wrapper(session: nox.Session):
         with enter_session(session):
-            setup_env()
             func()
 
     _ = nox.session(wrapper)
@@ -78,26 +60,34 @@ def nox_cmd(func: cabc.Callable[[], None]) -> cabc.Callable[[], None]:
 
 
 @nox_cmd
+def setup():
+    "Check if `nox` can be run (side effect will cleanup github)."
+
+    _github_cleanup()
+    _install_ffmpeg()
+
+
+@nox_cmd
 def publish():
-    "Nox `publish` command. Calls `pdm publish`."
+    "Calls `pdm publish`."
     pdm_publish()
 
 
 @nox_cmd
 def build():
-    "Nox `build` command. Calls `pdm build`."
+    "Calls `pdm build`."
     pdm_build()
 
 
 @nox_cmd
 def test():
-    "Nox `testing` command. Calls `pytest` command. Runs in multiple python versions (if supported)."
+    "Calls `pytest *posargs`."
     pdm_run("pytest", *_current_session().posargs)
 
 
 @nox_cmd
 def format():
-    "Nox `formatting` command. Calls `autoflake`, `isort`, `black`, in that order."
+    "Calls `autoflake`, `isort`, `black`, in that order."
     autoflake()
     isort()
     black()
@@ -105,7 +95,7 @@ def format():
 
 @nox_cmd
 def format_check():
-    "Nox `formatting` command. Calls `autoflake`, `isort`, `black`, in that order."
+    "Calls `autoflake`, `isort`, `black`, in that order."
     autoflake_check()
     isort_check()
     black_check()
@@ -113,43 +103,43 @@ def format_check():
 
 @nox_cmd
 def autoflake():
-    "Nox `autoflake` command. Calls `autoflake` command."
+    "Calls `autoflake`."
     pdm_run("autoflake", ".")
 
 
 @nox_cmd
 def autoflake_check():
-    "Nox `autoflake` command. Calls `autoflake` command."
+    "Calls `autoflake --check`."
     pdm_run("autoflake", "--check", ".")
 
 
 @nox_cmd
 def isort():
-    "Nox `isort` command. Calls `isort` command."
+    "Calls `isort`."
     pdm_run("isort", ".")
 
 
 @nox_cmd
 def isort_check():
-    "Nox `isort` command. Calls `isort` command."
+    "Calls `isort --check`."
     pdm_run("isort", "--check", ".")
 
 
 @nox_cmd
 def black():
-    "Nox `black` command. Calls `black` command."
+    "Calls `black`."
     pdm_run("black", ".")
 
 
 @nox_cmd
 def black_check():
-    "Nox `black` command. Calls `black` command."
+    "Calls `black --check`."
     pdm_run("black", "--check", ".")
 
 
 @nox_cmd
 def type():
-    "Nox `type` command. Calls `mypy` command."
+    "Calls `mypy`. Installs necessary type stubs."
     pdm_run("mypy", "--install-types", "--non-interactive", "src")
 
 
@@ -193,7 +183,8 @@ def _install_ffmpeg() -> None:
         case "darwin":
             run("brew", "install", "ffmpeg")
         case "linux":
-            run("sudo", "apt-get", "install", "ffmpeg")
+            run("sudo", "apt-get", "update")
+            run("sudo", "apt-get", "install", "-y", "ffmpeg")
         case _:
             raise RuntimeError(f"Platform {sys.platform} is not supported yet.")
 

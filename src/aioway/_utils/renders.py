@@ -11,7 +11,7 @@ from collections import abc as cabc
 import rich
 import torch
 from rich import syntax, tree
-from torch import _ops
+from torch import _ops, nn
 
 __all__ = [
     "render_fcall",
@@ -97,6 +97,10 @@ def render_torch_func_name(func: cabc.Callable[..., typing.Any]) -> str:
     # Just converting to `str` works.
     if isinstance(func, _ops.OpOverloadPacket):
         return f"torch.ops.{func!s}"
+
+    # If it's `nn.Module`
+    if isinstance(func, type) and issubclass(func, nn.Module):
+        return f"nn.{name}"
 
     # If it's `torch.*`.
     if getattr(torch, name, None) is func:

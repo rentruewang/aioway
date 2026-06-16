@@ -5,6 +5,7 @@ from .containers import *
 from .dense import *
 from .dropouts import *
 from .embs import *
+from .hop import *
 from .losses import *
 from .modules import *
 from .norms import *

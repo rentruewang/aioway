@@ -2,8 +2,8 @@
 
 "Decomposing objects for inspection and debugging."
 
+import contextlib as ctxl
 import dataclasses as dcls
-import functools
 import typing
 from collections import abc as cabc
 
@@ -11,37 +11,49 @@ import numpy as np
 import pandas as pd
 import torch
 
+from .types import AnyDict
+
 __all__ = [
     "replace_tensors",
-    "find_and_filter",
+    "decomp_flatten",
+    "decomp_replace",
     "find_nested_tensors",
-    "Decomposer",
-    "DecomposeCheck",
-    "DecompStep",
-    "DecompSeq",
-    "DecompMap",
-    "DecompDcls",
-    "DECOMP_BLOCK_ITEMS",
-    "DECOMP_BLOCK_TYPES",
+    "dcls_asdict",
+    "decomp_block_items",
+    "decomp_block_types",
+    "decomp_dcls_members",
 ]
 
-DECOMP_BLOCK_ITEMS = None, NotImplemented, ..., True, False
+_decomp_block_items: tuple[typing.Any, ...] = None, NotImplemented, ..., True, False
 "The default instances to block. You could modify this."
 
-DECOMP_BLOCK_TYPES = int, float, bool, str, np.ndarray, pd.DataFrame
+_decomp_block_types: tuple[type, ...] = int, float, bool, str, np.ndarray, pd.DataFrame
 "The default types to block. You could modify this."
 
 
+@ctxl.contextmanager
+def decomp_block_items(*items: typing.Any):
+    global _decomp_block_items
+    prev = _decomp_block_items
+    _decomp_block_items = items
+    try:
+        yield
+    finally:
+        _decomp_block_items = prev
+
+
+@ctxl.contextmanager
+def decomp_block_types(*types: type):
+    global _decomp_block_types
+    prev = _decomp_block_types
+    _decomp_block_types = types
+    try:
+        yield
+    finally:
+        _decomp_block_types = prev
+
+
 def replace_tensors(
-    obj: object, replace: cabc.Callable[[torch.Tensor], object]
-) -> object:
-    from aioway.modes import mode_off
-
-    with mode_off():
-        return _replace_tensors(obj, replace)
-
-
-def _replace_tensors(
     obj: object, replace: cabc.Callable[[torch.Tensor], object]
 ) -> object:
     """
@@ -53,143 +65,125 @@ def _replace_tensors(
     Caused by `.device` / `.shape` / `.dtype` calls, which is used in `replace_tensors`.
     """
 
-    if isinstance(obj, torch.Tensor):
-        return replace(obj)
+    from aioway.fake import mode_off
 
-    if isinstance(obj, DECOMP_BLOCK_TYPES):
+    def maybe_replace(item):
+        if not isinstance(item, torch.Tensor):
+            return NotImplemented
+
+        return replace(item)
+
+    with mode_off():
+        return decomp_replace(obj, maybe_replace)
+
+
+def stop_decompose(obj: object) -> bool:
+    # Check if it's those primitives.
+    for item in _decomp_block_items:
+        if obj is item:
+            return True
+
+    return isinstance(obj, tuple(_decomp_block_types))
+
+
+def decomp_replace(
+    obj,
+    replace: cabc.Callable[..., object],
+    memo: AnyDict[typing.Any, typing.Any] | None = None,
+) -> object:
+    """
+    Decompose and replace. When this is called, `replace(obj)` is directly invoked.
+    If it returns `NotImplemented`, then decomposing would continue.
+
+    Args:
+        obj: The object to maybe replace.
+        types: The types to replace.
+        replace: The replacer function.
+        memo:
+            Like `memo` in `__deepcopy__`,
+            this is s.t. don't replace the same item with different ones.
+    """
+
+    memo = memo or AnyDict()
+    return _decomp_replace(obj, replace, memo)
+
+
+def _decomp_replace(
+    obj,
+    replace: cabc.Callable[..., object],
+    memo: AnyDict[typing.Any, typing.Any],
+) -> typing.Any:
+
+    # If it returns a proper value, it will be replaced (if not in `memo`).
+    # Things in `memo` are prioritized.
+    if (replaced := replace(obj)) is not NotImplemented:
+        if obj not in memo:
+            memo[obj] = replaced
+
+        return memo[obj]
+
+    if stop_decompose(obj):
         return obj
 
     if isinstance(obj, cabc.Sequence):
-        return [_replace_tensors(elem, replace) for elem in obj]
+        return [_decomp_replace(elem, replace, memo) for elem in obj]
 
     if isinstance(obj, cabc.Mapping):
-        return {key: _replace_tensors(elem, replace) for key, elem in obj.items()}
+        return {key: _decomp_replace(elem, replace, memo) for key, elem in obj.items()}
 
-    if dcls.is_dataclass(obj):
-        return _replace_tensors(_dataclass_as_dict(obj), replace)
+    if not isinstance(obj, type) and dcls.is_dataclass(obj):
+        obj_type: typing.Any = type(obj)
+        fields = dcls_asdict(obj)
+        fields = _decomp_replace(fields, replace, memo)
+        return obj_type(**fields)
 
     return obj
 
 
-@typing.runtime_checkable
-class DecomposeCheck(typing.Protocol):
-    def __call__(self, obj: object, /) -> bool: ...
-
-
-@typing.runtime_checkable
-class DecompStep(typing.Protocol):
-    def handles(self, obj, /) -> bool: ...
-    def decompose(self, obj, /) -> cabc.Iterable[typing.Any]: ...
-
-
-@functools.lru_cache(maxsize=1)
-def _ids_of(seq: cabc.Sequence[typing.Any]) -> list[int]:
-    return [id(item) for item in seq]
-
-
-def default_stop_decompose(obj: object) -> bool:
-    # Using `id` or else `np.NDArray` would be use `==`, which returns non `bool`.
-    return id(obj) in _ids_of(DECOMP_BLOCK_ITEMS) or isinstance(obj, DECOMP_BLOCK_TYPES)
-
-
-class DecompSeq:
-    def handles(self, obj: object, /):
-        return isinstance(obj, cabc.Sequence)
-
-    def decompose(self, obj, /) -> cabc.Iterable[typing.Any]:
-        yield from obj
-
-
-class DecompMap:
-    def handles(self, obj, /):
-        return isinstance(obj, cabc.Mapping)
-
-    def decompose(self, obj, /) -> cabc.Iterable[typing.Any]:
-        yield from obj.values()
-
-
-class DecompDcls:
-    def handles(self, obj: object, /):
-        return dcls.is_dataclass(obj)
-
-    def decompose(self, obj, /) -> cabc.Iterable[typing.Any]:
-        yield from _dataclass_as_dict(obj).values()
-
-
-@dcls.dataclass(frozen=True)
-class Decomposer:
+def decomp_dcls_members(
+    obj, types: type | tuple[type, ...]
+) -> cabc.Iterator[typing.Any]:
     """
-    Find the desired objects that is possibly nested.
+    Decompose dataclass members, 1 layer deep.
+    Using this still handles e.g. type `A` having `list[A]` as members.
     """
 
-    target: DecomposeCheck
-    """
-    The target type to search for.
-    """
+    if not dcls.is_dataclass(obj):
+        raise TypeError(f"The input {obj} should be a dataclass object.")
 
-    stop: DecomposeCheck = default_stop_decompose
-    """
-    Stop decomposing if `stop` returns `True`.
-    """
-
-    steps: cabc.Sequence[DecompStep] = DecompSeq(), DecompMap(), DecompDcls()
-    """
-    Steps to decompose the container object encountered.
-    """
-
-    strict: bool = False
-    """
-    All sub items must be handled by one of:
-
-    1. The `.target` type check.
-    2. The `.stop` criterion.
-    3. One of the `.steps` decomposer.
-
-    Or else a `ValueError` is raised.
-    """
-
-    def __post_init__(self):
-        if not isinstance(self.target, DecomposeCheck):
-            raise TypeError(f"{self.target=} is not callable.")
-
-        if not isinstance(self.stop, DecomposeCheck):
-            raise TypeError(f"{self.stop=} is not callable.")
-
-        if not all(isinstance(step, DecompStep) for step in self.steps):
-            raise TypeError(f"{self.steps=} is not callable.")
-
-    def __call__(self, obj: object) -> cabc.Generator[typing.Any]:
-        # This is what we are looking for.
-        if self.target(obj):
-            yield obj
-            return
-
-        # Do not proceed if `stop` signal is `True`.
-        if self.stop(obj):
-            return
-
-        for step in self.steps:
-            # Each step checks if decomposition is Ok.
-            if not step.handles(obj):
-                continue
-
-            # Decompose the item, then recurse.
-            for item in step.decompose(obj):
-                yield from self(item)
-
-            # Assume each decomposition is mutually exclusive.
-            return
-
-        # Only unhandled input would reach here. If `.strict`, raise `ValueError`.
-        if self.strict:
-            raise ValueError(f"The object {obj=} is not handled.")
+    yield from decomp_flatten(dcls_asdict(obj), types)
 
 
-def find_and_filter(obj, types: type | tuple[type, ...], /, strict: bool = False):
+def decomp_flatten(
+    obj, types: type | tuple[type, ...], /, strict: bool = False
+) -> cabc.Iterator[typing.Any]:
     "Decompose the object based on the desired type."
 
-    finder = Decomposer(target=lambda t: isinstance(t, types), strict=strict)
-    yield from finder(obj)
+    if isinstance(obj, types):
+        yield obj
+        return
+
+    if stop_decompose(obj):
+        return
+
+    if isinstance(obj, cabc.Sequence):
+        for item in obj:
+            yield from decomp_flatten(item, types, strict=strict)
+        return
+
+    if isinstance(obj, cabc.Mapping):
+        for val in obj.values():
+            yield from decomp_flatten(val, types, strict=strict)
+        return
+
+    if dcls.is_dataclass(obj):
+        obj = dcls_asdict(obj)
+        yield from decomp_flatten(obj, types, strict=strict)
+        return
+
+    # Only unhandled input would reach here. If `.strict`, raise `ValueError`.
+    if strict:
+        raise ValueError(f"The object {obj=} is not handled.")
 
 
 def find_nested_tensors(
@@ -202,10 +196,12 @@ def find_nested_tensors(
     if `obj` cannot be decomposed into purely tensors.
     """
 
-    yield from find_and_filter(obj, torch.Tensor, strict=only_tensors)
+    yield from decomp_flatten(obj, torch.Tensor, strict=only_tensors)
 
 
-def _dataclass_as_dict(obj: object):
+def dcls_asdict(obj: object) -> dict[str, typing.Any]:
+    "Official `asdict` fail with some custom `__getstate__`s."
+
     assert dcls.is_dataclass(obj), "Only handles dataclass objects."
     fields = dcls.fields(obj)
     return {field.name: getattr(obj, field.name) for field in fields}

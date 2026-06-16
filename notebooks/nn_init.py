@@ -20,21 +20,16 @@
 from torch import nn
 
 # %%
+from aioway.fake import NnInitFn
 from aioway.hop import find_nn_init
-from aioway.modes import NnInitFn
 
 # %%
-nn_init = find_nn_init(
-    NnInitFn(
-        func=nn.Linear,
-        args=(),
-        kwargs={"in_features": 3, "out_features": 5},
-    )
-)
+nn_init = find_nn_init(NnInitFn(func=nn.Linear, in_features=3, out_features=5))
 nn_init
 
 # %%
-module = nn_init.do()
+assert nn_init
+module = nn_init()
 module
 
 # %% [markdown]

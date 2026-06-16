@@ -7,7 +7,7 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.19.3
 #   kernelspec:
-#     display_name: .venv
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
@@ -15,9 +15,12 @@
 # %%
 import torch
 
-from aioway._torch import *
-from aioway.fate import *
-from aioway.modes import *
+from aioway._utils import *
+from aioway.fake import *
+
+# %%
+dispatch_print = PrintTorchDisp()
+function_print = PrintTorchFunc()
 
 # %%
 with torch_fake_mode():
@@ -25,21 +28,43 @@ with torch_fake_mode():
     b = torch.randn(3, 4)
 
 # %%
-with fake_fn() as hists, PrintTorchDisp().enter():
+with fake_fn() as hists, dispatch_print():
     a + b
 
 # %%
-with fake_fn(), PrintTorchDisp().enter():
+with fake_fn() as hists, dispatch_print():
+    c = a + b
+    d = a + c
+    e = a + d
+    f = d + b
+    g = e + f
+
+hists.dispatch
+
+# %%
+with fake_fn(), dispatch_print():
     3 - a
 
 # %%
-with fake_fn(), PrintTorchDisp().enter():
+with fake_fn(), dispatch_print():
     a[a > 0]
 
 # %%
-with fake_fn(), PrintTorchDisp().enter():
+with fake_fn(), dispatch_print():
     torch.stack([a, a, a])
 
 # %%
-with fake_fn(), PrintTorchDisp().enter():
+with fake_fn(), dispatch_print():
     torch.cat([a, a, a], dim=-1)
+
+# %%
+with torch_fake_mode():
+    a = torch.randn(5).requires_grad_()
+    b = torch.randn(5).requires_grad_()
+
+# %%
+s = (a + 2 * b).sum()
+
+# %%
+with dispatch_print(), function_print():
+    s.backward()

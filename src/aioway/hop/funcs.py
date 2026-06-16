@@ -1,57 +1,52 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"The `Hop`s backed by torch functions."
+"The high level operators that are just torch functions / data."
 
+import abc
 import typing
 from collections import abc as cabc
 
 import torch
 
-from aioway._utils import is_list_of
-
-from .hop import Hop, hop_dcls
+from .hop import Hop, TensorHop, hop_dcls
 
 __all__ = ["CatHop", "StackHop"]
 
 
 @hop_dcls
-class _CatStackFunc(Hop[torch.Tensor]):
-    FUNCTION: cabc.Callable[..., torch.Tensor]
+class _CatStackHop(TensorHop, abc.ABC):
+    """
+    The `Hop` implementation for `torch.cat` / `torch.stack`.
+    """
+
+    FUNCTION: typing.ClassVar[cabc.Callable[..., torch.Tensor]]
     """
     Either `torch.cat` or `torch.stack` or something like those.
     It's typed as `cabc.Callable[..., torch.Tensor]`
     because `torch` has complicated type stubs, annoying to deal with.
     """
 
+    tensors: list[Hop[torch.Tensor]]
+    "The list of `Hop` that would evaluate each to a `torch.Tensor`."
+
     dim: int = 0
     "The `dim` flag that would be passed to `.function`."
 
-    inputs: list[Hop]
-    "The list of `Hop` that would evaluate each to a `torch.Tensor`."
-
     @typing.override
-    def do(self) -> torch.Tensor:
-        tensors = [i.do() for i in self.inputs]
-
-        if not is_list_of(torch.Tensor)(tensors):
-            raise TypeError(f"Expected a `list[torch.Tensor]`, but {tensors=}.")
-
-        return self.FUNCTION(tensors, dim=self.dim)
-
-    @typing.override
-    def deps(self) -> cabc.Iterator[Hop]:
-        yield from self.inputs
+    def iterate(self) -> cabc.Generator[torch.Tensor]:
+        for tensors in zip(*self.tensors):
+            yield self.FUNCTION(list(tensors), dim=self.dim)
 
 
 @hop_dcls
-class CatHop(_CatStackFunc):
+class CatHop(_CatStackHop):
     "The `Hop` backed by `torch.cat`."
 
     FUNCTION = torch.cat
 
 
 @hop_dcls
-class StackHop(_CatStackFunc):
+class StackHop(_CatStackHop):
     "The `Hop` backed by `torch.stack`."
 
     FUNCTION = torch.stack

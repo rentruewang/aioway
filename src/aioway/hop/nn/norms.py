@@ -4,6 +4,7 @@ import typing
 
 from torch import nn
 
+from .hop import NnLayerHop
 from .modules import NnInit, nn_init_dcls
 
 __all__ = [
@@ -21,6 +22,7 @@ class _BaseNorm(NnInit):
     "Base normalization layer for shared code of batch norm and instance norm."
 
     NN: typing.ClassVar[type[nn.Module]] = NotImplemented
+    HOP = NnLayerHop
 
     num_features: int
     "The number of features C of the output."

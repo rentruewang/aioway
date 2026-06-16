@@ -4,8 +4,9 @@ import typing
 
 from torch import nn
 
-from aioway.modes import NnInitFn
+from aioway.fake import NnInitFn
 
+from .hop import NnLayerHop
 from .modules import NnInit, nn_init_dcls
 
 __all__ = ["Sequential"]
@@ -18,10 +19,11 @@ class Sequential(NnInit):
 
     Since the API of `nn.Sequential` takes in `*nn.Module`s,
     and there is no easy way of making that into a dataclass,
-    we must overwrite `.do` because the default is `NN(**dcls.asdict(self))`.
+    we must overwrite `.__call__` because the default is `NN(**dcls.asdict(self))`.
     """
 
     NN = nn.Sequential
+    HOP = NnLayerHop
 
     modules: tuple[nn.Module, ...]
     """
@@ -33,7 +35,8 @@ class Sequential(NnInit):
         self.modules = args
 
     @typing.override
-    def do(self) -> nn.Module:
+    def init_nn(self) -> nn.Module:
         # Create `nn.Sequential` instance with `NnInitFn` is the best way
         # to ensure that the modes are invoked properly.
-        return NnInitFn(func=self.NN, args=self.modules, kwargs={}).do()
+        thunk = NnInitFn(self.NN, *self.modules)
+        return thunk()

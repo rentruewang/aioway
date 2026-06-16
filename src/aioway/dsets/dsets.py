@@ -1,189 +1,147 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"`Dataset` is base class for all datasets."
+"The interface for the `io` package."
 
 import abc
 import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-from aioway.schemas import Attr, AttrDict
+import tensordict as td
+import torch
+from torch.utils import data
 
-__all__ = ["Dataset", "DatasetColumnView", "DatasetSelectView", "DatasetViewTypes"]
+from aioway.hop import LoaderHop, LoaderOpt, TdictLoaderHop, TensorLoaderHop
+
+__all__ = [
+    "Dset",
+    "Stream",
+    "Frame",
+    "dset_dcls",
+    "TensorStream",
+    "TdictStream",
+    "TensorFrame",
+    "TdictFrame",
+]
 
 
-class Dataset(abc.ABC):
+@typing.dataclass_transform(frozen_default=True)
+def dset_dcls(cls):
+    return dcls.dataclass(frozen=True)(cls)
+
+
+class _TensorAttrMixin(data.Dataset[torch.Tensor], metaclass=abc.ABCMeta):
     """
-    A tabular type that acts like a table, and is the shared base class for `Frame` and `Stream`.
-
-    A `Dataset` should support the following functions:
-
-    1. `column(key: str, /) -> `.
-        Getting the individual column.
-    2. `select(*keys: str) -> typing.Self`.
-        Getting a couple of columns should return the same `Table`.
-    3. `keys() -> cabc.KeysView[str]`
-
+    A `torch.Tensor` `Dataset` should also provide `.attr`.
     """
 
-    @typing.overload
-    def __getitem__(self, key: str, /) -> DatasetColumnView[typing.Self]: ...
+    def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> TensorLoaderHop:
+        # Set batch size to the ones provided.
+        return TensorLoaderHop(dset=self, opts=opts)
 
-    @typing.overload
-    def __getitem__(self, key: list[str], /) -> DatasetSelectView[typing.Self]: ...
 
-    def __getitem__(self, key, /):
-        match key:
-            case str():
-                return self.column(key)
-            case list() if all(isinstance(i, str) for i in key):
-                return self.select(*key)
+class _TdictAttrsMixin(data.Dataset[td.TensorDict], metaclass=abc.ABCMeta):
+    """
+    A `td.TensorDict` `Dataset` should also provide `.attr`.
+    """
 
-        raise TypeError(
-            "The default implemenetation of `Dataset.__getitem__` "
-            f"does not know how to handle {key=}. "
-            "It only supports `key` of type `str` and `list[str]`."
-        )
+    def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> TdictLoaderHop:
+        return TdictLoaderHop(dset=self, opts=opts)
 
-    @property
-    @abc.abstractmethod
-    def attrs(self) -> AttrDict:
-        "All datasets have the metadta `attrs` present."
 
-        raise NotImplementedError
+@dset_dcls
+class Dset[T](data.Dataset[T]):
+    """
+    The base class for I/O.
+    """
 
     @typing.final
-    def keys(self) -> cabc.KeysView[str]:
+    def __post_init__(self) -> None:
+        self._setup()
+        self._register()
+
+    def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> LoaderHop:
+        return LoaderHop(dset=self, opts=opts)
+
+    def _setup(self) -> None:
         """
-        A `cabc.KeysView` object.
-        """
-
-        return self.attrs.keys()
-
-    def column(self, key: str) -> DatasetColumnView[typing.Self]:
-        """
-        Get the column from the `Dataset` object.
-        A `KeyError` is raised if the column is not present.
-
-        Essentially this is the `cabc.Mapping.__getitem__` method,
-        but a normal method to simplify implementation.
-
-        Args:
-            key: The column name.
-
-        Returns:
-            The column instance.
-
-        Raises:
-            KeyError: If the column is not present.
+        Subclass should overwrite this function to perform setup. Can raise errors.
         """
 
-        col_type, _ = self.view_types()
-        return col_type.from_column(self, key)
-
-    def select(self, *keys: str) -> DatasetSelectView[typing.Self]:
+    def _register(self) -> None:
         """
-        Select multiple columns from the `Dataset` object.
-
-        If a key is missing, a `KeyError` is raised.
-
-        Returns:
-            A `Dataset` that wraps the result.
+        Register the instance to a session.
         """
 
-        _, select_type = self.view_types()
-        return select_type.from_columns(self, *keys)
+        from .sess import DsetSession
 
-    @classmethod
+        if sess := DsetSession.current():
+            sess.push(self)
+
+
+@dset_dcls
+class Stream[T = typing.Any](Dset[T], data.IterableDataset[T], abc.ABC):
+    """
+    `Stream` represents a set of sequential data stored somewhere.
+    Each item is a single row of data.
+    """
+
     @abc.abstractmethod
-    def view_types(cls) -> DatasetViewTypes[typing.Any]:
-        """
-        The type used to construct `.column`, `.select` views.
-
-        The reason this is not a `typing.ClassVar` is purely technical,
-        because `*SelectView`s often inherit from `typing.Self`,
-        making it a circular dependency if it were a `typing.ClassVar`.
-        """
-
+    def __iter__(self) -> cabc.Iterator[T]:
         raise NotImplementedError
 
 
-@dcls.dataclass(frozen=True)
-class DatasetView[T: Dataset](abc.ABC):
-
-    dset: T
-    "The original dataset that would be used in the view."
-
-
-@dcls.dataclass(frozen=True)
-class DatasetColumnView[T: Dataset = Dataset](DatasetView[T], abc.ABC):
-    col: str
-    "The column to pick. Must be in the original table."
-
-    def __post_init__(self) -> None:
-        _assert_column_in_dataset(self.col, self.dset.attrs)
-
-    @property
-    @typing.final
-    def attr(self) -> Attr:
-        return self.dset.attrs[self.col]
-
-    @classmethod
-    @abc.abstractmethod
-    def from_column(cls, dataset: T, /, column: str) -> typing.Self: ...
-
-
-@dcls.dataclass(frozen=True)
-class DatasetSelectView[T: Dataset = Dataset](Dataset, DatasetView[T], abc.ABC):
+class TensorStream(_TensorAttrMixin, Stream[torch.Tensor], abc.ABC):
     """
-    Perform a selection in the table.
-    This is a `View`, which means creation is cheap, but you pay the price in runtime.
+    A `TensorStream` is a `Stream` of `torch.Tensor`s.
     """
 
-    COLUMN_TYPE: typing.ClassVar[type[DatasetColumnView[T]]]
-    "The column type associated with the current `DatasetSelectView`."
 
-    cols: cabc.Sequence[str]
-    "The columns to select. Should be in the original table."
+class TdictStream(_TdictAttrsMixin, Stream[td.TensorDict], abc.ABC):
+    """
+    A `TdictStream` is a `Stream` of `torch.Tensor`s.
+    """
 
-    def __post_init__(self) -> None:
-        for col in self.cols:
-            _assert_column_in_dataset(col, self.dset.attrs)
 
-    @property
-    @typing.final
-    def attrs(self) -> AttrDict:
-        return self.dset.attrs.select(*self.cols)
+@dset_dcls
+class Frame[T = typing.Any](Dset[T], data.Dataset[T], abc.ABC):
+    """
+    `Frame` is a `Stream` that supports random access.
+    Each item retrieved from `Frame` is a single row of data.
+    """
 
-    @typing.final
-    def column(self, key: str):
-        _assert_column_in_dataset(key, self.attrs)
-        return self.COLUMN_TYPE.from_column(self.dset, column=key)
-
-    @typing.final
-    def select(self, *keys: str):
-        for key in keys:
-            _assert_column_in_dataset(key, self.attrs)
-
-        return self.dset.select(*keys)
-
-    @classmethod
     @abc.abstractmethod
-    def from_columns(cls, dataset: T, /, *columns: str) -> typing.Self: ...
+    def __len__(self) -> int:
+        """
+        Get the number of items (rows) in the current dataframe.
+        """
+
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def __getitem__(self, idx: int) -> T:
+        """
+        Get 1 item.
+        """
+
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def __getitems__(self, idx: list[int], /) -> T:
+        """
+        Get multiple items.
+        """
+
+        raise NotImplementedError
 
 
-class DatasetViewTypes[T: Dataset](typing.NamedTuple):
-    "The view types."
-
-    column: type[DatasetColumnView[T]]
-    "The type used to construct `.column` views."
-
-    select: type[DatasetSelectView[T]]
-    "The type used to construct `.select` views."
+class TensorFrame(_TensorAttrMixin, Frame[torch.Tensor], abc.ABC):
+    """
+    A `torch.Tensor` dataset that supports random access.
+    """
 
 
-def _assert_column_in_dataset(col: str, attrs: AttrDict) -> None:
-    if col in attrs.keys():
-        return
-
-    raise ValueError(f"Column {col} is not present in the original dataset: {attrs=}")
+class TdictFrame(_TdictAttrsMixin, Frame[td.TensorDict], abc.ABC):
+    """
+    A dataset of `td.TensorDict` that supports random access.
+    """

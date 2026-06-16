@@ -4,14 +4,33 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
+import numpy as np
+from numpy import typing as npt
+
 __all__ = [
+    "IntArray",
+    "IntArrayLike",
+    "UIntArray",
+    "FloatArray",
+    "FloatArrayLike",
+    "BoolArray",
+    "BoolArrayLike",
     "is_list_of",
     "is_tuple_of",
     "is_seq_of",
     "is_dict_of_str_to",
+    "HasLen",
     "SeqKeysView",
     "SetKeysView",
 ]
+
+type IntArray = npt.NDArray[np.int_]
+type IntArrayLike = tuple[int, ...] | list[int] | IntArray
+type FloatArray = npt.NDArray[np.floating]
+type FloatArrayLike = tuple[float, ...] | list[float] | FloatArray
+type BoolArray = npt.NDArray[np.bool_]
+type BoolArrayLike = tuple[bool, ...] | list[bool] | BoolArray
+type UIntArray = npt.NDArray[np.uint]
 
 
 @typing.no_type_check
@@ -73,6 +92,11 @@ def is_dict_of_str_to[T](
     typ: type[T], /
 ) -> cabc.Callable[[typing.Any], typing.TypeGuard[dict[str, T]]]:
     return _mapping_check(dict, str, typ)
+
+
+@typing.runtime_checkable
+class HasLen(typing.Protocol):
+    def __len__(self) -> int: ...
 
 
 @dcls.dataclass(frozen=True)
