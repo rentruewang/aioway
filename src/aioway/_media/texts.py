@@ -7,8 +7,6 @@ import pathlib
 import torch
 import transformers
 
-from aioway.dsets import IsTokenizedTag
-
 from ._bases import TorchCompatible
 
 __all__ = ["TokenizerLoader", "TokenizeResult"]
@@ -21,7 +19,6 @@ class TokenizeResult(TorchCompatible):
     attention_mask: torch.Tensor
 
     def to_tensor(self):
-        IsTokenizedTag(self.tokenizer).attach(self.input_ids)
         return self.input_ids
 
 

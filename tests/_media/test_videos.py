@@ -6,7 +6,6 @@ import pytest
 import torch
 
 from aioway._media import AvVideoLoader, TorchCodecVideoLoader, VideoLoader
-from aioway.dsets import IsVideoTag
 
 
 def _loader():
@@ -37,11 +36,3 @@ def _read_video(video: pathlib.Path, loader: VideoLoader):
 def test_read_video(example_video: pathlib.Path, loader: VideoLoader, maybe_fake_mode):
     video = _read_video(example_video, loader)
     assert isinstance(video, torch.Tensor)
-
-
-def test_read_video_tags(
-    example_video: pathlib.Path, loader: VideoLoader, maybe_fake_mode
-):
-    video = _read_video(example_video, loader)
-    assert isinstance(video, torch.Tensor)
-    assert IsVideoTag.extract(video) is not None

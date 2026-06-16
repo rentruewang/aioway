@@ -9,9 +9,9 @@ import typing
 
 from aioway.spaces import Attr
 
-from .tags import TensorTag, tags_dcls
+from .spaces import TensorSpace, space_dcls
 
-__all__ = ["DimTag", "DimInfo"]
+__all__ = ["DimSpace", "DimInfo"]
 
 
 class DimInfo(enum.StrEnum):
@@ -45,8 +45,8 @@ class DimInfo(enum.StrEnum):
     """
 
 
-@tags_dcls
-class DimTag(TensorTag):
+@space_dcls
+class DimSpace(TensorSpace):
     NAME = "__aioway_dim_tag__"
 
     tags: str
@@ -62,8 +62,7 @@ class DimTag(TensorTag):
                 f"The {self.tags=} dimensions do not match the tensor's {ndim=}."
             )
 
-    @typing.override
-    def _check_self(self) -> None:
+    def __post_init__(self) -> None:
         if not _valid_dim_tag(self.tags):
             raise ValueError("The dimension tags are not valid.")
 

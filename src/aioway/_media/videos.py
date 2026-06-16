@@ -9,7 +9,6 @@ import torch
 from torchcodec import decoders as dec
 
 from aioway._utils import current_fake_mode, num_threads, torch_set_fake_mode_func
-from aioway.dsets import IsVideoTag
 from aioway.spaces import Attr
 
 from ._av import VideoStream
@@ -25,8 +24,6 @@ class VideoData(TorchCompatible):
 
     @typing.override
     def to_tensor(self) -> torch.Tensor:
-
-        IsVideoTag().attach(self.data)
         return self.data
 
 

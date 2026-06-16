@@ -3,8 +3,7 @@
 import pytest
 import torch
 
-from aioway.dsets import AttrTag, TagDict
-from aioway.spaces import Attr
+from aioway.spaces import Attr, AttrSpace
 
 
 @pytest.fixture
@@ -24,11 +23,8 @@ def attr_ok():
 
 
 def test_tagging_ok(attr_ok, tensor):
-    assert len(TagDict.extract(tensor)) == 0
-    tag = AttrTag.from_attr(attr_ok)
-    tag.attach(tensor)
-    assert len(TagDict.extract(tensor)) == 1
-    assert tag in TagDict.extract(tensor)
+    tag = AttrSpace.from_attr(attr_ok)
+    assert tensor in tag
 
 
 def _attr_not_ok():
@@ -47,7 +43,5 @@ def attr_not_ok(request: pytest.FixtureRequest):
 
 
 def test_tagging_not_ok(attr_not_ok, tensor):
-    assert len(TagDict.extract(tensor)) == 0
-    tag = AttrTag.from_attr(attr_not_ok)
-    with pytest.raises(ValueError):
-        tag.attach(tensor)
+    tag = AttrSpace.from_attr(attr_not_ok)
+    assert tensor not in tag

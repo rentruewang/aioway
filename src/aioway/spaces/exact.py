@@ -5,13 +5,13 @@ import typing
 
 from aioway.spaces import Attr, Device, DType, Layout, Shape
 
-from .tags import TensorTag, tags_dcls
+from .spaces import TensorSpace, space_dcls
 
-__all__ = ["AttrTag"]
+__all__ = ["AttrSpace"]
 
 
-@tags_dcls
-class AttrTag(TensorTag):
+@space_dcls
+class AttrSpace(TensorSpace):
     """
     Tag that specify `Attr`s that should be respected.
     """

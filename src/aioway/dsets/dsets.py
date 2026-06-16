@@ -12,8 +12,7 @@ import torch
 from torch.utils import data
 
 from aioway.hop import LoaderHop, LoaderOpt, TdictLoaderHop, TensorLoaderHop
-
-from .tags import TagDict
+from aioway.spaces import SpaceList
 
 __all__ = [
     "Dset",
@@ -81,12 +80,12 @@ class Dset[T](data.Dataset[T]):
             sess.push(self)
 
     @property
-    def tags(self) -> TagDict:
+    def tags(self) -> SpaceList:
         """
         The tags associated with the data.
         """
 
-        return TagDict()
+        return SpaceList()
 
 
 @dset_dcls

@@ -3,10 +3,9 @@
 import dataclasses as dcls
 
 import pytest
-import tensordict as td
 import torch
 
-from aioway.dsets import DimTag, TagDict
+from aioway.spaces import DimSpace
 
 
 def _valid_tags():
@@ -49,42 +48,12 @@ def invalid_tags(request: pytest.FixtureRequest):
 
 
 def test_valid_tags(valid_tags: TensorAndTag):
-    DimTag(valid_tags.tag).attach(valid_tags.tensor)
+    _ = DimSpace(valid_tags.tag)
 
 
 def test_invalid_tags(invalid_tags: TensorAndTag):
     with pytest.raises(ValueError):
-        tag = DimTag(invalid_tags.tag)
-        tag.attach(invalid_tags.tensor)
+        tag = DimSpace(invalid_tags.tag)
 
-
-def test_attach(valid_tags: TensorAndTag):
-    assert DimTag.extract(valid_tags.tensor) is None
-    tag = DimTag(valid_tags.tag)
-    tag.attach(valid_tags.tensor)
-    assert hasattr(valid_tags.tensor, DimTag.NAME)
-    assert DimTag.extract(valid_tags.tensor) is tag
-    assert TagDict.extract(valid_tags.tensor) == {DimTag.NAME: tag}
-
-
-def test_attach_preserve_after_tdict(valid_tags: TensorAndTag):
-    assert DimTag.extract(valid_tags.tensor) is None
-    tag = DimTag(valid_tags.tag)
-    tag.attach(valid_tags.tensor)
-    tdict = td.TensorDict({"a": valid_tags.tensor, "b": valid_tags.tensor})
-    assert tdict["a"] is tdict["b"]
-    assert DimTag.extract(tdict["a"]) is DimTag.extract(tdict["b"]) is tag
-
-
-def test_tag_eq(valid_tags: TensorAndTag):
-    tag = DimTag(valid_tags.tag)
-    tag.attach(valid_tags.tensor)
-    another = valid_tags.tensor.clone()
-
-    assert not TagDict.extract(another)
-
-    tag.attach(another)
-    other_tag = DimTag.extract(another)
-
-    assert TagDict.extract(another)
-    assert tag is other_tag
+        if invalid_tags.tensor not in tag:
+            raise ValueError

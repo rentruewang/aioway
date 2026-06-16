@@ -6,7 +6,6 @@ import pytest
 import torch
 
 from aioway._media import TokenizerLoader
-from aioway.dsets import IsTokenizedTag
 from aioway.spaces import DType
 
 
@@ -27,10 +26,3 @@ def test_tokenize(tokenizer: TokenizerLoader, example_txt: pathlib.Path):
     text = _read_tokenize(tokenizer, example_txt)
     assert isinstance(text, torch.Tensor)
     assert DType.parse(text.dtype).family == "int"
-
-
-def test_tokenize_tags(tokenizer: TokenizerLoader, example_txt: pathlib.Path):
-    text = _read_tokenize(tokenizer, example_txt)
-    tag = IsTokenizedTag.extract(text)
-    assert tag
-    assert tag.tokenizer == tokenizer.name

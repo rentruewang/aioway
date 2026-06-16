@@ -11,7 +11,6 @@ from torchvision import io as vio
 from torchvision.transforms import v2 as tt
 
 from aioway._utils import current_fake_mode, torch_set_fake_mode_func
-from aioway.dsets import IsImageTag
 from aioway.spaces import Attr, AttrLike
 
 from ._bases import TorchCompatible
@@ -31,7 +30,6 @@ class ImageData(TorchCompatible):
 
     @typing.override
     def to_tensor(self) -> torch.Tensor:
-        IsImageTag().attach(self.image)
         return self.image
 
 
