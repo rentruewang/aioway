@@ -6,8 +6,8 @@ import typing
 from collections import abc as cabc
 
 from aioway.builders import TensorBuilder
-from aioway.dsets import AttrTag, Dset, LoaderOpt, TensorStream
-from aioway.hop import Linear, ListHop
+from aioway.dsets import AttrTag, Dset, TensorStream
+from aioway.hop import Linear, ListHop, LoaderOpt
 from aioway.sinks import Sink
 
 __all__ = ["Emitter", "emitter_dcls", "JustLinearEmitter"]

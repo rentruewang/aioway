@@ -4,7 +4,8 @@
 
 import pytest
 
-from aioway.dsets import LoaderHop, LoaderOpt, TdictFrame, TensorDictFrame
+from aioway.dsets import TdictFrame, TensorDictFrame
+from aioway.hop import LoaderHop, LoaderOpt
 from tests.mock import chunk_ok, concat_ok, unionable_ok
 
 

@@ -3,8 +3,8 @@
 import pytest
 import torch
 
-from aioway.spaces import Attr
 from aioway.dsets import AttrTag, TagDict
+from aioway.spaces import Attr
 
 
 @pytest.fixture
