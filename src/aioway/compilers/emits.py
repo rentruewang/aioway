@@ -6,9 +6,10 @@ import typing
 from collections import abc as cabc
 
 from aioway.builders import TensorBuilder
-from aioway.dsets import AttrTag, Dset, LoaderOpt, TensorStream
-from aioway.hop import Linear, ListHop
+from aioway.dsets import Dset, TensorStream
+from aioway.hop import Linear, ListHop, LoaderOpt
 from aioway.sinks import Sink
+from aioway.spaces import AttrSpace
 
 __all__ = ["Emitter", "emitter_dcls", "JustLinearEmitter"]
 
@@ -71,16 +72,12 @@ class JustLinearEmitter(Emitter):
         return ListHop([linear_node.hop])
 
     @property
-    def in_attr(self) -> AttrTag:
-        result = self.in_dset.tags[AttrTag.NAME]
-        assert isinstance(result, AttrTag)
-        return result
+    def in_attr(self) -> AttrSpace:
+        raise NotImplementedError
 
     @property
-    def out_attr(self) -> AttrTag:
-        result = self.out_dset.tags[AttrTag.NAME]
-        assert isinstance(result, AttrTag)
-        return result
+    def out_attr(self) -> AttrSpace:
+        raise NotImplementedError
 
     def inputs(self) -> cabc.Iterator[Dset]:
         yield self.in_dset

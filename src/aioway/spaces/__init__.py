@@ -2,5 +2,5 @@
 
 from .attrs import *
 from .dims import *
-from .media import *
-from .tags import *
+from .exact import *
+from .spaces import *

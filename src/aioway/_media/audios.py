@@ -10,8 +10,7 @@ from torch.utils import data
 from torchcodec import decoders as dec
 
 from aioway._utils import current_fake_mode, torch_set_fake_mode_func
-from aioway.attrs import Attr
-from aioway.dsets import IsStftTag, SampleRateTag
+from aioway.spaces import Attr
 
 from ._av import AudioStream
 from ._bases import TorchCompatible
@@ -40,7 +39,6 @@ class AudioData(TorchCompatible):
 
     @typing.override
     def to_tensor(self):
-        SampleRateTag(self.sample_rate).attach(self.data)
         return self.data
 
 
@@ -68,10 +66,6 @@ def encode_with_stft(audio: torch.Tensor, /, n_fft: int) -> torch.Tensor:
 
     result = torch.stft(audio, n_fft, return_complex=True)
     real_result = result.real
-
-    # Perhaps we should handle tags passing in `Fate`.
-    if tag := SampleRateTag.extract(audio):
-        tag.attach(real_result)
 
     return real_result
 
@@ -106,7 +100,6 @@ class AudioDataFolder(data.Dataset[torch.Tensor]):
             # need to permute it for it to work.
             audios = [audio for audio in audios]
             result = collate(audios)
-            SampleRateTag(sample_rate=self.sample_rate).attach(result)
             return result
 
         return collate_and_tag
@@ -121,8 +114,6 @@ class AudioDataFolder(data.Dataset[torch.Tensor]):
         def do_stft(audios: list[torch.Tensor]) -> torch.Tensor:
             tensor = collate(audios)
             stft = encode_with_stft(tensor, n_fft=n_fft)
-            SampleRateTag(sample_rate=self.sample_rate).attach(stft)
-            IsStftTag().attach(stft)
             return stft
 
         return do_stft

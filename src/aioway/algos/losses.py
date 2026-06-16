@@ -5,7 +5,7 @@ import typing
 import torch
 from torch import nn
 
-from aioway.attrs import Attr, Shape
+from aioway.spaces import Attr, Shape
 
 __all__ = ["loss_func"]
 
