@@ -58,7 +58,7 @@ class TensorListHop(TensorHop):
     def __len__(self) -> int:
         return self.size
 
-    def __getitem__(self, idx: int) -> td.TensorDict:
+    def __getitem__(self, idx: int) -> torch.Tensor:
         return self.sequence[idx]
 
     @property
