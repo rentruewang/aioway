@@ -9,8 +9,7 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway.hop import TdictHop, TensorHop, hop_dcls
-
+from .hop import TdictHop, TensorHop, hop_dcls
 from .maps import MapHop
 
 __all__ = ["ColumnViewHop", "ProjectHop"]

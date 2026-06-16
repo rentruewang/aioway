@@ -5,7 +5,7 @@ import pathlib
 import pytest
 import torch
 
-from aioway._media import TokenizerLoader
+from aioway.codecs import TokenizerLoader
 from aioway.spaces import DType
 
 

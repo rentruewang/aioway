@@ -8,7 +8,7 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway.hop import BoundedHop, TdictHop, hop_dcls
+from .hop import BoundedHop, TdictHop, hop_dcls
 
 __all__ = ["ZipHop", "NestedLoopJoinHop"]
 

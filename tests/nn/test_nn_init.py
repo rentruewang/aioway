@@ -4,7 +4,7 @@
 from torch import nn
 
 from aioway.fake import NnInitFn
-from aioway.hop import NnInit, Sequential, find_nn_init
+from aioway.nn import NnInit, Sequential, find_nn_init
 
 
 def test_layer_nn_init(layer_nn_init: NnInit):

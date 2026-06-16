@@ -5,7 +5,7 @@ import pathlib
 import pytest
 import torch
 
-from aioway._media import ImageLoader, PillowImageLoader, TvioImageLoader
+from aioway.codecs import ImageLoader, PillowImageLoader, TvioImageLoader
 
 
 def _loaders():

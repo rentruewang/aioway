@@ -12,16 +12,12 @@ import torch
 from aioway.dsets import FaissIndex, FaissIndexHop
 from aioway.hop import (
     ApplyHop,
-    BaseLoss,
     BoundedHop,
     ColumnViewHop,
     FuncFilterHop,
     Hop,
     ListHop,
     NestedLoopJoinHop,
-    NnInit,
-    NnLayerHop,
-    NnLossHop,
     ProjectHop,
     RenameHop,
     StackHop,
@@ -29,6 +25,7 @@ from aioway.hop import (
     TensorHop,
     ZipHop,
 )
+from aioway.nn import BaseLoss, NnInit, NnLayerHop, NnLossHop
 
 __all__ = ["Builder"]
 
