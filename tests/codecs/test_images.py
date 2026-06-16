@@ -1,0 +1,29 @@
+# Copyright (c) AIoWay Authors - All Rights Reserved
+
+import pathlib
+
+import pytest
+import torch
+
+from aioway.codecs import ImageLoader, PillowImageLoader, TvioImageLoader
+
+
+def _loaders():
+    yield TvioImageLoader()
+    yield PillowImageLoader()
+
+
+@pytest.fixture(params=_loaders(), ids=lambda l: type(l).__name__)
+def loader(request: pytest.FixtureRequest):
+    return request.param
+
+
+def _read_image(example_image: pathlib.Path, loader: ImageLoader) -> torch.Tensor:
+    image = loader(example_image).to_tensor()
+    assert isinstance(image, torch.Tensor)
+    assert image.dtype == torch.uint8
+    return image
+
+
+def test_read_image(example_image: pathlib.Path, loader: ImageLoader, maybe_fake_mode):
+    _ = _read_image(example_image, loader)
