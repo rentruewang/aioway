@@ -18,7 +18,9 @@ from aioway._utils import (
     decomp_dcls_members,
     decomp_replace,
     topo_sort,
+    torch_fake_mode,
 )
+from aioway.spaces import Attr
 
 __all__ = ["hop_dcls", "Hop", "TensorHop", "TdictHop", "ListHop", "BoundedHop"]
 
@@ -56,6 +58,15 @@ class Hop[T](cabc.Iterable[T], abc.ABC):
         """
 
         raise NotImplementedError
+
+    def sample(self) -> T:
+        """
+        Get a sample from the input. This method should be equivalent to `next(iter(self))`,
+        but in fake mode (no data is actually retrieved).
+        """
+
+        with torch_fake_mode():
+            return next(iter(self))
 
     @property
     def requires_grad(self) -> bool:
@@ -157,6 +168,10 @@ class TensorHop(Hop[torch.Tensor], abc.ABC):
     """
     An iterator of batches of `torch.Tensor`.
     """
+
+    @property
+    def attr(self) -> Attr:
+        return Attr.parse(self.sample())
 
 
 @hop_dcls

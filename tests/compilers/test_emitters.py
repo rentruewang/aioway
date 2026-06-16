@@ -7,10 +7,9 @@ from torch import nn
 
 from aioway.algos import SupervisedAlgo
 from aioway.compilers import JustLinearEmitter
-from aioway.dsets import Stream, TensorListHop
-from aioway.hop import Linear, ListHop, NnHop, NnInit, NnLayerHop, TensorHop
-from aioway.sinks import Sink
-from aioway.spaces import Attr, AttrSpace, SpaceList
+from aioway.dsets import Stream, TensorListHop, TensorStream
+from aioway.hop import Linear, ListHop, LoaderOpt, NnHop, NnInit, NnLayerHop, TensorHop
+from aioway.spaces import Attr, AttrSpace, Shape, ShapeSpace
 
 
 @pytest.fixture
@@ -20,14 +19,12 @@ def input_space():
 
 @pytest.fixture
 def output_space():
-    return AttrSpace.from_attr(Attr.build(dtype="float", shape=[3, 4, 6]))
+    return ShapeSpace(Shape.parse(3, 4, 6))
 
 
 @pytest.fixture
 def input_dataset(input_space: AttrSpace):
-    pytest.xfail("inputs outputs change")
-
-    class FakeInputDset(Stream):
+    class FakeInputDset(TensorStream):
         def __call__(self, *_):
             return TensorListHop([input_space.to_attr().to_fake_tensor()])
 
@@ -36,37 +33,18 @@ def input_dataset(input_space: AttrSpace):
             # Not really using this, so we can afford to make a fake one.
             raise NotImplementedError
 
-        @property
-        def tags(self):
-            return SpaceList({input_space.NAME: input_space})
-
     return FakeInputDset()
 
 
 @pytest.fixture
-def output_dataset(output_space: AttrSpace):
-    pytest.xfail("inputs outputs change")
-
-    class FakeOutputDset(Sink):
-        @typing.override
-        def write(self, item):
-            # Not really using this, so we can afford to make a fake one.
-            raise NotImplementedError
-
-        @property
-        def tags(self):
-            return SpaceList({output_space.NAME: output_space})
-
-    return FakeOutputDset()
+def supervised(input_dataset: Stream, output_space: ShapeSpace):
+    pytest.xfail("Not yet")
+    return SupervisedAlgo(input_dataset, output_space)
 
 
-@pytest.fixture
-def supervised(input_dataset, output_dataset):
-    return SupervisedAlgo(input_dataset, output_dataset)
-
-
-def test_just_linear(input_dataset: Stream, output_dataset: Sink):
-    builder = JustLinearEmitter(input_dataset, output_dataset)
+def test_just_linear(input_dataset: TensorStream, output_space: ShapeSpace):
+    stream = input_dataset(LoaderOpt())
+    builder = JustLinearEmitter(stream, output_space)
     built = builder()
     [tensor_node, linear_node, list_node] = built.dag()
     assert isinstance(linear_node, NnLayerHop)

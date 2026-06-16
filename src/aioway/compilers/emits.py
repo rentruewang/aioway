@@ -5,11 +5,10 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
+from aioway._utils import decomp_flatten
 from aioway.builders import TensorBuilder
-from aioway.dsets import Dset, TensorStream
-from aioway.hop import Linear, ListHop, LoaderOpt
-from aioway.sinks import Sink
-from aioway.spaces import AttrSpace
+from aioway.hop import Hop, Linear, ListHop, TensorHop
+from aioway.spaces import ShapeSpace, Space
 
 __all__ = ["Emitter", "emitter_dcls", "JustLinearEmitter"]
 
@@ -21,22 +20,36 @@ def emitter_dcls(cls):
 
 @emitter_dcls
 class Emitter(abc.ABC):
+    """
+    `Emitter` emits an additional `Hop` that can be added on top of the current `Hop` network,
+    providing additional transformation on top of what we currently have.
+
+    An `Emitter` should raise an error in `__post_init__` if the inputs are wrong.
+    """
+
     @abc.abstractmethod
-    def __call__(self) -> ListHop:
+    def __call__(self) -> Hop:
         """
         Compiles from a list of input and output tags.
-        Returns `NotImplemented` if the current builder does not support the inputs outputs.
         """
 
         raise NotImplementedError
 
-    @abc.abstractmethod
-    def inputs(self) -> cabc.Iterator[Dset]:
-        raise NotImplementedError
+    def inputs(self) -> cabc.Iterator[Hop]:
+        """
+        In the current version of the design, an `Emitter` adds something to a `Hop`.
+        Therefore we could store the input `Hop` onto itself.
+        """
 
-    @abc.abstractmethod
-    def outputs(self) -> cabc.Iterator[Sink]:
-        raise NotImplementedError
+        yield from decomp_flatten(self, Hop)
+
+    def outputs(self) -> cabc.Iterator[Space]:
+        """
+        In the current version of the design,
+        an `Emitter` would store the output spaces onto itself.
+        """
+
+        yield from decomp_flatten(self, Space)
 
 
 @emitter_dcls
@@ -45,42 +58,19 @@ class JustLinearEmitter(Emitter):
     A builder that outputs 1 linear layer, supporting 1 input and 1 output.
     """
 
-    in_dset: TensorStream
-    "The input shape."
+    input: TensorHop
+    "The input `Hop`."
 
-    out_dset: Sink
-    "The output shape."
-
-    opts: LoaderOpt = LoaderOpt()
-    "The default data loader options."
+    output: ShapeSpace
+    "The output contract."
 
     def __post_init__(self) -> None:
-        assert isinstance(self.in_dset, Dset)
-        assert isinstance(self.out_dset, Sink)
+        assert isinstance(self.input, TensorHop)
+        assert isinstance(self.output, ShapeSpace)
 
     def __call__(self) -> ListHop:
-        try:
-            in_attr = self.in_attr.to_attr()
-            out_attr = self.out_attr.to_attr()
-        except TypeError:
-            return NotImplemented
-
-        input_node = TensorBuilder(self.in_dset(self.opts))
+        input_node = TensorBuilder(self.input)
         linear_node = input_node.apply_layer(
-            Linear(in_attr.shape[-1], out_attr.shape[-1]),
+            Linear(self.input.attr.shape[-1], self.output[-1]),
         )
         return ListHop([linear_node.hop])
-
-    @property
-    def in_attr(self) -> AttrSpace:
-        raise NotImplementedError
-
-    @property
-    def out_attr(self) -> AttrSpace:
-        raise NotImplementedError
-
-    def inputs(self) -> cabc.Iterator[Dset]:
-        yield self.in_dset
-
-    def outputs(self) -> cabc.Iterator[Sink]:
-        yield self.out_dset

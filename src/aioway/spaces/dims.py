@@ -7,6 +7,8 @@ import functools
 import re
 import typing
 
+import torch
+
 from aioway.spaces import Attr
 
 from .spaces import TensorSpace, space_dcls
@@ -47,13 +49,16 @@ class DimInfo(enum.StrEnum):
 
 @space_dcls
 class DimSpace(TensorSpace):
-    NAME = "__aioway_dim_tag__"
 
     tags: str
     """
     The tags. For efficiency purposes we store it in strings.
     Strings are more compact and we can use regex.
     """
+
+    def __post_init__(self) -> None:
+        if not _valid_dim_tag(self.tags):
+            raise ValueError("The dimension tags are not valid.")
 
     @typing.override
     def _check_attr(self, attr: Attr) -> None:
@@ -62,9 +67,20 @@ class DimSpace(TensorSpace):
                 f"The {self.tags=} dimensions do not match the tensor's {ndim=}."
             )
 
-    def __post_init__(self) -> None:
-        if not _valid_dim_tag(self.tags):
-            raise ValueError("The dimension tags are not valid.")
+    @typing.override
+    def _check_data(self, data: torch.Tensor) -> None:
+        if DimInfo.PROB.value not in self.tags:
+            return
+
+        # Probability dims should sum to 1.
+        prob_dims = [i for i, tag in enumerate(self.tags) if tag == DimInfo.PROB.value]
+
+        for dim in prob_dims:
+            summation = data.sum(dim=dim)
+            ones = torch.ones_like(summation)
+
+            if not torch.allclose(summation, ones):
+                raise ValueError
 
 
 def _valid_dim_tag(tags: str) -> bool:
