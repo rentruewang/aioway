@@ -2,8 +2,7 @@
 
 from torch import nn
 
-from aioway.hop import NnLayerHop
-
+from .hop import NnLayerHop
 from .modules import NnInit, nn_init_dcls
 
 __all__ = [

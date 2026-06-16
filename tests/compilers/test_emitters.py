@@ -8,8 +8,8 @@ from torch import nn
 from aioway.algos import SupervisedAlgo
 from aioway.compilers import JustLinearEmitter
 from aioway.dsets import TensorListHop, TensorStream
-from aioway.hop import ListHop, LoaderOpt, NnHop, NnLayerHop, TensorHop
-from aioway.nn import Linear, NnInit
+from aioway.hop import ListHop, LoaderOpt, TensorHop
+from aioway.nn import Linear, NnHop, NnInit, NnLayerHop
 from aioway.spaces import Attr, AttrSpace, Shape, ShapeSpace
 
 

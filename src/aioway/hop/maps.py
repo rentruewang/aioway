@@ -11,7 +11,8 @@ import tensordict as td
 import torch
 
 from aioway._utils import tdict_rename
-from aioway.hop import TdictHop, hop_dcls
+
+from .hop import TdictHop, hop_dcls
 
 __all__ = ["MapHop", "ApplyHop", "FuncFilterHop", "RenameHop"]
 

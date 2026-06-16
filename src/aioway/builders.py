@@ -18,8 +18,6 @@ from aioway.hop import (
     Hop,
     ListHop,
     NestedLoopJoinHop,
-    NnLayerHop,
-    NnLossHop,
     ProjectHop,
     RenameHop,
     StackHop,
@@ -27,7 +25,7 @@ from aioway.hop import (
     TensorHop,
     ZipHop,
 )
-from aioway.nn import BaseLoss, NnInit
+from aioway.nn import BaseLoss, NnInit, NnLayerHop, NnLossHop
 
 __all__ = ["Builder"]
 

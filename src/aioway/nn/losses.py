@@ -4,8 +4,7 @@ import typing
 
 from torch import nn
 
-from aioway.hop import NnLossHop
-
+from .hop import NnLossHop
 from .modules import NnInit, nn_init_dcls
 
 __all__ = [
