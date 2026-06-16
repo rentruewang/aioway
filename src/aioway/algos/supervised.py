@@ -3,7 +3,8 @@
 import typing
 
 from aioway.compilers import Emitter, JustLinearEmitter, emitter_dcls
-from aioway.hop import ListHop, MSELoss, TensorHop
+from aioway.hop import ListHop, TensorHop
+from aioway.nn import MSELoss
 from aioway.spaces import ShapeSpace
 
 __all__ = ["SupervisedAlgo"]

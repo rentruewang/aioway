@@ -2,7 +2,8 @@
 
 from torch import nn
 
-from .hop import NnLayerHop
+from aioway.hop import NnLayerHop
+
 from .modules import NnInit, nn_init_dcls
 
 __all__ = ["Identity", "Linear", "Bilinear"]

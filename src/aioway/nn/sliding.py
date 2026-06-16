@@ -8,8 +8,8 @@ import typing
 from torch import nn
 
 from aioway._utils import is_tuple_of
+from aioway.hop import NnLayerHop
 
-from .hop import NnLayerHop
 from .modules import NnInit, nn_init_dcls
 
 __all__ = [

@@ -1,11 +1,12 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+from aioway.hop import *
+
 from .actives import *
 from .containers import *
 from .dense import *
 from .dropouts import *
 from .embs import *
-from .hop import *
 from .losses import *
 from .modules import *
 from .norms import *

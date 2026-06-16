@@ -10,9 +10,9 @@ from torch import nn
 
 from aioway._utils import dcls_asdict, render_fcall
 from aioway.fake import NnInitFn
+from aioway.hop import NnHop
 
 from ..hop import Hop
-from .hop import NnHop
 
 __all__ = ["NnInit", "nn_init_dcls", "find_nn_init", "build_nn_hop"]
 
