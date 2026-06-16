@@ -7,7 +7,7 @@ from torch import nn
 
 from aioway.algos import SupervisedAlgo
 from aioway.compilers import JustLinearEmitter
-from aioway.dsets import Stream, TensorListHop, TensorStream
+from aioway.dsets import TensorListHop, TensorStream
 from aioway.hop import Linear, ListHop, LoaderOpt, NnHop, NnInit, NnLayerHop, TensorHop
 from aioway.spaces import Attr, AttrSpace, Shape, ShapeSpace
 
@@ -37,14 +37,22 @@ def input_dataset(input_space: AttrSpace):
 
 
 @pytest.fixture
-def supervised(input_dataset: Stream, output_space: ShapeSpace):
-    pytest.xfail("Not yet")
-    return SupervisedAlgo(input_dataset, output_space)
+def input_hop(input_dataset: TensorStream) -> TensorHop:
+    return input_dataset(LoaderOpt())
 
 
-def test_just_linear(input_dataset: TensorStream, output_space: ShapeSpace):
-    stream = input_dataset(LoaderOpt())
-    builder = JustLinearEmitter(stream, output_space)
+@pytest.fixture
+def target_hop(input_hop: TensorHop) -> TensorHop:
+    return input_hop
+
+
+@pytest.fixture
+def supervised(input_hop: TensorHop, target_hop: TensorHop):
+    return SupervisedAlgo(input_hop, target_hop)
+
+
+def test_just_linear(input_hop: TensorHop, output_space: ShapeSpace):
+    builder = JustLinearEmitter(input_hop, output_space)
     built = builder()
     [tensor_node, linear_node, list_node] = built.dag()
     assert isinstance(linear_node, NnLayerHop)
