@@ -20,7 +20,10 @@ from aioway._utils import (
     topo_sort,
     torch_fake_mode,
 )
-from aioway.spaces import Attr
+from aioway.spaces import Attr, Shape
+
+if typing.TYPE_CHECKING:
+    from aioway.hop import HopIter
 
 __all__ = ["hop_dcls", "Hop", "TensorHop", "TdictHop", "ListHop", "BoundedHop"]
 
@@ -44,7 +47,7 @@ class Hop[T](cabc.Iterable[T], abc.ABC):
         return id(self)
 
     @typing.final
-    def __iter__(self):
+    def __iter__(self) -> HopIter[T]:
         # Every iteration should yield a new `Iterator`.
         from .iters import HopIter
 
@@ -172,6 +175,14 @@ class TensorHop(Hop[torch.Tensor], abc.ABC):
     @property
     def attr(self) -> Attr:
         return Attr.parse(self.sample())
+
+    @property
+    def shape(self) -> Shape:
+        return self.attr.shape
+
+    @property
+    def ndim(self) -> int:
+        return self.attr.ndim
 
 
 @hop_dcls

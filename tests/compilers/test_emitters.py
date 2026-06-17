@@ -3,13 +3,13 @@
 import typing
 
 import pytest
-from torch import nn
+from torch import nn, optim
 
-from aioway.algos import SupervisedAlgo
 from aioway.compilers import JustLinearEmitter
 from aioway.dsets import TensorListHop, TensorStream
 from aioway.hop import ListHop, LoaderOpt, TensorHop
-from aioway.nn import Linear, NnHop, NnInit, NnLayerHop
+from aioway.nn import Linear, MSELoss, NnLayerHop
+from aioway.optim import OptimizerHop
 from aioway.spaces import Attr, AttrSpace, Shape, ShapeSpace
 
 
@@ -27,7 +27,9 @@ def output_space():
 def input_dataset(input_space: AttrSpace):
     class FakeInputDset(TensorStream):
         def __call__(self, *_):
-            return TensorListHop([input_space.to_attr().to_fake_tensor()])
+            return TensorListHop(
+                [input_space.to_attr().to_fake_tensor().requires_grad_()]
+            )
 
         @typing.override
         def __iter__(self):
@@ -48,8 +50,11 @@ def target_hop(input_hop: TensorHop) -> TensorHop:
 
 
 @pytest.fixture
-def supervised(input_hop: TensorHop, target_hop: TensorHop):
-    return SupervisedAlgo(input_hop, target_hop)
+def optimizer(input_hop: TensorListHop, target_hop: TensorHop):
+    opt = optim.AdamW(input_hop.sequence)
+    loss = MSELoss().apply(input_hop, target_hop)
+    assert isinstance(loss, TensorHop)
+    return OptimizerHop(loss=loss, optimizer=opt)
 
 
 def test_just_linear(input_hop: TensorHop, output_space: ShapeSpace):
@@ -67,14 +72,9 @@ def test_just_linear(input_hop: TensorHop, output_space: ShapeSpace):
     assert len([node.is_source for node in built.hops])
 
 
-def test_just_linear_supervised(supervised: SupervisedAlgo):
-    original = supervised.just_linear()
-    dag = supervised()
-    assert len(dag.nodes()) > len(original.nodes())
+def test_optimize(optimizer: OptimizerHop):
+    has_run = False
+    for _ in optimizer:
+        has_run = True
 
-    for node in dag.deps():
-        assert isinstance(node, NnHop)
-        assert isinstance(node.nn_init, NnInit)
-
-        # Right now only `nn.MSELoss`.
-        assert node.nn_init.NN == nn.MSELoss
+    assert has_run
