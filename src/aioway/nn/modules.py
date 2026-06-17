@@ -62,7 +62,7 @@ class NnInit(abc.ABC):
         thunk = NnInitFn(func=self.NN, **dcls_asdict(self))
         return thunk()
 
-    def apply(self, *args, **kwargs) -> Hop:
+    def apply(self, *args, **kwargs) -> NnHop:
         """
         Builds a high level operator with the given `NN` and `HOP` runtime class.
         """
