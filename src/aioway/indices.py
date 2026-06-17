@@ -12,7 +12,7 @@ import torch
 from aioway._utils import FloatArray, IntArray
 from aioway.hop import Hop, TensorHop, hop_dcls
 
-__all__ = ["AnnIndex", "AnnResult", "FaissIndex", "FaissIndexHop"]
+__all__ = ["AnnIndex", "AnnResult", "AnnIndexHop", "AnnIndexTrainerHop", "FaissIndex"]
 
 
 @dcls.dataclass(frozen=True)

@@ -1,5 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+"`Emitter`s generate the simplest unoptimized solutions, based on constraints."
+
 import abc
 import dataclasses as dcls
 import typing
