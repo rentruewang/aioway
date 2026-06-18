@@ -14,6 +14,8 @@ from aioway._costs import Cost
 from .aten import Aten, aten_dcls
 
 __all__ = [
+    "Matmul",
+    "BatchMatmul",
     "AddTensor",
     "AddScalar",
     "SubTensor",
@@ -38,6 +40,61 @@ __all__ = [
 ]
 
 Scalar = int | float | bool
+
+
+@typing.final
+@aten_dcls
+class Matmul(Aten):
+    "`torch.ops` implementation for `torch.mm`."
+
+    KEY = ops.aten.mm.default
+
+    self: torch.Tensor
+    mat2: torch.Tensor
+
+    def ok(self) -> bool:
+        return (
+            True
+            and self.self.ndim == self.mat2.ndim == 2
+            and self.self.shape[1] == self.mat2.shape[0]
+        )
+
+    def forward(self):
+        return torch.mm(self.self, self.mat2)
+
+    def cost(self) -> Cost:
+        return Cost(
+            time=self.self.numel() * self.mat2.shape[-1],
+            memory=self.self.numel() + self.mat2.numel(),
+        )
+
+
+@typing.final
+@aten_dcls
+class BatchMatmul(Aten):
+    "`torch.ops` implementation for `torch.bmm`."
+
+    KEY = ops.aten.bmm.default
+
+    self: torch.Tensor
+    mat2: torch.Tensor
+
+    def ok(self) -> bool:
+        return (
+            True
+            and self.self.ndim == self.mat2.ndim == 3
+            and self.self.shape[0] == self.mat2.shape[0]
+            and self.self.shape[2] == self.mat2.shape[1]
+        )
+
+    def forward(self):
+        return torch.bmm(self.self, self.mat2)
+
+    def cost(self) -> Cost:
+        return Cost(
+            time=self.self.numel() * self.mat2.shape[-1],
+            memory=self.self.numel() + self.mat2.numel(),
+        )
 
 
 @aten_dcls

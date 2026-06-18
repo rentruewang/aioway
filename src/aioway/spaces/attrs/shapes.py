@@ -42,7 +42,7 @@ class Shape(TorchAttrBase[torch.Size], cabc.Sequence[int]):
         return hash(tuple(self._data))
 
     def __str__(self) -> str:
-        return "(" + "x".join(map(str, self._data)) + ")"
+        return "[" + "x".join(map(str, self._data)) + "]"
 
     @typing.no_type_check
     def __eq__(self, other: object) -> bool:

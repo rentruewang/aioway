@@ -2,6 +2,8 @@
 
 "An adaptor of `Aten` and `Fn`, using `Aten` in fake modes."
 
+import torch
+
 import dataclasses as dcls
 import logging
 import typing
@@ -57,7 +59,7 @@ class AtenFn(Fn):
         return self.original.kwargs
 
     @classmethod
-    def find_fate(cls, thunk: TorchDispFn) -> typing.Self | None:
+    def from_thunk(cls, thunk: TorchDispFn) -> typing.Self | None:
         LOGGER.debug("Resolving `Aten` object for %s", thunk)
 
         # For now, `Aten` only supports aten,

@@ -46,7 +46,7 @@ class TorchAttrBase[T](abc.ABC):
     def __repr__(self) -> str:
         "String representation with `aioway` qualifier."
 
-        return f"aioway.{self!s}"
+        return f"aioway.{type(self).__name__}({self!s})"
 
     @abc.abstractmethod
     def __str__(self) -> str:
