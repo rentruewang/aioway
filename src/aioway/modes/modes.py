@@ -9,7 +9,7 @@ import logging
 import typing
 from collections import abc as cabc
 
-from aioway._fn import TorchThunk
+from aioway._thunks import TorchThunk
 from aioway._utils import Stack
 
 __all__ = ["Mode", "ModeStack"]

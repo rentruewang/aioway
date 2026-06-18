@@ -3,7 +3,7 @@
 import abc
 import typing
 
-from aioway._fn import Thunk
+from aioway._thunks import Thunk
 from aioway.hop import Hop
 
 __all__ = []

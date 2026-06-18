@@ -11,7 +11,7 @@ from collections import abc as cabc
 
 import torch
 
-from aioway._fn import TensorInput, Thunk, TorchThunk
+from aioway._thunks import TensorInput, Thunk, TorchThunk
 from aioway._utils import (
     find_nested_tensors,
     is_leaf_has_grad,
