@@ -15,7 +15,7 @@ from aioway._utils import render_fcall, render_torch_func_name, track_call_count
 
 from .modes import Mode, ModeStack
 
-__all__ = ["NnFwdFn", "NnInitFn", "NnFwdMode", "NnInitMode"]
+__all__ = ["NnFwdThunk", "NnInitThunk", "NnFwdMode", "NnInitMode"]
 
 LOGGER = logging.getLogger(__name__)
 
@@ -27,9 +27,9 @@ INITS: ModeStack[NnInitMode] = ModeStack()
 
 
 @typing.final
-class NnFwdFn(TorchThunk):
+class NnFwdThunk(TorchThunk):
     """
-    `NnFwdFn` represents the module calls.
+    `NnFwdThunk` represents the module calls.
 
     It works like `__torch_function__`, pops the context from the global stack,
     execute the `.run` function (which might trigger recursive calls), then push it back.
@@ -63,7 +63,7 @@ class NnFwdFn(TorchThunk):
         This function is recursive, so call counts are tracked to aid debugging.
         """
 
-        return _invoke_rec(FORWARDS, NnFwdFn, self.func, self.args, self.kwargs)
+        return _invoke_rec(FORWARDS, NnFwdThunk, self.func, self.args, self.kwargs)
 
     def load_state_dict(
         self,
@@ -85,21 +85,21 @@ class NnFwdFn(TorchThunk):
         return self.func.state_dict()
 
 
-class NnFwdMode(Mode[NnFwdFn, object], abc.ABC):
+class NnFwdMode(Mode[NnFwdThunk, object], abc.ABC):
     """
     `NnFwdMode` is the mode for similar to `__torch_function__` / `__torch_dispatch__`,
     except you enter / exit with a `Mode.__call__()` method (I prefer context managers).
 
-    It is triggered when a `NnFwdFn.__call__` is called.
+    It is triggered when a `NnFwdThunk.__call__` is called.
     """
 
     STACK = FORWARDS
 
 
 @typing.final
-class NnInitFn[**P = ...](TorchThunk):
+class NnInitThunk[**P = ...](TorchThunk):
     """
-    `NnInitFn` are used to initialize `nn.Module`s.
+    `NnInitThunk` are used to initialize `nn.Module`s.
 
     It works like `__torch_function__`, pops the context from the global stack,
     execute the `.run` function (which might trigger recursive calls), then push it back.
@@ -133,7 +133,7 @@ class NnInitFn[**P = ...](TorchThunk):
         This function is recursive, so call counts are tracked to aid debugging.
         """
 
-        result = _invoke_rec(INITS, NnInitFn, self.func, self.args, self.kwargs)
+        result = _invoke_rec(INITS, NnInitThunk, self.func, self.args, self.kwargs)
 
         if not isinstance(result, nn.Module):
             raise TypeError("Function `module_init` must return an `nn.Module`.")
@@ -141,11 +141,11 @@ class NnInitFn[**P = ...](TorchThunk):
         return result
 
 
-class NnInitMode(Mode[NnInitFn, nn.Module], abc.ABC):
+class NnInitMode(Mode[NnInitThunk, nn.Module], abc.ABC):
     """
     `NnInitMode` is a `Mode` for `nn.Module.__init__`.
 
-    It is triggered when a `NnInitFn.__call__` is called.
+    It is triggered when a `NnInitThunk.__call__` is called.
     """
 
     STACK = INITS
@@ -161,7 +161,7 @@ def _invoke_rec[T: Mode[typing.Any, typing.Any]](
     """
     Essentially, invoke the given `call` recursively until the `stack` is exhausted.
 
-    Overriding modes must only call `NnFwdFn.__call__` and `NnInitFn.__call__`,
+    Overriding modes must only call `NnFwdThunk.__call__` and `NnInitThunk.__call__`,
     which in turn calls this function to pop the next `mode` off the stack, and invoke it.
 
     This concept is borrowed from `__torch_function__` and `__torch_dispatch__`,
@@ -181,7 +181,7 @@ def _invoke_rec[T: Mode[typing.Any, typing.Any]](
     # And go to the previous `if not stack` shortcut.
     # For this to work, `mode(thunk)` must call `_invoke_rec` indirectly,
     # therefore you must call `module_fwd` / `module_init`,
-    # or using `.run()` on `NnFwdFn` / `NnInitFn` does the same thing.
+    # or using `.run()` on `NnFwdThunk` / `NnInitThunk` does the same thing.
     with stack.borrow() as mode:
 
         if mode.on:

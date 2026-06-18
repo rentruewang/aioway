@@ -9,7 +9,7 @@ from torch import nn
 from aioway._utils import AnyDict, is_fake_tensor, torch_fake_mode
 from aioway.dsets import TensorListHop
 from aioway.hop import Hop, StackHop, TensorHop, hop_cache_on
-from aioway.modes import NnInitFn
+from aioway.modes import NnInitThunk
 from aioway.nn import NnLayerHop, NnLossHop, build_nn_hop
 
 
@@ -69,7 +69,7 @@ def test_loss_hop(loss_thunk, tensor_init: TensorHop, maybe_cache_hop):
 
 
 def test_hop_mse(tensor_init: TensorHop, maybe_cache_hop):
-    result = build_nn_hop(NnInitFn(nn.MSELoss), tensor_init, tensor_init)
+    result = build_nn_hop(NnInitThunk(nn.MSELoss), tensor_init, tensor_init)
 
     assert result
     out = next(iter(result))
@@ -77,7 +77,7 @@ def test_hop_mse(tensor_init: TensorHop, maybe_cache_hop):
 
 
 def test_hop_linear(tensor_init: TensorHop, maybe_cache_hop):
-    linear = build_nn_hop(NnInitFn(nn.Linear, 30, 31), tensor_init)
+    linear = build_nn_hop(NnInitThunk(nn.Linear, 30, 31), tensor_init)
     assert linear
 
     result = next(iter(linear))
@@ -115,7 +115,7 @@ def test_hop_no_replace_with_function(tensor_init: TensorHop):
 
 def test_hop_linear_rebuild(tensor_init: TensorHop):
     with torch_fake_mode():
-        linear = build_nn_hop(NnInitFn(nn.Linear, 30, 31), tensor_init)
+        linear = build_nn_hop(NnInitThunk(nn.Linear, 30, 31), tensor_init)
         assert linear
 
         result = next(iter(linear))
