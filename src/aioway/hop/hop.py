@@ -5,18 +5,22 @@
 import abc
 import copy
 import dataclasses as dcls
+import textwrap
 import typing
 from collections import abc as cabc
 
 import tensordict as td
 import torch
+from rich import table
 
 from aioway._utils import (
     AnyDict,
     AnySet,
     dag_node_key,
+    dcls_asdict,
     decomp_dcls_members,
     decomp_replace,
+    render_fcall_str,
     topo_sort,
     torch_fake_mode,
 )
@@ -165,6 +169,48 @@ class Hop[T](cabc.Iterable[T], abc.ABC):
 
         return NotImplemented
 
+    def dag(self) -> list[Hop[T]]:
+        "Order the `Hop`s in their topological order."
+
+        dag_nodes = [dag_node_key(hop) for hop in self.nodes()]
+        return topo_sort(dag_nodes)
+
+    def _repr_abbrev(self) -> str:
+        """
+        Perform `repr`, but with `Hop` members abbreviated.
+        """
+
+        members: dict[str, str] = {}
+
+        for key, val in dcls_asdict(self).items():
+
+            # Only perform abbreviation on `Hop`.
+            if isinstance(val, Hop):
+                string = f"{type(val).__name__}(...)"
+            else:
+                string = textwrap.shorten(repr(val), 20)
+
+            members[key] = string
+
+        return render_fcall_str(type(self).__name__, **members)
+
+    def explain(self) -> table.Table:
+        tab = table.Table(title="Logical plan")
+        tab.add_column("Id")
+        tab.add_column("Parents")
+        tab.add_column("Self")
+
+        dag = self.dag()
+        hop_idx = AnyDict[Hop, int]()
+        for idx, hop in enumerate(dag):
+            hop_idx[hop] = idx
+
+        for idx, hop in enumerate(dag):
+            parents = (f"#{hop_idx[dep]}" for dep in hop.deps())
+            tab.add_row(f"#{idx}", ",".join(parents), hop._repr_abbrev())
+
+        return tab
+
 
 @hop_dcls
 class TensorHop(Hop[torch.Tensor], abc.ABC):
@@ -238,12 +284,6 @@ class ListHop[T = typing.Any](Hop[cabc.Sequence[T]]):
     def iterate(self):
         for hops in zip(*self.hops):
             yield hops
-
-    def dag(self) -> list[Hop[T]]:
-        "Order the `Hop`s in their topological order."
-
-        dag_nodes = [dag_node_key(hop) for hop in self.nodes()]
-        return topo_sort(dag_nodes)
 
 
 @hop_dcls

@@ -14,6 +14,7 @@ from rich import syntax, tree
 from torch import _ops, nn
 
 __all__ = [
+    "render_fcall_str",
     "render_fcall",
     "subclass_tree",
     "print_subclass_tree",
@@ -25,7 +26,36 @@ __all__ = [
 type FunctionLike = str | cabc.Callable[..., typing.Any]
 
 
+def render_fcall_str(func: str, *args: str, **kwargs: str) -> str:
+    """
+    Render the function call when everything are already strings.
+    """
+
+    args_builder: list[str] = []
+
+    # Add positional arguments.
+    if args:
+        args_builder.extend(args)
+
+    # Add keyword arguments.
+    if kwargs:
+        args_builder.extend(f"{k}={v}" for k, v in kwargs.items())
+
+    args_str = ", ".join(args_builder)
+    return f"{func}({args_str})"
+
+
 def render_fcall(func: FunctionLike, *args: typing.Any, **kwargs: typing.Any) -> str:
+    """
+    Render a function call.
+    """
+
+    return render_fcall_str(
+        f"{func!s}",
+        *[str(arg) for arg in args],
+        **{key: str(arg) for key, arg in kwargs.items()},
+    )
+
     args_builder: list[str] = []
 
     # Add positional arguments.
