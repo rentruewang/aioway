@@ -2,8 +2,6 @@
 
 "An adaptor of `Aten` and `Fn`, using `Aten` in fake modes."
 
-import torch
-
 import dataclasses as dcls
 import logging
 import typing
