@@ -12,7 +12,7 @@ import torch
 
 from aioway._utils import find_nested_tensors, render_fcall
 
-__all__ = ["Fn", "TensorInput", "AnyThunk", "TorchThunk"]
+__all__ = ["Thunk", "TensorInput", "AnyThunk", "TorchThunk"]
 
 LOGGER = logging.getLogger(__name__)
 _PENDING = object()
@@ -20,13 +20,13 @@ _PENDING = object()
 
 
 @typing.runtime_checkable
-class Fn[T = object](typing.Protocol):
+class Thunk[T = object](typing.Protocol):
     """
-    `Fn` is the base class for delayed computation, in a single batch (a single pass).
+    `Thunk` is the base class for delayed computation, in a single batch (a single pass).
 
     It stands for [f]unction [n]ode, or short for function.
 
-    `Fn()` executes the computation, `Fn` base class itself does not make any more assumption.
+    `Thunk()` executes the computation, `Thunk` base class itself does not make any more assumption.
     """
 
     def __call__(self) -> T:
@@ -132,7 +132,7 @@ class AnyThunk:
 
 class TorchThunk(abc.ABC):
     """
-    `TorchThunk` is a really basic `Fn` that acts as a base class,
+    `TorchThunk` is a really basic `Thunk` that acts as a base class,
     with some `torch` utilities.
     """
 

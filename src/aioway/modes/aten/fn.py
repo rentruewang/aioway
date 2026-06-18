@@ -1,12 +1,12 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"An adaptor of `Aten` and `Fn`, using `Aten` in fake modes."
+"An adaptor of `Aten` and `Thunk`, using `Aten` in fake modes."
 
 import dataclasses as dcls
 import logging
 import typing
 
-from aioway._fn import Fn
+from aioway._fn import Thunk
 from aioway._utils import is_aten_op
 
 from ..tensors import TorchDispFn
@@ -19,9 +19,9 @@ LOGGER = logging.getLogger(__name__)
 
 @typing.final
 @dcls.dataclass(frozen=True)
-class AtenFn(Fn):
+class AtenFn(Thunk):
     """
-    `AtenFn` wraps a `Aten` object, which is split out so as to declutter subclasses for `Fn`.
+    `AtenFn` wraps a `Aten` object, which is split out so as to declutter subclasses for `Thunk`.
 
     Each `Aten` is an implementation of an IR, and each IR can have multiple `Aten`s,
     each handling a subset of parameters (if `Aten.ok` is `False`, it's discarded.)

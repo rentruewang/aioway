@@ -2,7 +2,7 @@
 
 import pytest
 
-from aioway._fn import Fn, TensorInput, TorchThunk
+from aioway._fn import Thunk, TensorInput, TorchThunk
 from aioway.modes import (
     Aten,
     AtenFn,
@@ -45,7 +45,7 @@ def input_cls(request: pytest.FixtureRequest):
 
 def test_fn_subclass(fn_cls):
     assert isinstance(fn_cls, type)
-    assert issubclass(fn_cls, Fn)
+    assert issubclass(fn_cls, Thunk)
 
 
 def test_inputs_subclass(input_cls):

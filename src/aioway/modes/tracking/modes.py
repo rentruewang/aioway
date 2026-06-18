@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"Tracking / routing related `Fn`s."
+"Tracking / routing related `Thunk`s."
 
 import contextlib as ctxl
 import dataclasses as dcls

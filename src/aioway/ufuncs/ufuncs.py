@@ -3,7 +3,7 @@
 import abc
 import typing
 
-from aioway._fn import Fn
+from aioway._fn import Thunk
 from aioway.hop import Hop
 
 __all__ = []
@@ -24,7 +24,7 @@ class UFunc(abc.ABC):
 
     @typing.no_type_check
     @abc.abstractmethod
-    def thunk(self, *thunks: Fn) -> Fn:
+    def thunk(self, *thunks: Thunk) -> Thunk:
         "A `UFunc` takes thunks and tranform it into other thunks."
 
         raise NotImplementedError

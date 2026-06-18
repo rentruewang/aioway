@@ -11,7 +11,7 @@ from collections import abc as cabc
 
 import torch
 
-from aioway._fn import Fn, TensorInput, TorchThunk
+from aioway._fn import Thunk, TensorInput, TorchThunk
 from aioway._utils import (
     find_nested_tensors,
     is_leaf_has_grad,
@@ -24,11 +24,11 @@ LOGGER = logging.getLogger(__name__)
 __all__ = ["Hist", "HistTensorGraph"]
 
 
-class HashableTensorInput(typing.Hashable, TensorInput, Fn, typing.Protocol): ...
+class HashableTensorInput(typing.Hashable, TensorInput, Thunk, typing.Protocol): ...
 
 
 @typing.runtime_checkable
-class TensorNode(TensorInput, Fn, typing.Protocol):
+class TensorNode(TensorInput, Thunk, typing.Protocol):
     f"""
     `TensorNode` have both tensor output (`run()`) and tensor inputs (`.inputs()`).
     The output itself does not need to be tensor, but must decompose (only) into tensors.
@@ -40,7 +40,7 @@ class FnResult[F]:
     "The storage class per item for `FnHistory`."
 
     fn: F
-    "The `Fn` that has been called."
+    "The `Thunk` that has been called."
 
     result: object
     "The output that `fn` has produced."
