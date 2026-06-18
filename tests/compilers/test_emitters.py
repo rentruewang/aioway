@@ -74,6 +74,7 @@ def test_just_linear(input_hop: TensorHop, output_space: ShapeSpace):
 
 def test_optimize(optimizer: OptimizerHop):
     has_run = False
+
     for _ in optimizer:
         has_run = True
 

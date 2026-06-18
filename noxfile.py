@@ -183,7 +183,16 @@ def _install_ffmpeg() -> None:
         case "darwin":
             run("brew", "install", "ffmpeg")
         case "linux":
-            run("sudo", "apt-get", "update")
+            flags = [
+                "-o",
+                "Acquire::Languages=none",
+                "-o",
+                "Acquire::ForceIPv4=true",
+                "-o",
+                "Acquire::http::Pipeline-Depth=0",
+            ]
+
+            run("sudo", "apt-get", "update", *flags)
             run("sudo", "apt-get", "install", "-y", "ffmpeg")
         case _:
             raise RuntimeError(f"Platform {sys.platform} is not supported yet.")
