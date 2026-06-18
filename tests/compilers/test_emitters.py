@@ -79,5 +79,3 @@ def test_optimize(optimizer: OptimizerHop):
         has_run = True
 
     assert has_run
-
-    breakpoint()
