@@ -18,7 +18,6 @@ from aioway._utils import (
 )
 
 from ..fn import (
-    AtenFn,
     NnFwdFn,
     NnFwdMode,
     NnInitFn,
@@ -29,6 +28,9 @@ from ..fn import (
     TorchFuncMode,
 )
 from .hists import Hist, HistTensorGraph
+
+if typing.TYPE_CHECKING:
+    from aioway.fake import AtenFn
 
 __all__ = [
     "track_fn",
@@ -188,6 +190,8 @@ class RouteTorchDisp(TorchDispMode):
     "The history used for tracking."
 
     def run(self, thunk: TorchDispFn) -> object:
+        from aioway.fake import AtenFn
+
         fn: AtenFn | TorchDispFn
 
         if (found := AtenFn.find_fate(thunk)) is not None:
@@ -199,7 +203,7 @@ class RouteTorchDisp(TorchDispMode):
 
         assert isinstance(fn, TorchDispFn | AtenFn), type(fn)
 
-        # Here, `FateFn` would do its magic and overwrite functions.
+        # Here, `AtenFn` would do its magic and overwrite functions.
         return self.history.execute(fn)
 
 

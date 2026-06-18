@@ -1,5 +1,5 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from .fate import *
+from .aten import *
 from .fn import *
 from .tracking import *

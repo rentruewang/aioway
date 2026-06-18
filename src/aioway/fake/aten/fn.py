@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"An adaptor of `Fate` and `Fn`, using `Fate` in fake modes."
+"An adaptor of `Aten` and `Fn`, using `Aten` in fake modes."
 
 import dataclasses as dcls
 import logging
@@ -9,8 +9,8 @@ import typing
 from aioway._fn import Fn
 from aioway._utils import is_aten_op
 
-from ..fate import Aten, find_aten
-from .tensors import TorchDispFn
+from ..fn import TorchDispFn
+from .aten import Aten, find_aten
 
 __all__ = ["AtenFn"]
 
@@ -21,28 +21,28 @@ LOGGER = logging.getLogger(__name__)
 @dcls.dataclass(frozen=True)
 class AtenFn(Fn):
     """
-    `AtenFn` wraps a `Fate` object, which is split out so as to declutter subclasses for `Fn`.
+    `AtenFn` wraps a `Aten` object, which is split out so as to declutter subclasses for `Fn`.
 
-    Each `Fate` is an implementation of an IR, and each IR can have multiple `Fate`s,
-    each handling a subset of parameters (if `Fate.ok` is `False`, it's discarded.)
+    Each `Aten` is an implementation of an IR, and each IR can have multiple `Aten`s,
+    each handling a subset of parameters (if `Aten.ok` is `False`, it's discarded.)
     """
 
-    fate: Aten
+    aten: Aten
     """
-    The `Fate` object that ends up being selected.
+    The `Aten` object that ends up being selected.
     """
 
     original: TorchDispFn
-    "The original `TorchDispFn` from which the `Fate` is translated."
+    "The original `TorchDispFn` from which the `Aten` is translated."
 
     def __repr__(self) -> str:
-        return repr(self.fate)
+        return repr(self.aten)
 
     def __call__(self):
-        return self.fate()
+        return self.aten()
 
     def inputs(self):
-        yield from self.fate.inputs()
+        yield from self.aten.inputs()
 
     @property
     def func(self):
@@ -58,23 +58,23 @@ class AtenFn(Fn):
 
     @classmethod
     def find_fate(cls, thunk: TorchDispFn) -> typing.Self | None:
-        LOGGER.debug("Resolving `Fate` object for %s", thunk)
+        LOGGER.debug("Resolving `Aten` object for %s", thunk)
 
-        # For now, `Fate` only supports aten,
+        # For now, `Aten` only supports aten,
         # because `torchvision`, `torchcodec` rely on real data,
-        # they do not have a good `Fate` to implement for now.
+        # they do not have a good `Aten` to implement for now.
         # In those operations, real mode is force enabled right now.
         # See aioway#204 issue.
         if not is_aten_op(thunk.func):
             LOGGER.debug("%s is not aten.", thunk)
             return None
 
-        fate = find_aten(thunk)
+        aten = find_aten(thunk)
 
-        if fate is None:
-            LOGGER.debug("Fate for %s not found.", thunk)
+        if aten is None:
+            LOGGER.debug("`Aten` for %s not found.", thunk)
             return None
 
         else:
-            LOGGER.debug("Fate for %s found: %s.", thunk, fate)
-            return cls(fate=fate, original=thunk)
+            LOGGER.debug("`Aten` for %s found: %s.", thunk, aten)
+            return cls(aten=aten, original=thunk)

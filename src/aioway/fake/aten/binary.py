@@ -11,7 +11,7 @@ from torch import ops
 
 from aioway._costs import Cost
 
-from .fate import Aten, aten_dcls
+from .aten import Aten, aten_dcls
 
 __all__ = [
     "AddTensor",
