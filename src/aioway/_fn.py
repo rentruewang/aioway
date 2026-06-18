@@ -12,7 +12,7 @@ import torch
 
 from aioway._utils import find_nested_tensors, render_fcall
 
-__all__ = ["Fn", "TensorInput", "Thunk", "TorchThunk"]
+__all__ = ["Fn", "TensorInput", "AnyThunk", "TorchThunk"]
 
 LOGGER = logging.getLogger(__name__)
 _PENDING = object()
@@ -49,22 +49,22 @@ class TensorInput(typing.Protocol):
         raise NotImplementedError
 
 
-class Thunk:
+class AnyThunk:
     """
     The thunk for any function, handles both pretty printing and storing the result.
 
-    `Thunk` has advantage over `functools.cache`, `functools.cached_property`,
+    `AnyThunk` has advantage over `functools.cache`, `functools.cached_property`,
     and having a saved `.__result` member for instance, by being the least assuming.
 
     `functools.cache` assumes that `self` is hashable.
     `functools.cached_property` cannot inspect whether we have evaluated it or not.
     `.__result` member assumes subclass calls `__init__` properly.
 
-    Storing a `Thunk` in a `functools.cached_property` means `self` can be unhashable,
+    Storing a `AnyThunk` in a `functools.cached_property` means `self` can be unhashable,
     the item can be inspected, and subclasses do not need to call `__init__`.
 
     Like Haskell's thunks, once evaluated,
-    the value is stored in the `Thunk` itself and never re-evaluated.
+    the value is stored in the `AnyThunk` itself and never re-evaluated.
     The value shall be gone during GC.
 
     I was going to go for `Op` but it's used a lot in `torch`.
@@ -86,7 +86,7 @@ class Thunk:
 
     @typing.override
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, Thunk):
+        if isinstance(other, AnyThunk):
             return (
                 True
                 and self.func == other.func
@@ -108,7 +108,7 @@ class Thunk:
         return self.__string
 
     @property
-    def thunk(self) -> Thunk:
+    def thunk(self) -> AnyThunk:
         return self
 
     @property

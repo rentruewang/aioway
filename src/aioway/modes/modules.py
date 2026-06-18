@@ -10,7 +10,7 @@ from collections import abc as cabc
 import torch
 from torch import nn
 
-from aioway._fn import Thunk, TorchThunk
+from aioway._fn import AnyThunk, TorchThunk
 from aioway._utils import render_fcall, render_torch_func_name, track_call_count
 
 from .modes import Mode, ModeStack
@@ -171,7 +171,7 @@ def _invoke_rec[T: Mode[typing.Any, typing.Any]](
 
     LOGGER.debug("Inovked on %s", stack)
     LOGGER.debug("type: %s", fn_type)
-    LOGGER.debug("Thunk: %s", Thunk(call, *args, **kwargs))
+    LOGGER.debug("AnyThunk: %s", AnyThunk(call, *args, **kwargs))
 
     # Do not reinvoke the function! Call directly.
     if not stack:
