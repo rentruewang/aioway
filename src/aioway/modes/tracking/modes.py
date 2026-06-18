@@ -186,7 +186,7 @@ class RouteTorchDisp(TorchDispMode):
 
         fn: AtenFn | TorchDispFn
 
-        if (found := AtenFn.find_fate(thunk)) is not None:
+        if (found := AtenFn.from_thunk(thunk)) is not None:
             fn = found
 
         # Cannot find corresponding operator, set it to the input `thunk`.

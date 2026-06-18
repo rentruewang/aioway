@@ -59,3 +59,21 @@ def test_scalar_op_right(scalar, right, op):
     with fake_fn():
         result = op(scalar, right)
         assert isinstance(result, torch.Tensor)
+
+
+def test_matmul():
+    with fake_fn():
+        left = torch.randn(3, 5)
+        right = torch.randn(5, 7)
+
+        result = torch.mm(left, right)
+        assert isinstance(result, torch.Tensor)
+
+
+def test_batch_matmul():
+    with fake_fn():
+        left = torch.randn(3, 5, 7)
+        right = torch.randn(3, 7, 9)
+
+        result = torch.bmm(left, right)
+        assert isinstance(result, torch.Tensor)

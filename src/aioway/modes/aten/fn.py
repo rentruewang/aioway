@@ -57,7 +57,7 @@ class AtenFn(Fn):
         return self.original.kwargs
 
     @classmethod
-    def find_fate(cls, thunk: TorchDispFn) -> typing.Self | None:
+    def from_thunk(cls, thunk: TorchDispFn) -> typing.Self | None:
         LOGGER.debug("Resolving `Aten` object for %s", thunk)
 
         # For now, `Aten` only supports aten,
