@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"The module containing `Fate` interface, the implementation for fake aten operations."
+"The module containing `Aten` interface, the implementation for fake aten operations."
 
 import abc
 import dataclasses as dcls
@@ -14,21 +14,21 @@ from aioway._costs import Cost
 from aioway._utils import camel_to_snake, find_nested_tensors, render_fcall
 
 if typing.TYPE_CHECKING:
-    from aioway.fake import TorchDispFn
+    from aioway.modes import TorchDispFn
 
-__all__ = ["Fate", "fate_dcls", "find_fate", "all_fates"]
+__all__ = ["Aten", "aten_dcls", "find_aten", "all_aten_overrides"]
 
 
 @typing.dataclass_transform(frozen_default=True)
-def fate_dcls(cls, /):
-    "Decorator of dataclass for `Fate`."
+def aten_dcls(cls, /):
+    "Decorator of dataclass for `Aten`."
     return dcls.dataclass(repr=False, frozen=True)(cls)
 
 
-@fate_dcls
-class Fate(abc.ABC):
+@aten_dcls
+class Aten(abc.ABC):
     """
-    `Fate` stands for [f]ake [ate]n. Or [fa]ke [te]nsor. Or a tensor's [fate] (how it behaves).
+    `Aten` are a bunch of `torch.ops.aten.*` overrides.
 
     It overrides aten ops in fake mode and compute extra properties,
     such as storage costs and compute costs, as well as patching some operations with worst case.
@@ -37,14 +37,14 @@ class Fate(abc.ABC):
 
     KEY: typing.ClassVar[_ops.OpOverload] = NotImplemented
     """
-    The `torch.ops.aten.*` operator that maps to the current `Fate`.
+    The `torch.ops.aten.*` operator that maps to the current `Aten`.
     Roughly 200 in total (we don't support that many yet).
     If `NotImplemented`, this class is considered abstract.
     """
 
     @typing.override
     def __repr__(self) -> str:
-        return render_fcall("fate::" + self._name(), **dcls.asdict(self))
+        return render_fcall("aten::" + self._name(), **dcls.asdict(self))
 
     @typing.final
     def __call__(self):
@@ -123,14 +123,14 @@ class Fate(abc.ABC):
         return cls.KEY is not NotImplemented and not inspect.isabstract(cls)
 
 
-def find_fate(dispatch: TorchDispFn, /) -> Fate | None:
+def find_aten(dispatch: TorchDispFn, /) -> Aten | None:
     """
-    Try finding a `Fate` operator with the thunk, and then wrap into `FateFn`.
+    Try finding a `Aten` operator with the thunk, and then wrap into `AtenFn`.
 
     Returns `None` if a candidate is not found.
     """
 
-    for sub_type in Fate.find(dispatch.func):
+    for sub_type in Aten.find(dispatch.func):
         if not (fate := sub_type(*dispatch.args, **dispatch.kwargs)).ok():
             continue
 
@@ -140,8 +140,9 @@ def find_fate(dispatch: TorchDispFn, /) -> Fate | None:
 
 
 @typing.no_type_check
-def all_fates():
+def all_aten_overrides():
     """
-    Get the registry for the fates.
+    Get the registry for the `Aten` overrides.
     """
-    return list(Fate.impls())
+
+    return list(Aten.impls())

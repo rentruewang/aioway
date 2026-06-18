@@ -16,7 +16,7 @@
 import torch
 
 from aioway._utils import *
-from aioway.fake import *
+from aioway.modes import *
 
 # %%
 dispatch_print = PrintTorchDisp()

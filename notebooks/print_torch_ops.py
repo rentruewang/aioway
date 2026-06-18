@@ -17,7 +17,7 @@ import torch
 
 # %%
 from aioway._utils import torch_fake_mode
-from aioway.fake import PrintTorchDisp, PrintTorchFunc
+from aioway.modes import PrintTorchDisp, PrintTorchFunc
 
 # %%
 a = torch.randn(3, 4)

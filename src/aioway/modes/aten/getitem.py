@@ -8,13 +8,13 @@ from torch import ops
 
 from aioway._costs import Cost
 
-from .fate import Fate, fate_dcls
+from .aten import Aten, aten_dcls
 
 __all__ = ["BooleanMasking", "IntSelect"]
 
 
-@fate_dcls
-class _BaseGetItem(Fate, abc.ABC):
+@aten_dcls
+class _BaseGetItem(Aten, abc.ABC):
     self: torch.Tensor
     indices: list[torch.Tensor]
 
@@ -26,7 +26,7 @@ class _BaseGetItem(Fate, abc.ABC):
         return Cost(time=self.self.numel(), memory=0)
 
 
-@fate_dcls
+@aten_dcls
 class BooleanMasking(_BaseGetItem):
     KEY = ops.aten.index.Tensor
 
@@ -38,7 +38,7 @@ class BooleanMasking(_BaseGetItem):
         return self.self
 
 
-@fate_dcls
+@aten_dcls
 class IntSelect(_BaseGetItem):
     KEY = ops.aten.index.Tensor
 

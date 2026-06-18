@@ -1,8 +1,6 @@
-# Fate
+# Aten
 
-> `Fate` stands for [f]ake [ate]n. Or [fa]ke [te]nsor. Or a tensor's [fate] (how it behaves).
-
-Each `Fate` correspond to a `torch` core `ATen` IR.
+Each `Aten` correspond to a `torch` core `ATen` IR.
 
 The reason for the existence of this class is because:
 
