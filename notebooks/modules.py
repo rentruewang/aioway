@@ -17,7 +17,7 @@ import torch
 from torch import nn
 
 # %%
-from aioway.fake import NnFwdFn, NnInitFn, PrintNnFwd, PrintNnInit, mode_off
+from aioway.modes import NnFwdFn, NnInitFn, PrintNnFwd, PrintNnInit, mode_off
 
 # %%
 with PrintNnInit()():

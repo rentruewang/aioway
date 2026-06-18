@@ -17,20 +17,12 @@ from aioway._utils import (
     torch_fake_mode,
 )
 
-from ..fn import (
-    NnFwdFn,
-    NnFwdMode,
-    NnInitFn,
-    NnInitMode,
-    TorchDispFn,
-    TorchDispMode,
-    TorchFuncFn,
-    TorchFuncMode,
-)
+from ..modules import NnFwdFn, NnFwdMode, NnInitFn, NnInitMode
+from ..tensors import TorchDispFn, TorchDispMode, TorchFuncFn, TorchFuncMode
 from .hists import Hist, HistTensorGraph
 
 if typing.TYPE_CHECKING:
-    from aioway.fake import AtenFn
+    from aioway.modes import AtenFn
 
 __all__ = [
     "track_fn",
@@ -190,7 +182,7 @@ class RouteTorchDisp(TorchDispMode):
     "The history used for tracking."
 
     def run(self, thunk: TorchDispFn) -> object:
-        from aioway.fake import AtenFn
+        from aioway.modes import AtenFn
 
         fn: AtenFn | TorchDispFn
 

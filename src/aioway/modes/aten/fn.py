@@ -9,7 +9,7 @@ import typing
 from aioway._fn import Fn
 from aioway._utils import is_aten_op
 
-from ..fn import TorchDispFn
+from ..tensors import TorchDispFn
 from .aten import Aten, find_aten
 
 __all__ = ["AtenFn"]

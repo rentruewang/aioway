@@ -11,7 +11,7 @@ import torch
 from numpy import random as npr
 from rich import traceback
 
-from aioway.fake import fake_fn, track_fn
+from aioway.modes import fake_fn, track_fn
 
 from .mock import batch_sizes, cpu_and_maybe_cuda
 

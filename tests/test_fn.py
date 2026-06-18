@@ -3,7 +3,7 @@
 import pytest
 
 from aioway._fn import Fn, TensorInput, TorchThunk
-from aioway.fake import (
+from aioway.modes import (
     Aten,
     AtenFn,
     HistTensorGraph,
