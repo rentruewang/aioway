@@ -4,8 +4,8 @@ import pytest
 
 from aioway._fn import Fn, TensorInput, TorchThunk
 from aioway.fake import (
-    Fate,
-    FateFn,
+    Aten,
+    AtenFn,
     HistTensorGraph,
     NnFwdFn,
     NnInitFn,
@@ -15,22 +15,22 @@ from aioway.fake import (
 
 
 def _fn_cls():
-    yield FateFn
+    yield AtenFn
     yield TorchDispFn
     yield TorchFuncFn
     yield NnInitFn
     yield NnFwdFn
 
-    yield Fate
+    yield Aten
 
 
 def _input_cls():
     yield HistTensorGraph
     yield TorchThunk
-    yield FateFn
+    yield AtenFn
     yield NnFwdFn
-    yield FateFn
-    yield Fate
+    yield AtenFn
+    yield Aten
 
 
 @pytest.fixture(params=_fn_cls())

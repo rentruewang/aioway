@@ -9,25 +9,25 @@ import typing
 from aioway._fn import Fn
 from aioway._utils import is_aten_op
 
-from ..fate import Fate, find_fate
+from ..fate import Aten, find_aten
 from .tensors import TorchDispFn
 
-__all__ = ["FateFn"]
+__all__ = ["AtenFn"]
 
 LOGGER = logging.getLogger(__name__)
 
 
 @typing.final
 @dcls.dataclass(frozen=True)
-class FateFn(Fn):
+class AtenFn(Fn):
     """
-    `FateFn` wraps a `Fate` object, which is split out so as to declutter subclasses for `Fn`.
+    `AtenFn` wraps a `Fate` object, which is split out so as to declutter subclasses for `Fn`.
 
     Each `Fate` is an implementation of an IR, and each IR can have multiple `Fate`s,
     each handling a subset of parameters (if `Fate.ok` is `False`, it's discarded.)
     """
 
-    fate: Fate
+    fate: Aten
     """
     The `Fate` object that ends up being selected.
     """
@@ -69,7 +69,7 @@ class FateFn(Fn):
             LOGGER.debug("%s is not aten.", thunk)
             return None
 
-        fate = find_fate(thunk)
+        fate = find_aten(thunk)
 
         if fate is None:
             LOGGER.debug("Fate for %s not found.", thunk)

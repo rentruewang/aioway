@@ -18,7 +18,7 @@ from aioway._utils import (
 )
 
 from ..fn import (
-    FateFn,
+    AtenFn,
     NnFwdFn,
     NnFwdMode,
     NnInitFn,
@@ -182,22 +182,22 @@ class RouteNnFwd(NnFwdMode):
 class RouteTorchDisp(TorchDispMode):
     "The router at the torch dispatch level."
 
-    history: HistTensorGraph[TorchDispFn | FateFn] = dcls.field(
+    history: HistTensorGraph[TorchDispFn | AtenFn] = dcls.field(
         default_factory=HistTensorGraph
     )
     "The history used for tracking."
 
     def run(self, thunk: TorchDispFn) -> object:
-        fn: FateFn | TorchDispFn
+        fn: AtenFn | TorchDispFn
 
-        if (found := FateFn.find_fate(thunk)) is not None:
+        if (found := AtenFn.find_fate(thunk)) is not None:
             fn = found
 
         # Cannot find corresponding operator, set it to the input `thunk`.
         else:
             fn = thunk
 
-        assert isinstance(fn, TorchDispFn | FateFn), type(fn)
+        assert isinstance(fn, TorchDispFn | AtenFn), type(fn)
 
         # Here, `FateFn` would do its magic and overwrite functions.
         return self.history.execute(fn)
@@ -222,7 +222,7 @@ class RouteTorchFunc(TorchFuncMode):
 
 class HistoryCollection(typing.NamedTuple):
     function: HistTensorGraph[TorchFuncFn]
-    dispatch: HistTensorGraph[TorchDispFn | FateFn]
+    dispatch: HistTensorGraph[TorchDispFn | AtenFn]
     nn_init: Hist[NnInitFn]
     nn_fwd: Hist[NnFwdFn]
 
