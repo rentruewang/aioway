@@ -12,7 +12,7 @@ from collections import abc as cabc
 from aioway._fn import TorchThunk
 from aioway._utils import Stack
 
-__all__ = ["OnOffCtx", "OnOffStack"]
+__all__ = ["Mode", "ModeStack"]
 
 LOGGER = logging.getLogger(__name__)
 
