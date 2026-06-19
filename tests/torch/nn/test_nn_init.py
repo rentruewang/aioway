@@ -4,7 +4,7 @@
 from torch import nn
 
 from aioway.modes import NnInitThunk
-from aioway.nn import NnInit, Sequential, find_nn_init
+from aioway.torch.nn import NnInit, Sequential, find_nn_init
 
 
 def test_layer_nn_init(layer_nn_init: NnInit):

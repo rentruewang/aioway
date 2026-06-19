@@ -10,7 +10,7 @@ from aioway._utils import AnyDict, is_fake_tensor, torch_fake_mode
 from aioway.dsets import TensorListHop
 from aioway.hop import Hop, StackHop, TensorHop, hop_cache_on
 from aioway.modes import NnInitThunk
-from aioway.nn import NnLayerHop, NnLossHop, build_nn_hop
+from aioway.torch.nn import NnLayerHop, NnLossHop, build_nn_hop
 
 
 @pytest.fixture

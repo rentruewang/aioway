@@ -21,7 +21,7 @@ from torch import nn
 
 # %%
 from aioway.modes import NnInitThunk
-from aioway.nn import find_nn_init
+from aioway.torch.nn import find_nn_init
 
 # %%
 nn_init = find_nn_init(NnInitThunk(func=nn.Linear, in_features=3, out_features=5))
