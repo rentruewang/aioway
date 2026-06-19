@@ -2,7 +2,7 @@
 
 import typing
 
-from aioway.hop import ListHop
+from aioway.hop import ListIter
 
 __all__ = ["Rewriter"]
 
@@ -12,4 +12,4 @@ class Rewriter(typing.Protocol):
     `Rewriter` rewrites the given `HopDag` into another `HopDag`.
     """
 
-    def __call__(self, dag: ListHop, /) -> ListHop: ...
+    def __call__(self, dag: ListIter, /) -> ListIter: ...

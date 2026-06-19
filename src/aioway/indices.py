@@ -10,7 +10,7 @@ import numpy as np
 import torch
 
 from aioway._utils import FloatArray, IntArray
-from aioway.hop import Hop, TensorHop, hop_dcls
+from aioway.hop import Iter, TensorIter, iter_dcls
 
 __all__ = ["AnnIndex", "AnnResult", "AnnIndexHop", "AnnIndexTrainerHop", "FaissIndex"]
 
@@ -132,8 +132,8 @@ class FaissIndex(AnnIndex):
         return AnnResult(dist, idx)
 
 
-@hop_dcls
-class AnnIndexTrainerHop(Hop[None]):
+@iter_dcls
+class AnnIndexTrainerHop(Iter[None]):
     """
     Train the index for future usage.
     """
@@ -143,7 +143,7 @@ class AnnIndexTrainerHop(Hop[None]):
     The index to train.
     """
 
-    data: TensorHop
+    data: TensorIter
     """
     The data to index.
     """
@@ -154,8 +154,8 @@ class AnnIndexTrainerHop(Hop[None]):
             yield
 
 
-@hop_dcls
-class AnnIndexHop(TensorHop):
+@iter_dcls
+class AnnIndexHop(TensorIter):
     """
     Iterate and yield the indices.
     """
@@ -165,7 +165,7 @@ class AnnIndexHop(TensorHop):
     The index to train.
     """
 
-    query: TensorHop
+    query: TensorIter
     """
     The querying tensor.
     """

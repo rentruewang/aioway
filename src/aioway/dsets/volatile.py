@@ -8,7 +8,7 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway.hop import BoundedHop, TensorHop, hop_dcls
+from aioway.hop import BoundedIter, TensorIter, iter_dcls
 
 from .dsets import TdictFrame, dset_dcls
 
@@ -48,9 +48,9 @@ class TensorDictFrame(TdictFrame):
         return ret.auto_batch_size_()
 
 
-@hop_dcls
-class TensorListHop(TensorHop):
-    "A `Hop` backed by a list of `torch.Tensor`."
+@iter_dcls
+class TensorListHop(TensorIter):
+    "A `Iter` backed by a list of `torch.Tensor`."
 
     sequence: cabc.Sequence[torch.Tensor]
     "List of `torch.Tensor`s."
@@ -71,8 +71,8 @@ class TensorListHop(TensorHop):
             yield batch
 
 
-@hop_dcls
-class TdictListHop(BoundedHop):
+@iter_dcls
+class TdictListHop(BoundedIter):
     "A `Stream` backed by a list of `TensorDict`."
 
     sequence: cabc.Sequence[td.TensorDict]

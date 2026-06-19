@@ -8,15 +8,15 @@ from collections import abc as cabc
 
 import torch
 
-from .hop import Hop, TensorHop, hop_dcls
+from .hop import Iter, TensorIter, iter_dcls
 
 __all__ = ["CatHop", "StackHop"]
 
 
-@hop_dcls
-class _CatStackHop(TensorHop, abc.ABC):
+@iter_dcls
+class _CatStackHop(TensorIter, abc.ABC):
     """
-    The `Hop` implementation for `torch.cat` / `torch.stack`.
+    The `Iter` implementation for `torch.cat` / `torch.stack`.
     """
 
     FUNCTION: typing.ClassVar[cabc.Callable[..., torch.Tensor]]
@@ -26,8 +26,8 @@ class _CatStackHop(TensorHop, abc.ABC):
     because `torch` has complicated type stubs, annoying to deal with.
     """
 
-    tensors: list[Hop[torch.Tensor]]
-    "The list of `Hop` that would evaluate each to a `torch.Tensor`."
+    tensors: list[Iter[torch.Tensor]]
+    "The list of `Iter` that would evaluate each to a `torch.Tensor`."
 
     dim: int = 0
     "The `dim` flag that would be passed to `.function`."
@@ -38,15 +38,15 @@ class _CatStackHop(TensorHop, abc.ABC):
             yield self.FUNCTION(list(tensors), dim=self.dim)
 
 
-@hop_dcls
+@iter_dcls
 class CatHop(_CatStackHop):
-    "The `Hop` backed by `torch.cat`."
+    "The `Iter` backed by `torch.cat`."
 
     FUNCTION = torch.cat
 
 
-@hop_dcls
+@iter_dcls
 class StackHop(_CatStackHop):
-    "The `Hop` backed by `torch.stack`."
+    "The `Iter` backed by `torch.stack`."
 
     FUNCTION = torch.stack

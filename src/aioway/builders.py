@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"The builder for `Hop`s."
+"The builder for `Iter`s."
 
 import dataclasses as dcls
 import typing
@@ -11,17 +11,17 @@ import torch
 
 from aioway.hop import (
     ApplyHop,
-    BoundedHop,
+    BoundedIter,
     ColumnViewHop,
     FuncFilterHop,
-    Hop,
-    ListHop,
+    Iter,
+    ListIter,
     NestedLoopJoinHop,
     ProjectHop,
     RenameHop,
     StackHop,
-    TdictHop,
-    TensorHop,
+    TdictIter,
+    TensorIter,
     ZipHop,
 )
 from aioway.indices import AnnIndexTrainerHop, FaissIndex
@@ -37,17 +37,17 @@ def builder_dcls(cls):
 
 @builder_dcls
 class Builder:
-    hop: Hop
+    hop: Iter
 
     @classmethod
     def from_list(cls, items: cabc.Sequence[typing.Self]):
         hops = [item.hop for item in items]
-        return cls(ListHop(hops))
+        return cls(ListIter(hops))
 
 
 @builder_dcls
 class TensorBuilder(Builder):
-    hop: TensorHop
+    hop: TensorIter
 
     def create_ann_index(self) -> Builder:
         "Create an ANN index builder that trains an index when evaluated."
@@ -72,17 +72,17 @@ class TensorBuilder(Builder):
         )
 
     @classmethod
-    def cat(cls, items: cabc.Sequence[TensorHop], dim: int = 0) -> typing.Self:
+    def cat(cls, items: cabc.Sequence[TensorIter], dim: int = 0) -> typing.Self:
         return cls(StackHop(list(items), dim=dim))
 
     @classmethod
-    def stack(cls, items: cabc.Sequence[TensorHop], dim: int = 0) -> typing.Self:
+    def stack(cls, items: cabc.Sequence[TensorIter], dim: int = 0) -> typing.Self:
         return cls(StackHop(list(items), dim=dim))
 
 
 @builder_dcls
 class TdictBuilder(Builder):
-    hop: TdictHop
+    hop: TdictIter
 
     def column(self, col: str) -> TensorBuilder:
         return TensorBuilder(ColumnViewHop(self.hop, col))
@@ -100,7 +100,7 @@ class TdictBuilder(Builder):
         return type(self)(RenameHop(self.hop, renames))
 
     def join(self, right: TdictBuilder, on: str) -> typing.Self:
-        if not isinstance(right.hop, BoundedHop):
+        if not isinstance(right.hop, BoundedIter):
             raise TypeError(f"{right.hop=} must be bounded.")
 
         return type(self)(NestedLoopJoinHop(self.hop, right.hop, key=on))

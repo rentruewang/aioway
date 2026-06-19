@@ -8,7 +8,7 @@ from torch import nn
 
 from aioway._utils import AnyDict, is_fake_tensor, torch_fake_mode
 from aioway.dsets import TensorListHop
-from aioway.hop import Hop, StackHop, TensorHop, hop_cache_on
+from aioway.hop import Iter, StackHop, TensorIter, hop_cache_on
 from aioway.modes import NnInitThunk
 from aioway.torch.nn import NnLayerHop, NnLossHop, build_nn_hop
 
@@ -38,7 +38,7 @@ def maybe_cache_hop(request: pytest.FixtureRequest):
 def test_hop_cache(cache: bool):
     number: int = 0
 
-    class HopCacheLog(Hop):
+    class HopCacheLog(Iter):
         def iterate(self):
             nonlocal number
             while True:
@@ -57,18 +57,18 @@ def test_hop_cache(cache: bool):
         assert number == (1 if cache else 3), {"number": number, "cache": cache}
 
 
-def test_layer_hop(layer_thunk, tensor_init: TensorHop, maybe_cache_hop):
+def test_layer_hop(layer_thunk, tensor_init: TensorIter, maybe_cache_hop):
     hop = build_nn_hop(layer_thunk, tensor_init)
     assert isinstance(hop, NnLayerHop)
     assert all(isinstance(param, nn.Parameter) for param in hop.parameters())
 
 
-def test_loss_hop(loss_thunk, tensor_init: TensorHop, maybe_cache_hop):
+def test_loss_hop(loss_thunk, tensor_init: TensorIter, maybe_cache_hop):
     result = build_nn_hop(loss_thunk, tensor_init, tensor_init)
     assert isinstance(result, NnLossHop)
 
 
-def test_hop_mse(tensor_init: TensorHop, maybe_cache_hop):
+def test_hop_mse(tensor_init: TensorIter, maybe_cache_hop):
     result = build_nn_hop(NnInitThunk(nn.MSELoss), tensor_init, tensor_init)
 
     assert result
@@ -76,7 +76,7 @@ def test_hop_mse(tensor_init: TensorHop, maybe_cache_hop):
     assert isinstance(out, torch.Tensor)
 
 
-def test_hop_linear(tensor_init: TensorHop, maybe_cache_hop):
+def test_hop_linear(tensor_init: TensorIter, maybe_cache_hop):
     linear = build_nn_hop(NnInitThunk(nn.Linear, 30, 31), tensor_init)
     assert linear
 
@@ -104,7 +104,7 @@ def test_hop_replace_with_function(tensor_init: TensorListHop):
     assert inputs[0].sequence[0].shape == (101, 31)
 
 
-def test_hop_no_replace_with_function(tensor_init: TensorHop):
+def test_hop_no_replace_with_function(tensor_init: TensorIter):
     def replace(hop):
         return NotImplemented
 
@@ -113,7 +113,7 @@ def test_hop_no_replace_with_function(tensor_init: TensorHop):
     assert result.shape == (100, 30)
 
 
-def test_hop_linear_rebuild(tensor_init: TensorHop):
+def test_hop_linear_rebuild(tensor_init: TensorIter):
     with torch_fake_mode():
         linear = build_nn_hop(NnInitThunk(nn.Linear, 30, 31), tensor_init)
         assert linear

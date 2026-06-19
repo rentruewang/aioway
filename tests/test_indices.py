@@ -4,7 +4,7 @@ import pytest
 import torch
 
 from aioway.dsets import TensorListHop
-from aioway.hop import TensorHop
+from aioway.hop import TensorIter
 from aioway.indices import AnnIndexHop, AnnIndexTrainerHop, FaissIndex
 from aioway.spaces import DType
 
@@ -16,7 +16,7 @@ def training_data():
 
 @pytest.fixture
 def testing_hop():
-    class TestingHop(TensorHop):
+    class TestingHop(TensorIter):
         def iterate(self):
             for item in torch.randn(7, 2, 17):
                 yield item
@@ -48,7 +48,7 @@ def k(request: pytest.FixtureRequest):
 
 
 @pytest.fixture
-def faiss_index_hop(faiss_index: FaissIndex, testing_hop: TensorHop, k: int):
+def faiss_index_hop(faiss_index: FaissIndex, testing_hop: TensorIter, k: int):
     return AnnIndexHop(faiss_index, testing_hop, k)
 
 

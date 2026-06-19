@@ -16,8 +16,8 @@ from aioway.hop import (
     MapHop,
     ProjectHop,
     RenameHop,
-    TdictHop,
-    hop_dcls,
+    TdictIter,
+    iter_dcls,
 )
 
 
@@ -28,7 +28,7 @@ class SaveLastState:
     "The last batch."
 
 
-@hop_dcls
+@iter_dcls
 class SaveLastMapStream(MapHop):
     "`Stream` that saves the last `__next__` call."
 
@@ -47,7 +47,7 @@ class SaveLastMapStream(MapHop):
 
 
 @pytest.fixture
-def save_last(table_stream: TdictHop):
+def save_last(table_stream: TdictIter):
     "The stream that is wrapped, preserving the last item."
 
     return SaveLastMapStream(table_stream)
@@ -57,7 +57,7 @@ def save_last(table_stream: TdictHop):
 def map_stream(request: pytest.FixtureRequest, save_last: SaveLastMapStream):
     "Indirect fixture to create `MapStream`s based on a builder function."
 
-    builder: cabc.Callable[[TdictHop], MapHop] = request.param
+    builder: cabc.Callable[[TdictIter], MapHop] = request.param
 
     if not callable(builder):
         raise TypeError("The `map_stream` fixture only accepts function parameters.")
@@ -73,7 +73,7 @@ def _pred_filter_builder(source):
 
 
 @pytest.mark.parametrize("map_stream", [_pred_filter_builder], indirect=True)
-def test_filter(map_stream: TdictHop, save_last: SaveLastMapStream):
+def test_filter(map_stream: TdictIter, save_last: SaveLastMapStream):
     "Testing the 2 filter streams and whether they are doing their jobs."
 
     for filtered in map_stream:
@@ -92,7 +92,7 @@ def _rename_builder(save_last: SaveLastMapStream):
 
 
 @pytest.mark.parametrize("map_stream", [_rename_builder], indirect=True)
-def test_rename(map_stream: TdictHop, save_last: SaveLastMapStream):
+def test_rename(map_stream: TdictIter, save_last: SaveLastMapStream):
     "Testing the renaming functionality."
 
     for renamed in map_stream:
@@ -119,7 +119,7 @@ def _project_builder(save_last: SaveLastMapStream):
 
 
 @pytest.mark.parametrize("map_stream", [_project_builder], indirect=True)
-def test_project(map_stream: TdictHop, save_last: SaveLastMapStream):
+def test_project(map_stream: TdictIter, save_last: SaveLastMapStream):
     for projected in map_stream:
         assert tdict_all_equal(projected, save_last.last.select("f1d", "i2d"))
 
@@ -153,6 +153,6 @@ def test_map_stream_one_to_one(map_stream: MapHop, save_last: SaveLastMapStream)
 @pytest.mark.parametrize(
     "map_stream", [_project_builder, _apply_builder], indirect=True
 )
-def test_caching(map_stream: TdictHop):
+def test_caching(map_stream: TdictIter):
     cached = TdictListHop(list(map_stream))
     assert cached.size == map_stream.size

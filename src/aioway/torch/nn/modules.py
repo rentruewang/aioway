@@ -9,7 +9,7 @@ from collections import abc as cabc
 from torch import nn
 
 from aioway._utils import dcls_asdict, render_fcall
-from aioway.hop import Hop
+from aioway.hop import Iter
 from aioway.modes import NnInitThunk
 
 from .hop import NnHop
@@ -83,7 +83,7 @@ def find_nn_init(thunk: NnInitThunk, /) -> NnInit | None:
     return nn_init_type(*thunk.args, **thunk.kwargs)
 
 
-def build_nn_hop(thunk: NnInitThunk, *args, **kwargs) -> Hop | None:
+def build_nn_hop(thunk: NnInitThunk, *args, **kwargs) -> Iter | None:
     if (nn_init := find_nn_init(thunk)) is None:
         return None
 

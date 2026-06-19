@@ -6,7 +6,7 @@ import typing
 
 from torch import nn
 
-from aioway.hop import TensorHop, hop_dcls
+from aioway.hop import TensorIter, iter_dcls
 
 if typing.TYPE_CHECKING:
     from aioway.torch.nn import NnInit
@@ -14,15 +14,15 @@ if typing.TYPE_CHECKING:
 __all__ = ["NnHop", "NnLayerHop", "NnLossHop"]
 
 
-@hop_dcls
-class NnHop(TensorHop, abc.ABC):
+@iter_dcls
+class NnHop(TensorIter, abc.ABC):
     nn_init: NnInit
-    "The config used to initialize the `Hop`."
+    "The config used to initialize the `Iter`."
 
     module: nn.Module
     "The `nn.Module` initialized by `nn_init`."
 
-    input: TensorHop
+    input: TensorIter
     "The input of the `NnHop`. Should output a `torch.Tensor`."
 
     @typing.override
@@ -37,10 +37,10 @@ class NnHop(TensorHop, abc.ABC):
         return self.input.requires_grad or module_grad
 
 
-@hop_dcls
+@iter_dcls
 class NnLayerHop(NnHop):
     """
-    The `Hop` subclass for normal layers in `nn.Module`s.
+    The `Iter` subclass for normal layers in `nn.Module`s.
     It is a thunk so it has args, kwargs as attributes.
     """
 
@@ -54,13 +54,13 @@ class NnLayerHop(NnHop):
         yield from self.module.parameters()
 
 
-@hop_dcls
+@iter_dcls
 class NnLossHop(NnHop):
     """
-    The `Hop` subclass for loss functions that are `nn.Module`s.
+    The `Iter` subclass for loss functions that are `nn.Module`s.
     """
 
-    target: TensorHop
+    target: TensorIter
     "The target of the `NnLossHop`. Should output a `torch.Tensor`."
 
     @typing.override

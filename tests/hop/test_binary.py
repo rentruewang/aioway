@@ -9,53 +9,53 @@ import torch
 
 from aioway._utils import tdict_all_equal
 from aioway.dsets import TdictListHop
-from aioway.hop import NestedLoopJoinHop, TdictHop, ZipHop
+from aioway.hop import NestedLoopJoinHop, TdictIter, ZipHop
 
 
 @pytest.fixture
-def lhs_stream(concat_stream: TdictHop) -> TdictListHop:
+def lhs_stream(concat_stream: TdictIter) -> TdictListHop:
     return TdictListHop(list(concat_stream))
 
 
 @pytest.fixture
-def rhs_stream(joinable_stream: TdictHop) -> TdictListHop:
+def rhs_stream(joinable_stream: TdictIter) -> TdictListHop:
     return TdictListHop(list(joinable_stream))
 
 
-def test_lhs_stream_length(concat_stream: TdictHop, lhs_stream: TdictHop):
+def test_lhs_stream_length(concat_stream: TdictIter, lhs_stream: TdictIter):
     assert concat_stream.size == lhs_stream.size
 
 
-def test_rhs_stream_length(joinable_stream: TdictHop, rhs_stream: TdictListHop):
+def test_rhs_stream_length(joinable_stream: TdictIter, rhs_stream: TdictListHop):
     assert joinable_stream.size == rhs_stream.size
 
 
 @pytest.fixture
 def binary_stream(
     request: pytest.FixtureRequest,
-    lhs_stream: TdictHop,
+    lhs_stream: TdictIter,
     rhs_stream: TdictListHop,
 ):
     "An indirect fixture that takes in a builder function and outputs a stream."
 
-    builder: cabc.Callable[[TdictHop, TdictHop], TdictHop] = request.param
+    builder: cabc.Callable[[TdictIter, TdictIter], TdictIter] = request.param
 
     if not callable(builder):
         raise TypeError("Indirect fixture `binary_stream` only accepts functions.")
 
     result = builder(lhs_stream, rhs_stream)
-    assert isinstance(result, TdictHop)
+    assert isinstance(result, TdictIter)
     return result
 
 
-def _zip_builder(lhs_stream: TdictHop, rhs_stream: TdictListHop):
+def _zip_builder(lhs_stream: TdictIter, rhs_stream: TdictListHop):
     return ZipHop(left=lhs_stream, right=rhs_stream)
 
 
 @pytest.mark.parametrize("binary_stream", [_zip_builder], indirect=True)
 def test_zip_input_len(
-    binary_stream: TdictHop,
-    concat_stream: TdictHop,
+    binary_stream: TdictIter,
+    concat_stream: TdictIter,
     rhs_stream: TdictListHop,
 ):
     assert min(concat_stream.size, rhs_stream.size) == binary_stream.size
@@ -85,14 +85,14 @@ def test_zip(
         assert tdict_all_equal(result, concat)
 
 
-def _join_builder(lhs_stream: TdictHop, rhs_stream: TdictListHop):
+def _join_builder(lhs_stream: TdictIter, rhs_stream: TdictListHop):
     return NestedLoopJoinHop(left=lhs_stream, right=rhs_stream, key="i1d")
 
 
 @pytest.mark.parametrize("binary_stream", [_join_builder], indirect=True)
 def test_join_input_len(
-    binary_stream: TdictHop,
-    lhs_stream: TdictHop,
+    binary_stream: TdictIter,
+    lhs_stream: TdictIter,
     rhs_stream: TdictListHop,
 ):
     assert binary_stream.size == lhs_stream.size * rhs_stream.size
@@ -147,8 +147,8 @@ def test_simple_nested_loop_join(
 
 @pytest.mark.parametrize("binary_stream", [_join_builder], indirect=True)
 def test_join_equal_as_original(
-    binary_stream: TdictHop,
-    lhs_stream: TdictHop,
+    binary_stream: TdictIter,
+    lhs_stream: TdictIter,
     rhs_stream: TdictListHop,
 ):
     block_frame_block = td.cat(list(lhs_stream))
@@ -178,8 +178,8 @@ def test_join_equal_as_original(
 
 @pytest.mark.parametrize("binary_stream", [_join_builder], indirect=True)
 def test_match_functionally(
-    binary_stream: TdictHop,
-    lhs_stream: TdictHop,
+    binary_stream: TdictIter,
+    lhs_stream: TdictIter,
     rhs_stream: TdictListHop,
 ):
     block_frame_block = td.cat(list(lhs_stream))

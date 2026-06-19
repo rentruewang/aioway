@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"`HopColumn`s are a column of `Hop`."
+"`HopColumn`s are a column of `Iter`."
 
 import dataclasses as dcls
 import typing
@@ -9,20 +9,20 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from .hop import TdictHop, TensorHop, hop_dcls
+from .hop import TdictIter, TensorIter, iter_dcls
 from .maps import MapHop
 
 __all__ = ["ColumnViewHop", "ProjectHop"]
 
 
-@hop_dcls
-class ColumnViewHop(TensorHop):
+@iter_dcls
+class ColumnViewHop(TensorIter):
     """
-    A column reference (on a `Hop`).
+    A column reference (on a `Iter`).
     Performs `__next__` and yield `torch.Tensor`s.
     """
 
-    input: TdictHop
+    input: TdictIter
     "The input `TdictHop` to perform views on."
 
     col: str
@@ -41,7 +41,7 @@ class ColumnViewHop(TensorHop):
         return self.input.size
 
 
-@hop_dcls
+@iter_dcls
 class ProjectHop(MapHop):
     """
     Projection of the input table. The `subset` should be a subset of the input columns.

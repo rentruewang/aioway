@@ -7,7 +7,7 @@ from torch import nn, optim
 
 from aioway.compilers import JustLinearEmitter
 from aioway.dsets import TensorListHop, TensorStream
-from aioway.hop import ListHop, LoaderOpt, TensorHop
+from aioway.hop import ListIter, LoaderOpt, TensorIter
 from aioway.spaces import Attr, AttrSpace, Shape, ShapeSpace
 from aioway.torch.nn import Linear, MSELoss, NnLayerHop
 from aioway.torch.optim import OptimizerHop
@@ -40,32 +40,32 @@ def input_dataset(input_space: AttrSpace):
 
 
 @pytest.fixture
-def input_hop(input_dataset: TensorStream) -> TensorHop:
+def input_hop(input_dataset: TensorStream) -> TensorIter:
     return input_dataset(LoaderOpt())
 
 
 @pytest.fixture
-def target_hop(input_hop: TensorHop) -> TensorHop:
+def target_hop(input_hop: TensorIter) -> TensorIter:
     return input_hop
 
 
 @pytest.fixture
-def optimizer(input_hop: TensorListHop, target_hop: TensorHop):
+def optimizer(input_hop: TensorListHop, target_hop: TensorIter):
     opt = optim.AdamW(input_hop.sequence)
     loss = MSELoss().apply(input_hop, target_hop)
-    assert isinstance(loss, TensorHop)
+    assert isinstance(loss, TensorIter)
     return OptimizerHop(loss=loss, optimizer=opt)
 
 
-def test_just_linear(input_hop: TensorHop, output_space: ShapeSpace):
+def test_just_linear(input_hop: TensorIter, output_space: ShapeSpace):
     builder = JustLinearEmitter(input_hop, output_space)
     built = builder()
     [tensor_node, linear_node, list_node] = built.dag()
     assert isinstance(linear_node, NnLayerHop)
     assert isinstance(linear_node.module, nn.Linear)
     assert isinstance(linear_node.nn_init, Linear)
-    assert isinstance(tensor_node, TensorHop)
-    assert isinstance(list_node, ListHop)
+    assert isinstance(tensor_node, TensorIter)
+    assert isinstance(list_node, ListIter)
     assert linear_node.nn_init.in_features == 5
     assert linear_node.nn_init.out_features == 6
 

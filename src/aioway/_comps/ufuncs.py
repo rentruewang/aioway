@@ -5,7 +5,7 @@ import typing
 
 import torch
 
-from aioway.hop import Hop
+from aioway.hop import Iter
 
 from .thunks import Thunk
 
@@ -34,18 +34,21 @@ class UFunc(abc.ABC):
 
     @typing.no_type_check
     @abc.abstractmethod
-    def iter(self, *iters: Hop) -> Hop:
+    def iter(self, *iters: Iter) -> Iter:
         "A `UFunc` takes iterators and tranform it into other iterators."
 
         raise NotImplementedError
 
 
 class TensorUFunc1(UFunc, abc.ABC):
+    @abc.abstractmethod
     def __call__(self, item: torch.Tensor, /) -> torch.Tensor:
         raise NotImplementedError
 
+    @abc.abstractmethod
     def thunk(self, item: Thunk[torch.Tensor], /) -> Thunk[torch.Tensor]:
         raise NotImplementedError
 
-    def iter(self, item, /) -> torch.Tensor:
+    @abc.abstractmethod
+    def iter(self, item: Iter[torch.Tensor], /) -> Iter[torch.Tensor]:
         raise NotImplementedError
