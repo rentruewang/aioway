@@ -12,18 +12,18 @@ import torch
 from .hop import TdictIter, TensorIter, iter_dcls
 from .maps import MapIter
 
-__all__ = ["ColumnViewHop", "ProjectHop"]
+__all__ = ["ColumnViewIter", "ProjectIter"]
 
 
 @iter_dcls
-class ColumnViewHop(TensorIter):
+class ColumnViewIter(TensorIter):
     """
     A column reference (on a `Iter`).
     Performs `__next__` and yield `torch.Tensor`s.
     """
 
     input: TdictIter
-    "The input `TdictHop` to perform views on."
+    "The input `TdictIter` to perform views on."
 
     col: str
     "The column to view on."
@@ -42,7 +42,7 @@ class ColumnViewHop(TensorIter):
 
 
 @iter_dcls
-class ProjectHop(MapIter):
+class ProjectIter(MapIter):
     """
     Projection of the input table. The `subset` should be a subset of the input columns.
     """

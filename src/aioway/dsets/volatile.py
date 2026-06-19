@@ -12,7 +12,7 @@ from aioway.hop import BoundedIter, TensorIter, iter_dcls
 
 from .dsets import TdictFrame, dset_dcls
 
-__all__ = ["TensorDictFrame", "TensorListHop", "TdictListHop"]
+__all__ = ["TensorDictFrame", "TensorListIter", "TdictListIter"]
 
 
 @typing.final
@@ -49,7 +49,7 @@ class TensorDictFrame(TdictFrame):
 
 
 @iter_dcls
-class TensorListHop(TensorIter):
+class TensorListIter(TensorIter):
     "A `Iter` backed by a list of `torch.Tensor`."
 
     sequence: cabc.Sequence[torch.Tensor]
@@ -72,7 +72,7 @@ class TensorListHop(TensorIter):
 
 
 @iter_dcls
-class TdictListHop(BoundedIter):
+class TdictListIter(BoundedIter):
     "A `Stream` backed by a list of `TensorDict`."
 
     sequence: cabc.Sequence[td.TensorDict]

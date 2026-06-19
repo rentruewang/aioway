@@ -6,11 +6,11 @@ import pytest
 from torch import nn, optim
 
 from aioway.compilers import JustLinearEmitter
-from aioway.dsets import TensorListHop, TensorStream
+from aioway.dsets import TensorListIter, TensorStream
 from aioway.hop import ListIter, LoaderOpt, TensorIter
 from aioway.spaces import Attr, AttrSpace, Shape, ShapeSpace
-from aioway.torch.nn import Linear, MSELoss, NnLayerHop
-from aioway.torch.optim import OptimizerHop
+from aioway.torch.nn import Linear, MSELoss, NnLayerIter
+from aioway.torch.optim import OptimizerIter
 
 
 @pytest.fixture
@@ -27,7 +27,7 @@ def output_space():
 def input_dataset(input_space: AttrSpace):
     class FakeInputDset(TensorStream):
         def __call__(self, *_):
-            return TensorListHop(
+            return TensorListIter(
                 [input_space.to_attr().to_fake_tensor().requires_grad_()]
             )
 
@@ -50,18 +50,18 @@ def target_hop(input_hop: TensorIter) -> TensorIter:
 
 
 @pytest.fixture
-def optimizer(input_hop: TensorListHop, target_hop: TensorIter):
+def optimizer(input_hop: TensorListIter, target_hop: TensorIter):
     opt = optim.AdamW(input_hop.sequence)
     loss = MSELoss().apply(input_hop, target_hop)
     assert isinstance(loss, TensorIter)
-    return OptimizerHop(loss=loss, optimizer=opt)
+    return OptimizerIter(loss=loss, optimizer=opt)
 
 
 def test_just_linear(input_hop: TensorIter, output_space: ShapeSpace):
     builder = JustLinearEmitter(input_hop, output_space)
     built = builder()
     [tensor_node, linear_node, list_node] = built.dag()
-    assert isinstance(linear_node, NnLayerHop)
+    assert isinstance(linear_node, NnLayerIter)
     assert isinstance(linear_node.module, nn.Linear)
     assert isinstance(linear_node.nn_init, Linear)
     assert isinstance(tensor_node, TensorIter)
@@ -72,7 +72,7 @@ def test_just_linear(input_hop: TensorIter, output_space: ShapeSpace):
     assert len([node.is_source for node in built.hops])
 
 
-def test_optimize(optimizer: OptimizerHop):
+def test_optimize(optimizer: OptimizerIter):
     has_run = False
 
     for _ in optimizer:

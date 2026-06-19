@@ -7,15 +7,15 @@ import torch
 from torch import nn
 
 from aioway._utils import AnyDict, is_fake_tensor, torch_fake_mode
-from aioway.dsets import TensorListHop
+from aioway.dsets import TensorListIter
 from aioway.hop import Iter, StackIter, TensorIter, ufunc_cache_on
 from aioway.modes import NnInitThunk
-from aioway.torch.nn import NnLayerHop, NnLossHop, build_nn_hop
+from aioway.torch.nn import NnLayerIter, NnLossIter, build_nn_hop
 
 
 @pytest.fixture
 def tensor_init():
-    return TensorListHop([torch.randn(100, 30)])
+    return TensorListIter([torch.randn(100, 30)])
 
 
 @pytest.fixture
@@ -59,13 +59,13 @@ def test_hop_cache(cache: bool):
 
 def test_layer_hop(layer_thunk, tensor_init: TensorIter, maybe_cache_hop):
     hop = build_nn_hop(layer_thunk, tensor_init)
-    assert isinstance(hop, NnLayerHop)
+    assert isinstance(hop, NnLayerIter)
     assert all(isinstance(param, nn.Parameter) for param in hop.parameters())
 
 
 def test_loss_hop(loss_thunk, tensor_init: TensorIter, maybe_cache_hop):
     result = build_nn_hop(loss_thunk, tensor_init, tensor_init)
-    assert isinstance(result, NnLossHop)
+    assert isinstance(result, NnLossIter)
 
 
 def test_hop_mse(tensor_init: TensorIter, maybe_cache_hop):
@@ -85,20 +85,20 @@ def test_hop_linear(tensor_init: TensorIter, maybe_cache_hop):
     assert result.shape == (100, 31)
 
 
-def test_hop_replace_with_function(tensor_init: TensorListHop):
+def test_hop_replace_with_function(tensor_init: TensorListIter):
     def replace_init(hop):
-        if not isinstance(hop, TensorListHop):
+        if not isinstance(hop, TensorListIter):
             return NotImplemented
 
-        return TensorListHop([torch.randn(101, 31)])
+        return TensorListIter([torch.randn(101, 31)])
 
     memo = AnyDict()
     stacked = StackIter([tensor_init, tensor_init])
     replaced = stacked.replace(function=replace_init, memo=memo)
     inputs = list(replaced.deps())
     assert len(inputs) == 2
-    assert isinstance(inputs[0], TensorListHop)
-    assert isinstance(inputs[1], TensorListHop)
+    assert isinstance(inputs[0], TensorListIter)
+    assert isinstance(inputs[1], TensorListIter)
 
     assert inputs[0] is inputs[1]
     assert inputs[0].sequence[0].shape == (101, 31)

@@ -9,12 +9,12 @@ import pytest
 import tensordict as td
 
 from aioway._utils import tdict_all_equal, tdict_rename
-from aioway.dsets import TdictListHop
+from aioway.dsets import TdictListIter
 from aioway.hop import (
     ApplyIter,
     FuncFilterIter,
     MapIter,
-    ProjectHop,
+    ProjectIter,
     RenameIter,
     TdictIter,
     iter_dcls,
@@ -115,7 +115,7 @@ def test_apply(map_stream: ApplyIter, save_last: SaveLastMapStream):
 
 
 def _project_builder(save_last: SaveLastMapStream):
-    return ProjectHop(source=save_last, subset=["f1d", "i2d"])
+    return ProjectIter(source=save_last, subset=["f1d", "i2d"])
 
 
 @pytest.mark.parametrize("map_stream", [_project_builder], indirect=True)
@@ -154,5 +154,5 @@ def test_map_stream_one_to_one(map_stream: MapIter, save_last: SaveLastMapStream
     "map_stream", [_project_builder, _apply_builder], indirect=True
 )
 def test_caching(map_stream: TdictIter):
-    cached = TdictListHop(list(map_stream))
+    cached = TdictListIter(list(map_stream))
     assert cached.size == map_stream.size

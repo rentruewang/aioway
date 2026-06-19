@@ -162,7 +162,7 @@ class Iter[T](cabc.Iterable[T], abc.ABC):
     @property
     def size(self) -> int:
         """
-        The length of the current stream `TdictHop`.
+        The length of the current stream `TdictIter`.
 
         This should be defined for relational algebra purposes.
         """
@@ -240,14 +240,14 @@ class TdictIter(Iter[td.TensorDict], abc.ABC):
     """
 
     def column(self, col: str) -> TensorIter:
-        from .views import ColumnViewHop
+        from .views import ColumnViewIter
 
-        return ColumnViewHop(self, col)
+        return ColumnViewIter(self, col)
 
     def select(self, *cols: str) -> TdictIter:
-        from .views import ProjectHop
+        from .views import ProjectIter
 
-        return ProjectHop(self, subset=list(cols))
+        return ProjectIter(self, subset=list(cols))
 
 
 @iter_dcls

@@ -6,11 +6,11 @@ from torch import optim
 
 from aioway.hop import Iter, TensorIter, iter_dcls
 
-__all__ = ["OptimizerHop"]
+__all__ = ["OptimizerIter"]
 
 
 @iter_dcls
-class OptimizerHop(Iter[None]):
+class OptimizerIter(Iter[None]):
     """
     The optimizer in the `Iter` format.
     """

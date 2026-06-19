@@ -12,20 +12,20 @@ import torch
 from aioway.hop import (
     ApplyIter,
     BoundedIter,
-    ColumnViewHop,
+    ColumnViewIter,
     FuncFilterIter,
     Iter,
     ListIter,
     NestedLoopJoinIter,
-    ProjectHop,
+    ProjectIter,
     RenameIter,
     StackIter,
     TdictIter,
     TensorIter,
     ZipIter,
 )
-from aioway.indices import AnnIndexTrainerHop, FaissIndex
-from aioway.torch.nn import BaseLoss, NnInit, NnLayerHop, NnLossHop
+from aioway.indices import AnnIndexTrainerIter, FaissIndex
+from aioway.torch.nn import BaseLoss, NnInit, NnLayerIter, NnLossIter
 
 __all__ = ["Builder"]
 
@@ -59,16 +59,18 @@ class TensorBuilder(Builder):
 
         index = FaissIndex(dim=self.hop.attr.shape[-1])
 
-        trainer = AnnIndexTrainerHop(index, self.hop)
+        trainer = AnnIndexTrainerIter(index, self.hop)
         return Builder(trainer)
 
     def apply_layer(self, nn_init: NnInit) -> typing.Self:
-        return type(self)(NnLayerHop(nn_init, module=nn_init.init_nn(), input=self.hop))
+        return type(self)(
+            NnLayerIter(nn_init, module=nn_init.init_nn(), input=self.hop)
+        )
 
     def apply_loss(self, target: TensorBuilder, nn_init: NnInit) -> typing.Self:
         assert isinstance(nn_init, BaseLoss), type(nn_init)
         return type(self)(
-            NnLossHop(nn_init, nn_init.init_nn(), input=self.hop, target=target.hop)
+            NnLossIter(nn_init, nn_init.init_nn(), input=self.hop, target=target.hop)
         )
 
     @classmethod
@@ -85,10 +87,10 @@ class TdictBuilder(Builder):
     hop: TdictIter
 
     def column(self, col: str) -> TensorBuilder:
-        return TensorBuilder(ColumnViewHop(self.hop, col))
+        return TensorBuilder(ColumnViewIter(self.hop, col))
 
     def select(self, *cols: str) -> typing.Self:
-        return type(self)(ProjectHop(self.hop, list(cols)))
+        return type(self)(ProjectIter(self.hop, list(cols)))
 
     def apply(self, func: cabc.Callable[[td.TensorDict], td.TensorDict]) -> typing.Self:
         return type(self)(ApplyIter(self.hop, func))

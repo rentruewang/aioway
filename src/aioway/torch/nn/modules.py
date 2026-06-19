@@ -12,7 +12,7 @@ from aioway._utils import dcls_asdict, render_fcall
 from aioway.hop import Iter
 from aioway.modes import NnInitThunk
 
-from .hop import NnHop
+from .hop import NnIter
 
 __all__ = ["NnInit", "nn_init_dcls", "find_nn_init", "build_nn_hop"]
 
@@ -35,7 +35,7 @@ class NnInit(abc.ABC):
     """
 
     NN: typing.ClassVar[cabc.Callable[..., nn.Module]] = NotImplemented
-    HOP: typing.ClassVar[cabc.Callable[..., NnHop]] = NotImplemented
+    HOP: typing.ClassVar[cabc.Callable[..., NnIter]] = NotImplemented
 
     def __init_subclass__(cls) -> None:
         # Abstract in terms of `ClassVar`.
@@ -62,7 +62,7 @@ class NnInit(abc.ABC):
         thunk = NnInitThunk(func=self.NN, **dcls_asdict(self))
         return thunk()
 
-    def apply(self, *args, **kwargs) -> NnHop:
+    def apply(self, *args, **kwargs) -> NnIter:
         """
         Builds a high level operator with the given `NN` and `HOP` runtime class.
         """
