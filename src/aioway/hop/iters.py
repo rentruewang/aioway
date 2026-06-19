@@ -9,15 +9,15 @@ from collections import abc as cabc
 from aioway._comps import Iter
 from aioway._utils import AnyDict
 
-__all__ = ["IterProc", "ufunc_cache", "ufunc_cache_on"]
+__all__ = ["IterProc", "iter_cache", "iter_cache_on"]
 
 
-_ufunc_cache: AnyDict[Iter] | None = None
+_iter_cache: AnyDict[Iter] | None = None
 "The cache instance for `Iter`."
 
 
 @ctxl.contextmanager
-def ufunc_cache_on() -> cabc.Generator[AnyDict[Iter]]:
+def iter_cache_on() -> cabc.Generator[AnyDict[Iter]]:
     """
     Turn on caching for `Iter`. Everytime you call `hop_cache_on`,
     a new scope is created and so a new cache is created.
@@ -28,24 +28,24 @@ def ufunc_cache_on() -> cabc.Generator[AnyDict[Iter]]:
         and stores the outputs s.t. second `.__call__()` uses the previous rersult.
     """
 
-    global _ufunc_cache
-    before, _ufunc_cache = _ufunc_cache, AnyDict[Iter](Iter)
+    global _iter_cache
+    before, _iter_cache = _iter_cache, AnyDict[Iter](Iter)
 
     try:
-        yield _ufunc_cache
+        yield _iter_cache
     finally:
-        _ufunc_cache = before
+        _iter_cache = before
 
 
-def ufunc_cache() -> AnyDict[Iter]:
+def iter_cache() -> AnyDict[Iter]:
     """
     The active cache for `Iter`. If there is no active session, raise `RuntimeError`.
     """
 
-    if _ufunc_cache is None:
+    if _iter_cache is None:
         raise RuntimeError("`iter_cache` can only be called in `iter_cache_on` scope.")
 
-    return _ufunc_cache
+    return _iter_cache
 
 
 class IterProc[T = typing.Any](cabc.Iterator[T]):
@@ -66,13 +66,13 @@ class IterProc[T = typing.Any](cabc.Iterator[T]):
         return answer
 
     def read(self) -> T:
-        if _ufunc_cache is None:
+        if _iter_cache is None:
             return next(self.__gen)
 
-        elif self.hop not in _ufunc_cache:
-            _ufunc_cache[self.hop] = next(self.__gen)
+        elif self.hop not in _iter_cache:
+            _iter_cache[self.hop] = next(self.__gen)
 
-        result: typing.Any = _ufunc_cache[self.hop]
+        result: typing.Any = _iter_cache[self.hop]
         return result
 
     @property
