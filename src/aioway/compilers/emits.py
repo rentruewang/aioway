@@ -10,8 +10,8 @@ from collections import abc as cabc
 from aioway._utils import decomp_flatten
 from aioway.builders import TensorBuilder
 from aioway.hop import Hop, ListHop, TensorHop
-from aioway.torch.nn import Linear
 from aioway.spaces import ShapeSpace, Space
+from aioway.torch.nn import Linear
 
 __all__ = ["Emitter", "emitter_dcls", "JustLinearEmitter"]
 

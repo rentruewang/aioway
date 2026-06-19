@@ -8,9 +8,9 @@ from torch import nn, optim
 from aioway.compilers import JustLinearEmitter
 from aioway.dsets import TensorListHop, TensorStream
 from aioway.hop import ListHop, LoaderOpt, TensorHop
+from aioway.spaces import Attr, AttrSpace, Shape, ShapeSpace
 from aioway.torch.nn import Linear, MSELoss, NnLayerHop
 from aioway.torch.optim import OptimizerHop
-from aioway.spaces import Attr, AttrSpace, Shape, ShapeSpace
 
 
 @pytest.fixture
