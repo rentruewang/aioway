@@ -4,7 +4,7 @@ from collections import abc as cabc
 
 from torch import optim
 
-from aioway.hop import Iter, TensorIter, iter_dcls
+from aioway._comps import Iter, TensorIter, iter_dcls
 
 __all__ = ["OptimizerIter"]
 

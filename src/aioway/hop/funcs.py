@@ -8,7 +8,7 @@ from collections import abc as cabc
 
 import torch
 
-from .hop import Iter, TensorIter, iter_dcls
+from aioway._comps import Iter, TensorIter, iter_dcls
 
 __all__ = ["CatIter", "StackIter"]
 

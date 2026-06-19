@@ -6,7 +6,7 @@ import abc
 import dataclasses as dcls
 import typing
 
-from aioway.hop import Iter
+from aioway._comps import Iter
 
 __all__ = ["Sink", "sink_dcls"]
 

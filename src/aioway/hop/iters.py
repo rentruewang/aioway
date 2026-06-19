@@ -6,9 +6,8 @@ import contextlib as ctxl
 import typing
 from collections import abc as cabc
 
+from aioway._comps import Iter
 from aioway._utils import AnyDict
-
-from .hop import Iter
 
 __all__ = ["IterProc", "ufunc_cache", "ufunc_cache_on"]
 

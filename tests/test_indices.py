@@ -3,8 +3,8 @@
 import pytest
 import torch
 
+from aioway._comps import TensorIter
 from aioway.dsets import TensorListIter
-from aioway.hop import TensorIter
 from aioway.indices import AnnIndexIter, AnnIndexTrainerIter, FaissIndex
 from aioway.spaces import DType
 

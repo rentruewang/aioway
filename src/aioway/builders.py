@@ -9,19 +9,15 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
+from aioway._comps import BoundedIter, Iter, ListIter, TdictIter, TensorIter
 from aioway.hop import (
     ApplyIter,
-    BoundedIter,
     ColumnViewIter,
     FuncFilterIter,
-    Iter,
-    ListIter,
     NestedLoopJoinIter,
     ProjectIter,
     RenameIter,
     StackIter,
-    TdictIter,
-    TensorIter,
     ZipIter,
 )
 from aioway.indices import AnnIndexTrainerIter, FaissIndex

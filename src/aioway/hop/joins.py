@@ -8,7 +8,7 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from .hop import BoundedIter, TdictIter, iter_dcls
+from aioway._comps import BoundedIter, TdictIter, iter_dcls
 
 __all__ = ["ZipIter", "NestedLoopJoinIter"]
 

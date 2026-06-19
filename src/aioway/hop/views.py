@@ -9,7 +9,8 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from .hop import TdictIter, TensorIter, iter_dcls
+from aioway._comps import TdictIter, TensorIter, iter_dcls
+
 from .maps import MapIter
 
 __all__ = ["ColumnViewIter", "ProjectIter"]

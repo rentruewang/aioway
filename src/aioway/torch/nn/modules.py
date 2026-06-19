@@ -8,8 +8,8 @@ from collections import abc as cabc
 
 from torch import nn
 
+from aioway._comps import Iter
 from aioway._utils import dcls_asdict, render_fcall
-from aioway.hop import Iter
 from aioway.modes import NnInitThunk
 
 from .hop import NnIter

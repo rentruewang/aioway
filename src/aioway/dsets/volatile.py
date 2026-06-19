@@ -8,7 +8,7 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway.hop import BoundedIter, TensorIter, iter_dcls
+from aioway._comps import BoundedIter, TensorIter, iter_dcls
 
 from .dsets import TdictFrame, dset_dcls
 

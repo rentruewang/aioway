@@ -5,8 +5,7 @@ import typing
 
 import torch
 
-from aioway.hop import Iter
-
+from .iters import Iter
 from .thunks import Thunk
 
 __all__ = ["UFunc", "TensorUFunc1"]

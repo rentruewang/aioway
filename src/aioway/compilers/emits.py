@@ -7,9 +7,9 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
+from aioway._comps import Iter, ListIter, TensorIter
 from aioway._utils import decomp_flatten
 from aioway.builders import TensorBuilder
-from aioway.hop import Iter, ListIter, TensorIter
 from aioway.spaces import ShapeSpace, Space
 from aioway.torch.nn import Linear
 
