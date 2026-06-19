@@ -14,11 +14,11 @@ from aioway._utils import tdict_rename
 
 from .hop import TdictIter, iter_dcls
 
-__all__ = ["MapHop", "ApplyHop", "FuncFilterHop", "RenameHop"]
+__all__ = ["MapIter", "ApplyIter", "FuncFilterIter", "RenameIter"]
 
 
 @iter_dcls
-class MapHop(TdictIter, abc.ABC):
+class MapIter(TdictIter, abc.ABC):
     """
     The shared base class for all the `map` like `Iter`s,
     which share the trait of::
@@ -77,7 +77,7 @@ class MapHop(TdictIter, abc.ABC):
 
 
 @iter_dcls
-class ApplyHop(MapHop):
+class ApplyIter(MapIter):
     """
     A `Iter` that you can customize what the `__next__` function do.
 
@@ -101,7 +101,7 @@ class ApplyHop(MapHop):
 
 
 @iter_dcls
-class FuncFilterHop(MapHop):
+class FuncFilterIter(MapIter):
     """
     A `Iter` that filteres on its inputs, based on a preducate function.
 
@@ -134,7 +134,7 @@ class FuncFilterHop(MapHop):
 
 
 @iter_dcls
-class RenameHop(MapHop):
+class RenameIter(MapIter):
     """
     Renames some columns in the inputs in the outputs.
     """

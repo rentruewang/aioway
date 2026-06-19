@@ -10,19 +10,19 @@ import tensordict as td
 import torch
 
 from aioway.hop import (
-    ApplyHop,
+    ApplyIter,
     BoundedIter,
     ColumnViewHop,
-    FuncFilterHop,
+    FuncFilterIter,
     Iter,
     ListIter,
-    NestedLoopJoinHop,
+    NestedLoopJoinIter,
     ProjectHop,
-    RenameHop,
-    StackHop,
+    RenameIter,
+    StackIter,
     TdictIter,
     TensorIter,
-    ZipHop,
+    ZipIter,
 )
 from aioway.indices import AnnIndexTrainerHop, FaissIndex
 from aioway.torch.nn import BaseLoss, NnInit, NnLayerHop, NnLossHop
@@ -73,11 +73,11 @@ class TensorBuilder(Builder):
 
     @classmethod
     def cat(cls, items: cabc.Sequence[TensorIter], dim: int = 0) -> typing.Self:
-        return cls(StackHop(list(items), dim=dim))
+        return cls(StackIter(list(items), dim=dim))
 
     @classmethod
     def stack(cls, items: cabc.Sequence[TensorIter], dim: int = 0) -> typing.Self:
-        return cls(StackHop(list(items), dim=dim))
+        return cls(StackIter(list(items), dim=dim))
 
 
 @builder_dcls
@@ -91,19 +91,19 @@ class TdictBuilder(Builder):
         return type(self)(ProjectHop(self.hop, list(cols)))
 
     def apply(self, func: cabc.Callable[[td.TensorDict], td.TensorDict]) -> typing.Self:
-        return type(self)(ApplyHop(self.hop, func))
+        return type(self)(ApplyIter(self.hop, func))
 
     def filter(self, func: cabc.Callable[[td.TensorDict], torch.Tensor]) -> typing.Self:
-        return type(self)(FuncFilterHop(self.hop, func))
+        return type(self)(FuncFilterIter(self.hop, func))
 
     def rename(self, **renames: str) -> typing.Self:
-        return type(self)(RenameHop(self.hop, renames))
+        return type(self)(RenameIter(self.hop, renames))
 
     def join(self, right: TdictBuilder, on: str) -> typing.Self:
         if not isinstance(right.hop, BoundedIter):
             raise TypeError(f"{right.hop=} must be bounded.")
 
-        return type(self)(NestedLoopJoinHop(self.hop, right.hop, key=on))
+        return type(self)(NestedLoopJoinIter(self.hop, right.hop, key=on))
 
     def zip(self, right: TdictBuilder) -> typing.Self:
-        return type(self)(ZipHop(self.hop, right.hop))
+        return type(self)(ZipIter(self.hop, right.hop))

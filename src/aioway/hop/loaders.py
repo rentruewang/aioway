@@ -14,7 +14,7 @@ from aioway._utils import HasLen
 
 from .hop import Iter, TdictIter, TensorIter, iter_dcls
 
-__all__ = ["LoaderOpt", "LoaderHop", "TensorLoaderHop", "TdictLoaderHop"]
+__all__ = ["LoaderOpt", "LoaderIter", "TensorLoaderIter", "TdictLoaderIter"]
 
 
 @dcls.dataclass(frozen=True)
@@ -37,7 +37,7 @@ class LoaderOpt:
 
 
 @iter_dcls
-class LoaderHop[T = typing.Any](Iter[T]):
+class LoaderIter[T = typing.Any](Iter[T]):
     """
     A `Iter` backed by a `torch` `DataLoader`.
     """
@@ -78,14 +78,14 @@ class LoaderHop[T = typing.Any](Iter[T]):
 
 
 @iter_dcls
-class TensorLoaderHop(LoaderHop[torch.Tensor], TensorIter):
+class TensorLoaderIter(LoaderIter[torch.Tensor], TensorIter):
     """
     A `Iter` to load `torch.Tensor`.
     """
 
 
 @iter_dcls
-class TdictLoaderHop(LoaderHop[td.TensorDict], TdictIter):
+class TdictLoaderIter(LoaderIter[td.TensorDict], TdictIter):
     """
     A `Iter` to load `td.TensorDict`.
     """

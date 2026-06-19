@@ -10,11 +10,11 @@ import torch
 
 from .hop import Iter, TensorIter, iter_dcls
 
-__all__ = ["CatHop", "StackHop"]
+__all__ = ["CatIter", "StackIter"]
 
 
 @iter_dcls
-class _CatStackHop(TensorIter, abc.ABC):
+class _CatStackIter(TensorIter, abc.ABC):
     """
     The `Iter` implementation for `torch.cat` / `torch.stack`.
     """
@@ -39,14 +39,14 @@ class _CatStackHop(TensorIter, abc.ABC):
 
 
 @iter_dcls
-class CatHop(_CatStackHop):
+class CatIter(_CatStackIter):
     "The `Iter` backed by `torch.cat`."
 
     FUNCTION = torch.cat
 
 
 @iter_dcls
-class StackHop(_CatStackHop):
+class StackIter(_CatStackIter):
     "The `Iter` backed by `torch.stack`."
 
     FUNCTION = torch.stack

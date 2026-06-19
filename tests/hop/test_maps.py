@@ -11,11 +11,11 @@ import tensordict as td
 from aioway._utils import tdict_all_equal, tdict_rename
 from aioway.dsets import TdictListHop
 from aioway.hop import (
-    ApplyHop,
-    FuncFilterHop,
-    MapHop,
+    ApplyIter,
+    FuncFilterIter,
+    MapIter,
     ProjectHop,
-    RenameHop,
+    RenameIter,
     TdictIter,
     iter_dcls,
 )
@@ -29,7 +29,7 @@ class SaveLastState:
 
 
 @iter_dcls
-class SaveLastMapStream(MapHop):
+class SaveLastMapStream(MapIter):
     "`Stream` that saves the last `__next__` call."
 
     @typing.override
@@ -57,16 +57,16 @@ def save_last(table_stream: TdictIter):
 def map_stream(request: pytest.FixtureRequest, save_last: SaveLastMapStream):
     "Indirect fixture to create `MapStream`s based on a builder function."
 
-    builder: cabc.Callable[[TdictIter], MapHop] = request.param
+    builder: cabc.Callable[[TdictIter], MapIter] = request.param
 
     if not callable(builder):
         raise TypeError("The `map_stream` fixture only accepts function parameters.")
 
-    return typing.cast(MapHop, builder(save_last))
+    return typing.cast(MapIter, builder(save_last))
 
 
 def _pred_filter_builder(source):
-    return FuncFilterHop(
+    return FuncFilterIter(
         source=source,
         predicate=lambda t: (t["f1d"] > 0),
     )
@@ -88,7 +88,7 @@ def test_filter(map_stream: TdictIter, save_last: SaveLastMapStream):
 
 def _rename_builder(save_last: SaveLastMapStream):
     renames = {"f1d": "f1", "f2d": "f2", "i1d": "i1", "i2d": "i2"}
-    return RenameHop(source=save_last, renames=renames)
+    return RenameIter(source=save_last, renames=renames)
 
 
 @pytest.mark.parametrize("map_stream", [_rename_builder], indirect=True)
@@ -105,11 +105,11 @@ def test_rename(map_stream: TdictIter, save_last: SaveLastMapStream):
 def _apply_builder(save_last: SaveLastMapStream):
 
     func = lambda td: tdict_rename(td, f1d="f", i1d="i")
-    return ApplyHop(source=save_last, apply=func)
+    return ApplyIter(source=save_last, apply=func)
 
 
 @pytest.mark.parametrize("map_stream", [_apply_builder], indirect=True)
-def test_apply(map_stream: ApplyHop, save_last: SaveLastMapStream):
+def test_apply(map_stream: ApplyIter, save_last: SaveLastMapStream):
     for mapped in map_stream:
         assert tdict_all_equal(mapped, map_stream.apply(save_last.last))
 
@@ -134,7 +134,7 @@ def test_project(map_stream: TdictIter, save_last: SaveLastMapStream):
     ],
     indirect=True,
 )
-def test_map_stream_one_to_one(map_stream: MapHop, save_last: SaveLastMapStream):
+def test_map_stream_one_to_one(map_stream: MapIter, save_last: SaveLastMapStream):
     map_stream_iter = iter(map_stream)
 
     assert (

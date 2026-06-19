@@ -8,7 +8,7 @@ from torch import nn
 
 from aioway._utils import AnyDict, is_fake_tensor, torch_fake_mode
 from aioway.dsets import TensorListHop
-from aioway.hop import Iter, StackHop, TensorIter, ufunc_cache_on
+from aioway.hop import Iter, StackIter, TensorIter, ufunc_cache_on
 from aioway.modes import NnInitThunk
 from aioway.torch.nn import NnLayerHop, NnLossHop, build_nn_hop
 
@@ -93,7 +93,7 @@ def test_hop_replace_with_function(tensor_init: TensorListHop):
         return TensorListHop([torch.randn(101, 31)])
 
     memo = AnyDict()
-    stacked = StackHop([tensor_init, tensor_init])
+    stacked = StackIter([tensor_init, tensor_init])
     replaced = stacked.replace(function=replace_init, memo=memo)
     inputs = list(replaced.deps())
     assert len(inputs) == 2

@@ -10,11 +10,11 @@ import torch
 
 from .hop import BoundedIter, TdictIter, iter_dcls
 
-__all__ = ["ZipHop", "NestedLoopJoinHop"]
+__all__ = ["ZipIter", "NestedLoopJoinIter"]
 
 
 @iter_dcls
-class ZipHop(TdictIter):
+class ZipIter(TdictIter):
     """
     `ZipStream` is similar to what `zip` does.
     """
@@ -41,7 +41,7 @@ class ZipHop(TdictIter):
 
 
 @iter_dcls
-class NestedLoopJoinHop(TdictIter):
+class NestedLoopJoinIter(TdictIter):
     """
     This is a stream that combines 2 input streams in a nested-loop matter,
     as in `[[x, y] for x in left for y in right if x.key == y.key]`.

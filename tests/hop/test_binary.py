@@ -9,7 +9,7 @@ import torch
 
 from aioway._utils import tdict_all_equal
 from aioway.dsets import TdictListHop
-from aioway.hop import NestedLoopJoinHop, TdictIter, ZipHop
+from aioway.hop import NestedLoopJoinIter, TdictIter, ZipIter
 
 
 @pytest.fixture
@@ -49,7 +49,7 @@ def binary_stream(
 
 
 def _zip_builder(lhs_stream: TdictIter, rhs_stream: TdictListHop):
-    return ZipHop(left=lhs_stream, right=rhs_stream)
+    return ZipIter(left=lhs_stream, right=rhs_stream)
 
 
 @pytest.mark.parametrize("binary_stream", [_zip_builder], indirect=True)
@@ -63,11 +63,11 @@ def test_zip_input_len(
 
 @pytest.mark.parametrize("binary_stream", [_zip_builder], indirect=True)
 def test_zip(
-    binary_stream: ZipHop,
+    binary_stream: ZipIter,
     lhs_stream: TdictListHop,
     rhs_stream: TdictListHop,
 ):
-    assert isinstance(binary_stream, ZipHop)
+    assert isinstance(binary_stream, ZipIter)
     assert isinstance(lhs_stream, TdictListHop)
     assert isinstance(rhs_stream, TdictListHop)
 
@@ -86,7 +86,7 @@ def test_zip(
 
 
 def _join_builder(lhs_stream: TdictIter, rhs_stream: TdictListHop):
-    return NestedLoopJoinHop(left=lhs_stream, right=rhs_stream, key="i1d")
+    return NestedLoopJoinIter(left=lhs_stream, right=rhs_stream, key="i1d")
 
 
 @pytest.mark.parametrize("binary_stream", [_join_builder], indirect=True)
@@ -125,7 +125,7 @@ def test_simple_nested_loop_join(
     left_stream = TdictListHop(to_slice(left))
     right_stream = TdictListHop(to_slice(right))
 
-    out = td.cat(list(NestedLoopJoinHop(left_stream, right_stream, key="a")))
+    out = td.cat(list(NestedLoopJoinIter(left_stream, right_stream, key="a")))
 
     def sort_by_abc(td: td.TensorDict):
         for key in "cba":
@@ -162,7 +162,7 @@ def test_join_equal_as_original(
     # Do it at once, using `ListStream` as it yields everything in 1 batch.
     ground_truth = td.cat(
         list(
-            NestedLoopJoinHop(
+            NestedLoopJoinIter(
                 left=TdictListHop([block_frame_block]),
                 right=TdictListHop([joinable_frame_block]),
                 key="i1d",
@@ -209,7 +209,7 @@ def test_match_functionally(
     indirect=True,
 )
 def test_binary_stream_in_list(
-    binary_stream: NestedLoopJoinHop | ZipHop,
+    binary_stream: NestedLoopJoinIter | ZipIter,
 ):
     binary_stream_iter = iter(binary_stream)
     assert binary_stream.size, "The binary stream is empty."

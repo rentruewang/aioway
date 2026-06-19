@@ -10,7 +10,7 @@ import tensordict as td
 import torch
 
 from .hop import TdictIter, TensorIter, iter_dcls
-from .maps import MapHop
+from .maps import MapIter
 
 __all__ = ["ColumnViewHop", "ProjectHop"]
 
@@ -42,7 +42,7 @@ class ColumnViewHop(TensorIter):
 
 
 @iter_dcls
-class ProjectHop(MapHop):
+class ProjectHop(MapIter):
     """
     Projection of the input table. The `subset` should be a subset of the input columns.
     """
