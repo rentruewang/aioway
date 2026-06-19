@@ -49,11 +49,10 @@ def iter_cache() -> AnyDict[Iter]:
 
 
 class IterProc[T = typing.Any](cabc.Iterator[T]):
-    def __init__(self, hop: Iter) -> None:
+    def __init__(self, iterable: Iter) -> None:
         self.__idx: int = 0
-        self.__gen = hop.iterate()
-        self.__result = NotImplemented
-        self._hop = hop
+        self.__gen = iterable.iterate()
+        self._iter = iterable
 
     def __iter__(self):
         return self
@@ -89,4 +88,4 @@ class IterProc[T = typing.Any](cabc.Iterator[T]):
 
     @property
     def hop(self) -> Iter:
-        return self._hop
+        return self._iter

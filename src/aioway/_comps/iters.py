@@ -27,7 +27,7 @@ from aioway._utils import (
 from aioway.spaces import Attr, Shape
 
 if typing.TYPE_CHECKING:
-    from aioway.hop import IterProc
+    from aioway.hop.iters import IterProc
 
 __all__ = ["iter_dcls", "Iter", "TensorIter", "TdictIter", "ListIter", "BoundedIter"]
 
@@ -44,7 +44,7 @@ class Iter[T](cabc.Iterable[T], abc.ABC):
     It produces iterators that computes the desired batch, represented by the node.
 
     `Iter` is the node that would be evaluated during run time.
-    It will output `torch.Tensor` a container that makes up of them.
+    It will output `torch.Tensor`, or a container that makes up of them.
     """
 
     def __hash__(self) -> int:
