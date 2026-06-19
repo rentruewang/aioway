@@ -25,7 +25,7 @@ from aioway.hop import (
     ZipHop,
 )
 from aioway.indices import AnnIndexTrainerHop, FaissIndex
-from aioway.nn import BaseLoss, NnInit, NnLayerHop, NnLossHop
+from aioway.torch.nn import BaseLoss, NnInit, NnLayerHop, NnLossHop
 
 __all__ = ["Builder"]
 

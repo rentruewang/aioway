@@ -9,7 +9,7 @@ from torch import nn
 from aioway.hop import TensorHop, hop_dcls
 
 if typing.TYPE_CHECKING:
-    from aioway.nn import NnInit
+    from aioway.torch.nn import NnInit
 
 __all__ = ["NnHop", "NnLayerHop", "NnLossHop"]
 
