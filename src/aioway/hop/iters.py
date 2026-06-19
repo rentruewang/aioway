@@ -10,15 +10,15 @@ from aioway._utils import AnyDict
 
 from .hop import Iter
 
-__all__ = ["HopIter", "hop_cache", "hop_cache_on"]
+__all__ = ["IterProc", "ufunc_cache", "ufunc_cache_on"]
 
 
-_hop_cache: AnyDict[Iter] | None = None
+_ufunc_cache: AnyDict[Iter] | None = None
 "The cache instance for `Iter`."
 
 
 @ctxl.contextmanager
-def hop_cache_on() -> cabc.Generator[AnyDict[Iter]]:
+def ufunc_cache_on() -> cabc.Generator[AnyDict[Iter]]:
     """
     Turn on caching for `Iter`. Everytime you call `hop_cache_on`,
     a new scope is created and so a new cache is created.
@@ -29,27 +29,27 @@ def hop_cache_on() -> cabc.Generator[AnyDict[Iter]]:
         and stores the outputs s.t. second `.__call__()` uses the previous rersult.
     """
 
-    global _hop_cache
-    before, _hop_cache = _hop_cache, AnyDict[Iter](Iter)
+    global _ufunc_cache
+    before, _ufunc_cache = _ufunc_cache, AnyDict[Iter](Iter)
 
     try:
-        yield _hop_cache
+        yield _ufunc_cache
     finally:
-        _hop_cache = before
+        _ufunc_cache = before
 
 
-def hop_cache() -> AnyDict[Iter]:
+def ufunc_cache() -> AnyDict[Iter]:
     """
     The active cache for `Iter`. If there is no active session, raise `RuntimeError`.
     """
 
-    if _hop_cache is None:
-        raise RuntimeError("`hop_cache` can only be called in `hop_cache_on` scope.")
+    if _ufunc_cache is None:
+        raise RuntimeError("`iter_cache` can only be called in `iter_cache_on` scope.")
 
-    return _hop_cache
+    return _ufunc_cache
 
 
-class HopIter[T = typing.Any](cabc.Iterator[T]):
+class IterProc[T = typing.Any](cabc.Iterator[T]):
     def __init__(self, hop: Iter) -> None:
         self.__idx: int = 0
         self.__gen = hop.iterate()
@@ -67,13 +67,13 @@ class HopIter[T = typing.Any](cabc.Iterator[T]):
         return answer
 
     def read(self) -> T:
-        if _hop_cache is None:
+        if _ufunc_cache is None:
             return next(self.__gen)
 
-        elif self.hop not in _hop_cache:
-            _hop_cache[self.hop] = next(self.__gen)
+        elif self.hop not in _ufunc_cache:
+            _ufunc_cache[self.hop] = next(self.__gen)
 
-        result: typing.Any = _hop_cache[self.hop]
+        result: typing.Any = _ufunc_cache[self.hop]
         return result
 
     @property

@@ -27,7 +27,7 @@ from aioway._utils import (
 from aioway.spaces import Attr, Shape
 
 if typing.TYPE_CHECKING:
-    from aioway.hop import HopIter
+    from aioway.hop import IterProc
 
 __all__ = ["iter_dcls", "Iter", "TensorIter", "TdictIter", "ListIter", "BoundedIter"]
 
@@ -51,11 +51,11 @@ class Iter[T](cabc.Iterable[T], abc.ABC):
         return id(self)
 
     @typing.final
-    def __iter__(self) -> HopIter[T]:
+    def __iter__(self) -> IterProc[T]:
         # Every iteration should yield a new `Iterator`.
-        from .iters import HopIter
+        from .iters import IterProc
 
-        return HopIter(self)
+        return IterProc(self)
 
     @abc.abstractmethod
     def iterate(self) -> cabc.Iterator[T]:

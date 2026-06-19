@@ -8,7 +8,7 @@ from torch import nn
 
 from aioway._utils import AnyDict, is_fake_tensor, torch_fake_mode
 from aioway.dsets import TensorListHop
-from aioway.hop import Iter, StackHop, TensorIter, hop_cache_on
+from aioway.hop import Iter, StackHop, TensorIter, ufunc_cache_on
 from aioway.modes import NnInitThunk
 from aioway.torch.nn import NnLayerHop, NnLossHop, build_nn_hop
 
@@ -20,7 +20,7 @@ def tensor_init():
 
 @pytest.fixture
 def cache_on():
-    with hop_cache_on():
+    with ufunc_cache_on():
         yield
 
 
@@ -46,7 +46,7 @@ def test_hop_cache(cache: bool):
                 yield number
 
     logger = iter(HopCacheLog())
-    cacher = hop_cache_on if cache else ctxl.nullcontext
+    cacher = ufunc_cache_on if cache else ctxl.nullcontext
 
     with cacher():
         assert number == 0, {"number": number, "cache": cache}
