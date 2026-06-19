@@ -6,7 +6,7 @@ import typing
 
 from torch import nn
 
-from aioway._comps import TensorIter, iter_dcls
+from aioway._core import TensorIter, iter_dcls
 
 if typing.TYPE_CHECKING:
     from aioway.torch.nn import NnInit

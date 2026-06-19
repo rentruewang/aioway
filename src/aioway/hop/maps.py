@@ -10,7 +10,7 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway._comps import TdictIter, iter_dcls
+from aioway._core import TdictIter, iter_dcls
 from aioway._utils import tdict_rename
 
 __all__ = ["MapIter", "ApplyIter", "FuncFilterIter", "RenameIter"]

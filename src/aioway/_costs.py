@@ -8,8 +8,8 @@ import operator
 import typing
 from collections import abc as cabc
 
+from aioway._sess import Session
 from aioway._utils import Stack
-from aioway.sess import Session
 
 __all__ = ["Cost", "CostSession"]
 

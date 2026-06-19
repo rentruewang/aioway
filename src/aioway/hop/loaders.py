@@ -10,7 +10,7 @@ import tensordict as td
 import torch
 from torch.utils import data
 
-from aioway._comps import Iter, TdictIter, TensorIter, iter_dcls
+from aioway._core import Iter, TdictIter, TensorIter, iter_dcls
 from aioway._utils import HasLen
 
 __all__ = ["LoaderOpt", "LoaderIter", "TensorLoaderIter", "TdictLoaderIter"]

@@ -1,16 +1,17 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from aioway._comps import AnyThunk, TorchThunk
 import abc
+import contextlib as ctxl
 import typing
 from collections import abc as cabc
 
 import torch
 
+from aioway._core import TorchThunk
+from aioway._utils import AnyDict
+
 from .iters import Iter
 from .thunks import Thunk
-import contextlib as ctxl
-from aioway._utils import AnyDict
 
 __all__ = ["UFunc", "TensorUFunc1"]
 
@@ -79,7 +80,7 @@ class AnyUFunc[**P = ..., T = typing.Any](UFunc[T]):
         return TorchThunk(self.func, *args, **kwargs)
 
     def iter(self, *args: P.args, **kwargs: P.kwargs) -> Iter[T]:
-
+        raise NotImplementedError
 
     @property
     def func(self) -> cabc.Callable[P, T]:

@@ -2,7 +2,7 @@
 
 import typing
 
-from aioway._comps import ListIter
+from aioway._core import ListIter
 
 __all__ = ["Rewriter"]
 

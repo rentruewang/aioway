@@ -5,7 +5,7 @@ import typing
 import pytest
 from torch import nn, optim
 
-from aioway._comps import ListIter, TensorIter
+from aioway._core import ListIter, TensorIter
 from aioway.compilers import JustLinearEmitter
 from aioway.dsets import TensorListIter, TensorStream
 from aioway.hop import LoaderOpt

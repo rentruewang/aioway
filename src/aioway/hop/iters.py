@@ -6,7 +6,7 @@ import contextlib as ctxl
 import typing
 from collections import abc as cabc
 
-from aioway._comps import Iter
+from aioway._core import Iter
 from aioway._utils import AnyDict
 
 __all__ = ["IterProc", "iter_cache", "iter_cache_on"]

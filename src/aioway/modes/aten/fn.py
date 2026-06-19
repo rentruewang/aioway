@@ -6,7 +6,7 @@ import dataclasses as dcls
 import logging
 import typing
 
-from aioway._comps import Thunk
+from aioway._core import Thunk
 from aioway._utils import is_aten_op
 
 from ..tensors import TorchDispThunk

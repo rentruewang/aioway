@@ -14,8 +14,6 @@ from aioway._utils import find_nested_tensors, render_fcall
 __all__ = ["Thunk", "TensorInput", "AnyThunk", "TorchThunk"]
 
 LOGGER = logging.getLogger(__name__)
-_PENDING = object()
-"The object signifying a status of pending. This is a `object()` s.t. `FnCache` can store `None`."
 
 
 @typing.runtime_checkable
