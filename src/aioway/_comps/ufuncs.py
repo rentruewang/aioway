@@ -5,10 +5,11 @@ import typing
 
 import torch
 
-from aioway._thunks import Thunk
 from aioway.hop import Hop
 
-__all__ = []
+from .thunks import Thunk
+
+__all__ = ["UFunc", "TensorUFunc1"]
 
 
 class UFunc(abc.ABC):
