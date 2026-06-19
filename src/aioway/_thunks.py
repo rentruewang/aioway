@@ -2,7 +2,6 @@
 
 "Metadata for torch operators / functions."
 
-import abc
 import functools
 import logging
 import typing
@@ -130,13 +129,15 @@ class AnyThunk:
         return render_fcall(self.func, *args, **kwargs)
 
 
-class TorchThunk(abc.ABC):
+class TorchThunk[**P = ..., T = typing.Any]:
     """
     `TorchThunk` is a really basic `Thunk` that acts as a base class,
     with some `torch` utilities.
     """
 
-    def __init__(self, func, *args, **kwargs) -> None:
+    def __init__(
+        self, func: cabc.Callable[P, T], *args: P.args, **kwargs: P.kwargs
+    ) -> None:
         self._func = func
         self._args = args
         self._kwargs = kwargs
@@ -161,17 +162,19 @@ class TorchThunk(abc.ABC):
         yield from find_nested_tensors(self.kwargs)
 
     @property
-    def func(self):
+    def func(self) -> cabc.Callable[P, T]:
         "The function to call. Must be callable.."
         return self._func
 
     @property
-    def args(self):
+    @typing.no_type_check
+    def args(self) -> P.args:
         "The positional args."
         return self._args
 
     @property
-    def kwargs(self):
+    @typing.no_type_check
+    def kwargs(self) -> P.kwargs:
         "The keyword arguments."
         return self._kwargs
 

@@ -3,6 +3,8 @@
 import abc
 import typing
 
+import torch
+
 from aioway._thunks import Thunk
 from aioway.hop import Hop
 
@@ -37,12 +39,12 @@ class UFunc(abc.ABC):
         raise NotImplementedError
 
 
-class UFunc1(UFunc, abc.ABC):
-    def __call__(self, item, /) -> typing.Any:
+class TensorUFunc1(UFunc, abc.ABC):
+    def __call__(self, item: torch.Tensor, /) -> torch.Tensor:
         raise NotImplementedError
 
-    def thunk(self, item, /) -> typing.Any:
+    def thunk(self, item: Thunk[torch.Tensor], /) -> Thunk[torch.Tensor]:
         raise NotImplementedError
 
-    def iter(self, item, /) -> typing.Any:
+    def iter(self, item, /) -> torch.Tensor:
         raise NotImplementedError
