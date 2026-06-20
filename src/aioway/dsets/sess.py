@@ -5,8 +5,8 @@
 import contextlib as ctxl
 import typing
 
+from aioway._sess import Session
 from aioway._utils import Stack
-from aioway.sess import Session
 
 from .dsets import Dset
 

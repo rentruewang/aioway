@@ -14,12 +14,11 @@ import torch
 from torch import _ops, overrides
 from torch.utils import _python_dispatch as pyd
 
-from aioway._fn import TorchThunk
 from aioway._utils import is_aten_op, is_prim_op, render_function_body_prefix
 
-from .modes import Mode, ModeStack
+from .modes import Mode, ModeStack, TensorThunk
 
-__all__ = ["TorchFuncMode", "TorchDispMode", "TorchFuncFn", "TorchDispFn"]
+__all__ = ["TorchFuncMode", "TorchDispMode", "TorchFuncThunk", "TorchDispThunk"]
 
 LOGGER = logging.getLogger(__name__)
 
@@ -31,9 +30,9 @@ DISPATCHES: ModeStack[TorchDispMode] = ModeStack()
 
 
 @typing.final
-class TorchFuncFn[**P = ...](TorchThunk):
+class TorchFuncThunk[**P = ...](TensorThunk):
     """
-    `TorchFuncFn` is the thunk capturing the function calls initiated by `torch`.
+    `TorchFuncThunk` is the thunk capturing the function calls initiated by `torch`.
 
     The `func` here are `torch.*` or `torch.Tensor` operators.
     """
@@ -71,9 +70,9 @@ class TorchFuncFn[**P = ...](TorchThunk):
 
 
 @typing.final
-class TorchDispFn(TorchThunk):
+class TorchDispThunk(TensorThunk):
     """
-    `TorchDispFn` is the thunk capturing the function calls initiated by `torch`.
+    `TorchDispThunk` is the thunk capturing the function calls initiated by `torch`.
     This is by default what a null-op `__torch_dispatch__` would call.
 
     The `func` here are `torch.ops.aten.*` operators.
@@ -111,7 +110,7 @@ type _Mode = overrides.TorchFunctionMode | pyd.TorchDispatchMode
 
 
 @dcls.dataclass
-class TorchModeOnOff[T: TorchThunk](Mode[T, object], abc.ABC):
+class TorchModeOnOff[T: TensorThunk](Mode[T, object], abc.ABC):
     """
     The mixin for either `TorchFuncMode`, `TorchDispMode`.
     """
@@ -166,12 +165,12 @@ class _TorchFuncModeCtx(overrides.TorchFunctionMode):
         if not self.mode.on:
             return func(*args, **kwargs)
 
-        thunk = TorchFuncFn(func, types, *args, **kwargs)
+        thunk = TorchFuncThunk(func, types, *args, **kwargs)
         return self.mode.run(thunk)
 
 
 @dcls.dataclass
-class TorchFuncMode(TorchModeOnOff[TorchFuncFn], abc.ABC):
+class TorchFuncMode(TorchModeOnOff[TorchFuncThunk], abc.ABC):
     """
     `TorchFuncMode` is the adaptor for `torch.overrides.TorchFunctionMode`.
 
@@ -217,12 +216,12 @@ class _TorchDispModeCtx(pyd.TorchDispatchMode):
         if not self.mode.on:
             return func(*args, **kwargs)
 
-        thunk = TorchDispFn(func, *args, **kwargs)
+        thunk = TorchDispThunk(func, *args, **kwargs)
         return self.mode.run(thunk)
 
 
 @dcls.dataclass
-class TorchDispMode(TorchModeOnOff[TorchDispFn], abc.ABC):
+class TorchDispMode(TorchModeOnOff[TorchDispThunk], abc.ABC):
     """
     `TorchDispMode` is the adaptor for `torch.data._python_dispatch.TorchDispatchMode`.
 

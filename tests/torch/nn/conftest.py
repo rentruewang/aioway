@@ -6,7 +6,7 @@ import pytest
 from torch import nn
 
 from aioway._utils import render_fcall
-from aioway.modes import NnInitFn
+from aioway.modes import NnInitThunk
 from aioway.torch.nn import NnInit, find_nn_init
 
 
@@ -90,13 +90,13 @@ def loss_opts(request: pytest.FixtureRequest) -> _ModuleOpts:
 
 @pytest.fixture
 def layer_thunk(layer_opts: _ModuleOpts):
-    "The `NnInitFn` that are layers in `nn.Module`."
+    "The `NnInitThunk` that are layers in `nn.Module`."
     cls, opts = layer_opts
-    return NnInitFn(cls, **opts)
+    return NnInitThunk(cls, **opts)
 
 
 @pytest.fixture
-def layer_nn_init(layer_thunk: NnInitFn) -> NnInit:
+def layer_nn_init(layer_thunk: NnInitThunk) -> NnInit:
     "The `NnInit` from layers in `nn.Module`."
     result = find_nn_init(layer_thunk)
     assert result
@@ -106,11 +106,11 @@ def layer_nn_init(layer_thunk: NnInitFn) -> NnInit:
 @pytest.fixture
 def loss_thunk(loss_opts: _ModuleOpts):
     cls, opts = loss_opts
-    return NnInitFn(cls, **opts)
+    return NnInitThunk(cls, **opts)
 
 
 @pytest.fixture
-def loss_nn_init(loss_thunk: NnInitFn) -> NnInit:
+def loss_nn_init(loss_thunk: NnInitThunk) -> NnInit:
     "The `NnInit` from losses in `nn.Module`."
     result = find_nn_init(loss_thunk)
     assert result

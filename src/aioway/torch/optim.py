@@ -4,18 +4,18 @@ from collections import abc as cabc
 
 from torch import optim
 
-from aioway.hop import Hop, TensorHop, hop_dcls
+from aioway._core import Iter, TensorIter, iter_dcls
 
-__all__ = ["OptimizerHop"]
+__all__ = ["OptimizerIter"]
 
 
-@hop_dcls
-class OptimizerHop(Hop[None]):
+@iter_dcls
+class OptimizerIter(Iter[None]):
     """
-    The optimizer in the `Hop` format.
+    The optimizer in the `Iter` format.
     """
 
-    loss: TensorHop
+    loss: TensorIter
     "The loss that would be optimized."
 
     optimizer: optim.Optimizer

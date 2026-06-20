@@ -3,7 +3,7 @@
 
 from torch import nn
 
-from aioway.modes import NnInitFn
+from aioway.modes import NnInitThunk
 from aioway.torch.nn import NnInit, Sequential, find_nn_init
 
 
@@ -27,7 +27,7 @@ def test_loss_nn_init_module(loss_nn_init: NnInit):
 
 def test_sequential():
     seq_init = find_nn_init(
-        NnInitFn(
+        NnInitThunk(
             nn.Sequential,
             nn.Linear(1, 2),
             nn.Linear(2, 3),

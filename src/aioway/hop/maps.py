@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"The `Hop`s that apply a transformation on the input `Hop`."
+"The `Iter`s that apply a transformation on the input `Iter`."
 
 import abc
 import dataclasses as dcls
@@ -10,17 +10,16 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
+from aioway._core import TdictIter, iter_dcls
 from aioway._utils import tdict_rename
 
-from .hop import TdictHop, hop_dcls
-
-__all__ = ["MapHop", "ApplyHop", "FuncFilterHop", "RenameHop"]
+__all__ = ["MapIter", "ApplyIter", "FuncFilterIter", "RenameIter"]
 
 
-@hop_dcls
-class MapHop(TdictHop, abc.ABC):
+@iter_dcls
+class MapIter(TdictIter, abc.ABC):
     """
-    The shared base class for all the `map` like `Hop`s,
+    The shared base class for all the `map` like `Iter`s,
     which share the trait of::
 
         #. Having 1 child, named `source`.
@@ -35,13 +34,13 @@ class MapHop(TdictHop, abc.ABC):
         where each input row can correspond to one or multiple or 0 rows, in the same minibatch.
     """
 
-    source: TdictHop
+    source: TdictIter
     """
     The source stream that will be yielded from.
     """
 
     def __post_init__(self):
-        if not isinstance(self.source, TdictHop):
+        if not isinstance(self.source, TdictIter):
             raise ValueError(
                 f"{self.source=} should have been a `Stream`. Got {type(self.source)=}"
             )
@@ -76,10 +75,10 @@ class MapHop(TdictHop, abc.ABC):
             yield batch
 
 
-@hop_dcls
-class ApplyHop(MapHop):
+@iter_dcls
+class ApplyIter(MapIter):
     """
-    A `Hop` that you can customize what the `__next__` function do.
+    A `Iter` that you can customize what the `__next__` function do.
 
     The full loop would be something like:
 
@@ -100,10 +99,10 @@ class ApplyHop(MapHop):
         return self.apply(batch)
 
 
-@hop_dcls
-class FuncFilterHop(MapHop):
+@iter_dcls
+class FuncFilterIter(MapIter):
     """
-    A `Hop` that filteres on its inputs, based on a preducate function.
+    A `Iter` that filteres on its inputs, based on a preducate function.
 
     The input is being used to generate predicate,
     and the output of predicate must be a boolean `torch.Tensor` of the same length as the input.
@@ -133,8 +132,8 @@ class FuncFilterHop(MapHop):
         return result
 
 
-@hop_dcls
-class RenameHop(MapHop):
+@iter_dcls
+class RenameIter(MapIter):
     """
     Renames some columns in the inputs in the outputs.
     """

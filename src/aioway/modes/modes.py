@@ -9,7 +9,7 @@ import logging
 import typing
 from collections import abc as cabc
 
-from aioway._fn import TorchThunk
+from aioway._core import TensorThunk
 from aioway._utils import Stack
 
 __all__ = ["Mode", "ModeStack"]
@@ -18,7 +18,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 @dcls.dataclass
-class Mode[T: TorchThunk = TorchThunk, V = object](abc.ABC):
+class Mode[T: TensorThunk = TensorThunk, V = object](abc.ABC):
     """
     `Mode` is a mixin class that gives the subclasses a toggle.
     """

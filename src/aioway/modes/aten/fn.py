@@ -1,27 +1,27 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"An adaptor of `Aten` and `Fn`, using `Aten` in fake modes."
+"An adaptor of `Aten` and `Thunk`, using `Aten` in fake modes."
 
 import dataclasses as dcls
 import logging
 import typing
 
-from aioway._fn import Fn
+from aioway._core import Thunk
 from aioway._utils import is_aten_op
 
-from ..tensors import TorchDispFn
+from ..tensors import TorchDispThunk
 from .aten import Aten, find_aten
 
-__all__ = ["AtenFn"]
+__all__ = ["AtenThunk"]
 
 LOGGER = logging.getLogger(__name__)
 
 
 @typing.final
 @dcls.dataclass(frozen=True)
-class AtenFn(Fn):
+class AtenThunk(Thunk):
     """
-    `AtenFn` wraps a `Aten` object, which is split out so as to declutter subclasses for `Fn`.
+    `AtenThunk` wraps a `Aten` object, which is split out so as to declutter subclasses for `Thunk`.
 
     Each `Aten` is an implementation of an IR, and each IR can have multiple `Aten`s,
     each handling a subset of parameters (if `Aten.ok` is `False`, it's discarded.)
@@ -32,8 +32,8 @@ class AtenFn(Fn):
     The `Aten` object that ends up being selected.
     """
 
-    original: TorchDispFn
-    "The original `TorchDispFn` from which the `Aten` is translated."
+    original: TorchDispThunk
+    "The original `TorchDispThunk` from which the `Aten` is translated."
 
     def __repr__(self) -> str:
         return repr(self.aten)
@@ -57,7 +57,7 @@ class AtenFn(Fn):
         return self.original.kwargs
 
     @classmethod
-    def from_thunk(cls, thunk: TorchDispFn) -> typing.Self | None:
+    def from_thunk(cls, thunk: TorchDispThunk) -> typing.Self | None:
         LOGGER.debug("Resolving `Aten` object for %s", thunk)
 
         # For now, `Aten` only supports aten,

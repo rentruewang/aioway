@@ -7,69 +7,70 @@ import pytest
 import tensordict as td
 import torch
 
+from aioway._core import TdictIter
 from aioway._utils import tdict_all_equal
-from aioway.dsets import TdictListHop
-from aioway.hop import NestedLoopJoinHop, TdictHop, ZipHop
+from aioway.dsets import TdictListIter
+from aioway.hop import NestedLoopJoinIter, ZipIter
 
 
 @pytest.fixture
-def lhs_stream(concat_stream: TdictHop) -> TdictListHop:
-    return TdictListHop(list(concat_stream))
+def lhs_stream(concat_stream: TdictIter) -> TdictListIter:
+    return TdictListIter(list(concat_stream))
 
 
 @pytest.fixture
-def rhs_stream(joinable_stream: TdictHop) -> TdictListHop:
-    return TdictListHop(list(joinable_stream))
+def rhs_stream(joinable_stream: TdictIter) -> TdictListIter:
+    return TdictListIter(list(joinable_stream))
 
 
-def test_lhs_stream_length(concat_stream: TdictHop, lhs_stream: TdictHop):
+def test_lhs_stream_length(concat_stream: TdictIter, lhs_stream: TdictIter):
     assert concat_stream.size == lhs_stream.size
 
 
-def test_rhs_stream_length(joinable_stream: TdictHop, rhs_stream: TdictListHop):
+def test_rhs_stream_length(joinable_stream: TdictIter, rhs_stream: TdictListIter):
     assert joinable_stream.size == rhs_stream.size
 
 
 @pytest.fixture
 def binary_stream(
     request: pytest.FixtureRequest,
-    lhs_stream: TdictHop,
-    rhs_stream: TdictListHop,
+    lhs_stream: TdictIter,
+    rhs_stream: TdictListIter,
 ):
     "An indirect fixture that takes in a builder function and outputs a stream."
 
-    builder: cabc.Callable[[TdictHop, TdictHop], TdictHop] = request.param
+    builder: cabc.Callable[[TdictIter, TdictIter], TdictIter] = request.param
 
     if not callable(builder):
         raise TypeError("Indirect fixture `binary_stream` only accepts functions.")
 
     result = builder(lhs_stream, rhs_stream)
-    assert isinstance(result, TdictHop)
+    assert isinstance(result, TdictIter)
     return result
 
 
-def _zip_builder(lhs_stream: TdictHop, rhs_stream: TdictListHop):
-    return ZipHop(left=lhs_stream, right=rhs_stream)
+def _zip_builder(lhs_stream: TdictIter, rhs_stream: TdictListIter):
+    return ZipIter(left=lhs_stream, right=rhs_stream)
 
 
 @pytest.mark.parametrize("binary_stream", [_zip_builder], indirect=True)
 def test_zip_input_len(
-    binary_stream: TdictHop,
-    concat_stream: TdictHop,
-    rhs_stream: TdictListHop,
+    binary_stream: TdictIter,
+    concat_stream: TdictIter,
+    rhs_stream: TdictListIter,
 ):
     assert min(concat_stream.size, rhs_stream.size) == binary_stream.size
 
 
 @pytest.mark.parametrize("binary_stream", [_zip_builder], indirect=True)
 def test_zip(
-    binary_stream: ZipHop,
-    lhs_stream: TdictListHop,
-    rhs_stream: TdictListHop,
+    binary_stream: ZipIter,
+    lhs_stream: TdictListIter,
+    rhs_stream: TdictListIter,
 ):
-    assert isinstance(binary_stream, ZipHop)
-    assert isinstance(lhs_stream, TdictListHop)
-    assert isinstance(rhs_stream, TdictListHop)
+    assert isinstance(binary_stream, ZipIter)
+    assert isinstance(lhs_stream, TdictListIter)
+    assert isinstance(rhs_stream, TdictListIter)
 
     binary_stream_iter = iter(binary_stream)
 
@@ -85,15 +86,15 @@ def test_zip(
         assert tdict_all_equal(result, concat)
 
 
-def _join_builder(lhs_stream: TdictHop, rhs_stream: TdictListHop):
-    return NestedLoopJoinHop(left=lhs_stream, right=rhs_stream, key="i1d")
+def _join_builder(lhs_stream: TdictIter, rhs_stream: TdictListIter):
+    return NestedLoopJoinIter(left=lhs_stream, right=rhs_stream, key="i1d")
 
 
 @pytest.mark.parametrize("binary_stream", [_join_builder], indirect=True)
 def test_join_input_len(
-    binary_stream: TdictHop,
-    lhs_stream: TdictHop,
-    rhs_stream: TdictListHop,
+    binary_stream: TdictIter,
+    lhs_stream: TdictIter,
+    rhs_stream: TdictListIter,
 ):
     assert binary_stream.size == lhs_stream.size * rhs_stream.size
 
@@ -122,10 +123,10 @@ def test_simple_nested_loop_join(
         }
     ).auto_batch_size_()
 
-    left_stream = TdictListHop(to_slice(left))
-    right_stream = TdictListHop(to_slice(right))
+    left_stream = TdictListIter(to_slice(left))
+    right_stream = TdictListIter(to_slice(right))
 
-    out = td.cat(list(NestedLoopJoinHop(left_stream, right_stream, key="a")))
+    out = td.cat(list(NestedLoopJoinIter(left_stream, right_stream, key="a")))
 
     def sort_by_abc(td: td.TensorDict):
         for key in "cba":
@@ -147,9 +148,9 @@ def test_simple_nested_loop_join(
 
 @pytest.mark.parametrize("binary_stream", [_join_builder], indirect=True)
 def test_join_equal_as_original(
-    binary_stream: TdictHop,
-    lhs_stream: TdictHop,
-    rhs_stream: TdictListHop,
+    binary_stream: TdictIter,
+    lhs_stream: TdictIter,
+    rhs_stream: TdictListIter,
 ):
     block_frame_block = td.cat(list(lhs_stream))
     joinable_frame_block = td.cat(list(rhs_stream))
@@ -162,9 +163,9 @@ def test_join_equal_as_original(
     # Do it at once, using `ListStream` as it yields everything in 1 batch.
     ground_truth = td.cat(
         list(
-            NestedLoopJoinHop(
-                left=TdictListHop([block_frame_block]),
-                right=TdictListHop([joinable_frame_block]),
+            NestedLoopJoinIter(
+                left=TdictListIter([block_frame_block]),
+                right=TdictListIter([joinable_frame_block]),
                 key="i1d",
             )
         )
@@ -178,9 +179,9 @@ def test_join_equal_as_original(
 
 @pytest.mark.parametrize("binary_stream", [_join_builder], indirect=True)
 def test_match_functionally(
-    binary_stream: TdictHop,
-    lhs_stream: TdictHop,
-    rhs_stream: TdictListHop,
+    binary_stream: TdictIter,
+    lhs_stream: TdictIter,
+    rhs_stream: TdictListIter,
 ):
     block_frame_block = td.cat(list(lhs_stream))
     joinable_frame_block = td.cat(list(rhs_stream))
@@ -209,7 +210,7 @@ def test_match_functionally(
     indirect=True,
 )
 def test_binary_stream_in_list(
-    binary_stream: NestedLoopJoinHop | ZipHop,
+    binary_stream: NestedLoopJoinIter | ZipIter,
 ):
     binary_stream_iter = iter(binary_stream)
     assert binary_stream.size, "The binary stream is empty."

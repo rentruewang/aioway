@@ -10,11 +10,10 @@ import tensordict as td
 import torch
 from torch.utils import data
 
+from aioway._core import Iter, TdictIter, TensorIter, iter_dcls
 from aioway._utils import HasLen
 
-from .hop import Hop, TdictHop, TensorHop, hop_dcls
-
-__all__ = ["LoaderOpt", "LoaderHop", "TensorLoaderHop", "TdictLoaderHop"]
+__all__ = ["LoaderOpt", "LoaderIter", "TensorLoaderIter", "TdictLoaderIter"]
 
 
 @dcls.dataclass(frozen=True)
@@ -36,10 +35,10 @@ class LoaderOpt:
     "How to sample in case when want to shuffle."
 
 
-@hop_dcls
-class LoaderHop[T = typing.Any](Hop[T]):
+@iter_dcls
+class LoaderIter[T = typing.Any](Iter[T]):
     """
-    A `Hop` backed by a `torch` `DataLoader`.
+    A `Iter` backed by a `torch` `DataLoader`.
     """
 
     _: dcls.KW_ONLY
@@ -77,17 +76,17 @@ class LoaderHop[T = typing.Any](Hop[T]):
         return data.DataLoader(self.dset, **dcls.asdict(self.opts))
 
 
-@hop_dcls
-class TensorLoaderHop(LoaderHop[torch.Tensor], TensorHop):
+@iter_dcls
+class TensorLoaderIter(LoaderIter[torch.Tensor], TensorIter):
     """
-    A `Hop` to load `torch.Tensor`.
+    A `Iter` to load `torch.Tensor`.
     """
 
 
-@hop_dcls
-class TdictLoaderHop(LoaderHop[td.TensorDict], TdictHop):
+@iter_dcls
+class TdictLoaderIter(LoaderIter[td.TensorDict], TdictIter):
     """
-    A `Hop` to load `td.TensorDict`.
+    A `Iter` to load `td.TensorDict`.
     """
 
     @typing.override

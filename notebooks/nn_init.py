@@ -20,11 +20,11 @@
 from torch import nn
 
 # %%
-from aioway.modes import NnInitFn
+from aioway.modes import NnInitThunk
 from aioway.torch.nn import find_nn_init
 
 # %%
-nn_init = find_nn_init(NnInitFn(func=nn.Linear, in_features=3, out_features=5))
+nn_init = find_nn_init(NnInitThunk(func=nn.Linear, in_features=3, out_features=5))
 nn_init
 
 # %%

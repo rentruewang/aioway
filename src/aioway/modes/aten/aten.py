@@ -14,7 +14,7 @@ from aioway._costs import Cost
 from aioway._utils import camel_to_snake, find_nested_tensors, render_fcall
 
 if typing.TYPE_CHECKING:
-    from aioway.modes import TorchDispFn
+    from aioway.modes import TorchDispThunk
 
 __all__ = ["Aten", "aten_dcls", "find_aten", "all_aten_overrides"]
 
@@ -123,9 +123,9 @@ class Aten(abc.ABC):
         return cls.KEY is not NotImplemented and not inspect.isabstract(cls)
 
 
-def find_aten(dispatch: TorchDispFn, /) -> Aten | None:
+def find_aten(dispatch: TorchDispThunk, /) -> Aten | None:
     """
-    Try finding a `Aten` operator with the thunk, and then wrap into `AtenFn`.
+    Try finding a `Aten` operator with the thunk, and then wrap into `AtenThunk`.
 
     Returns `None` if a candidate is not found.
     """

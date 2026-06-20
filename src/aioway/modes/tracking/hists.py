@@ -11,7 +11,7 @@ from collections import abc as cabc
 
 import torch
 
-from aioway._fn import Fn, TensorInput, TorchThunk
+from aioway._core import TensorInput, TensorThunk, Thunk
 from aioway._utils import (
     find_nested_tensors,
     is_leaf_has_grad,
@@ -24,11 +24,11 @@ LOGGER = logging.getLogger(__name__)
 __all__ = ["Hist", "HistTensorGraph"]
 
 
-class HashableTensorInput(typing.Hashable, TensorInput, Fn, typing.Protocol): ...
+class HashableTensorInput(typing.Hashable, TensorInput, Thunk, typing.Protocol): ...
 
 
 @typing.runtime_checkable
-class TensorNode(TensorInput, Fn, typing.Protocol):
+class TensorNode(TensorInput, Thunk, typing.Protocol):
     f"""
     `TensorNode` have both tensor output (`run()`) and tensor inputs (`.inputs()`).
     The output itself does not need to be tensor, but must decompose (only) into tensors.
@@ -40,7 +40,7 @@ class FnResult[F]:
     "The storage class per item for `FnHistory`."
 
     fn: F
-    "The `Fn` that has been called."
+    "The `Thunk` that has been called."
 
     result: object
     "The output that `fn` has produced."
@@ -55,7 +55,7 @@ class FnResult[F]:
 
 
 @dcls.dataclass(frozen=True)
-class Hist[T: TorchThunk]:
+class Hist[T: TensorThunk]:
     """
     `Hist` is a list storing previous events in order.
 
@@ -64,7 +64,7 @@ class Hist[T: TorchThunk]:
 
     history: list[FnResult[T]] = dcls.field(default_factory=list)
     """
-    The `TorchFn` that has been called, in order.
+    The `TensorThunk` that has been called, in order.
     """
 
     def __bool__(self) -> bool:
@@ -98,7 +98,7 @@ class Hist[T: TorchThunk]:
 
 
 @dcls.dataclass(frozen=True)
-class HistTensorGraph[T: TorchThunk | HashableTensorInput](Hist):
+class HistTensorGraph[T: TensorThunk | HashableTensorInput](Hist):
     """
     `HistTensorGraph` is a `Hist` that can be converted to a graph,
     using the `torch.Tensor`s in the inputs and outputs as links.

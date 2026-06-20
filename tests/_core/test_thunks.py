@@ -2,34 +2,34 @@
 
 import pytest
 
-from aioway._fn import Fn, TensorInput, TorchThunk
+from aioway._core import TensorInput, TensorThunk, Thunk
 from aioway.modes import (
     Aten,
-    AtenFn,
+    AtenThunk,
     HistTensorGraph,
-    NnFwdFn,
-    NnInitFn,
-    TorchDispFn,
-    TorchFuncFn,
+    NnFwdThunk,
+    NnInitThunk,
+    TorchDispThunk,
+    TorchFuncThunk,
 )
 
 
 def _fn_cls():
-    yield AtenFn
-    yield TorchDispFn
-    yield TorchFuncFn
-    yield NnInitFn
-    yield NnFwdFn
+    yield AtenThunk
+    yield TorchDispThunk
+    yield TorchFuncThunk
+    yield NnInitThunk
+    yield NnFwdThunk
 
     yield Aten
 
 
 def _input_cls():
     yield HistTensorGraph
-    yield TorchThunk
-    yield AtenFn
-    yield NnFwdFn
-    yield AtenFn
+    yield TensorThunk
+    yield AtenThunk
+    yield NnFwdThunk
+    yield AtenThunk
     yield Aten
 
 
@@ -45,7 +45,7 @@ def input_cls(request: pytest.FixtureRequest):
 
 def test_fn_subclass(fn_cls):
     assert isinstance(fn_cls, type)
-    assert issubclass(fn_cls, Fn)
+    assert issubclass(fn_cls, Thunk)
 
 
 def test_inputs_subclass(input_cls):

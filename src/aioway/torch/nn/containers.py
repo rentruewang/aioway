@@ -4,9 +4,9 @@ import typing
 
 from torch import nn
 
-from aioway.modes import NnInitFn
+from aioway.modes import NnInitThunk
 
-from .hop import NnLayerHop
+from .iters import NnLayerIter
 from .modules import NnInit, nn_init_dcls
 
 __all__ = ["Sequential"]
@@ -23,7 +23,7 @@ class Sequential(NnInit):
     """
 
     NN = nn.Sequential
-    HOP = NnLayerHop
+    HOP = NnLayerIter
 
     modules: tuple[nn.Module, ...]
     """
@@ -36,7 +36,7 @@ class Sequential(NnInit):
 
     @typing.override
     def init_nn(self) -> nn.Module:
-        # Create `nn.Sequential` instance with `NnInitFn` is the best way
+        # Create `nn.Sequential` instance with `NnInitThunk` is the best way
         # to ensure that the modes are invoked properly.
-        thunk = NnInitFn(self.NN, *self.modules)
+        thunk = NnInitThunk(self.NN, *self.modules)
         return thunk()
