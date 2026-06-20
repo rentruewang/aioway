@@ -45,7 +45,7 @@ def test_loss_hop(loss_thunk, tensor_init: TensorIter, maybe_cache_hop):
     assert isinstance(result, NnLossIter)
 
 
-def test_hop_mse(tensor_init: TensorIter, maybe_cache_hop):
+def test_iter_mse(tensor_init: TensorIter, maybe_cache_hop):
     result = build_nn_hop(NnInitThunk(nn.MSELoss), tensor_init, tensor_init)
 
     assert result
@@ -53,7 +53,7 @@ def test_hop_mse(tensor_init: TensorIter, maybe_cache_hop):
     assert isinstance(out, torch.Tensor)
 
 
-def test_hop_linear(tensor_init: TensorIter, maybe_cache_hop):
+def test_iter_linear(tensor_init: TensorIter, maybe_cache_hop):
     linear = build_nn_hop(NnInitThunk(nn.Linear, 30, 31), tensor_init)
     assert linear
 
@@ -62,7 +62,7 @@ def test_hop_linear(tensor_init: TensorIter, maybe_cache_hop):
     assert result.shape == (100, 31)
 
 
-def test_hop_replace_with_function(tensor_init: TensorListIter):
+def test_iter_replace_with_function(tensor_init: TensorListIter):
     def replace_init(hop):
         if not isinstance(hop, TensorListIter):
             return NotImplemented
@@ -81,7 +81,7 @@ def test_hop_replace_with_function(tensor_init: TensorListIter):
     assert inputs[0].sequence[0].shape == (101, 31)
 
 
-def test_hop_no_replace_with_function(tensor_init: TensorIter):
+def test_iter_no_replace_with_function(tensor_init: TensorIter):
     def replace(hop):
         return NotImplemented
 
@@ -90,7 +90,7 @@ def test_hop_no_replace_with_function(tensor_init: TensorIter):
     assert result.shape == (100, 30)
 
 
-def test_hop_linear_rebuild(tensor_init: TensorIter):
+def test_iter_linear_rebuild(tensor_init: TensorIter):
     with torch_fake_mode():
         linear = build_nn_hop(NnInitThunk(nn.Linear, 30, 31), tensor_init)
         assert linear

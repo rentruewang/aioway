@@ -2,6 +2,7 @@
 
 "The iterator processor."
 
+import abc
 import contextlib as ctxl
 import typing
 from collections import abc as cabc
@@ -12,7 +13,7 @@ from aioway._utils import (
 
 from .iters import Iter
 
-__all__ = ["IterProc", "iter_cache", "iter_cache_on"]
+__all__ = ["IterProc", "SampleIterProc", "CacheIterProc", "iter_cache", "iter_cache_on"]
 
 
 _iter_cache: AnyDict[Iter] | None = None
@@ -51,11 +52,39 @@ def iter_cache() -> AnyDict[Iter]:
     return _iter_cache
 
 
-class IterProc[T = typing.Any](cabc.Iterator[T]):
+class IterProc[T = typing.Any](cabc.Iterator[T], abc.ABC):
     def __init__(self, iterable: Iter) -> None:
+        self._iter = iterable
+
+    @abc.abstractmethod
+    def __next__(self) -> T:
+        raise NotImplementedError
+
+
+class SampleIterProc[T = typing.Any](IterProc[T]):
+    """
+    Calls the `Iter.sample` method, which returns a fake output.
+    """
+
+    def __iter__(self):
+        return self
+
+    @typing.final
+    def __next__(self) -> T:
+        return self._iter.sample()
+
+
+class CacheIterProc[T = typing.Any](IterProc[T]):
+    """
+    Calls the `.iterate` method, and cache it if `iter_cache` is enabled.
+    This allows `.iterate` to be generators (more elegant).
+    """
+
+    def __init__(self, iterable: Iter) -> None:
+        super().__init__(iterable)
+
         self.__idx: int = 0
         self.__gen = iterable.iterate()
-        self._iter = iterable
 
     def __iter__(self):
         return self

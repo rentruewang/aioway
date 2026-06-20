@@ -8,7 +8,7 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway._core import BoundedIter, TensorIter, node_dcls
+from aioway._core import IndexibleIter, TensorIter, node_dcls
 
 from .dsets import TdictFrame, dset_dcls
 
@@ -66,13 +66,16 @@ class TensorListIter(TensorIter):
     def size(self) -> int:
         return len(self.sequence)
 
+    def sample(self):
+        return self.sequence[0]
+
     def iterate(self):
         for batch in self.sequence:
             yield batch
 
 
 @node_dcls
-class TdictListIter(BoundedIter):
+class TdictListIter(IndexibleIter):
     "A `Stream` backed by a list of `TensorDict`."
 
     sequence: cabc.Sequence[td.TensorDict]
@@ -90,6 +93,9 @@ class TdictListIter(BoundedIter):
     @typing.override
     def size(self) -> int:
         return len(self.sequence)
+
+    def sample(self):
+        return self.sequence[0]
 
     def iterate(self):
         for batch in self.sequence:
