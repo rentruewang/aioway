@@ -8,7 +8,7 @@ from collections import abc as cabc
 import pytest
 import tensordict as td
 
-from aioway._core import TdictIter, iter_dcls
+from aioway._core import TdictIter, node_dcls
 from aioway._utils import tdict_all_equal, tdict_rename
 from aioway.dsets import TdictListIter
 from aioway.hop import ApplyIter, FuncFilterIter, MapIter, ProjectIter, RenameIter
@@ -21,7 +21,7 @@ class SaveLastState:
     "The last batch."
 
 
-@iter_dcls
+@node_dcls
 class SaveLastMapStream(MapIter):
     "`Stream` that saves the last `__next__` call."
 

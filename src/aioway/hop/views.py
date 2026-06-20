@@ -9,14 +9,14 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway._core import TdictIter, TensorIter, iter_dcls
+from aioway._core import TdictIter, TensorIter, node_dcls
 
 from .maps import MapIter
 
 __all__ = ["ColumnViewIter", "ProjectIter"]
 
 
-@iter_dcls
+@node_dcls
 class ColumnViewIter(TensorIter):
     """
     A column reference (on a `Iter`).
@@ -42,7 +42,7 @@ class ColumnViewIter(TensorIter):
         return self.input.size
 
 
-@iter_dcls
+@node_dcls
 class ProjectIter(MapIter):
     """
     Projection of the input table. The `subset` should be a subset of the input columns.

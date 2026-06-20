@@ -4,30 +4,21 @@
 
 import abc
 import copy
-import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
 import tensordict as td
 import torch
 
-from aioway._utils import (
-    decomp_dcls_members,
-    torch_fake_mode,
-)
+from aioway._utils import decomp_dcls_members, torch_fake_mode
 from aioway.spaces import Attr, Shape
 
-from .nodes import GraphNode
+from .nodes import GraphNode, node_dcls
 
 if typing.TYPE_CHECKING:
     from .procs import IterProc
 
-__all__ = ["iter_dcls", "Iter", "TensorIter", "TdictIter", "ListIter", "BoundedIter"]
-
-
-@typing.dataclass_transform()
-def iter_dcls(cls: type):
-    return dcls.dataclass(match_args=False)(cls)
+__all__ = ["Iter", "TensorIter", "TdictIter", "ListIter", "BoundedIter"]
 
 
 class Iter[T](cabc.Iterable[T], GraphNode, abc.ABC):
@@ -100,7 +91,7 @@ class Iter[T](cabc.Iterable[T], GraphNode, abc.ABC):
         return NotImplemented
 
 
-@iter_dcls
+@node_dcls
 class TensorIter(Iter[torch.Tensor], abc.ABC):
     """
     An iterator of batches of `torch.Tensor`.
@@ -119,7 +110,7 @@ class TensorIter(Iter[torch.Tensor], abc.ABC):
         return self.attr.ndim
 
 
-@iter_dcls
+@node_dcls
 class TdictIter(Iter[td.TensorDict], abc.ABC):
     """
     An iterator of batches of `td.TensorDict`.
@@ -138,7 +129,7 @@ class TdictIter(Iter[td.TensorDict], abc.ABC):
         return ProjectIter(self, subset=list(cols))
 
 
-@iter_dcls
+@node_dcls
 class ListIter[T = typing.Any](Iter[cabc.Sequence[T]]):
     "A convenient list of `Iter`s, using a pull strategy to pull in the data when called."
 
@@ -174,7 +165,7 @@ class ListIter[T = typing.Any](Iter[cabc.Sequence[T]]):
             yield hops
 
 
-@iter_dcls
+@node_dcls
 class BoundedIter(TdictIter, abc.ABC):
     """
     A stream with `__len__` and `__getitem__`.

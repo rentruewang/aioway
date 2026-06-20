@@ -10,7 +10,7 @@ from aioway._core import (
     TensorIter,
     Thunk,
     UFunc,
-    iter_dcls,
+    node_dcls,
 )
 
 if typing.TYPE_CHECKING:
@@ -64,7 +64,7 @@ class NnLayerUFunc(BaseNnUFunc):
         assert isinstance(self.module, self.nn_init.NN)
 
 
-@iter_dcls
+@node_dcls
 class NnIter(TensorIter, abc.ABC):
     nn_init: NnInit
     "The config used to initialize the `Iter`."
@@ -87,7 +87,7 @@ class NnIter(TensorIter, abc.ABC):
         return self.input.requires_grad or module_grad
 
 
-@iter_dcls
+@node_dcls
 class NnLayerIter(NnIter):
     """
     The `Iter` subclass for normal layers in `nn.Module`s.
@@ -104,7 +104,7 @@ class NnLayerIter(NnIter):
         yield from self.module.parameters()
 
 
-@iter_dcls
+@node_dcls
 class NnLossIter(NnIter):
     """
     The `Iter` subclass for loss functions that are `nn.Module`s.

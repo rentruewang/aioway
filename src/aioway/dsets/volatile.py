@@ -8,7 +8,7 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway._core import BoundedIter, TensorIter, iter_dcls
+from aioway._core import BoundedIter, TensorIter, node_dcls
 
 from .dsets import TdictFrame, dset_dcls
 
@@ -48,7 +48,7 @@ class TensorDictFrame(TdictFrame):
         return ret.auto_batch_size_()
 
 
-@iter_dcls
+@node_dcls
 class TensorListIter(TensorIter):
     "A `Iter` backed by a list of `torch.Tensor`."
 
@@ -71,7 +71,7 @@ class TensorListIter(TensorIter):
             yield batch
 
 
-@iter_dcls
+@node_dcls
 class TdictListIter(BoundedIter):
     "A `Stream` backed by a list of `TensorDict`."
 

@@ -22,7 +22,7 @@ from aioway._utils import (
     topo_sort,
 )
 
-__all__ = ["TensorInput"]
+__all__ = ["TensorInput", "GraphNode", "node_dcls"]
 
 
 @typing.runtime_checkable

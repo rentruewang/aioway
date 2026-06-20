@@ -4,12 +4,12 @@ from collections import abc as cabc
 
 from torch import optim
 
-from aioway._core import Iter, TensorIter, iter_dcls
+from aioway._core import Iter, TensorIter, node_dcls
 
 __all__ = ["OptimizerIter"]
 
 
-@iter_dcls
+@node_dcls
 class OptimizerIter(Iter[None]):
     """
     The optimizer in the `Iter` format.

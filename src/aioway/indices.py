@@ -9,7 +9,7 @@ from collections import abc as cabc
 import numpy as np
 import torch
 
-from aioway._core import Iter, TensorIter, iter_dcls
+from aioway._core import Iter, TensorIter, node_dcls
 from aioway._utils import FloatArray, IntArray
 
 __all__ = ["AnnIndex", "AnnResult", "AnnIndexIter", "AnnIndexTrainerIter", "FaissIndex"]
@@ -132,7 +132,7 @@ class FaissIndex(AnnIndex):
         return AnnResult(dist, idx)
 
 
-@iter_dcls
+@node_dcls
 class AnnIndexTrainerIter(Iter[None]):
     """
     Train the index for future usage.
@@ -154,7 +154,7 @@ class AnnIndexTrainerIter(Iter[None]):
             yield
 
 
-@iter_dcls
+@node_dcls
 class AnnIndexIter(TensorIter):
     """
     Iterate and yield the indices.
