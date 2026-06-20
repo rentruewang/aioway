@@ -37,7 +37,6 @@ def iter_dcls(cls: type):
     return dcls.dataclass(match_args=False)(cls)
 
 
-@iter_dcls
 class Iter[T](cabc.Iterable[T], abc.ABC):
     """
     The class that defines [h]igh level [op]erations.

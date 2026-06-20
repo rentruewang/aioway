@@ -7,11 +7,9 @@ import logging
 import typing
 from collections import abc as cabc
 
-import torch
-
 from aioway._utils import find_nested_tensors, render_fcall
 
-__all__ = ["Thunk", "TensorInput", "AnyThunk", "TorchThunk"]
+__all__ = ["Thunk", "AnyThunk", "TorchThunk"]
 
 LOGGER = logging.getLogger(__name__)
 
@@ -30,18 +28,6 @@ class Thunk[T = object](typing.Protocol):
         """
         Execute the computation.
         """
-
-        raise NotImplementedError
-
-
-@typing.runtime_checkable
-class TensorInput(typing.Protocol):
-    """
-    `TensorInput` marks a class whose value depend on input tensors for computation.
-    """
-
-    def inputs(self) -> cabc.Iterable[torch.Tensor]:
-        "The tensor operands (inputs to the function)"
 
         raise NotImplementedError
 
@@ -136,21 +122,12 @@ class TorchThunk[**P = ..., T = typing.Any]:
     def __init__(
         self, func: cabc.Callable[P, T], *args: P.args, **kwargs: P.kwargs
     ) -> None:
-        self._func = func
-        self._args = args
-        self._kwargs = kwargs
-
-        assert callable(self.func)
-
-    def __post_init__(self):
         if not callable(self.func):
             raise TypeError(f"{self.func=} is not callable.")
 
-        if not isinstance(self.args, tuple):
-            raise TypeError(f"{self.args=} is not a tuple.")
-
-        if not isinstance(self.kwargs, dict):
-            raise TypeError(f"{self.kwargs=} is not a dict.")
+        self._func = func
+        self._args = args
+        self._kwargs = kwargs
 
     def __call__(self):
         return self.func(*self.args, **self.kwargs)
@@ -161,7 +138,7 @@ class TorchThunk[**P = ..., T = typing.Any]:
 
     @property
     def func(self) -> cabc.Callable[P, T]:
-        "The function to call. Must be callable.."
+        "The function to call. Must be callable."
         return self._func
 
     @property

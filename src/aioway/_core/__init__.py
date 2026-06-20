@@ -2,6 +2,8 @@
 
 "Core computation abstractions."
 
+from .graphs import *
 from .iters import *
+from .tensors import *
 from .thunks import *
 from .ufuncs import *
