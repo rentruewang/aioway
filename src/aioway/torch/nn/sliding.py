@@ -10,7 +10,7 @@ from torch import nn
 from aioway._utils import is_tuple_of
 
 from .modules import NnInit, nn_init_dcls
-from .ufuncs import NnLayerIter
+from .ufuncs import NnLayerUFunc
 
 __all__ = [
     "Conv1d",
@@ -102,7 +102,7 @@ class _BaseConvWeights(abc.ABC):
 
 @nn_init_dcls
 class _BaseConv(_BaseSliding, _BaseConvWeights, NnInit):
-    HOP = NnLayerIter
+    UFUNC = NnLayerUFunc
 
     def __post_init__(self) -> None:
         _BaseSliding.__post_init__(self)
@@ -111,7 +111,7 @@ class _BaseConv(_BaseSliding, _BaseConvWeights, NnInit):
 
 @nn_init_dcls
 class _BaseAvgPool(_BaseAvgSliding, NnInit):
-    HOP = NnLayerIter
+    UFUNC = NnLayerUFunc
 
     def __post_init__(self) -> None:
         _BaseAvgSliding.__post_init__(self)
@@ -119,7 +119,7 @@ class _BaseAvgPool(_BaseAvgSliding, NnInit):
 
 @nn_init_dcls
 class _BaseMaxPool(_BaseSliding, NnInit):
-    HOP = NnLayerIter
+    UFUNC = NnLayerUFunc
 
     return_indices: bool = False
     """

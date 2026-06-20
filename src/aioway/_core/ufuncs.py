@@ -4,7 +4,7 @@ import typing
 from collections import abc as cabc
 
 from .iters import Iter
-from .thunks import Thunk
+from .thunks import LazyThunk
 
 __all__ = ["UFunc"]
 
@@ -18,7 +18,7 @@ class UFunc[T = typing.Any](typing.Protocol):
     __call__: cabc.Callable[..., T]
     "A `UFunc` is callable (imperative)."
 
-    thunk: cabc.Callable[..., Thunk[T]]
+    thunk: cabc.Callable[..., LazyThunk[T]]
     "A `UFunc` takes thunks and tranform it into other thunks."
 
     iter: cabc.Callable[..., Iter[T]]

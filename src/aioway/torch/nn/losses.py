@@ -5,7 +5,7 @@ import typing
 from torch import nn
 
 from .modules import NnInit, nn_init_dcls
-from .ufuncs import NnLossIter
+from .ufuncs import NnLossUFunc
 
 __all__ = [
     "BaseLoss",
@@ -31,7 +31,7 @@ class BaseLoss(NnInit):
     """
 
     NN: typing.ClassVar[type[nn.Module]] = NotImplemented
-    HOP = NnLossIter
+    UFUNC = NnLossUFunc
 
 
 @nn_init_dcls

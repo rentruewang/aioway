@@ -12,7 +12,7 @@ from aioway._core import Iter
 from aioway._utils import dcls_asdict, render_fcall
 from aioway.modes import NnInitThunk
 
-from .ufuncs import NnIter
+from .ufuncs import NnIter, NnUFunc
 
 __all__ = ["NnInit", "nn_init_dcls", "find_nn_init", "build_nn_hop"]
 
@@ -35,14 +35,14 @@ class NnInit(abc.ABC):
     """
 
     NN: typing.ClassVar[type[nn.Module]] = NotImplemented
-    HOP: typing.ClassVar[cabc.Callable[..., NnIter]] = NotImplemented
+    UFUNC: typing.ClassVar[type[NnUFunc]] = NotImplemented
 
     def __init_subclass__(cls) -> None:
         # Abstract in terms of `ClassVar`.
         if cls.NN is NotImplemented:
             return
 
-        if cls.HOP is NotImplemented:
+        if cls.UFUNC is NotImplemented:
             raise RuntimeError(f"{cls=}.HOP is not configured.")
 
         if inspect.isabstract(cls):
@@ -68,7 +68,7 @@ class NnInit(abc.ABC):
         """
 
         nn_module = self.init_nn()
-        return self.HOP(self, nn_module, *args, **kwargs)
+        return self.UFUNC(self, nn_module).iter(*args, **kwargs)
 
 
 def find_nn_init(thunk: NnInitThunk, /) -> NnInit | None:

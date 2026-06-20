@@ -43,7 +43,7 @@ def node_dcls(cls: type):
 
 
 @node_dcls
-class GraphNode(abc.ABC):
+class GraphNode[T: GraphNode = typing.Any](abc.ABC):
     """
     `GraphNode` allows us to reconstruct the computation graph traces `torch` resources.
     When `.deps()` is not empty, the output depends on the inputs,
@@ -62,13 +62,12 @@ class GraphNode(abc.ABC):
 
         return any(hop.requires_grad for hop in self.deps())
 
-    @abc.abstractmethod
-    def deps(self) -> cabc.Iterator[GraphNode]:
+    def deps(self) -> cabc.Iterator[T]:
         """
         This defines the prior nodes that `.backward` would propagate to.
         """
 
-        for node in decomp_dcls_members(self, GraphNode):
+        for node in decomp_dcls_members(self, self.deps_type()):
             yield node
 
     def nodes(self) -> AnySet[GraphNode]:
@@ -160,3 +159,8 @@ class GraphNode(abc.ABC):
             tab.add_row(f"#{idx}", ",".join(parents), node._repr_abbrev())
 
         return tab
+
+    @classmethod
+    @typing.no_type_check
+    def deps_type(cls) -> type[T]:
+        return GraphNode

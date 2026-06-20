@@ -5,7 +5,7 @@ import typing
 from torch import nn
 
 from .modules import NnInit, nn_init_dcls
-from .ufuncs import NnLayerIter
+from .ufuncs import NnLayerUFunc
 
 __all__ = ["Dropout", "Dropout1d", "Dropout2d", "Dropout3d"]
 
@@ -13,7 +13,7 @@ __all__ = ["Dropout", "Dropout1d", "Dropout2d", "Dropout3d"]
 @nn_init_dcls
 class _BaseDropout(NnInit):
     NN: typing.ClassVar[type[nn.Module]] = NotImplemented
-    HOP = NnLayerIter
+    UFUNC = NnLayerUFunc
 
     p: float = 0.5
     "Probability of an element to be zeroed. Default: 0.5."

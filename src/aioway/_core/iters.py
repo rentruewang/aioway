@@ -21,7 +21,7 @@ if typing.TYPE_CHECKING:
 __all__ = ["Iter", "TensorIter", "TdictIter", "ListIter", "BoundedIter"]
 
 
-class Iter[T](cabc.Iterable[T], GraphNode, abc.ABC):
+class Iter[T](cabc.Iterable[T], GraphNode["Iter"], abc.ABC):
     """
     The class that defines [h]igh level [op]erations.
     It produces iterators that computes the desired batch, represented by the node.
@@ -89,6 +89,10 @@ class Iter[T](cabc.Iterable[T], GraphNode, abc.ABC):
         """
 
         return NotImplemented
+
+    @classmethod
+    def deps_type(cls):
+        return Iter
 
 
 @node_dcls
