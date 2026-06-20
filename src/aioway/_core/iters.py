@@ -26,6 +26,7 @@ __all__ = [
     "ListIter",
     "IndexibleIter",
     "sample_mode",
+    "current_sample_mode",
 ]
 
 _sample_mode: bool = False
@@ -45,6 +46,11 @@ def sample_mode(to: bool = True):
         yield
     finally:
         _sample_mode = before
+
+
+def current_sample_mode():
+    "Get the current sample mode."
+    return _sample_mode
 
 
 class Iter[T](cabc.Iterable[T], GraphNode["Iter"], abc.ABC):

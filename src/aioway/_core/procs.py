@@ -7,8 +7,10 @@ import contextlib as ctxl
 import typing
 from collections import abc as cabc
 
+from aioway._core import sample_mode
 from aioway._utils import (
     AnyDict,
+    torch_fake_mode,
 )
 
 from .iters import Iter
@@ -64,6 +66,7 @@ class IterProc[T = typing.Any](cabc.Iterator[T], abc.ABC):
 class SampleIterProc[T = typing.Any](IterProc[T]):
     """
     Calls the `Iter.sample` method, which returns a fake output.
+    This is invoked when `sample_mode` is on.
     """
 
     def __iter__(self):
@@ -71,7 +74,9 @@ class SampleIterProc[T = typing.Any](IterProc[T]):
 
     @typing.final
     def __next__(self) -> T:
-        return self._iter.sample()
+        # Set sample mode to false to avoid self recursion.
+        with sample_mode(False), torch_fake_mode():
+            return self._iter.sample()
 
 
 class CacheIterProc[T = typing.Any](IterProc[T]):
