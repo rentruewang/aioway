@@ -13,7 +13,7 @@ from torch import nn
 from aioway._core import AnyThunk
 from aioway._utils import render_fcall, render_torch_func_name, track_call_count
 
-from .modes import Mode, ModeStack, ModeThunk
+from .modes import Mode, ModeStack, TensorThunk
 
 __all__ = ["NnFwdThunk", "NnInitThunk", "NnFwdMode", "NnInitMode"]
 
@@ -27,7 +27,7 @@ INITS: ModeStack[NnInitMode] = ModeStack()
 
 
 @typing.final
-class NnFwdThunk(ModeThunk):
+class NnFwdThunk(TensorThunk):
     """
     `NnFwdThunk` represents the module calls.
 
@@ -97,7 +97,7 @@ class NnFwdMode(Mode[NnFwdThunk, object], abc.ABC):
 
 
 @typing.final
-class NnInitThunk[**P = ...](ModeThunk):
+class NnInitThunk[**P = ...](TensorThunk):
     """
     `NnInitThunk` are used to initialize `nn.Module`s.
 
@@ -153,7 +153,7 @@ class NnInitMode(Mode[NnInitThunk, nn.Module], abc.ABC):
 
 def _invoke_rec[T: Mode[typing.Any, typing.Any]](
     stack: ModeStack[T],
-    fn_type: type[ModeThunk],
+    fn_type: type[TensorThunk],
     call: cabc.Callable[..., typing.Any],
     args: tuple[typing.Any, ...],
     kwargs: dict[str, typing.Any],

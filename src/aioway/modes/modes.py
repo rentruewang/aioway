@@ -9,62 +9,16 @@ import logging
 import typing
 from collections import abc as cabc
 
-from aioway._utils import Stack, find_nested_tensors
+from aioway._core import TensorThunk
+from aioway._utils import Stack
 
-__all__ = ["Mode", "ModeStack", "ModeThunk"]
+__all__ = ["Mode", "ModeStack"]
 
 LOGGER = logging.getLogger(__name__)
 
 
-class ModeThunk[**P = ..., T = typing.Any]:
-    """
-    `ModeThunk` is a basic `Thunk` used by the modes to store a function call,
-    s.t. overriding can have more elegant function signature.
-    """
-
-    def __init__(
-        self, func: cabc.Callable[P, T], *args: P.args, **kwargs: P.kwargs
-    ) -> None:
-        if not callable(func):
-            raise TypeError(f"{func=} is not callable.")
-
-        self._func = func
-        self._args = args
-        self._kwargs = kwargs
-
-    def __call__(self):
-        return self.func(*self.args, **self.kwargs)
-
-    def inputs(self):
-        yield from find_nested_tensors(self.args)
-        yield from find_nested_tensors(self.kwargs)
-
-    @property
-    def func(self) -> cabc.Callable[P, T]:
-        "The function to call. Must be callable."
-        return self._func
-
-    @property
-    @typing.no_type_check
-    def args(self) -> P.args:
-        "The positional args."
-        return self._args
-
-    @property
-    @typing.no_type_check
-    def kwargs(self) -> P.kwargs:
-        "The keyword arguments."
-        return self._kwargs
-
-    @property
-    def requires_grad(self) -> bool:
-        "Check if any of the inputs requires grad."
-
-        return any(tensor.requires_grad for tensor in self.inputs())
-
-
 @dcls.dataclass
-class Mode[T: ModeThunk = ModeThunk, V = object](abc.ABC):
+class Mode[T: TensorThunk = TensorThunk, V = object](abc.ABC):
     """
     `Mode` is a mixin class that gives the subclasses a toggle.
     """
