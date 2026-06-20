@@ -14,10 +14,9 @@ import torch
 from torch import _ops, overrides
 from torch.utils import _python_dispatch as pyd
 
-from aioway._core import TorchThunk
 from aioway._utils import is_aten_op, is_prim_op, render_function_body_prefix
 
-from .modes import Mode, ModeStack
+from .modes import Mode, ModeStack, ModeThunk
 
 __all__ = ["TorchFuncMode", "TorchDispMode", "TorchFuncThunk", "TorchDispThunk"]
 
@@ -31,7 +30,7 @@ DISPATCHES: ModeStack[TorchDispMode] = ModeStack()
 
 
 @typing.final
-class TorchFuncThunk[**P = ...](TorchThunk):
+class TorchFuncThunk[**P = ...](ModeThunk):
     """
     `TorchFuncThunk` is the thunk capturing the function calls initiated by `torch`.
 
@@ -71,7 +70,7 @@ class TorchFuncThunk[**P = ...](TorchThunk):
 
 
 @typing.final
-class TorchDispThunk(TorchThunk):
+class TorchDispThunk(ModeThunk):
     """
     `TorchDispThunk` is the thunk capturing the function calls initiated by `torch`.
     This is by default what a null-op `__torch_dispatch__` would call.
@@ -111,7 +110,7 @@ type _Mode = overrides.TorchFunctionMode | pyd.TorchDispatchMode
 
 
 @dcls.dataclass
-class TorchModeOnOff[T: TorchThunk](Mode[T, object], abc.ABC):
+class TorchModeOnOff[T: ModeThunk](Mode[T, object], abc.ABC):
     """
     The mixin for either `TorchFuncMode`, `TorchDispMode`.
     """

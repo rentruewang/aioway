@@ -1,15 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import abc
-import contextlib as ctxl
-import dataclasses as dcls
 import typing
 from collections import abc as cabc
-
-import torch
-
-from aioway._core import TorchThunk
-from aioway._utils import AnyDict
 
 from .iters import Iter
 from .thunks import Thunk

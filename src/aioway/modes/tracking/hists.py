@@ -11,13 +11,15 @@ from collections import abc as cabc
 
 import torch
 
-from aioway._core import TensorInput, Thunk, TorchThunk
+from aioway._core import TensorInput, Thunk
 from aioway._utils import (
     find_nested_tensors,
     is_leaf_has_grad,
     replace_tensors_with_attr,
 )
 from aioway.spaces import Attr
+
+from ..modes import ModeThunk
 
 LOGGER = logging.getLogger(__name__)
 
@@ -55,7 +57,7 @@ class FnResult[F]:
 
 
 @dcls.dataclass(frozen=True)
-class Hist[T: TorchThunk]:
+class Hist[T: ModeThunk]:
     """
     `Hist` is a list storing previous events in order.
 
@@ -64,7 +66,7 @@ class Hist[T: TorchThunk]:
 
     history: list[FnResult[T]] = dcls.field(default_factory=list)
     """
-    The `TorchThunk` that has been called, in order.
+    The `ModeThunk` that has been called, in order.
     """
 
     def __bool__(self) -> bool:
@@ -98,7 +100,7 @@ class Hist[T: TorchThunk]:
 
 
 @dcls.dataclass(frozen=True)
-class HistTensorGraph[T: TorchThunk | HashableTensorInput](Hist):
+class HistTensorGraph[T: ModeThunk | HashableTensorInput](Hist):
     """
     `HistTensorGraph` is a `Hist` that can be converted to a graph,
     using the `torch.Tensor`s in the inputs and outputs as links.
