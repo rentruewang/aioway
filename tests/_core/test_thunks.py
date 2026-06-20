@@ -2,11 +2,12 @@
 
 import pytest
 
-from aioway._core import TensorInput, TensorThunk, Thunk
+from aioway._core import TensorInput, Thunk
 from aioway.modes import (
     Aten,
     AtenThunk,
     HistTensorGraph,
+    ModeThunk,
     NnFwdThunk,
     NnInitThunk,
     TorchDispThunk,
@@ -26,7 +27,7 @@ def _fn_cls():
 
 def _input_cls():
     yield HistTensorGraph
-    yield TensorThunk
+    yield ModeThunk
     yield AtenThunk
     yield NnFwdThunk
     yield AtenThunk

@@ -8,12 +8,12 @@ from collections import abc as cabc
 
 import torch
 
-from aioway._core import Iter, TensorIter, iter_dcls
+from aioway._core import Iter, TensorIter, node_dcls
 
 __all__ = ["CatIter", "StackIter"]
 
 
-@iter_dcls
+@node_dcls
 class _CatStackIter(TensorIter, abc.ABC):
     """
     The `Iter` implementation for `torch.cat` / `torch.stack`.
@@ -38,14 +38,14 @@ class _CatStackIter(TensorIter, abc.ABC):
             yield self.FUNCTION(list(tensors), dim=self.dim)
 
 
-@iter_dcls
+@node_dcls
 class CatIter(_CatStackIter):
     "The `Iter` backed by `torch.cat`."
 
     FUNCTION = torch.cat
 
 
-@iter_dcls
+@node_dcls
 class StackIter(_CatStackIter):
     "The `Iter` backed by `torch.stack`."
 

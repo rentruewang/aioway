@@ -2,8 +2,8 @@
 
 from torch import nn
 
-from .iters import NnLayerIter
 from .modules import NnInit, nn_init_dcls
+from .ufuncs import NnLayerUFunc
 
 __all__ = ["Identity", "Linear", "Bilinear"]
 
@@ -15,7 +15,7 @@ class Identity(NnInit):
     """
 
     NN = nn.Identity
-    HOP = NnLayerIter
+    UFUNC = NnLayerUFunc
 
 
 @nn_init_dcls
@@ -25,7 +25,7 @@ class Linear(NnInit):
     """
 
     NN = nn.Linear
-    HOP = NnLayerIter
+    UFUNC = NnLayerUFunc
 
     in_features: int
     "The size of each input sample, must be > 0."
@@ -51,7 +51,7 @@ class Bilinear(NnInit):
     """
 
     NN = nn.Bilinear
-    HOP = NnLayerIter
+    UFUNC = NnLayerUFunc
 
     in1_features: int
     "The size of each first input sample, must be > 0."

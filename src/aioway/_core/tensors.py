@@ -8,7 +8,7 @@ from collections import abc as cabc
 import torch
 
 from .iters import Iter
-from .thunks import Thunk
+from .thunks import LazyThunk
 from .ufuncs import UFunc
 
 __all__ = [
@@ -37,7 +37,7 @@ class TensorUFunc1(UFunc[torch.Tensor]):
     def __call__(self, item: torch.Tensor, /) -> torch.Tensor:
         return self.func(item)
 
-    def thunk(self, item: Thunk[torch.Tensor], /) -> Thunk[torch.Tensor]:
+    def thunk(self, item: LazyThunk[torch.Tensor], /) -> LazyThunk[torch.Tensor]:
         return TensorUFunc1Thunk(self.func, item)
 
     def iter(self, item: Iter[torch.Tensor], /) -> Iter[torch.Tensor]:
@@ -49,11 +49,11 @@ class TensorUFunc1(UFunc[torch.Tensor]):
 
 
 @dcls.dataclass
-class TensorUFunc1Thunk(Thunk[torch.Tensor]):
+class TensorUFunc1Thunk(LazyThunk[torch.Tensor]):
     "The thunk type for `(torch.Tensor) -> torch.Tensor`."
 
     func: _TorchFunc1
-    input: Thunk[torch.Tensor]
+    input: LazyThunk[torch.Tensor]
 
     def __call__(self) -> torch.Tensor:
         return self.func(self.input())
@@ -81,8 +81,8 @@ class TensorUFunc2(UFunc[torch.Tensor]):
         return self.func(left)
 
     def thunk(
-        self, left: Thunk[torch.Tensor], right: Thunk[torch.Tensor], /
-    ) -> Thunk[torch.Tensor]:
+        self, left: LazyThunk[torch.Tensor], right: LazyThunk[torch.Tensor], /
+    ) -> LazyThunk[torch.Tensor]:
         return TensorUFunc2Thunk(self.func, left, right)
 
     def iter(
@@ -96,12 +96,12 @@ class TensorUFunc2(UFunc[torch.Tensor]):
 
 
 @dcls.dataclass
-class TensorUFunc2Thunk(Thunk[torch.Tensor]):
+class TensorUFunc2Thunk(LazyThunk[torch.Tensor]):
     "The thunk type for `(torch.Tensor, torch.Tensor) -> torch.Tensor`."
 
     func: _TorchFunc2
-    left: Thunk[torch.Tensor]
-    right: Thunk[torch.Tensor]
+    left: LazyThunk[torch.Tensor]
+    right: LazyThunk[torch.Tensor]
 
     def __call__(self) -> torch.Tensor:
         return self.func(self.left(), self.right())
@@ -136,7 +136,9 @@ class TensorUFuncN(UFunc[torch.Tensor]):
     def __call__(self, item: cabc.Sequence[torch.Tensor], /) -> torch.Tensor:
         return self.func(item)
 
-    def thunk(self, item: Thunk[cabc.Sequence[torch.Tensor]], /) -> Thunk[torch.Tensor]:
+    def thunk(
+        self, item: LazyThunk[cabc.Sequence[torch.Tensor]], /
+    ) -> LazyThunk[torch.Tensor]:
         return TensorUFuncNThunk(self.func, item)
 
     def iter(self, item: Iter[cabc.Sequence[torch.Tensor]], /) -> Iter[torch.Tensor]:
@@ -148,11 +150,11 @@ class TensorUFuncN(UFunc[torch.Tensor]):
 
 
 @dcls.dataclass
-class TensorUFuncNThunk(Thunk[torch.Tensor]):
+class TensorUFuncNThunk(LazyThunk[torch.Tensor]):
     "The thunk type for `(torch.Tensor) -> torch.Tensor`."
 
     func: _TorchFuncN
-    inputs: Thunk[cabc.Sequence[torch.Tensor]]
+    inputs: LazyThunk[cabc.Sequence[torch.Tensor]]
 
     def __call__(self) -> torch.Tensor:
         return self.func(self.inputs())

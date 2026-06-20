@@ -6,8 +6,8 @@ from torch import nn
 
 from aioway.modes import NnInitThunk
 
-from .iters import NnLayerIter
 from .modules import NnInit, nn_init_dcls
+from .ufuncs import NnLayerUFunc
 
 __all__ = ["Sequential"]
 
@@ -23,7 +23,7 @@ class Sequential(NnInit):
     """
 
     NN = nn.Sequential
-    HOP = NnLayerIter
+    UFUNC = NnLayerUFunc
 
     modules: tuple[nn.Module, ...]
     """

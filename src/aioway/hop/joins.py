@@ -8,12 +8,12 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway._core import BoundedIter, TdictIter, iter_dcls
+from aioway._core import BoundedIter, TdictIter, node_dcls
 
 __all__ = ["ZipIter", "NestedLoopJoinIter"]
 
 
-@iter_dcls
+@node_dcls
 class ZipIter(TdictIter):
     """
     `ZipStream` is similar to what `zip` does.
@@ -40,7 +40,7 @@ class ZipIter(TdictIter):
             yield td.merge_tensordicts(left_batch, right_batch)
 
 
-@iter_dcls
+@node_dcls
 class NestedLoopJoinIter(TdictIter):
     """
     This is a stream that combines 2 input streams in a nested-loop matter,

@@ -10,7 +10,7 @@ import tensordict as td
 import torch
 from torch.utils import data
 
-from aioway._core import Iter, TdictIter, TensorIter, iter_dcls
+from aioway._core import Iter, TdictIter, TensorIter, node_dcls
 from aioway._utils import HasLen
 
 __all__ = ["LoaderOpt", "LoaderIter", "TensorLoaderIter", "TdictLoaderIter"]
@@ -35,7 +35,7 @@ class LoaderOpt:
     "How to sample in case when want to shuffle."
 
 
-@iter_dcls
+@node_dcls
 class LoaderIter[T = typing.Any](Iter[T]):
     """
     A `Iter` backed by a `torch` `DataLoader`.
@@ -76,14 +76,14 @@ class LoaderIter[T = typing.Any](Iter[T]):
         return data.DataLoader(self.dset, **dcls.asdict(self.opts))
 
 
-@iter_dcls
+@node_dcls
 class TensorLoaderIter(LoaderIter[torch.Tensor], TensorIter):
     """
     A `Iter` to load `torch.Tensor`.
     """
 
 
-@iter_dcls
+@node_dcls
 class TdictLoaderIter(LoaderIter[td.TensorDict], TdictIter):
     """
     A `Iter` to load `td.TensorDict`.

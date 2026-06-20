@@ -5,8 +5,8 @@ from .containers import *
 from .dense import *
 from .dropouts import *
 from .embs import *
-from .iters import *
 from .losses import *
 from .modules import *
 from .norms import *
 from .sliding import *
+from .ufuncs import *

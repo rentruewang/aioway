@@ -10,13 +10,13 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway._core import TdictIter, iter_dcls
+from aioway._core import TdictIter, node_dcls
 from aioway._utils import tdict_rename
 
 __all__ = ["MapIter", "ApplyIter", "FuncFilterIter", "RenameIter"]
 
 
-@iter_dcls
+@node_dcls
 class MapIter(TdictIter, abc.ABC):
     """
     The shared base class for all the `map` like `Iter`s,
@@ -75,7 +75,7 @@ class MapIter(TdictIter, abc.ABC):
             yield batch
 
 
-@iter_dcls
+@node_dcls
 class ApplyIter(MapIter):
     """
     A `Iter` that you can customize what the `__next__` function do.
@@ -99,7 +99,7 @@ class ApplyIter(MapIter):
         return self.apply(batch)
 
 
-@iter_dcls
+@node_dcls
 class FuncFilterIter(MapIter):
     """
     A `Iter` that filteres on its inputs, based on a preducate function.
@@ -132,7 +132,7 @@ class FuncFilterIter(MapIter):
         return result
 
 
-@iter_dcls
+@node_dcls
 class RenameIter(MapIter):
     """
     Renames some columns in the inputs in the outputs.
