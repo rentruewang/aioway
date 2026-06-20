@@ -7,7 +7,7 @@ import contextlib as ctxl
 import typing
 from collections import abc as cabc
 
-from aioway._core import sample_mode
+from aioway._core import sample_mode, current_sample_mode
 from aioway._utils import (
     AnyDict,
     torch_fake_mode,
@@ -68,6 +68,10 @@ class SampleIterProc[T = typing.Any](IterProc[T]):
     Calls the `Iter.sample` method, which returns a fake output.
     This is invoked when `sample_mode` is on.
     """
+
+    def __init__(self, iterable: Iter) -> None:
+        super().__init__(iterable)
+        assert current_sample_mode()
 
     def __iter__(self):
         return self
