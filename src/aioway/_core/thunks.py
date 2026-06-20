@@ -7,7 +7,7 @@ import logging
 import typing
 from collections import abc as cabc
 
-from aioway._utils import render_fcall, find_nested_tensors
+from aioway._utils import find_nested_tensors, render_fcall
 
 __all__ = ["Thunk", "AnyThunk", "TensorThunk"]
 
