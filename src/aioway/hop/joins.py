@@ -8,7 +8,7 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway._core import BoundedIter, TdictIter, node_dcls
+from aioway._core import IndexibleIter, TdictIter, node_dcls
 
 __all__ = ["ZipIter", "NestedLoopJoinIter"]
 
@@ -54,7 +54,7 @@ class NestedLoopJoinIter(TdictIter):
     LHS is a normal stream. Will only be iterated over once.
     """
 
-    right: BoundedIter
+    right: IndexibleIter
     """
     RHS is a `Stream` supporting index access, thus requiring materialization.
     """

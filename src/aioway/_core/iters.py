@@ -3,6 +3,7 @@
 "The iterator class."
 
 import abc
+import contextlib as ctxl
 import copy
 import typing
 from collections import abc as cabc
@@ -18,7 +19,38 @@ from .nodes import GraphNode, node_dcls
 if typing.TYPE_CHECKING:
     from .procs import IterProc
 
-__all__ = ["Iter", "TensorIter", "TdictIter", "ListIter", "BoundedIter"]
+__all__ = [
+    "Iter",
+    "TensorIter",
+    "TdictIter",
+    "ListIter",
+    "IndexibleIter",
+    "sample_mode",
+    "current_sample_mode",
+]
+
+_sample_mode: bool = False
+"Whether or not `Iter` is using fake data."
+
+
+@ctxl.contextmanager
+def sample_mode(to: bool = True):
+    """
+    Set sample mode to the given value.
+    """
+
+    global _sample_mode
+    before = _sample_mode
+    _sample_mode = to
+    try:
+        yield
+    finally:
+        _sample_mode = before
+
+
+def current_sample_mode():
+    "Get the current sample mode."
+    return _sample_mode
 
 
 class Iter[T](cabc.Iterable[T], GraphNode["Iter"], abc.ABC):
@@ -36,9 +68,15 @@ class Iter[T](cabc.Iterable[T], GraphNode["Iter"], abc.ABC):
     @typing.final
     def __iter__(self) -> IterProc[T]:
         # Every iteration should yield a new `Iterator`.
-        from .procs import IterProc
+        from .procs import CacheIterProc, SampleIterProc
 
-        return IterProc(self)
+        # If `sample_mode` is on, use the `.sample()` method.
+        if _sample_mode:
+            return SampleIterProc(self)
+
+        # Else yield from the `.iterate()` method.
+        else:
+            return CacheIterProc(self)
 
     @abc.abstractmethod
     def iterate(self) -> cabc.Iterator[T]:
@@ -170,7 +208,7 @@ class ListIter[T = typing.Any](Iter[cabc.Sequence[T]]):
 
 
 @node_dcls
-class BoundedIter(TdictIter, abc.ABC):
+class IndexibleIter(TdictIter, abc.ABC):
     """
     A stream with `__len__` and `__getitem__`.
     """

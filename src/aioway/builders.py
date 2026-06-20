@@ -9,7 +9,7 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway._core import BoundedIter, Iter, ListIter, TdictIter, TensorIter
+from aioway._core import IndexibleIter, Iter, ListIter, TdictIter, TensorIter
 from aioway.hop import (
     ApplyIter,
     ColumnViewIter,
@@ -98,7 +98,7 @@ class TdictBuilder(Builder):
         return type(self)(RenameIter(self.hop, renames))
 
     def join(self, right: TdictBuilder, on: str) -> typing.Self:
-        if not isinstance(right.hop, BoundedIter):
+        if not isinstance(right.hop, IndexibleIter):
             raise TypeError(f"{right.hop=} must be bounded.")
 
         return type(self)(NestedLoopJoinIter(self.hop, right.hop, key=on))
