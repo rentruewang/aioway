@@ -12,7 +12,7 @@ from aioway._core import Iter
 from aioway._utils import dcls_asdict, render_fcall
 from aioway.modes import NnInitThunk
 
-from .hop import NnIter
+from .iters import NnIter
 
 __all__ = ["NnInit", "nn_init_dcls", "find_nn_init", "build_nn_hop"]
 

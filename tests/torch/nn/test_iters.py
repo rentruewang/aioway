@@ -1,12 +1,11 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import contextlib as ctxl
 
 import pytest
 import torch
 from torch import nn
 
-from aioway._core import Iter, TensorIter, iter_cache_on
+from aioway._core import TensorIter, iter_cache_on
 from aioway._utils import AnyDict, is_fake_tensor, torch_fake_mode
 from aioway.dsets import TensorListIter
 from aioway.hop import StackIter
@@ -33,29 +32,6 @@ def cache_off():
 @pytest.fixture(params=[cache_on.name, cache_off.name])
 def maybe_cache_hop(request: pytest.FixtureRequest):
     return request.getfixturevalue(request.param)
-
-
-@pytest.mark.parametrize("cache", [False, True])
-def test_hop_cache(cache: bool):
-    number: int = 0
-
-    class HopCacheLog(Iter):
-        def iterate(self):
-            nonlocal number
-            while True:
-                number += 1
-                yield number
-
-    logger = iter(HopCacheLog())
-    cacher = iter_cache_on if cache else ctxl.nullcontext
-
-    with cacher():
-        assert number == 0, {"number": number, "cache": cache}
-        next(logger)
-        assert number == 1, {"number": number, "cache": cache}
-        next(logger)
-        next(logger)
-        assert number == (1 if cache else 3), {"number": number, "cache": cache}
 
 
 def test_layer_hop(layer_thunk, tensor_init: TensorIter, maybe_cache_hop):

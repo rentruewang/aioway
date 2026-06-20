@@ -9,7 +9,7 @@ from torch import nn
 
 from aioway._utils import is_tuple_of
 
-from .hop import NnLayerIter
+from .iters import NnLayerIter
 from .modules import NnInit, nn_init_dcls
 
 __all__ = [

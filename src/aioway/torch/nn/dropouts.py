@@ -4,7 +4,7 @@ import typing
 
 from torch import nn
 
-from .hop import NnLayerIter
+from .iters import NnLayerIter
 from .modules import NnInit, nn_init_dcls
 
 __all__ = ["Dropout", "Dropout1d", "Dropout2d", "Dropout3d"]

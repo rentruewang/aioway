@@ -4,7 +4,7 @@ import typing
 
 from torch import nn
 
-from .hop import NnLossIter
+from .iters import NnLossIter
 from .modules import NnInit, nn_init_dcls
 
 __all__ = [
