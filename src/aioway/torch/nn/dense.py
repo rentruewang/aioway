@@ -2,8 +2,8 @@
 
 from torch import nn
 
-from .iters import NnLayerIter
 from .modules import NnInit, nn_init_dcls
+from .ufuncs import NnLayerIter
 
 __all__ = ["Identity", "Linear", "Bilinear"]
 

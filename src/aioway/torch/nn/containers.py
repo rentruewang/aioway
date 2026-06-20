@@ -6,8 +6,8 @@ from torch import nn
 
 from aioway.modes import NnInitThunk
 
-from .iters import NnLayerIter
 from .modules import NnInit, nn_init_dcls
+from .ufuncs import NnLayerIter
 
 __all__ = ["Sequential"]
 

@@ -9,8 +9,8 @@ from torch import nn
 
 from aioway._utils import is_tuple_of
 
-from .iters import NnLayerIter
 from .modules import NnInit, nn_init_dcls
+from .ufuncs import NnLayerIter
 
 __all__ = [
     "Conv1d",

@@ -12,7 +12,7 @@ from aioway._core import Iter
 from aioway._utils import dcls_asdict, render_fcall
 from aioway.modes import NnInitThunk
 
-from .iters import NnIter
+from .ufuncs import NnIter
 
 __all__ = ["NnInit", "nn_init_dcls", "find_nn_init", "build_nn_hop"]
 
@@ -34,7 +34,7 @@ class NnInit(abc.ABC):
     It provides metadata as to what `nn.Module` arguments are valid or not.
     """
 
-    NN: typing.ClassVar[cabc.Callable[..., nn.Module]] = NotImplemented
+    NN: typing.ClassVar[type[nn.Module]] = NotImplemented
     HOP: typing.ClassVar[cabc.Callable[..., NnIter]] = NotImplemented
 
     def __init_subclass__(cls) -> None:

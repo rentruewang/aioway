@@ -6,12 +6,62 @@ import typing
 
 from torch import nn
 
-from aioway._core import TensorIter, iter_dcls
+from aioway._core import (
+    TensorIter,
+    Thunk,
+    UFunc,
+    iter_dcls,
+)
 
 if typing.TYPE_CHECKING:
     from aioway.torch.nn import NnInit
 
 __all__ = ["NnIter", "NnLayerIter", "NnLossIter"]
+
+
+class BaseNnUFunc(UFunc, abc.ABC):
+    def __init__(self, init: NnInit, module: nn.Module) -> None:
+        self._init = init
+        self._module = module
+
+        self._validate()
+
+    @property
+    def module(self) -> nn.Module:
+        return self._module
+
+    @property
+    def nn_init(self) -> NnInit:
+        return self._init
+
+    @abc.abstractmethod
+    def _validate(self) -> None:
+        raise NotImplementedError
+
+
+class NnLossUFunc(BaseNnUFunc):
+    @typing.override
+    def _validate(self):
+        from .losses import BaseLoss
+
+        assert isinstance(self.nn_init, BaseLoss)
+        assert isinstance(self.module, self.nn_init.NN)
+
+
+@dcls.dataclass
+class NnLossThunk(Thunk):
+    module: nn.Module
+    input: Thunk
+    target: Thunk
+
+
+class NnLayerUFunc(BaseNnUFunc):
+    @typing.override
+    def _validate(self):
+        from .losses import BaseLoss
+
+        assert not isinstance(self.nn_init, BaseLoss)
+        assert isinstance(self.module, self.nn_init.NN)
 
 
 @iter_dcls

@@ -4,8 +4,8 @@ import typing
 
 from torch import nn
 
-from .iters import NnLossIter
 from .modules import NnInit, nn_init_dcls
+from .ufuncs import NnLossIter
 
 __all__ = [
     "BaseLoss",

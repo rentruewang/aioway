@@ -4,8 +4,8 @@ import typing
 
 from torch import nn
 
-from .iters import NnLayerIter
 from .modules import NnInit, nn_init_dcls
+from .ufuncs import NnLayerIter
 
 __all__ = ["Dropout", "Dropout1d", "Dropout2d", "Dropout3d"]
 
