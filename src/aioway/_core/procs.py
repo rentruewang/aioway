@@ -1,13 +1,16 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"The iterator for `Iter`."
+"The iterator processor."
 
 import contextlib as ctxl
 import typing
 from collections import abc as cabc
 
-from aioway._core import Iter
-from aioway._utils import AnyDict
+from aioway._utils import (
+    AnyDict,
+)
+
+from .iters import Iter
 
 __all__ = ["IterProc", "iter_cache", "iter_cache_on"]
 

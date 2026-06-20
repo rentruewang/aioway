@@ -4,6 +4,7 @@
 
 from .graphs import *
 from .iters import *
+from .procs import *
 from .tensors import *
 from .thunks import *
 from .ufuncs import *
