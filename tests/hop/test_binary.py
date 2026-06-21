@@ -99,6 +99,16 @@ def test_join_input_len(
     assert binary_stream.size == lhs_stream.size * rhs_stream.size
 
 
+@pytest.mark.parametrize("binary_stream", [_join_builder], indirect=True)
+def test_dag_stages(
+    binary_stream: TdictIter,
+    lhs_stream: TdictIter,
+    rhs_stream: TdictListIter,
+):
+    assert len(binary_stream.dag_stages(bool)) == 3
+    assert len(binary_stream.dag_stages(lambda _: False)) == 1
+
+
 @pytest.mark.parametrize(
     "to_slice",
     [
