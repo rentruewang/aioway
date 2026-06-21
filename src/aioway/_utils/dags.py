@@ -2,11 +2,15 @@
 
 "Simple dag utilites."
 
+from .types import AnyDict
+
 import graphlib
 import typing
 from collections import abc as cabc
 
 __all__ = ["DagNodeKey", "dag_node_key", "topo_sort"]
+
+type DagLike[T] = cabc.Iterable[DagNodeKeyLike[T]] | dict[T, cabc.Iterable[T]]
 
 
 @typing.runtime_checkable
@@ -50,6 +54,12 @@ def _as_dag_nodes[T](
         yield DagNodeKey(key=key, deps=list(deps))
 
 
+def graph_to_dag_nodes[T](graph: DagLike[T], /) -> list[DagNodeKey[T]]:
+    "Convert the `graph` to a `list[DagNodeKey[T]]`."
+
+    return list(_as_dag_nodes(graph))
+
+
 def dag_node_key(node: DagNode) -> DagNodeKey:
     if not isinstance(node, DagNode):
         raise TypeError(f"{type(node)=} does not conform to the `DagNode` API.")
@@ -57,16 +67,14 @@ def dag_node_key(node: DagNode) -> DagNodeKey:
     return DagNodeKey(key=node, deps=list(node.deps()))
 
 
-def topo_sort[T](
-    graph: cabc.Iterable[DagNodeKeyLike[T]] | dict[T, cabc.Iterable[T]], /
-) -> list[T]:
+def topo_sort[T](graph: DagLike[T], /) -> list[T]:
     """
     Create a topological sorted list from the given `graph`.
     Uses `TopologicalSorter` under the hood.
     Used this instead of `TopologicalSorter` when data is not `Hashable`.
     """
 
-    node_list = list(_as_dag_nodes(graph))
+    node_list: list[DagNodeKey[T]] = graph_to_dag_nodes(graph)
     deref = _validate_graph_ids(node_list)
 
     sortable_graph = {

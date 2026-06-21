@@ -2,6 +2,10 @@
 
 "Metadata for torch operators / functions."
 
+import collections
+
+from networkx import reverse
+
 import abc
 import dataclasses as dcls
 import textwrap
@@ -99,6 +103,48 @@ class GraphNode[T: GraphNode = typing.Any](abc.ABC):
 
         dag_nodes = [dag_node_key(node) for node in self.nodes()]
         return topo_sort(dag_nodes)
+
+    def dag_stages(
+        self, boundary: cabc.Callable[[GraphNode], bool]
+    ) -> list[list[GraphNode]]:
+        dag = self.dag()
+        stage_groups: list[int] = [-1] * len(dag)
+        node_idx = AnyDict(GraphNode)
+
+        for idx, node in enumerate(dag):
+            node_idx[node] = idx
+
+        # DFS and set the stages node.
+        def _dfs_node(idx: int, group: int) -> None:
+            # The stage is already set.
+            if stage_groups[idx] >= 0:
+                return
+
+            node = dag[idx]
+            stage_groups[idx] = group
+            for dep in node.deps():
+                # If the previous dependency is a boundary, stop.
+                if boundary(dep):
+                    continue
+
+                dep_idx = node_idx[dep]
+                _dfs_node(dep_idx, group)
+
+        # Set the stage by backtracking from output nodes (last index of the same stage).
+        for idx in reversed(range(len(dag))):
+            _dfs_node(idx, idx)
+
+        # From list[stage] to dict[stage, list[node]].
+        stages: dict[int, list[GraphNode]] = collections.defaultdict(list)
+        for idx, stage in enumerate(stage_groups):
+            stages[stage].append(dag[idx])
+
+        # To list result.
+        result: list[list[GraphNode]] = []
+        for key in sorted(stages):
+            result.append(stages[key])
+
+        return result
 
     def replace(
         self,
