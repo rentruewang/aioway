@@ -18,19 +18,26 @@ class Env[O = typing.Any, A = typing.Any](abc.ABC):
     The constructor takes the observation space and the action space.
     """
 
-    def __init__(self, obs: Space, act: Space) -> None:
-        self._obs = obs
-        self._act = act
+    def __init__(self, observation_space: Space, action_space: Space) -> None:
+        self._observation_space = observation_space
+        self._action_space = action_space
 
     def __call__(self) -> cabc.Generator[O, A, None]:
-        for observation in self.interact():
-            if observation not in self._obs:
+        for observation in self.generator():
+            if observation not in self._observation_space:
                 raise ValueError
 
             action = yield observation
 
-            if action not in self._act:
+            if action not in self._action_space:
                 raise ValueError
+
+    def generator(self) -> EnvGen[O, A, None]:
+        return EnvGen(
+            observation_space=self._observation_space,
+            action_space=self._action_space,
+            generator=self.interact(),
+        )
 
     @abc.abstractmethod
     def interact(self) -> cabc.Generator[O, A, None]:
@@ -44,7 +51,7 @@ class Env[O = typing.Any, A = typing.Any](abc.ABC):
 
 class EnvGen[Y, S, R](cabc.Generator[Y, S, R]):
     """
-    The environment generator.
+    The environment generator, performing checks while implementing the generator protocol.
     """
 
     def __init__(
