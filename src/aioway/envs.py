@@ -1,10 +1,13 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import abc
+import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
 from .spaces import Space
+
+__all__ = ["Env", "EnvGen"]
 
 
 class Env[O = typing.Any, A = typing.Any](abc.ABC):
@@ -49,42 +52,37 @@ class Env[O = typing.Any, A = typing.Any](abc.ABC):
         raise NotImplementedError
 
 
+@dcls.dataclass(frozen=True)
 class EnvGen[Y, S, R](cabc.Generator[Y, S, R]):
     """
     The environment generator, performing checks while implementing the generator protocol.
     """
 
-    def __init__(
-        self,
-        observation_space: Space,
-        action_space: Space,
-        generator: cabc.Generator[Y, S, R],
-    ) -> None:
-        self._observation_space = observation_space
-        self._action_space = action_space
-        self._generator = generator
+    observation_space: Space
+    action_space: Space
+    generator: cabc.Generator[Y, S, R]
 
     def __iter__(self) -> typing.Self:
         return self
 
     def __next__(self) -> Y:
-        observation = next(self._generator)
+        observation = next(self.generator)
         self._check_observation(observation)
         return observation
 
-    def send(self, action: S) -> Y:
+    def send(self, action: S, /) -> Y:
         self._check_action(action)
-        observation = self._generator.send(action)
+        observation = self.generator.send(action)
         self._check_observation(observation)
         return observation
 
     def throw(self, typ, val=None, tb=None) -> Y:
-        return self._generator.throw(typ, val, tb)
+        return self.generator.throw(typ, val, tb)
 
     def _check_observation(self, observation: Y, /) -> None:
-        if observation not in self._observation_space:
+        if observation not in self.observation_space:
             raise ValueError
 
     def _check_action(self, action: S, /) -> None:
-        if action not in self._action_space:
+        if action not in self.action_space:
             raise ValueError
