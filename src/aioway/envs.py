@@ -1,0 +1,83 @@
+# Copyright (c) AIoWay Authors - All Rights Reserved
+
+import abc
+import typing
+from collections import abc as cabc
+
+from .spaces import Space
+
+
+class Env[O = typing.Any, A = typing.Any](abc.ABC):
+    """
+    An environment accepts actions (outputs from the models),
+    and outputs observations (inputs to the models).
+
+    It's the environemnt in RL, but adapted to also work with supervised learning etc,
+    by using the `Generator` abstraction (using `.send` to interact).
+
+    The constructor takes the observation space and the action space.
+    """
+
+    def __init__(self, obs: Space, act: Space) -> None:
+        self._obs = obs
+        self._act = act
+
+    def __call__(self) -> cabc.Generator[O, A, None]:
+        for observation in self.interact():
+            if observation not in self._obs:
+                raise ValueError
+
+            action = yield observation
+
+            if action not in self._act:
+                raise ValueError
+
+    @abc.abstractmethod
+    def interact(self) -> cabc.Generator[O, A, None]:
+        """
+        Yields a generator that can accept actions from the agents,
+        or ignores them (`action = yield observation`).
+        """
+
+        raise NotImplementedError
+
+
+class EnvGen[Y, S, R](cabc.Generator[Y, S, R]):
+    """
+    The environment generator.
+    """
+
+    def __init__(
+        self,
+        observation_space: Space,
+        action_space: Space,
+        generator: cabc.Generator[Y, S, R],
+    ) -> None:
+        self._observation_space = observation_space
+        self._action_space = action_space
+        self._generator = generator
+
+    def __iter__(self) -> typing.Self:
+        return self
+
+    def __next__(self) -> Y:
+        observation = next(self._generator)
+        self._check_observation(observation)
+        return observation
+
+    def send(self, action: S) -> Y:
+        self._check_action(action)
+        observation = self._generator.send(action)
+        self._check_observation(observation)
+        return observation
+
+    def throw(self, typ, val=None, tb=None) -> Y:
+        return self._generator.throw(typ, val, tb)
+
+    def _check_observation(self, observation: Y, /) -> None:
+        if observation not in self._observation_space:
+            raise ValueError
+
+    def _check_action(self, action: S, /) -> None:
+        if action not in self._action_space:
+            raise ValueError
