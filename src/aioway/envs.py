@@ -30,7 +30,7 @@ class Env[O = typing.Any, A = typing.Any](abc.ABC):
 
     def generator(self) -> EnvGen[O, A, None]:
         """
-        Wrap the generator while
+        Wrap the generator, check all its observations and actions.
         """
 
         return EnvGen(
@@ -57,7 +57,7 @@ class EnvGen[Y, S, R](cabc.Generator[Y, S, R]):
 
     observation_space: Space
     action_space: Space
-    generator: cabc.Generator[Y, S, R]
+    generator: cabc.Generator[Y, S, R] = dcls.field(repr=False)
 
     def __iter__(self) -> typing.Self:
         return self
