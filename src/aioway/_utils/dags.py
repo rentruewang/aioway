@@ -2,8 +2,6 @@
 
 "Simple dag utilites."
 
-from .types import AnyDict
-
 import graphlib
 import typing
 from collections import abc as cabc

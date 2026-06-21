@@ -2,11 +2,8 @@
 
 "Metadata for torch operators / functions."
 
-import collections
-
-from networkx import reverse
-
 import abc
+import collections
 import dataclasses as dcls
 import textwrap
 import typing
