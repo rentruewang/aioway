@@ -58,6 +58,11 @@ class NnInit(abc.ABC):
     def __call__(self) -> nn.Module:
         return self.init_nn()
 
+    @property
+    def ufunc(self) -> NnUFunc:
+        nn_module = self.init_nn()
+        return self.UFUNC(self, nn_module)
+
     def init_nn(self) -> nn.Module:
         thunk = NnInitThunk(func=self.NN, **dcls_asdict(self))
         return thunk()
@@ -67,8 +72,7 @@ class NnInit(abc.ABC):
         Builds a high level operator with the given `NN` and `HOP` runtime class.
         """
 
-        nn_module = self.init_nn()
-        return self.UFUNC(self, nn_module).iter(*args, **kwargs)
+        return self.ufunc.iter(*args, **kwargs)
 
 
 def find_nn_init(thunk: NnInitThunk, /) -> NnInit | None:

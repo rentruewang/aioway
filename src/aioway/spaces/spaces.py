@@ -29,19 +29,10 @@ def space_dcls[T](cls: type[Space[T]]):
 @space_dcls
 class Space[T = typing.Any](abc.ABC):
     """
-    The base class for tags. A tag describes a `torch.Tensor`,
-    and is piggybacked onto the tensor to pass around `torch` APIs.
+    The base class for spaces. A space describes an input or output,
+    and is inspired by `gymnasium`'s `Space` class.
 
     It is also a filtering system.
-
-    Each tag type (subclass) defines a tag name `cls.TAG`,
-    corresponding to the attribute name it is set on the tensor.
-
-    This means each tensor would have 1 tag of the same type,
-    multiple tags would have multiple types. Therefore, an instance of tag
-    is expected to fully describe a tensor in that tag's expertise.
-    For example, a tag about batch dimensino should describe all dimensions at once,
-    because that tag type can only have a singleton on each tensor.
     """
 
     def __contains__(self, value: T, /) -> bool:
@@ -120,8 +111,7 @@ class TdictSpace(Space[td.TensorDict]):
 @space_dcls
 class SpaceList[T = typing.Any](Space[T]):
     """
-    The tags stored on an object can be extracted into a `TagDict`,
-    which supports both fast lookup and conveniently unpacks to only `Space`s.
+    A `SpaceList` describes a list of `Space`s.
     """
 
     spaces: cabc.Sequence[Space[T]] = ()

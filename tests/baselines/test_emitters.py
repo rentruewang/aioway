@@ -3,20 +3,25 @@
 import typing
 
 import pytest
-from torch import nn, optim
+from torch import optim
 
-from aioway._core import ListIter, TensorIter
-from aioway.compilers import JustLinearEmitter
+from aioway._core import TensorIter, UFunc
+from aioway.baselines import emit
 from aioway.dsets import TensorListIter, TensorStream
 from aioway.hop import LoaderOpt
 from aioway.spaces import Attr, AttrSpace, Shape, ShapeSpace
-from aioway.torch.nn import Linear, MSELoss, NnLayerIter
+from aioway.torch.nn import Linear, MSELoss, NnUFunc
 from aioway.torch.optim import OptimizerIter
 
 
 @pytest.fixture
-def input_space():
-    return AttrSpace.from_attr(Attr.build(dtype="float", shape=[3, 4, 5]))
+def input_shape_space():
+    return ShapeSpace(Shape.parse(3, 4, 6))
+
+
+@pytest.fixture
+def input_attr_space(input_shape_space: ShapeSpace):
+    return AttrSpace.from_attr(Attr.build(dtype="float", shape=input_shape_space.shape))
 
 
 @pytest.fixture
@@ -25,11 +30,11 @@ def output_space():
 
 
 @pytest.fixture
-def input_dataset(input_space: AttrSpace):
+def input_dataset(input_attr_space: AttrSpace):
     class FakeInputDset(TensorStream):
         def __call__(self, *_):
             return TensorListIter(
-                [input_space.to_attr().to_fake_tensor().requires_grad_()]
+                [input_attr_space.to_attr().to_fake_tensor().requires_grad_()]
             )
 
         @typing.override
@@ -58,19 +63,28 @@ def optimizer(input_hop: TensorListIter, target_hop: TensorIter):
     return OptimizerIter(loss=loss, optimizer=opt)
 
 
-def test_just_linear(input_hop: TensorIter, output_space: ShapeSpace):
-    builder = JustLinearEmitter(input_hop, output_space)
-    built = builder()
-    [tensor_node, linear_node, list_node] = built.dag()
-    assert isinstance(linear_node, NnLayerIter)
-    assert isinstance(linear_node.module, nn.Linear)
-    assert isinstance(linear_node.nn_init, Linear)
-    assert isinstance(tensor_node, TensorIter)
-    assert isinstance(list_node, ListIter)
-    assert linear_node.nn_init.in_features == 5
-    assert linear_node.nn_init.out_features == 6
+def test_just_linear(input_shape_space: ShapeSpace, output_space: ShapeSpace):
+    linear_found = False
 
-    assert len([node.is_source for node in built.hops])
+    for ufunc in emit(input_shape_space, output_space):
+        assert isinstance(ufunc, UFunc)
+
+        if isinstance(ufunc, NnUFunc):
+            linear_found = True
+            _check_linear(
+                ufunc,
+                in_features=input_shape_space.shape[-1],
+                out_features=output_space.shape[-1],
+            )
+
+    assert linear_found
+
+
+def _check_linear(linear: NnUFunc, in_features: int, out_features: int):
+    assert isinstance(linear, NnUFunc)
+    assert isinstance(linear.nn_init, Linear)
+    assert linear.nn_init.in_features == in_features
+    assert linear.nn_init.out_features == out_features
 
 
 def test_optimize(optimizer: OptimizerIter):

@@ -9,6 +9,7 @@ from .thunks import LazyThunk
 __all__ = ["UFunc"]
 
 
+@typing.runtime_checkable
 class UFunc[T = typing.Any](typing.Protocol):
     """
     `UFunc`, inspired by `numpy`, stands for universal functions,
