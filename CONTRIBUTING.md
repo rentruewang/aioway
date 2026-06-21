@@ -1,5 +1,8 @@
 # Contributing
 
+> We do not welcome purely vibe coded PRs.
+> PRs authors should demonstrate deep understanding of the code they wrote before the PR can be merged.
+
 ## Development installation
 
 First, clone and navigate into the project:
