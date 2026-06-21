@@ -16,6 +16,7 @@ from aioway._utils import (
     find_nested_tensors,
     is_leaf_has_grad,
     replace_tensors_with_attr,
+    topo_sort,
 )
 from aioway.spaces import Attr
 
@@ -143,9 +144,7 @@ class HistTensorGraph[T: ModeThunk | HashableTensorInput](Hist):
         "Sort the tensor graph topologically."
 
         graph = self._thunk_graph()
-        topo_sorter = graphlib.TopologicalSorter(graph)
-        topo_sorter.prepare()
-        return list(topo_sorter.static_order())
+        return topo_sort(graph)
 
     def _thunk_graph(self):
         outs = self.output_to_thunk_list

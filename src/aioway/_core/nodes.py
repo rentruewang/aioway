@@ -144,6 +144,10 @@ class GraphNode[T: GraphNode = typing.Any](abc.ABC):
         return render_fcall_str(type(self).__name__, **members)
 
     def explain(self) -> table.Table:
+        """
+        Similar to snowflake's EXPLAIN (they also support DAG).
+        """
+
         tab = table.Table(title="Logical plan")
         tab.add_column("Id")
         tab.add_column("Parents")
