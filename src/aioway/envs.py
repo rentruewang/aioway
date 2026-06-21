@@ -16,7 +16,7 @@ class Env[O = typing.Any, A = typing.Any](abc.ABC):
     and outputs observations (inputs to the models).
 
     It's the environemnt in RL, but adapted to also work with supervised learning etc,
-    by using the `Generator` abstraction (using `.send` to interact).
+    by using the `Generator` abstraction (using `.send` to send actions).
 
     The constructor takes the observation space and the action space.
     """
@@ -26,16 +26,13 @@ class Env[O = typing.Any, A = typing.Any](abc.ABC):
         self._action_space = action_space
 
     def __call__(self) -> cabc.Generator[O, A, None]:
-        for observation in self.generator():
-            if observation not in self._observation_space:
-                raise ValueError
-
-            action = yield observation
-
-            if action not in self._action_space:
-                raise ValueError
+        yield from self.generator()
 
     def generator(self) -> EnvGen[O, A, None]:
+        """
+        Wrap the generator while
+        """
+
         return EnvGen(
             observation_space=self._observation_space,
             action_space=self._action_space,
