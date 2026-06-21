@@ -106,6 +106,7 @@ def test_dag_stages(
     rhs_stream: TdictListIter,
 ):
     assert len(binary_stream.dag_stages(bool)) == 3
+    assert len(binary_stream.dag_stages(lambda _: False)) == 1
 
 
 @pytest.mark.parametrize(
