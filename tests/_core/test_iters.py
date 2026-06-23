@@ -1,14 +1,25 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import contextlib as ctxl
+import dataclasses as dcls
+from collections import abc as cabc
 
 import pytest
 
-from aioway._core import Iter, iter_cache_on
+from aioway._core import Iter, StructIter, iter_cache_on
 
 
 def test_iter_struct():
-    pass
+    @dcls.dataclass
+    class ItemIter[T](Iter[T]):
+        item: T
+
+        def iterate(self) -> cabc.Generator[T]:
+            yield self.item
+
+    iterable = {"hello": ItemIter("world"), "number": ItemIter(3)}
+    result = list(StructIter(iterable))
+    assert result == [{"hello": "world", "number": 3}]
 
 
 @pytest.mark.parametrize("cache", [False, True])

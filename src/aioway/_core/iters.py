@@ -24,6 +24,7 @@ __all__ = [
     "Iter",
     "TensorIter",
     "TdictIter",
+    "StructIter",
     "ListIter",
     "IndexibleIter",
     "sample_mode",
@@ -217,6 +218,8 @@ class _StructIterState:
 
     def next(self, item: object):
         "Get the next item."
+
+        from .procs import IterProc
 
         if not isinstance(item, IterProc):
             return NotImplemented
