@@ -7,18 +7,22 @@ import pytest
 from aioway._core import Iter, iter_cache_on
 
 
+def test_iter_struct():
+    pass
+
+
 @pytest.mark.parametrize("cache", [False, True])
 def test_iter_cache(cache: bool):
     number: int = 0
 
-    class HopCacheLog(Iter):
+    class CacheLogIter(Iter):
         def iterate(self):
             nonlocal number
             while True:
                 number += 1
                 yield number
 
-    logger = iter(HopCacheLog())
+    logger = iter(CacheLogIter())
     cacher = iter_cache_on if cache else ctxl.nullcontext
 
     with cacher():

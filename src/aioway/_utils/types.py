@@ -215,7 +215,7 @@ class AnyDict[K = typing.Any, V = typing.Any](AnySet[K]):
 
     def __getitem__(self, key: K, /) -> V:
         if key not in self:
-            raise KeyError(f"{key=} is not found in `HopDict`.")
+            raise KeyError(f"{key=} is not found in `AnyDict`.")
 
         return self.__vals[id(key)]
 
@@ -229,7 +229,7 @@ class AnyDict[K = typing.Any, V = typing.Any](AnySet[K]):
         self.__assert_same_length()
 
         if key not in self:
-            raise KeyError(f"{key=} is not in `HopDict`.")
+            raise KeyError(f"{key=} is not in `AnyDict`.")
 
         super().discard(key)
         del self.__vals[id(key)]

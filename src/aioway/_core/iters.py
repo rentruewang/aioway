@@ -35,7 +35,7 @@ _sample_mode: bool = False
 
 
 @ctxl.contextmanager
-def sample_mode(to: bool = True):
+def sample_mode(to: bool = True) -> cabc.Generator[None]:
     """
     Set sample mode to the given value.
     """
@@ -100,7 +100,7 @@ class Iter[T](cabc.Iterable[T], GraphNode["Iter"], abc.ABC):
     def rebuild(self):
         """
         Rebuild the current `Iter`. This is useful when you are switching contexts,
-        e.g. switching on real mode after configuring the `HopDag` in fake mode.
+        e.g. switching on real mode after configuring the `Iter` in fake mode.
 
         If `self._rebuild()` is not overwritten, defaults to shallow copying `self`.
         """
@@ -182,7 +182,7 @@ class StructIter[T = typing.Any](Iter[cabc.Sequence[T]]):
 
     struct: typing.Any
     """
-    The hop list that this `HopList` represents.
+    The structure that this `StructList` would decompose and compute the next iterator.
     """
 
     def __repr__(self) -> str:
@@ -230,7 +230,7 @@ class ListIter[T = typing.Any](Iter[cabc.Sequence[T]]):
 
     seqs: cabc.Sequence[Iter[T]]
     """
-    The hop list that this `HopList` represents.
+    The hop list that this `ListIter` represents.
     """
 
     def __repr__(self) -> str:
