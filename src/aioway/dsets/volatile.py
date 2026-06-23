@@ -97,6 +97,5 @@ class TdictListIter(IndexibleIter):
     def sample(self):
         return self.sequence[0]
 
-    def iterate(self):
-        for batch in self.sequence:
-            yield batch
+    def iterate(self) -> cabc.Iterator[td.TensorDict]:
+        yield from self.sequence

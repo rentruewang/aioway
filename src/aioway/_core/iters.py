@@ -5,13 +5,14 @@
 import abc
 import contextlib as ctxl
 import copy
+import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
 import tensordict as td
 import torch
 
-from aioway._utils import decomp_dcls_members, torch_fake_mode
+from aioway._utils import AnySet, decomp_dcls_members, decomp_replace, torch_fake_mode
 from aioway.spaces import Attr, Shape
 
 from .nodes import GraphNode, node_dcls
@@ -172,19 +173,68 @@ class TdictIter(Iter[td.TensorDict], abc.ABC):
 
 
 @node_dcls
-class ListIter[T = typing.Any](Iter[cabc.Sequence[T]]):
-    "A convenient list of `Iter`s, using a pull strategy to pull in the data when called."
+class StructIter[T = typing.Any](Iter[cabc.Sequence[T]]):
+    """
+    An `Iter` that transforms structures of `Iter`s to `Iter` of structures.
 
-    hops: cabc.Sequence[Iter[T]]
+    E.g. `[Iter[int], Iter[int]] -> Iter[[int, int]]`.
+    """
+
+    struct: typing.Any
     """
     The hop list that this `HopList` represents.
     """
 
     def __repr__(self) -> str:
-        return repr(self.hops)
+        return repr(self.struct)
 
-    def __len__(self) -> int:
-        return len(self.hops)
+    @typing.override
+    def iterate(self):
+        state = _StructIterState()
+
+        iterator = decomp_replace(self.struct, state.start)
+
+        while True:
+            try:
+                yield decomp_replace(iterator, state.next)
+            except StopIteration:
+                return
+
+
+@dcls.dataclass
+class _StructIterState:
+    started: AnySet[IterProc] = dcls.field(default_factory=AnySet)
+
+    def start(self, item: object):
+        "Start the iterator and store the started iterators into an `AnySet`."
+
+        if not isinstance(item, Iter):
+            return NotImplemented
+
+        result = iter(item)
+        self.started.add(result)
+        return result
+
+    def next(self, item: object):
+        "Get the next item."
+
+        if not isinstance(item, IterProc):
+            return NotImplemented
+
+        return next(item)
+
+
+@node_dcls
+class ListIter[T = typing.Any](Iter[cabc.Sequence[T]]):
+    "A convenient list of `Iter`s, using a pull strategy to pull in the data when called."
+
+    seqs: cabc.Sequence[Iter[T]]
+    """
+    The hop list that this `HopList` represents.
+    """
+
+    def __repr__(self) -> str:
+        return repr(self.seqs)
 
     @typing.overload
     def __getitem__(self, key: int) -> Iter[T]: ...
@@ -194,16 +244,16 @@ class ListIter[T = typing.Any](Iter[cabc.Sequence[T]]):
 
     def __getitem__(self, key):
         if isinstance(key, int):
-            return self.hops[key]
+            return self.seqs[key]
 
         if isinstance(key, slice):
-            return type(self)(self.hops[key])
+            return type(self)(self.seqs[key])
 
         raise TypeError(f"Don't know how to handle {type(key)=}.")
 
     @typing.override
     def iterate(self):
-        for hops in zip(*self.hops):
+        for hops in zip(*self.seqs):
             yield hops
 
 
