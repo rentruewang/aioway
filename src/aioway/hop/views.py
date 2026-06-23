@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"`HopColumn`s are a column of `Iter`."
+"Columns of `Iter`."
 
 import dataclasses as dcls
 import typing
