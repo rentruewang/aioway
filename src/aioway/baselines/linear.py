@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from aioway._core import UFunc
+from aioway._iters import UFunc
 from aioway.spaces import AttrSpace, ShapeSpace, Space
 from aioway.torch.nn import Linear
 

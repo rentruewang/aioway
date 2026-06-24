@@ -8,7 +8,7 @@ from collections import abc as cabc
 import torch
 from torch import nn
 
-from aioway._core import LazyThunk, TensorIter, UFunc, node_dcls
+from aioway._iters import LazyThunk, TensorIter, UFunc, node_dcls
 
 if typing.TYPE_CHECKING:
     from aioway.torch.nn import NnInit

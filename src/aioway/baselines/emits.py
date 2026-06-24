@@ -4,7 +4,7 @@
 
 from collections import abc as cabc
 
-from aioway._core import UFunc
+from aioway._iters import UFunc
 from aioway.spaces import Space
 
 from .baselines import registered_baselines

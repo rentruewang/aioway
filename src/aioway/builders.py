@@ -9,7 +9,7 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway._core import IndexibleIter, Iter, ListIter, TdictIter, TensorIter
+from aioway._iters import IndexibleIter, Iter, ListIter, TdictIter, TensorIter
 from aioway.indices import AnnIndexTrainerIter, FaissIndex
 from aioway.relalg import (
     ApplyIter,

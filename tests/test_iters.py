@@ -6,7 +6,7 @@ from collections import abc as cabc
 
 import pytest
 
-from aioway._core import Iter, StructIter, iter_cache_on
+from aioway._iters import Iter, StructIter, iter_cache_on
 
 
 def test_iter_struct():

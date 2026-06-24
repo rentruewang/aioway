@@ -5,7 +5,7 @@ import pytest
 import torch
 from torch import nn
 
-from aioway._core import TensorIter, iter_cache_on, sample_mode
+from aioway._iters import TensorIter, iter_cache_on, sample_mode
 from aioway._utils import AnyDict, is_fake_tensor, torch_fake_mode
 from aioway.dsets import TensorListIter
 from aioway.modes import NnInitThunk
