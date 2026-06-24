@@ -10,7 +10,8 @@ from collections import abc as cabc
 
 import torch
 
-from aioway._core import TensorInput, Thunk
+from aioway._iters import TensorInput
+from aioway._thunks import Thunk
 from aioway._utils import (
     find_nested_tensors,
     is_leaf_has_grad,

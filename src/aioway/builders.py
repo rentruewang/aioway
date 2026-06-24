@@ -9,8 +9,9 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway._core import IndexibleIter, Iter, ListIter, TdictIter, TensorIter
-from aioway.hop import (
+from aioway._iters import IndexibleIter, Iter, ListIter, TdictIter, TensorIter
+from aioway.indices import AnnIndexTrainerIter, FaissIndex
+from aioway.relalg import (
     ApplyIter,
     ColumnViewIter,
     FuncFilterIter,
@@ -20,7 +21,6 @@ from aioway.hop import (
     StackIter,
     ZipIter,
 )
-from aioway.indices import AnnIndexTrainerIter, FaissIndex
 from aioway.torch.nn import BaseLoss, NnInit, NnLayerIter, NnLossIter
 
 __all__ = ["Builder"]

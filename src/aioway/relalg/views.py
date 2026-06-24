@@ -9,7 +9,7 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway._core import TdictIter, TensorIter, node_dcls
+from aioway._iters import TdictIter, TensorIter, node_dcls
 
 from .maps import MapIter
 

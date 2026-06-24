@@ -7,9 +7,9 @@ from collections import abc as cabc
 
 import torch
 
-from .iters import Iter
-from .thunks import LazyThunk
-from .ufuncs import UFunc
+from aioway._iters import Iter
+
+from .ufuncs import LazyThunk, UFunc
 
 __all__ = [
     "TensorUFunc1",

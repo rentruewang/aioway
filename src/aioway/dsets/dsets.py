@@ -11,7 +11,7 @@ import tensordict as td
 import torch
 from torch.utils import data
 
-from aioway.hop import LoaderIter, LoaderOpt, TdictLoaderIter, TensorLoaderIter
+from aioway.relalg import LoaderIter, LoaderOpt, TdictLoaderIter, TensorLoaderIter
 
 __all__ = [
     "Dset",

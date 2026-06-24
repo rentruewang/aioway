@@ -163,12 +163,12 @@ class TdictIter(Iter[td.TensorDict], abc.ABC):
     """
 
     def column(self, col: str) -> TensorIter:
-        from aioway.hop.views import ColumnViewIter
+        from aioway.relalg.views import ColumnViewIter
 
         return ColumnViewIter(self, col)
 
     def select(self, *cols: str) -> TdictIter:
-        from aioway.hop.views import ProjectIter
+        from aioway.relalg.views import ProjectIter
 
         return ProjectIter(self, subset=list(cols))
 
