@@ -1,5 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+"`UFunc` implementation for `torch.nn`."
+
 import abc
 import dataclasses as dcls
 import typing
@@ -9,7 +11,7 @@ import torch
 from torch import nn
 
 from aioway._iters import TensorIter, node_dcls
-from aioway._ufuncs import LazyThunk, UFunc
+from aioway._ufuncs import UFunc
 
 if typing.TYPE_CHECKING:
     from aioway.torch.nn import NnInit
@@ -43,7 +45,7 @@ class NnUFunc(UFunc, abc.ABC):
 class NnLossUFunc(NnUFunc):
 
     @typing.override
-    def __call__(self, input: torch.Tensor, target: torch.Tensor, /) -> torch.Tensor:
+    def forward(self, input: torch.Tensor, target: torch.Tensor, /) -> torch.Tensor:
         return self._module(input, target)
 
     @typing.override
@@ -54,31 +56,14 @@ class NnLossUFunc(NnUFunc):
         assert isinstance(self.module, self.nn_init.NN)
 
     @typing.override
-    def thunk(
-        self, input: LazyThunk[torch.Tensor], target: LazyThunk[torch.Tensor], /
-    ) -> LazyThunk[torch.Tensor]:
-        return NnLossThunk(self.module, input, target)
-
-    @typing.override
     def iter(self, input: TensorIter, target: TensorIter) -> NnLossIter:
         return NnLossIter(self.nn_init, self.module, input, target)
 
 
 @typing.final
-@dcls.dataclass
-class NnLossThunk(LazyThunk[torch.Tensor]):
-    module: nn.Module
-    input: LazyThunk
-    target: LazyThunk
-
-    def __call__(self):
-        return self.module(self.input, self.target)
-
-
-@typing.final
 class NnLayerUFunc(NnUFunc):
     @typing.override
-    def __call__(self, input: torch.Tensor, /) -> torch.Tensor:
+    def forward(self, input: torch.Tensor, /) -> torch.Tensor:
         return self._module(input)
 
     @typing.override
@@ -89,22 +74,8 @@ class NnLayerUFunc(NnUFunc):
         assert isinstance(self.module, self.nn_init.NN)
 
     @typing.override
-    def thunk(self, input: LazyThunk[torch.Tensor], /) -> LazyThunk[torch.Tensor]:
-        return NnLayerThunk(self.module, input)
-
-    @typing.override
     def iter(self, input: TensorIter) -> NnLayerIter:
         return NnLayerIter(self.nn_init, self.module, input)
-
-
-@typing.final
-@dcls.dataclass
-class NnLayerThunk(LazyThunk):
-    module: nn.Module
-    input: LazyThunk
-
-    def __call__(self):
-        return self.module(self.input)
 
 
 @node_dcls
