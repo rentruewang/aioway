@@ -201,9 +201,9 @@ class StructIter(Iter[typing.Any]):
         # Inside the structure, call `iter` on all `Iter`s.
         struct_of_iter = decomp_replace(self.struct, start_it)
 
+        # Inside the structure, call `next` on all `IterProc`s, until `StopIteration`.
         while True:
             try:
-                # Inside the structure, call `next` on all `IterProc`s.
                 # Turn on the cache, because the dependencies can still be DAGs.
                 with iter_cache_on():
                     yield decomp_replace(struct_of_iter, next_it)
