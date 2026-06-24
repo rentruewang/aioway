@@ -115,3 +115,7 @@ filterwarnings = [
 testpaths = [
     "tests",
 ]
+
+[tool.coverage.run]
+parallel = true
+concurrency = ["multiprocessing"]
