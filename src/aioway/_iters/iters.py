@@ -5,14 +5,13 @@
 import abc
 import contextlib as ctxl
 import copy
-import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
 import tensordict as td
 import torch
 
-from aioway._utils import AnySet, decomp_dcls_members, decomp_replace, torch_fake_mode
+from aioway._utils import decomp_dcls_members, decomp_replace, torch_fake_mode
 from aioway.spaces import Attr, Shape
 
 from .nodes import GraphNode, node_dcls
@@ -174,7 +173,7 @@ class TdictIter(Iter[td.TensorDict], abc.ABC):
 
 
 @node_dcls
-class StructIter[T = typing.Any](Iter[cabc.Sequence[T]]):
+class StructIter(Iter[typing.Any]):
     """
     An `Iter` that transforms structures of `Iter`s to `Iter` of structures.
 
@@ -191,40 +190,25 @@ class StructIter[T = typing.Any](Iter[cabc.Sequence[T]]):
 
     @typing.override
     def iterate(self):
-        state = _StructIterState()
+        from .procs import IterProc, iter_cache_on
 
-        iterator = decomp_replace(self.struct, state.start)
+        # Start the iterator and store the started iterators into an `AnySet`.
+        start_it = lambda it: (iter(it) if isinstance(it, Iter) else NotImplemented)
 
+        # Get the next item.
+        next_it = lambda it: (next(it) if isinstance(it, IterProc) else NotImplemented)
+
+        # Inside the structure, call `iter` on all `Iter`s.
+        struct_of_iter = decomp_replace(self.struct, start_it)
+
+        # Inside the structure, call `next` on all `IterProc`s, until `StopIteration`.
         while True:
-            try:
-                yield decomp_replace(iterator, state.next)
-            except StopIteration:
-                return
-
-
-@dcls.dataclass
-class _StructIterState:
-    started: AnySet[IterProc] = dcls.field(default_factory=AnySet)
-
-    def start(self, item: object):
-        "Start the iterator and store the started iterators into an `AnySet`."
-
-        if not isinstance(item, Iter):
-            return NotImplemented
-
-        result = iter(item)
-        self.started.add(result)
-        return result
-
-    def next(self, item: object):
-        "Get the next item."
-
-        from .procs import IterProc
-
-        if not isinstance(item, IterProc):
-            return NotImplemented
-
-        return next(item)
+            # Turn on the cache, because the dependencies can still be DAGs.
+            with iter_cache_on():
+                try:
+                    yield decomp_replace(struct_of_iter, next_it)
+                except StopIteration:
+                    return
 
 
 @node_dcls

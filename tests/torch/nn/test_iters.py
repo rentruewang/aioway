@@ -10,7 +10,7 @@ from aioway._utils import AnyDict, is_fake_tensor, torch_fake_mode
 from aioway.dsets import TensorListIter
 from aioway.modes import NnInitThunk
 from aioway.relalg import StackIter
-from aioway.torch.nn import NnLayerIter, NnLossIter, build_nn_hop
+from aioway.torch.nn import NnUFuncThunk, build_nn_iter
 
 
 @pytest.fixture
@@ -43,20 +43,20 @@ def maybe_sample_mode(request: pytest.FixtureRequest):
 def test_layer_hop(
     layer_thunk, tensor_init: TensorIter, maybe_cache_hop, maybe_sample_mode
 ):
-    hop = build_nn_hop(layer_thunk, tensor_init)
-    assert isinstance(hop, NnLayerIter)
-    assert all(isinstance(param, nn.Parameter) for param in hop.parameters())
+    thunk = build_nn_iter(layer_thunk, tensor_init)
+    assert isinstance(thunk, NnUFuncThunk)
+    assert all(isinstance(param, nn.Parameter) for param in thunk.parameters())
 
 
 def test_loss_hop(
     loss_thunk, tensor_init: TensorIter, maybe_cache_hop, maybe_sample_mode
 ):
-    result = build_nn_hop(loss_thunk, tensor_init, tensor_init)
-    assert isinstance(result, NnLossIter)
+    result = build_nn_iter(loss_thunk, tensor_init, tensor_init)
+    assert isinstance(result, NnUFuncThunk)
 
 
 def test_iter_mse(tensor_init: TensorIter, maybe_cache_hop, maybe_sample_mode):
-    result = build_nn_hop(NnInitThunk(nn.MSELoss), tensor_init, tensor_init)
+    result = build_nn_iter(NnInitThunk(nn.MSELoss), tensor_init, tensor_init)
 
     assert result
     out = next(iter(result))
@@ -64,7 +64,7 @@ def test_iter_mse(tensor_init: TensorIter, maybe_cache_hop, maybe_sample_mode):
 
 
 def test_iter_linear(tensor_init: TensorIter, maybe_cache_hop, maybe_sample_mode):
-    linear = build_nn_hop(NnInitThunk(nn.Linear, 30, 31), tensor_init)
+    linear = build_nn_iter(NnInitThunk(nn.Linear, 30, 31), tensor_init)
     assert linear
 
     result = next(iter(linear))
@@ -102,7 +102,7 @@ def test_iter_no_replace_with_function(tensor_init: TensorIter):
 
 def test_iter_linear_rebuild(tensor_init: TensorIter):
     with torch_fake_mode():
-        linear = build_nn_hop(NnInitThunk(nn.Linear, 30, 31), tensor_init)
+        linear = build_nn_iter(NnInitThunk(nn.Linear, 30, 31), tensor_init)
         assert linear
 
         result = next(iter(linear))
