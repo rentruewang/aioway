@@ -6,9 +6,9 @@ import pytest
 from torch import optim
 
 from aioway._iters import TensorIter
-from aioway._ufuncs import UFunc
+from aioway._ufuncs import BuiltUFunc, UFunc
 from aioway.dsets import TensorListIter, TensorStream
-from aioway.emits import emit, linear_shape
+from aioway.emits import MlpEmitter, emit, linear_shape
 from aioway.relalg import LoaderOpt
 from aioway.spaces import Attr, AttrSpace, Shape, ShapeSpace
 from aioway.torch.nn import Linear, MSELoss, NnUFunc
@@ -70,6 +70,12 @@ def consider_linear():
         yield
 
 
+@pytest.fixture
+def consider_mlp():
+    with MlpEmitter([100, 100]).consider():
+        yield
+
+
 def test_just_linear(
     input_shape_space: ShapeSpace, output_space: ShapeSpace, consider_linear
 ):
@@ -87,6 +93,17 @@ def test_just_linear(
             )
 
     assert linear_found
+
+
+def test_mlp_emitter(
+    input_shape_space: ShapeSpace, output_space: ShapeSpace, consider_mlp
+):
+    mlp_found = False
+    for ufunc in emit(input_shape_space, output_space):
+        if isinstance(ufunc, BuiltUFunc):
+            mlp_found = True
+
+    assert mlp_found
 
 
 def _check_linear(linear: NnUFunc, in_features: int, out_features: int):

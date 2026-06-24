@@ -7,11 +7,19 @@ import typing
 from collections import abc as cabc
 
 from aioway._ufuncs import UFunc
+from aioway._utils import AnySet
 from aioway.spaces import Space
 
-__all__ = ["EmitterLike", "Emitter", "FuncEmitter", "emit", "emitters_in_scope"]
+__all__ = [
+    "EmitterLike",
+    "Emitter",
+    "FuncEmitter",
+    "emitter_dcls",
+    "emit",
+    "emitters_in_scope",
+]
 
-_EMITTERS: set[Emitter] = set()
+_EMITTERS: AnySet[Emitter] = AnySet()
 "The emitters that are considered."
 
 
@@ -43,7 +51,7 @@ class EmitterLike(typing.Protocol):
 
 
 @typing.dataclass_transform(frozen_default=True)
-def emitter_dcls(cls):
+def emitter_dcls[T](cls: type[T]) -> type[T]:
     return dcls.dataclass(frozen=True)(cls)
 
 
@@ -72,7 +80,7 @@ class Emitter(EmitterLike, abc.ABC):
         try:
             yield self
         finally:
-            _EMITTERS.remove(self)
+            _EMITTERS.discard(self)
 
 
 @emitter_dcls
@@ -88,6 +96,6 @@ class FuncEmitter(Emitter):
         return self.function(observation_space, action_space)
 
 
-def emitters_in_scope() -> cabc.Set[Emitter]:
+def emitters_in_scope() -> AnySet[Emitter]:
     "The emitters that are alive and in the scope of consideration."
     return _EMITTERS
