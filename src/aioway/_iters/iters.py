@@ -5,14 +5,13 @@
 import abc
 import contextlib as ctxl
 import copy
-import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
 import tensordict as td
 import torch
 
-from aioway._utils import AnySet, decomp_dcls_members, decomp_replace, torch_fake_mode
+from aioway._utils import decomp_dcls_members, decomp_replace, torch_fake_mode
 from aioway.spaces import Attr, Shape
 
 from .nodes import GraphNode, node_dcls
@@ -191,37 +190,23 @@ class StructIter(Iter[typing.Any]):
 
     @typing.override
     def iterate(self):
-        from .procs import iter_cache_on
+        from .procs import IterProc, iter_cache_on
 
-        struct_of_iter = decomp_replace(self.struct, _start_sub_iter)
+        start_it = lambda it: (iter(it) if isinstance(it, Iter) else NotImplemented)
+        "Start the iterator and store the started iterators into an `AnySet`."
+
+        next_it = lambda it: (next(it) if isinstance(it, IterProc) else NotImplemented)
+        "Get the next item."
+
+        struct_of_iter = decomp_replace(self.struct, start_it)
 
         while True:
             try:
                 # Turn on the cache, because the dependencies can still be DAGs.
                 with iter_cache_on():
-                    yield decomp_replace(struct_of_iter, _next_sub_iter)
+                    yield decomp_replace(struct_of_iter, next_it)
             except StopIteration:
                 return
-
-
-def _start_sub_iter(item: object) -> IterProc[typing.Any]:
-    "Start the iterator and store the started iterators into an `AnySet`."
-
-    if not isinstance(item, Iter):
-        return NotImplemented
-
-    return iter(item)
-
-
-def _next_sub_iter(item: object):
-    "Get the next item."
-
-    from .procs import IterProc
-
-    if not isinstance(item, IterProc):
-        return NotImplemented
-
-    return next(item)
 
 
 @node_dcls
