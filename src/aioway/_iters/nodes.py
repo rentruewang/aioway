@@ -163,7 +163,7 @@ class GraphNode[T: GraphNode = typing.Any](abc.ABC):
 
             return function(hop)
 
-        result: typing.Any = decomp_replace(self, maybe_replace, memo=memo)
+        result = decomp_replace(self, maybe_replace, memo=memo)
         assert type(result) == type(self)
         return result
 

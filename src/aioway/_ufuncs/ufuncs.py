@@ -1,10 +1,58 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import abc
+import functools
 import inspect
 import typing
+from collections import abc as cabc
+
+from aioway._utils import decomp_replace, render_fcall
 
 __all__ = ["UFunc"]
+
+
+class UFuncThunk[**P = ..., T = typing.Any]:
+    "The `Thunk` instance for `UFunc`."
+
+    @typing.no_type_check
+    def __init__(
+        self, function: cabc.Callable[P, T], *args: P.args, **kwargs: P.kwargs
+    ):
+        self._function: typing.Any = function
+        self._args: typing.Any = args
+        self._kwargs: typing.Any = kwargs
+
+    def __repr__(self):
+        return render_fcall(self.function, *self.args, **self.kwargs)
+
+    def __call__(self) -> T:
+        def eval_thunk(thunk):
+            """
+            If `UFuncThunk`, evaluate. Else do nothing.
+            """
+
+            if not isinstance(thunk, UFuncThunk):
+                return NotImplemented
+
+            return thunk()
+
+        args = decomp_replace(self.args, eval_thunk)
+        kwargs = decomp_replace(self.kwargs, eval_thunk)
+
+        return self.function(*args, **kwargs)
+
+    @property
+    def function(self) -> cabc.Callable[P, T]:
+        "The function that is wrapped."
+        return self._function
+
+    @property
+    def args(self):
+        return self._args
+
+    @property
+    def kwargs(self):
+        return self._kwargs
 
 
 class UFunc(abc.ABC):
@@ -12,6 +60,9 @@ class UFunc(abc.ABC):
     `UFunc`, inspired by `numpy`, stands for universal functions,
     and are the building blocks of other APIs (like thunks and iters).
     """
+
+    THUNK: typing.ClassVar[type[UFuncThunk]] = UFuncThunk
+    "The thunk class used in the `.thunk` function."
 
     def __str__(self) -> str:
         "Repr is equivalent to object + signature."
@@ -40,14 +91,14 @@ class UFunc(abc.ABC):
     def thunk(self, *args, **kwargs) -> typing.Any:
         "A `UFunc` takes thunks and tranform it into other thunks."
         self._check_signature(*args, **kwargs)
-        raise NotImplementedError
+        return self.THUNK(self.forward, *args, **kwargs)
 
     def iter(self, *args, **kwargs) -> typing.Any:
         "A `UFunc` takes iterators and tranform it into other iterators."
         self._check_signature(*args, **kwargs)
         raise NotImplementedError
 
-    @property
+    @functools.cached_property
     def __signature__(self) -> inspect.Signature:
         "The signature of the `UFunc`."
         return inspect.signature(self.forward)

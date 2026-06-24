@@ -191,7 +191,7 @@ class StructIter[T = typing.Any](Iter[cabc.Sequence[T]]):
 
     @typing.override
     def iterate(self):
-        state = _StructIterState()
+        state = IterGroupState()
 
         iterator = decomp_replace(self.struct, state.start)
 
@@ -203,8 +203,13 @@ class StructIter[T = typing.Any](Iter[cabc.Sequence[T]]):
 
 
 @dcls.dataclass
-class _StructIterState:
+class IterGroupState:
+    """
+    The state for a group of `Iter`s.
+    """
+
     started: AnySet[IterProc] = dcls.field(default_factory=AnySet)
+    "The iterators that have started."
 
     def start(self, item: object):
         "Start the iterator and store the started iterators into an `AnySet`."
