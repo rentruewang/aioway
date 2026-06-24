@@ -25,7 +25,6 @@ __all__ = [
     "TensorIter",
     "TdictIter",
     "StructIter",
-    "IterGroupState",
     "ListIter",
     "IndexibleIter",
     "sample_mode",
@@ -192,45 +191,36 @@ class StructIter(Iter[typing.Any]):
 
     @typing.override
     def iterate(self):
-        state = IterGroupState()
+        from .procs import iter_cache_on
 
-        struct_of_iter = decomp_replace(self.struct, state.start)
+        struct_of_iter = decomp_replace(self.struct, _start_sub_iter)
 
         while True:
             try:
-                yield decomp_replace(struct_of_iter, state.next)
+                with iter_cache_on():
+                    yield decomp_replace(struct_of_iter, _next_sub_iter)
             except StopIteration:
                 return
 
 
-@dcls.dataclass
-class IterGroupState:
-    """
-    The state for a group of `Iter`s.
-    """
+def _start_sub_iter(item: object) -> IterProc[typing.Any]:
+    "Start the iterator and store the started iterators into an `AnySet`."
 
-    started: AnySet[IterProc] = dcls.field(default_factory=AnySet)
-    "The iterators that have started."
+    if not isinstance(item, Iter):
+        return NotImplemented
 
-    def start(self, item: object) -> IterProc[typing.Any]:
-        "Start the iterator and store the started iterators into an `AnySet`."
+    return iter(item)
 
-        if not isinstance(item, Iter):
-            return NotImplemented
 
-        result = iter(item)
-        self.started.add(result)
-        return result
+def _next_sub_iter(item: object):
+    "Get the next item."
 
-    def next(self, item: object):
-        "Get the next item."
+    from .procs import IterProc
 
-        from .procs import IterProc
+    if not isinstance(item, IterProc):
+        return NotImplemented
 
-        if not isinstance(item, IterProc):
-            return NotImplemented
-
-        return next(item)
+    return next(item)
 
 
 @node_dcls
