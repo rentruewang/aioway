@@ -25,8 +25,8 @@ def iter_cache_on() -> cabc.Generator[AnyDict[Iter]]:
     Turn on caching for `Iter`. The cache is re-used in nested `iter_cache_on` blocks.
 
     Returns:
-        A context manager that when activates, intercept all `Iter.__call__` calls,
-        and stores the outputs s.t. second `.__call__()` uses the previous rersult.
+        A context manager that when activates, intercept all `Iter.__next__` calls,
+        and stores the outputs s.t. second `.__next__()` uses the previous rersult.
     """
 
     global _iter_cache
