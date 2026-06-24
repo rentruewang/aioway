@@ -1,7 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import abc
-import functools
 import inspect
 import typing
 from collections import abc as cabc
@@ -88,7 +87,7 @@ class UFunc[**P, T](abc.ABC):
         The signature of it would be checked prior to calling.
         """
 
-        self._check_signature(*args, **kwargs)
+        self.validate_signature(*args, **kwargs)
         return self.forward(*args, **kwargs)
 
     def _repr(self) -> str:
@@ -102,15 +101,15 @@ class UFunc[**P, T](abc.ABC):
 
     def thunk(self, *args, **kwargs) -> typing.Any:
         "A `UFunc` takes thunks and tranform it into other thunks."
-        self._check_signature(*args, **kwargs)
+        self.validate_signature(*args, **kwargs)
         return self.THUNK(self, *args, **kwargs)
 
-    @functools.cached_property
+    @property
     def __signature__(self) -> inspect.Signature:
         "The signature of the `UFunc`."
         return inspect.signature(self.forward)
 
-    def _check_signature(self, *args, **kwargs) -> None:
+    def validate_signature(self, *args, **kwargs) -> None:
         # This only checks the signature names, not types,
         # so it's perfect for our usage, because `__call__`, `thunk`,
         # both share the same signature but with different types.
