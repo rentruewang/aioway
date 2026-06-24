@@ -205,6 +205,7 @@ class StructIter(Iter[typing.Any]):
         while True:
             # Turn on the cache, because the dependencies can still be DAGs.
             with iter_cache_on():
+
                 try:
                     yield decomp_replace(struct_of_iter, next_it)
                 except StopIteration:
