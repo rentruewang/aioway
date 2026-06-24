@@ -21,7 +21,7 @@ from aioway.relalg import (
     StackIter,
     ZipIter,
 )
-from aioway.torch.nn import BaseLoss, NnInit, NnLayerIter, NnLossIter
+from aioway.torch.nn import BaseLoss, NnInit
 
 __all__ = ["Builder"]
 
@@ -33,41 +33,38 @@ def builder_dcls(cls):
 
 @builder_dcls
 class Builder:
-    hop: Iter
+    iterator: Iter
 
     @classmethod
     def from_list(cls, items: cabc.Sequence[typing.Self]):
-        hops = [item.hop for item in items]
+        hops = [item.iterator for item in items]
         return cls(ListIter(hops))
 
 
 @builder_dcls
 class TensorBuilder(Builder):
-    hop: TensorIter
+    iterator: TensorIter
 
     def create_ann_index(self) -> Builder:
         "Create an ANN index builder that trains an index when evaluated."
 
-        shape = self.hop.attr.shape
+        shape = self.iterator.attr.shape
 
         if shape.ndim != 2:
             raise RuntimeError(f"Since {shape} is not 2D, cannot create ANN index.")
 
-        index = FaissIndex(dim=self.hop.attr.shape[-1])
+        index = FaissIndex(dim=self.iterator.attr.shape[-1])
 
-        trainer = AnnIndexTrainerIter(index, self.hop)
+        trainer = AnnIndexTrainerIter(index, self.iterator)
         return Builder(trainer)
 
-    def apply_layer(self, nn_init: NnInit) -> typing.Self:
-        return type(self)(
-            NnLayerIter(nn_init, module=nn_init.init_nn(), input=self.hop)
-        )
+    def apply_layer(self, nn_init: NnInit) -> Builder:
+        return Builder(nn_init.apply(input=self.iterator))
 
-    def apply_loss(self, target: TensorBuilder, nn_init: NnInit) -> typing.Self:
+    def apply_loss(self, target: TensorBuilder, nn_init: NnInit) -> Builder:
         assert isinstance(nn_init, BaseLoss), type(nn_init)
-        return type(self)(
-            NnLossIter(nn_init, nn_init.init_nn(), input=self.hop, target=target.hop)
-        )
+
+        return Builder(nn_init.apply(input=self.iterator, target=target.iterator))
 
     @classmethod
     def cat(cls, items: cabc.Sequence[TensorIter], dim: int = 0) -> typing.Self:
@@ -80,28 +77,28 @@ class TensorBuilder(Builder):
 
 @builder_dcls
 class TdictBuilder(Builder):
-    hop: TdictIter
+    iterator: TdictIter
 
     def column(self, col: str) -> TensorBuilder:
-        return TensorBuilder(ColumnViewIter(self.hop, col))
+        return TensorBuilder(ColumnViewIter(self.iterator, col))
 
     def select(self, *cols: str) -> typing.Self:
-        return type(self)(ProjectIter(self.hop, list(cols)))
+        return type(self)(ProjectIter(self.iterator, list(cols)))
 
     def apply(self, func: cabc.Callable[[td.TensorDict], td.TensorDict]) -> typing.Self:
-        return type(self)(ApplyIter(self.hop, func))
+        return type(self)(ApplyIter(self.iterator, func))
 
     def filter(self, func: cabc.Callable[[td.TensorDict], torch.Tensor]) -> typing.Self:
-        return type(self)(FuncFilterIter(self.hop, func))
+        return type(self)(FuncFilterIter(self.iterator, func))
 
     def rename(self, **renames: str) -> typing.Self:
-        return type(self)(RenameIter(self.hop, renames))
+        return type(self)(RenameIter(self.iterator, renames))
 
     def join(self, right: TdictBuilder, on: str) -> typing.Self:
-        if not isinstance(right.hop, IndexibleIter):
-            raise TypeError(f"{right.hop=} must be bounded.")
+        if not isinstance(right.iterator, IndexibleIter):
+            raise TypeError(f"{right.iterator=} must be bounded.")
 
-        return type(self)(NestedLoopJoinIter(self.hop, right.hop, key=on))
+        return type(self)(NestedLoopJoinIter(self.iterator, right.iterator, key=on))
 
     def zip(self, right: TdictBuilder) -> typing.Self:
-        return type(self)(ZipIter(self.hop, right.hop))
+        return type(self)(ZipIter(self.iterator, right.iterator))

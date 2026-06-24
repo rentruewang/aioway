@@ -12,9 +12,9 @@ from aioway._iters import Iter
 from aioway._utils import dcls_asdict, render_fcall
 from aioway.modes import NnInitThunk
 
-from .ufuncs import NnIter, NnUFunc
+from .ufuncs import NnUFunc, NnUFuncThunk
 
-__all__ = ["NnInit", "nn_init_dcls", "find_nn_init", "build_nn_hop"]
+__all__ = ["NnInit", "nn_init_dcls", "find_nn_init", "build_nn_iter"]
 
 _NN_INITS: dict[cabc.Callable[..., nn.Module], type[NnInit]] = {}
 
@@ -67,12 +67,12 @@ class NnInit(abc.ABC):
         thunk = NnInitThunk(func=self.NN, **dcls_asdict(self))
         return thunk()
 
-    def apply(self, *args, **kwargs) -> NnIter:
+    def apply(self, *args, **kwargs) -> NnUFuncThunk:
         """
         Builds a high level operator with the given `NN` and `HOP` runtime class.
         """
 
-        return self.ufunc.iter(*args, **kwargs)
+        return self.ufunc.thunk(*args, **kwargs)
 
 
 def find_nn_init(thunk: NnInitThunk, /) -> NnInit | None:
@@ -87,7 +87,7 @@ def find_nn_init(thunk: NnInitThunk, /) -> NnInit | None:
     return nn_init_type(*thunk.args, **thunk.kwargs)
 
 
-def build_nn_hop(thunk: NnInitThunk, *args, **kwargs) -> Iter | None:
+def build_nn_iter(thunk: NnInitThunk, *args, **kwargs) -> Iter | None:
     if (nn_init := find_nn_init(thunk)) is None:
         return None
 

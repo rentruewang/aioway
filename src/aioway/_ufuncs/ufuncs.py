@@ -7,9 +7,9 @@ import typing
 from collections import abc as cabc
 
 from aioway._iters import Iter, StructIter
-from aioway._utils import decomp_replace, render_fcall
+from aioway._utils import decomp_flatten, decomp_replace, render_fcall
 
-__all__ = ["UFunc"]
+__all__ = ["UFunc", "UFuncThunk"]
 
 
 class UFuncThunk[**P = ..., T = typing.Any](Iter[T]):
@@ -45,8 +45,8 @@ class UFuncThunk[**P = ..., T = typing.Any](Iter[T]):
         kwargs_iter = StructIter(self.kwargs)
 
         for args, kwargs in zip(args_iter, kwargs_iter):
-            assert isinstance(args, tuple)
-            assert isinstance(kwargs, dict)
+            assert isinstance(args, cabc.Sequence), args
+            assert isinstance(kwargs, cabc.Mapping), kwargs
             yield self.ufunc(*args, **kwargs)
 
     @property
@@ -60,6 +60,11 @@ class UFuncThunk[**P = ..., T = typing.Any](Iter[T]):
     @property
     def kwargs(self):
         return self._kwargs
+
+    def deps(self) -> cabc.Iterator[UFuncThunk]:
+        "Get all the input thunks."
+        yield from decomp_flatten(self.args, UFuncThunk)
+        yield from decomp_flatten(self.kwargs, UFuncThunk)
 
 
 class UFunc[**P, T](abc.ABC):
@@ -98,12 +103,7 @@ class UFunc[**P, T](abc.ABC):
     def thunk(self, *args, **kwargs) -> typing.Any:
         "A `UFunc` takes thunks and tranform it into other thunks."
         self._check_signature(*args, **kwargs)
-        return self.THUNK(self.forward, *args, **kwargs)
-
-    def iter(self, *args, **kwargs) -> typing.Any:
-        "A `UFunc` takes iterators and tranform it into other iterators."
-        self._check_signature(*args, **kwargs)
-        raise NotImplementedError
+        return self.THUNK(self, *args, **kwargs)
 
     @functools.cached_property
     def __signature__(self) -> inspect.Signature:
