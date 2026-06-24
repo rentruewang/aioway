@@ -190,7 +190,7 @@ class StructIter(Iter[typing.Any]):
 
     @typing.override
     def iterate(self):
-        from .procs import IterProc, iter_cache_on
+        from .procs import IterProc
 
         # Start the iterator and store the started iterators into an `AnySet`.
         start_it = lambda it: (iter(it) if isinstance(it, Iter) else NotImplemented)
@@ -203,12 +203,10 @@ class StructIter(Iter[typing.Any]):
 
         # Inside the structure, call `next` on all `IterProc`s, until `StopIteration`.
         while True:
-            # Turn on the cache, because the dependencies can still be DAGs.
-            with iter_cache_on():
-                try:
-                    yield decomp_replace(struct_of_iter, next_it)
-                except StopIteration:
-                    return
+            try:
+                yield decomp_replace(struct_of_iter, next_it)
+            except StopIteration:
+                return
 
 
 @node_dcls
