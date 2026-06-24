@@ -4,14 +4,16 @@ import abc
 import functools
 import inspect
 import typing
+from collections import abc as cabc
 
+from aioway._iters import Iter, StructIter
 from aioway._utils import decomp_replace, render_fcall
 
 __all__ = ["UFunc"]
 
 
-class UFuncThunk[**P = ..., T = typing.Any]:
-    "The `Thunk` instance for `UFunc`."
+class UFuncThunk[**P = ..., T = typing.Any](Iter[T]):
+    "The `Thunk` / `Iter` adaptor type for `UFunc`."
 
     @typing.no_type_check
     def __init__(self, ufunc: UFunc[P, T], *args: P.args, **kwargs: P.kwargs):
@@ -37,6 +39,15 @@ class UFuncThunk[**P = ..., T = typing.Any]:
         kwargs = decomp_replace(self.kwargs, eval_thunk)
 
         return self.ufunc(*args, **kwargs)
+
+    def iterate(self) -> cabc.Generator[T]:
+        args_iter = StructIter(self.args)
+        kwargs_iter = StructIter(self.kwargs)
+
+        for args, kwargs in zip(args_iter, kwargs_iter):
+            assert isinstance(args, tuple)
+            assert isinstance(kwargs, dict)
+            yield self.ufunc(*args, **kwargs)
 
     @property
     def ufunc(self) -> UFunc[P, T]:
@@ -101,8 +112,8 @@ class UFunc[**P, T](abc.ABC):
 
     def _check_signature(self, *args, **kwargs) -> None:
         # This only checks the signature names, not types,
-        # so it's perfect for our usage, because `__call__`, `thunk`, `iter`
-        # all share the same signature but with different types.
+        # so it's perfect for our usage, because `__call__`, `thunk`,
+        # both share the same signature but with different types.
 
         try:
             _ = self.__signature__.bind(*args, **kwargs)

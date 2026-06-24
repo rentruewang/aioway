@@ -25,6 +25,7 @@ __all__ = [
     "TensorIter",
     "TdictIter",
     "StructIter",
+    "IterGroupState",
     "ListIter",
     "IndexibleIter",
     "sample_mode",
@@ -174,7 +175,7 @@ class TdictIter(Iter[td.TensorDict], abc.ABC):
 
 
 @node_dcls
-class StructIter[T = typing.Any](Iter[cabc.Sequence[T]]):
+class StructIter(Iter[typing.Any]):
     """
     An `Iter` that transforms structures of `Iter`s to `Iter` of structures.
 
@@ -193,11 +194,11 @@ class StructIter[T = typing.Any](Iter[cabc.Sequence[T]]):
     def iterate(self):
         state = IterGroupState()
 
-        iterator = decomp_replace(self.struct, state.start)
+        struct_of_iter = decomp_replace(self.struct, state.start)
 
         while True:
             try:
-                yield decomp_replace(iterator, state.next)
+                yield decomp_replace(struct_of_iter, state.next)
             except StopIteration:
                 return
 
@@ -211,7 +212,7 @@ class IterGroupState:
     started: AnySet[IterProc] = dcls.field(default_factory=AnySet)
     "The iterators that have started."
 
-    def start(self, item: object):
+    def start(self, item: object) -> IterProc[typing.Any]:
         "Start the iterator and store the started iterators into an `AnySet`."
 
         if not isinstance(item, Iter):
