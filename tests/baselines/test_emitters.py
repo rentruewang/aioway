@@ -8,7 +8,7 @@ from torch import optim
 from aioway._core import TensorIter, UFunc
 from aioway.baselines import emit
 from aioway.dsets import TensorListIter, TensorStream
-from aioway.hop import LoaderOpt
+from aioway.relalg import LoaderOpt
 from aioway.spaces import Attr, AttrSpace, Shape, ShapeSpace
 from aioway.torch.nn import Linear, MSELoss, NnUFunc
 from aioway.torch.optim import OptimizerIter

@@ -10,7 +10,8 @@ import tensordict as td
 import torch
 
 from aioway._core import IndexibleIter, Iter, ListIter, TdictIter, TensorIter
-from aioway.hop import (
+from aioway.indices import AnnIndexTrainerIter, FaissIndex
+from aioway.relalg import (
     ApplyIter,
     ColumnViewIter,
     FuncFilterIter,
@@ -20,7 +21,6 @@ from aioway.hop import (
     StackIter,
     ZipIter,
 )
-from aioway.indices import AnnIndexTrainerIter, FaissIndex
 from aioway.torch.nn import BaseLoss, NnInit, NnLayerIter, NnLossIter
 
 __all__ = ["Builder"]
