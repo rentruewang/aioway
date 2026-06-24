@@ -22,22 +22,25 @@ _iter_cache: AnyDict[Iter] | None = None
 @ctxl.contextmanager
 def iter_cache_on() -> cabc.Generator[AnyDict[Iter]]:
     """
-    Turn on caching for `Iter`. Everytime you call `hop_cache_on`,
-    a new scope is created and so a new cache is created.
-    (The old cache still stays in memory so it'll still be "active").
+    Turn on caching for `Iter`. The cache is re-used in nested `iter_cache_on` blocks.
 
     Returns:
-        A context manager that when activates, intercept all `Iter.__call__` calls,
-        and stores the outputs s.t. second `.__call__()` uses the previous rersult.
+        A context manager that when activates, intercept all `Iter.__next__` calls,
+        and stores the outputs s.t. second `.__next__()` uses the previous rersult.
     """
 
     global _iter_cache
-    before, _iter_cache = _iter_cache, AnyDict[Iter](Iter)
+
+    if _iter_cache is not None:
+        yield _iter_cache
+        return
+
+    _iter_cache = AnyDict[Iter](Iter)
 
     try:
         yield _iter_cache
     finally:
-        _iter_cache = before
+        _iter_cache = None
 
 
 def iter_cache() -> AnyDict[Iter]:
@@ -98,7 +101,10 @@ class CacheIterProc[T = typing.Any](IterProc[T]):
     @typing.final
     def __next__(self) -> T:
         # If `StopIteration` is raised here, it's done.
-        answer = self.read()
+
+        with iter_cache_on():
+            answer = self.read()
+
         self.__idx += 1
         return answer
 
@@ -106,10 +112,10 @@ class CacheIterProc[T = typing.Any](IterProc[T]):
         if _iter_cache is None:
             return next(self.__gen)
 
-        elif self.hop not in _iter_cache:
-            _iter_cache[self.hop] = next(self.__gen)
+        elif self.iterator not in _iter_cache:
+            _iter_cache[self.iterator] = next(self.__gen)
 
-        result: typing.Any = _iter_cache[self.hop]
+        result: typing.Any = _iter_cache[self.iterator]
         return result
 
     @property
@@ -125,5 +131,5 @@ class CacheIterProc[T = typing.Any](IterProc[T]):
         return self.idx != 0
 
     @property
-    def hop(self) -> Iter:
+    def iterator(self) -> Iter:
         return self._iter

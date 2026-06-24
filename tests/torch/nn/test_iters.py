@@ -5,7 +5,7 @@ import pytest
 import torch
 from torch import nn
 
-from aioway._iters import TensorIter, iter_cache_on, sample_mode
+from aioway._iters import TensorIter, sample_mode
 from aioway._utils import AnyDict, is_fake_tensor, torch_fake_mode
 from aioway.dsets import TensorListIter
 from aioway.modes import NnInitThunk
@@ -18,44 +18,24 @@ def tensor_init():
     return TensorListIter([torch.randn(100, 30)])
 
 
-@pytest.fixture
-def cache_on():
-    with iter_cache_on():
-        yield
-
-
-@pytest.fixture
-def cache_off():
-    return
-
-
-@pytest.fixture(params=[cache_on.name, cache_off.name])
-def maybe_cache_hop(request: pytest.FixtureRequest):
-    return request.getfixturevalue(request.param)
-
-
 @pytest.fixture(params=[False, True])
 def maybe_sample_mode(request: pytest.FixtureRequest):
     with sample_mode(request.param):
         yield
 
 
-def test_layer_hop(
-    layer_thunk, tensor_init: TensorIter, maybe_cache_hop, maybe_sample_mode
-):
+def test_layer_hop(layer_thunk, tensor_init: TensorIter, maybe_sample_mode):
     thunk = build_nn_iter(layer_thunk, tensor_init)
     assert isinstance(thunk, NnUFuncThunk)
     assert all(isinstance(param, nn.Parameter) for param in thunk.parameters())
 
 
-def test_loss_hop(
-    loss_thunk, tensor_init: TensorIter, maybe_cache_hop, maybe_sample_mode
-):
+def test_loss_hop(loss_thunk, tensor_init: TensorIter, maybe_sample_mode):
     result = build_nn_iter(loss_thunk, tensor_init, tensor_init)
     assert isinstance(result, NnUFuncThunk)
 
 
-def test_iter_mse(tensor_init: TensorIter, maybe_cache_hop, maybe_sample_mode):
+def test_iter_mse(tensor_init: TensorIter, maybe_sample_mode):
     result = build_nn_iter(NnInitThunk(nn.MSELoss), tensor_init, tensor_init)
 
     assert result
@@ -63,7 +43,7 @@ def test_iter_mse(tensor_init: TensorIter, maybe_cache_hop, maybe_sample_mode):
     assert isinstance(out, torch.Tensor)
 
 
-def test_iter_linear(tensor_init: TensorIter, maybe_cache_hop, maybe_sample_mode):
+def test_iter_linear(tensor_init: TensorIter, maybe_sample_mode):
     linear = build_nn_iter(NnInitThunk(nn.Linear, 30, 31), tensor_init)
     assert linear
 
