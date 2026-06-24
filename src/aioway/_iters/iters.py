@@ -192,16 +192,18 @@ class StructIter(Iter[typing.Any]):
     def iterate(self):
         from .procs import IterProc, iter_cache_on
 
+        # Start the iterator and store the started iterators into an `AnySet`.
         start_it = lambda it: (iter(it) if isinstance(it, Iter) else NotImplemented)
-        "Start the iterator and store the started iterators into an `AnySet`."
 
+        # Get the next item.
         next_it = lambda it: (next(it) if isinstance(it, IterProc) else NotImplemented)
-        "Get the next item."
 
+        # Inside the structure, call `iter` on all `Iter`s.
         struct_of_iter = decomp_replace(self.struct, start_it)
 
         while True:
             try:
+                # Inside the structure, call `next` on all `IterProc`s.
                 # Turn on the cache, because the dependencies can still be DAGs.
                 with iter_cache_on():
                     yield decomp_replace(struct_of_iter, next_it)
