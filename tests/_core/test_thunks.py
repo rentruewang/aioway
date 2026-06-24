@@ -2,7 +2,7 @@
 
 import pytest
 
-from aioway._core import TensorInput, Thunk
+from aioway._core import TensorInput
 from aioway.modes import (
     Aten,
     AtenThunk,
@@ -13,6 +13,7 @@ from aioway.modes import (
     TorchDispThunk,
     TorchFuncThunk,
 )
+from aioway.thunks import Thunk
 
 
 def _fn_cls():

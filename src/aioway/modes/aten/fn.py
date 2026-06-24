@@ -6,7 +6,6 @@ import dataclasses as dcls
 import logging
 import typing
 
-from aioway._core import Thunk
 from aioway._utils import is_aten_op
 
 from ..tensors import TorchDispThunk
@@ -19,7 +18,7 @@ LOGGER = logging.getLogger(__name__)
 
 @typing.final
 @dcls.dataclass(frozen=True)
-class AtenThunk(Thunk):
+class AtenThunk:
     """
     `AtenThunk` wraps a `Aten` object, which is split out so as to declutter subclasses for `Thunk`.
 

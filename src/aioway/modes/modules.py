@@ -10,8 +10,8 @@ from collections import abc as cabc
 import torch
 from torch import nn
 
-from aioway._core import AnyThunk
 from aioway._utils import render_fcall, render_torch_func_name, track_call_count
+from aioway.thunks import AnyThunk
 
 from .modes import Mode, ModeStack, ModeThunk
 

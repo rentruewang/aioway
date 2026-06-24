@@ -2,7 +2,6 @@
 
 "Metadata for torch operators / functions."
 
-import abc
 import functools
 import logging
 import typing
@@ -10,9 +9,7 @@ from collections import abc as cabc
 
 from aioway._utils import render_fcall
 
-from .nodes import GraphNode, node_dcls
-
-__all__ = ["Thunk", "AnyThunk", "LazyThunk"]
+__all__ = ["Thunk", "AnyThunk"]
 
 LOGGER = logging.getLogger(__name__)
 
@@ -114,10 +111,3 @@ class AnyThunk:
         args, kwargs = self.args, self.kwargs
 
         return render_fcall(self.func, *args, **kwargs)
-
-
-@node_dcls
-class LazyThunk[T](Thunk[T], GraphNode, abc.ABC):
-    """
-    The `Thunk` that lazily invokes its dependencies, with back tracing info.
-    """
