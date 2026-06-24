@@ -35,13 +35,12 @@ def iter_cache_on() -> cabc.Generator[AnyDict[Iter]]:
         yield _iter_cache
         return
 
-    else:
-        _iter_cache = AnyDict[Iter](Iter)
+    _iter_cache = AnyDict[Iter](Iter)
 
-        try:
-            yield _iter_cache
-        finally:
-            _iter_cache = None
+    try:
+        yield _iter_cache
+    finally:
+        _iter_cache = None
 
 
 def iter_cache() -> AnyDict[Iter]:
