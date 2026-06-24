@@ -4,7 +4,7 @@ import abc
 import typing
 from collections import abc as cabc
 
-from aioway.thunks import Thunk
+from aioway._thunks import Thunk
 
 from .iters import Iter
 from .nodes import GraphNode, node_dcls

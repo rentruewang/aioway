@@ -11,6 +11,7 @@ from collections import abc as cabc
 import torch
 
 from aioway._core import TensorInput
+from aioway._thunks import Thunk
 from aioway._utils import (
     find_nested_tensors,
     is_leaf_has_grad,
@@ -18,7 +19,6 @@ from aioway._utils import (
     topo_sort,
 )
 from aioway.spaces import Attr
-from aioway.thunks import Thunk
 
 from ..modes import ModeThunk
 
