@@ -7,8 +7,8 @@ from torch import optim
 
 from aioway._iters import TensorIter
 from aioway._ufuncs import UFunc
-from aioway.baselines import emit
 from aioway.dsets import TensorListIter, TensorStream
+from aioway.emits import emit, linear_shape
 from aioway.relalg import LoaderOpt
 from aioway.spaces import Attr, AttrSpace, Shape, ShapeSpace
 from aioway.torch.nn import Linear, MSELoss, NnUFunc
@@ -64,7 +64,15 @@ def optimizer(input_hop: TensorListIter, target_hop: TensorIter):
     return OptimizerIter(loss=loss, optimizer=opt)
 
 
-def test_just_linear(input_shape_space: ShapeSpace, output_space: ShapeSpace):
+@pytest.fixture
+def consider_linear():
+    with linear_shape.consider():
+        yield
+
+
+def test_just_linear(
+    input_shape_space: ShapeSpace, output_space: ShapeSpace, consider_linear
+):
     linear_found = False
 
     for ufunc in emit(input_shape_space, output_space):

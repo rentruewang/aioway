@@ -4,10 +4,10 @@ from aioway._ufuncs import UFunc
 from aioway.spaces import AttrSpace, ShapeSpace, Space
 from aioway.torch.nn import Linear
 
-from .baselines import register_baseline
+from .emitters import FuncEmitter
 
 
-@register_baseline
+@FuncEmitter
 def linear_shape(observation_space: Space, action_space: Space) -> UFunc:
     """
     `Linear` module from `ShapeSpace`s.
@@ -24,7 +24,7 @@ def linear_shape(observation_space: Space, action_space: Space) -> UFunc:
     ).ufunc
 
 
-@register_baseline
+@FuncEmitter
 def linear_from_attr(observation_space: Space, action_space: Space) -> UFunc:
     """
     `Linear` module from `AttrShape`s.
