@@ -4,7 +4,6 @@ import abc
 import functools
 import inspect
 import typing
-from collections import abc as cabc
 
 from aioway._utils import decomp_replace, render_fcall
 
@@ -15,15 +14,13 @@ class UFuncThunk[**P = ..., T = typing.Any]:
     "The `Thunk` instance for `UFunc`."
 
     @typing.no_type_check
-    def __init__(
-        self, function: cabc.Callable[P, T], *args: P.args, **kwargs: P.kwargs
-    ):
-        self._function: typing.Any = function
+    def __init__(self, ufunc: UFunc[P, T], *args: P.args, **kwargs: P.kwargs):
+        self._ufunc: UFunc[P, T] = ufunc
         self._args: typing.Any = args
         self._kwargs: typing.Any = kwargs
 
     def __repr__(self):
-        return render_fcall(self.function, *self.args, **self.kwargs)
+        return render_fcall(self.ufunc, *self.args, **self.kwargs)
 
     def __call__(self) -> T:
         def eval_thunk(thunk):
@@ -39,12 +36,11 @@ class UFuncThunk[**P = ..., T = typing.Any]:
         args = decomp_replace(self.args, eval_thunk)
         kwargs = decomp_replace(self.kwargs, eval_thunk)
 
-        return self.function(*args, **kwargs)
+        return self.ufunc(*args, **kwargs)
 
     @property
-    def function(self) -> cabc.Callable[P, T]:
-        "The function that is wrapped."
-        return self._function
+    def ufunc(self) -> UFunc[P, T]:
+        return self._ufunc
 
     @property
     def args(self):
@@ -55,7 +51,7 @@ class UFuncThunk[**P = ..., T = typing.Any]:
         return self._kwargs
 
 
-class UFunc(abc.ABC):
+class UFunc[**P, T](abc.ABC):
     """
     `UFunc`, inspired by `numpy`, stands for universal functions,
     and are the building blocks of other APIs (like thunks and iters).
@@ -85,7 +81,7 @@ class UFunc(abc.ABC):
 
     @abc.abstractmethod
     @typing.no_type_check
-    def forward(self, *args, **kwargs) -> T:
+    def forward(self, *args: P.args, **kwargs: P.kwargs) -> T:
         raise NotImplementedError
 
     def thunk(self, *args, **kwargs) -> typing.Any:
