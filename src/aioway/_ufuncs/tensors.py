@@ -7,7 +7,8 @@ from collections import abc as cabc
 
 import torch
 
-from .iters import Iter
+from aioway._iters import Iter
+
 from .ufuncs import LazyThunk, UFunc
 
 __all__ = [

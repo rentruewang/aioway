@@ -4,10 +4,8 @@ import abc
 import typing
 from collections import abc as cabc
 
+from aioway._iters import GraphNode, Iter, node_dcls
 from aioway._thunks import Thunk
-
-from .iters import Iter
-from .nodes import GraphNode, node_dcls
 
 __all__ = ["UFunc", "LazyThunk"]
 

@@ -5,7 +5,8 @@ import typing
 import pytest
 from torch import optim
 
-from aioway._iters import TensorIter, UFunc
+from aioway._iters import TensorIter
+from aioway._ufuncs import UFunc
 from aioway.baselines import emit
 from aioway.dsets import TensorListIter, TensorStream
 from aioway.relalg import LoaderOpt
