@@ -5,6 +5,7 @@ import inspect
 import typing
 from collections import abc as cabc
 
+from aioway._api import public_api
 from aioway._iters import Iter, StructIter
 from aioway._utils import decomp_flatten, decomp_replace, render_fcall
 
@@ -66,6 +67,7 @@ class UFuncThunk[**P = ..., T = typing.Any](Iter[T]):
         yield from decomp_flatten(self.kwargs, UFuncThunk)
 
 
+@public_api
 class UFunc[**P, T](abc.ABC):
     """
     `UFunc`, inspired by `numpy`, stands for universal functions,
