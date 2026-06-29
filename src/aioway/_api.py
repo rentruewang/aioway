@@ -3,18 +3,18 @@
 "The module that registeres the API, and expose in `aioway.api` module."
 
 import copy
+import dataclasses as dcls
 import types
 from collections import abc as cabc
-import dataclasses as dcls
 
-__all__ = ["register_public_api", "public_api"]
+__all__ = ["public_api", "public_items"]
 
 type FuncOrClass = type | types.FunctionType
 
 _REGISTRY: dict[str, FuncOrClass] = {}
 
 
-def register_public_api[T: FuncOrClass](item: T) -> T:
+def public_api[T: FuncOrClass](item: T) -> T:
     """
     Register the function or class as a public API.
     """
@@ -50,7 +50,7 @@ class _ReExportReg(cabc.Mapping[str, FuncOrClass]):
         yield from _REGISTRY
 
 
-def public_api(export: str | None = None) -> cabc.Mapping[str, FuncOrClass]:
+def public_items(export: str | None = None) -> cabc.Mapping[str, FuncOrClass]:
     """
     Get the registered modules.
 
