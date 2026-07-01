@@ -91,10 +91,19 @@ class BuilderNode(abc.ABC):
     The thunk used by the builder, that will be evaluated
     """
 
+    def __call__(self, node_vals: AnyDict[BuilderNode, typing.Any], /) -> typing.Any:
+        "Calls `.compute` with memoization."
+
+        if self not in node_vals:
+            result = self.compute(node_vals)
+            node_vals[self] = result
+
+        return node_vals[self]
+
     @abc.abstractmethod
-    def compute(self, inputs: dict[str, typing.Any], /) -> typing.Any:
+    def compute(self, node_vals: AnyDict[BuilderNode, typing.Any], /) -> typing.Any:
         """
-        Evaluate the node values given the inputs.
+        Evaluate the node values given the node values.
         """
 
         raise NotImplementedError
@@ -116,11 +125,9 @@ class InputBuilderNode(BuilderNode):
     """
 
     @typing.override
-    def compute(self, inputs: dict[str, typing.Any]) -> typing.Any:
-        if self.name not in inputs:
-            raise KeyError(f"{self.name=} is not supplied in {inputs=}.")
-
-        return inputs[self.name]
+    def compute(self, node_vals: AnyDict[BuilderNode, typing.Any], /) -> typing.Any:
+        # Compute handles cases wehre `self not in node_vals`, impossible for this type.
+        raise KeyError(f"{self=} is not found in inputs.")
 
     def deps(self):
         return
@@ -145,9 +152,9 @@ class ThunkBuilderNode(BuilderNode):
         self.kwargs = kwargs
 
     @typing.override
-    def compute(self, inputs: dict[str, typing.Any]) -> typing.Any:
+    def compute(self, node_vals: AnyDict[BuilderNode, typing.Any], /) -> typing.Any:
         compute_node = lambda node: (
-            node.compute(inputs) if isinstance(node, BuilderNode) else NotImplemented
+            node(node_vals) if isinstance(node, BuilderNode) else NotImplemented
         )
 
         args = decomp_replace(self.args, compute_node)
@@ -172,7 +179,19 @@ class BuiltUFunc(UFunc):
 
     def forward(self, *args, **kwargs):
         all_kwargs = self._signature.apply(*args, **kwargs)
-        return self.output.compute(all_kwargs)
+
+        if set(all_kwargs.keys()) != {i.name for i in self.inputs}:
+            raise ValueError(
+                "Not all the argumetns are supplied. "
+                f"Found {all_kwargs}, but inputs should be {self.inputs}."
+            )
+
+        mapping_to_inputs = {input.name: input for input in self.inputs}
+        node_vals = AnyDict[BuilderNode, typing.Any]()
+        for key, val in all_kwargs.items():
+            node_vals[mapping_to_inputs[key]] = val
+
+        return self.output(node_vals)
 
     @property
     @typing.override
