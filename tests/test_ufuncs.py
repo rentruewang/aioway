@@ -1,22 +1,33 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import pytest
 import torch
 
-from aioway._ufuncs import CompoundBuilder
+from aioway._ufuncs import BuiltUFunc, CompoundBuilder
 from aioway.torch.nn import Linear, MSELoss
 
 
-def test_mlp():
+@pytest.fixture
+def built_mlp():
     builder = CompoundBuilder()
     input = builder.input("input")
     hidden_1 = builder.thunk(Linear(in_features=5, out_features=10).ufunc, input)
     hidden_2 = builder.thunk(Linear(in_features=10, out_features=10).ufunc, hidden_1)
 
     module = builder.output(hidden_2)
+    return module
 
+
+def test_mlp(built_mlp: BuiltUFunc):
     t = torch.randn(13, 5)
-    out = module(input=t)
+    out = built_mlp(input=t)
     assert out.shape == (13, 10)
+
+
+def test_mlp_codege(built_mlp: BuiltUFunc):
+    generated = built_mlp.codegen("mlp")
+    assert generated
+    breakpoint()
 
 
 def test_loss():
@@ -27,6 +38,7 @@ def test_loss():
     loss = builder.thunk(MSELoss().ufunc, hidden_2, input)
 
     graph = builder.output(loss)
+
     t = torch.randn(13, 5)
     out = graph(input=t)
     assert out.shape == ()
