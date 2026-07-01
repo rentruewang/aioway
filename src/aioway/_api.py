@@ -5,6 +5,7 @@
 import copy
 import dataclasses as dcls
 import types
+import typing
 from collections import abc as cabc
 
 __all__ = ["public_api", "public_items"]
@@ -40,10 +41,12 @@ class _ReExportReg(cabc.Mapping[str, FuncOrClass]):
     def __len__(self) -> int:
         return len(_REGISTRY)
 
+    @typing.no_type_check
     def __getitem__(self, name: str) -> FuncOrClass:
-        item = _REGISTRY[name]
-        item = copy.copy(item)
+        original = _REGISTRY[name]
+        item = copy.copy(original)
         item.__module__ = self.module
+        item.__aioway_internal_ref__ = original
         return item
 
     def __iter__(self) -> cabc.Generator[str]:

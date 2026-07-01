@@ -2,7 +2,11 @@
 
 import typing
 
-from aioway._ufuncs import BuilderNode, InputBuilderNode, ThunkBuilderNode, UFunc
+from aioway._ufuncs import (
+    BuilderNode,
+    CompoundBuilder,
+    UFunc,
+)
 from aioway.emits import Emitter, emitter_dcls
 from aioway.spaces import AttrSpace, ShapeSpace, Space
 from aioway.torch.nn import CELU, GELU, Linear, NnInit, ReLU, ReLU6, Sigmoid, Tanh
@@ -79,18 +83,20 @@ class MlpEmitter(Emitter):
 
         sizes = [observation_space[-1], *self.hidden_sizes, action_space[-1]]
 
-        x: BuilderNode = InputBuilderNode("input")
+        builder = CompoundBuilder()
+
+        x: BuilderNode = builder.input("input")
         activ = self._activ_ufunc
 
         for in_feats, out_feats in zip(sizes[:-1], sizes[1:]):
-            x = ThunkBuilderNode(
+            x = builder.thunk(
                 Linear(in_features=in_feats, out_features=out_feats).ufunc, x
             )
 
             if activ is not NotImplemented:
-                x = ThunkBuilderNode(activ, x)
+                x = builder.thunk(activ, x)
 
-        return x.build()
+        return builder.output(x)
 
     @property
     def _nn_init(self) -> NnInit:

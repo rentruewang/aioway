@@ -7,7 +7,7 @@ from collections import abc as cabc
 
 from aioway._api import public_api
 from aioway._iters import Iter, StructIter
-from aioway._utils import decomp_flatten, decomp_replace, render_fcall
+from aioway._utils import Sign, decomp_flatten, decomp_replace, render_fcall
 
 __all__ = ["UFunc", "UFuncThunk"]
 
@@ -108,8 +108,12 @@ class UFunc[**P, T](abc.ABC):
 
     @property
     def __signature__(self) -> inspect.Signature:
+        return self._signature.signature
+
+    @property
+    def _signature(self) -> Sign:
         "The signature of the `UFunc`."
-        return inspect.signature(self.forward)
+        return Sign.from_callable(self.forward)
 
     def validate_signature(self, *args, **kwargs) -> None:
         # This only checks the signature names, not types,
@@ -117,6 +121,6 @@ class UFunc[**P, T](abc.ABC):
         # both share the same signature but with different types.
 
         try:
-            _ = self.__signature__.bind(*args, **kwargs)
+            _ = self._signature.bind(*args, **kwargs)
         except TypeError as te:
             raise TypeError(f"{self!r} gets a bad input.") from te

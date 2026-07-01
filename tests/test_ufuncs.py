@@ -1,30 +1,43 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import pytest
 import torch
 
-from aioway._ufuncs import InputBuilderNode, ThunkBuilderNode
+from aioway._ufuncs import BuiltUFunc, CompoundBuilder
 from aioway.torch.nn import Linear, MSELoss
 
 
-def test_mlp():
-    input = InputBuilderNode("input")
-    hidden_1 = ThunkBuilderNode(Linear(in_features=5, out_features=10).ufunc, input)
-    hidden_2 = ThunkBuilderNode(Linear(in_features=10, out_features=10).ufunc, hidden_1)
+@pytest.fixture
+def built_mlp():
+    builder = CompoundBuilder()
+    input = builder.input("input")
+    hidden_1 = builder.thunk(Linear(in_features=5, out_features=10).ufunc, input)
+    hidden_2 = builder.thunk(Linear(in_features=10, out_features=10).ufunc, hidden_1)
 
-    module = hidden_2.build()
+    module = builder.output(hidden_2)
+    return module
 
+
+def test_mlp(built_mlp: BuiltUFunc):
     t = torch.randn(13, 5)
-    out = module(input=t)
+    out = built_mlp(input=t)
     assert out.shape == (13, 10)
 
 
-def test_loss():
-    input = InputBuilderNode("input")
-    hidden_1 = ThunkBuilderNode(Linear(in_features=5, out_features=10).ufunc, input)
-    hidden_2 = ThunkBuilderNode(Linear(in_features=10, out_features=5).ufunc, hidden_1)
-    loss = ThunkBuilderNode(MSELoss().ufunc, hidden_2, input)
+def test_mlp_codege(built_mlp: BuiltUFunc):
+    generated = built_mlp.codegen("mlp")
+    assert generated
 
-    graph = loss.build()
+
+def test_loss():
+    builder = CompoundBuilder()
+    input = builder.input("input")
+    hidden_1 = builder.thunk(Linear(in_features=5, out_features=10).ufunc, input)
+    hidden_2 = builder.thunk(Linear(in_features=10, out_features=5).ufunc, hidden_1)
+    loss = builder.thunk(MSELoss().ufunc, hidden_2, input)
+
+    graph = builder.output(loss)
+
     t = torch.randn(13, 5)
     out = graph(input=t)
     assert out.shape == ()
