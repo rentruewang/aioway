@@ -27,7 +27,6 @@ def test_mlp(built_mlp: BuiltUFunc):
 def test_mlp_codege(built_mlp: BuiltUFunc):
     generated = built_mlp.codegen("mlp")
     assert generated
-    breakpoint()
 
 
 def test_loss():
