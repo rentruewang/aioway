@@ -1,4 +1,4 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from .builder import *
+from .compound import *
 from .ufuncs import *

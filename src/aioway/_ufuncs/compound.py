@@ -1,17 +1,68 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import abc
-import collections
 import dataclasses as dcls
 import inspect
 import typing
 from collections import abc as cabc
 
-from aioway._utils import AnySet, decomp_flatten, decomp_replace
+from aioway._utils import AnyDict, decomp_flatten, decomp_replace
 
 from .ufuncs import UFunc
 
-__all__ = ["BuilderNode", "InputBuilderNode", "ThunkBuilderNode", "BuiltUFunc"]
+__all__ = ["CompoundBuilder", "BuilderNode", "BuiltUFunc"]
+
+
+@dcls.dataclass
+class CompoundBuilder:
+    """
+    The builder for the compounds.
+    Stores all the thunks sequentially, to convert to statements.
+    """
+
+    nodes: list[BuilderNode] = dcls.field(default_factory=list)
+    "The nodes corresponding to the variables."
+
+    ufunc_names: AnyDict[UFunc, str] = dcls.field(default_factory=AnyDict)
+    "The names of the ufuncs currently in scope."
+
+    type_count: AnyDict[type[UFunc], int] = dcls.field(default_factory=AnyDict)
+    "Mapping from ufunc types to the number of occurences."
+
+    def input(self, name: str) -> InputBuilderNode:
+        "Set the input nodes. Translate to the argument list."
+
+        node = InputBuilderNode(name)
+        self.nodes.append(node)
+        return node
+
+    def thunk(self, ufunc: UFunc, *args, **kwargs) -> ThunkBuilderNode:
+        "The thunks will translate to the statements."
+
+        node = ThunkBuilderNode(ufunc, *args, **kwargs)
+        self.nodes.append(node)
+
+        # If the name does not exist, assign a name.
+        if ufunc not in self.ufunc_names:
+            self.ufunc_names[ufunc] = self._ufunc_new_name(ufunc)
+
+        return node
+
+    def inputs(self) -> list[InputBuilderNode]:
+        "Get all the inputs registered."
+        return [node for node in self.nodes if isinstance(node, InputBuilderNode)]
+
+    def output(self, node: BuilderNode) -> BuiltUFunc:
+        "Set the output and returns a `UFunc`."
+        return BuiltUFunc(inputs=self.inputs(), output=node)
+
+    def _ufunc_new_name(self, ufunc: UFunc) -> str:
+        # Count the number of the same type, to add suffix.
+        ufunc_type = type(ufunc)
+        self.type_count[ufunc_type] = self.type_count.get(ufunc_type, 0) + 1
+        count = self.type_count[ufunc_type]
+
+        return f"{ufunc_type.__name__}_{count}"
 
 
 class BuilderNode(abc.ABC):
@@ -30,36 +81,6 @@ class BuilderNode(abc.ABC):
     @abc.abstractmethod
     def deps(self) -> cabc.Iterator[BuilderNode]:
         raise NotImplementedError
-
-    def build(self) -> UFunc:
-        """
-        Build a `UFunc` based on the `output` node and the `inputs` nodes stored in `self`.
-        """
-
-        all_nodes = AnySet[BuilderNode]()
-
-        def visit_node(node: BuilderNode):
-            if node in all_nodes:
-                return
-
-            all_nodes.add(node)
-
-            for dep in node.deps():
-                visit_node(dep)
-
-        visit_node(self)
-
-        # Get the traced input, and convert them to **kwargs
-        inputs = [node for node in all_nodes if isinstance(node, InputBuilderNode)]
-
-        # Check for duplicates.
-        name_count: dict[str, int] = collections.defaultdict(int)
-        for input in inputs:
-            name_count[input.name] += 1
-        if dups := {name: count for name, count in name_count.items() if count > 1}:
-            raise KeyError(f"Duplicate keys found: {list(dups.keys())}.")
-
-        return BuiltUFunc(inputs, self)
 
 
 @dcls.dataclass
@@ -120,15 +141,16 @@ class ThunkBuilderNode(BuilderNode):
 
 @dcls.dataclass
 class BuiltUFunc(UFunc):
+    "The ufunc that traces from outputs to inputs with a pull strategy."
+
     inputs: list[InputBuilderNode]
+    "The input nodes. `.compute`'s dict's key must correspond to the names here."
+
     output: BuilderNode
+    "The output to evaluate."
 
     def forward(self, *args, **kwargs):
-        signature = self.__signature__
-        bound = signature.bind(*args, **kwargs)
-        bound.apply_defaults()
-        all_kwargs = bound.arguments
-        assert isinstance(all_kwargs, dict), all_kwargs
+        all_kwargs = apply_signature(self.__signature__, *args, **kwargs)
         return self.output.compute(all_kwargs)
 
     @property
@@ -142,3 +164,13 @@ class BuiltUFunc(UFunc):
                 for input in self.inputs
             ]
         )
+
+
+def apply_signature(
+    signature: inspect.Signature, *args, **kwargs
+) -> dict[str, typing.Any]:
+    bound = signature.bind(*args, **kwargs)
+    bound.apply_defaults()
+    all_kwargs = bound.arguments
+    assert isinstance(all_kwargs, dict), all_kwargs
+    return all_kwargs
