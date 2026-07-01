@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"Metadata for torch operators / functions."
+"Computation graph nodes."
 
 import abc
 import collections

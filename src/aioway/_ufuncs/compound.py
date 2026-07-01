@@ -2,15 +2,31 @@
 
 import abc
 import dataclasses as dcls
-import inspect
 import typing
 from collections import abc as cabc
 
-from aioway._utils import AnyDict, decomp_flatten, decomp_replace
+import jinja2 as j2
+
+from aioway._utils import AnyDict, Sign, decomp_flatten, decomp_replace
 
 from .ufuncs import UFunc
 
 __all__ = ["CompoundBuilder", "BuilderNode", "BuiltUFunc"]
+
+TEMPLATE = j2.Template("""
+class {{ module }}(nn.Module):
+    def __init__(self, {{ init_signature }}):
+        super().__init__()
+
+        {% for stmt in init_stmts %}
+        {{ stmt }}
+        {% endfor %}
+
+    def forward(self, {{ fwd_signature }}):
+        {% for stmt in fwd_stmts %}
+        {{ stmt }}
+        {% endfor %}
+""")
 
 
 @dcls.dataclass
@@ -63,6 +79,11 @@ class CompoundBuilder:
         count = self.type_count[ufunc_type]
 
         return f"{ufunc_type.__name__}_{count}"
+
+    def codegen(self, name: str) -> str:
+        "Generate the definition."
+
+        raise NotImplementedError
 
 
 class BuilderNode(abc.ABC):
@@ -150,27 +171,10 @@ class BuiltUFunc(UFunc):
     "The output to evaluate."
 
     def forward(self, *args, **kwargs):
-        all_kwargs = apply_signature(self.__signature__, *args, **kwargs)
+        all_kwargs = self._signature.apply(*args, **kwargs)
         return self.output.compute(all_kwargs)
 
     @property
     @typing.override
-    def __signature__(self):
-        return inspect.Signature(
-            [
-                inspect.Parameter(
-                    input.name, kind=inspect.Parameter.POSITIONAL_OR_KEYWORD
-                )
-                for input in self.inputs
-            ]
-        )
-
-
-def apply_signature(
-    signature: inspect.Signature, *args, **kwargs
-) -> dict[str, typing.Any]:
-    bound = signature.bind(*args, **kwargs)
-    bound.apply_defaults()
-    all_kwargs = bound.arguments
-    assert isinstance(all_kwargs, dict), all_kwargs
-    return all_kwargs
+    def _signature(self) -> Sign:
+        return Sign.from_inputs([input.name for input in self.inputs])
