@@ -1,6 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import abc
+import dataclasses as dcls
 import inspect
 import typing
 from collections import abc as cabc
@@ -9,7 +10,7 @@ from aioway._api import public_api
 from aioway._iters import Iter, StructIter
 from aioway._utils import Sign, decomp_flatten, decomp_replace, render_fcall
 
-__all__ = ["UFunc", "UFuncThunk"]
+__all__ = ["UFunc", "UFuncThunk", "AdHocUFunc"]
 
 
 class UFuncThunk[**P = ..., T = typing.Any](Iter[T]):
@@ -124,3 +125,23 @@ class UFunc[**P, T](abc.ABC):
             _ = self._signature.bind(*args, **kwargs)
         except TypeError as te:
             raise TypeError(f"{self!r} gets a bad input.") from te
+
+
+@public_api
+@dcls.dataclass(frozen=True)
+class AdHocUFunc[**P, T](UFunc):
+    """
+    A ad hoc `UFunc` that is useful for wrapping other functions.
+    """
+
+    function: cabc.Callable[P, T]
+    "The function to wrap."
+
+    @typing.override
+    def forward(self, *args: P.args, **kwargs: P.kwargs) -> T:
+        return self.function(*args, **kwargs)
+
+    @property
+    @typing.override
+    def _signature(self):
+        return Sign.from_callable(self.function)
