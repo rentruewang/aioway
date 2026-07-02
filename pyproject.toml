@@ -31,6 +31,9 @@ networkx = [
 faiss = [
     "faiss-cpu>=1.14.2",
 ]
+sklearn = [
+    "scikit-learn>=1.9.0",
+]
 
 [build-system]
 requires = ["setuptools", "wheel", "setuptools-scm"]
@@ -96,6 +99,7 @@ check_untyped_defs = true
 # Skipping analysis for some modules because they are not typed.
 [[tool.mypy.overrides]]
 module = [
+    "sklearn.*",
     "tensordict.*",
     "torchvision.*",
     "torchcodec.*",

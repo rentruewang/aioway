@@ -1,6 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import abc
+import collections
 import dataclasses as dcls
 import typing
 from collections import abc as cabc
@@ -42,17 +43,23 @@ class CompoundBuilder:
     Stores all the thunks sequentially, to convert to statements.
     """
 
-    nodes: list[BuilderNode] = dcls.field(default_factory=list)
-    "The nodes corresponding to the variables."
+    def __init__(self) -> None:
+        self.nodes: list[BuilderNode] = []
+        "The nodes corresponding to the variables."
 
-    ufunc_names: AnyDict[UFunc, str] = dcls.field(default_factory=AnyDict)
-    "The names of the ufuncs currently in scope."
+        self._ufunc_names: AnyDict[UFunc, str] = AnyDict()
+        "The names of the ufuncs currently in scope."
 
-    type_count: AnyDict[type[UFunc], int] = dcls.field(default_factory=AnyDict)
-    "Mapping from ufunc types to the number of occurences."
+        self._type_count: dict[type[UFunc], int] = collections.defaultdict(int)
+        "Mapping from ufunc types to the number of occurences."
 
     def input(self, name: str) -> InputBuilderNode:
         "Set the input nodes. Translate to the argument list."
+
+        # Since the nodes are referred to by `id`, we need to find it exactly.
+        for input in self.inputs():
+            if input.name == name:
+                return input
 
         node = InputBuilderNode(name)
         self.nodes.append(node)
@@ -65,8 +72,8 @@ class CompoundBuilder:
         self.nodes.append(node)
 
         # If the name does not exist, assign a name.
-        if ufunc not in self.ufunc_names:
-            self.ufunc_names[ufunc] = self._ufunc_new_name(ufunc)
+        if ufunc not in self._ufunc_names:
+            self._ufunc_names[ufunc] = self._ufunc_new_name(ufunc)
 
         return node
 
@@ -85,8 +92,8 @@ class CompoundBuilder:
     def _ufunc_new_name(self, ufunc: UFunc) -> str:
         # Count the number of the same type, to add suffix.
         ufunc_type = type(ufunc)
-        self.type_count[ufunc_type] = self.type_count.get(ufunc_type, 0) + 1
-        count = self.type_count[ufunc_type]
+        self._type_count[ufunc_type] += 1
+        count = self._type_count[ufunc_type]
 
         return f"{ufunc_type.__name__}_{count}"
 
@@ -215,7 +222,7 @@ class BuiltUFunc(UFunc):
         return {input.name: input for input in self.inputs}
 
     def _names_of(self, ufunc: UFunc) -> str:
-        return self.builder.ufunc_names[ufunc]
+        return self.builder._ufunc_names[ufunc]
 
     def codegen(self, name: str) -> str:
         "Generate the definition."
@@ -237,9 +244,9 @@ class BuiltUFunc(UFunc):
 
         return _CODEGEN_TEMPLATE.render(
             module=name,
-            init_signature=", ".join(self.builder.ufunc_names.values()),
+            init_signature=", ".join(self.builder._ufunc_names.values()),
             init_stmts=[
-                f"self.{name} = {name}" for name in self.builder.ufunc_names.values()
+                f"self.{name} = {name}" for name in self.builder._ufunc_names.values()
             ],
             fwd_signature=", ".join(self._input_names.keys()),
             fwd_stmts=[

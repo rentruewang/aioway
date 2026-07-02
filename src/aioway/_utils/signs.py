@@ -15,9 +15,19 @@ class Sign:
     "The convenient wrapper for signature."
 
     signature: inspect.Signature
+    "The underlying signature."
 
     def __repr__(self) -> str:
         return repr(self.signature)
+
+    def __eq__(self, other) -> bool:
+        if isinstance(other, Sign):
+            return self.signature == other.signature
+
+        if isinstance(other, inspect.Signature):
+            return self.signature == other
+
+        return NotImplemented
 
     @property
     def parameters(self) -> cabc.Mapping[str, inspect.Parameter]:
