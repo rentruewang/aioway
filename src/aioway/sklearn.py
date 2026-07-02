@@ -6,6 +6,7 @@ from numpy.typing import NDArray
 from sklearn import exceptions as skexc
 from sklearn.utils import validation as skval
 
+from aioway._api import public_api
 from aioway._ufuncs import AdHocUFunc, UFunc
 
 __all__ = ["SklearnModel", "HasFit", "HasPredict", "HasFitPredict"]
@@ -25,6 +26,7 @@ class HasPredict(typing.Protocol):
 class HasFitPredict(HasFit, HasPredict, typing.Protocol): ...
 
 
+@public_api
 class SklearnModel[M: HasFitPredict](HasFitPredict):
     """
     `SklearnModel` is a wrapper around Sklearn's API, allowing methods to be used as UFunc.
