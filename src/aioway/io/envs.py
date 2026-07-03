@@ -5,7 +5,12 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-from .spaces import Space
+from aioway.errors import re_raise_func
+from aioway.relalg import LoaderOpt
+from aioway.spaces import Space
+
+from .dsets import Dset
+from .sinks import Sink
 
 __all__ = ["Env", "EnvGen"]
 
@@ -21,10 +26,6 @@ class Env[O = typing.Any, A = typing.Any](abc.ABC):
     The constructor takes the observation space and the action space.
     """
 
-    def __init__(self, observation_space: Space, action_space: Space) -> None:
-        self._observation_space = observation_space
-        self._action_space = action_space
-
     def __call__(self) -> cabc.Generator[O, A, None]:
         yield from self.generator()
 
@@ -34,8 +35,8 @@ class Env[O = typing.Any, A = typing.Any](abc.ABC):
         """
 
         return EnvGen(
-            observation_space=self._observation_space,
-            action_space=self._action_space,
+            observ_space=self.observ_space,
+            action_space=self.action_space,
             generator=self.interact(),
         )
 
@@ -48,6 +49,42 @@ class Env[O = typing.Any, A = typing.Any](abc.ABC):
 
         raise NotImplementedError
 
+    @property
+    @abc.abstractmethod
+    def observ_space(self) -> Space:
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def action_space(self) -> Space:
+        raise NotImplementedError
+
+
+class IoEnv(Env):
+    "An `Env` that supports inputs and outputs."
+
+    def __init__(self, dset: Dset, sink: Sink, opt: LoaderOpt) -> None:
+        super().__init__()
+        self._dset = dset
+        self._sink = sink
+        self._opt = opt
+
+    @property
+    @typing.override
+    def observ_space(self):
+        return self._dset.space
+
+    @property
+    @typing.override
+    def action_space(self):
+        return self._sink.space
+
+    @typing.override
+    def interact(self):
+        for observ in self._dset(self._opt):
+            action = yield observ
+            self._sink.write(action)
+
 
 @dcls.dataclass(frozen=True)
 class EnvGen[Y, S, R](cabc.Generator[Y, S, R]):
@@ -55,9 +92,17 @@ class EnvGen[Y, S, R](cabc.Generator[Y, S, R]):
     The environment generator, performing checks while implementing the generator protocol.
     """
 
-    observation_space: Space
+    observ_space: Space
+    "Observation space."
+
     action_space: Space
+    "Action space."
+
     generator: cabc.Generator[Y, S, R] = dcls.field(repr=False)
+    """
+    The generator that `EnvGen` wraps.
+    Its inputs (actions) and outputs (observations) would be checked.
+    """
 
     def __iter__(self) -> typing.Self:
         return self
@@ -76,10 +121,10 @@ class EnvGen[Y, S, R](cabc.Generator[Y, S, R]):
     def throw(self, typ, val=None, tb=None) -> Y:
         return self.generator.throw(typ, val, tb)
 
+    @re_raise_func(AssertionError, ValueError)
     def _check_observation(self, observation: Y, /) -> None:
-        if observation not in self.observation_space:
-            raise ValueError
+        assert observation in self.observ_space
 
+    @re_raise_func(AssertionError, ValueError)
     def _check_action(self, action: S, /) -> None:
-        if action not in self.action_space:
-            raise ValueError
+        assert action in self.action_space

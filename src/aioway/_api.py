@@ -4,21 +4,40 @@
 
 import copy
 import dataclasses as dcls
-import types
 import typing
 from collections import abc as cabc
 
-__all__ = ["public_api", "public_items"]
+__all__ = ["public_api", "public_items", "AiowayApi"]
 
-type FuncOrClass = type | types.FunctionType
 
 _REGISTRY: dict[str, FuncOrClass] = {}
+
+
+class FuncOrClass(typing.Protocol):
+    __module__: str
+    __name__: str
+    __qualname__: str
+    __doc__: str | None
+
+
+@typing.runtime_checkable
+class AiowayApi[**P = ..., T = typing.Any](FuncOrClass, typing.Protocol):
+    "The aioway marker."
+
+    __aioway_internal_ref__: FuncOrClass
+
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T: ...
 
 
 def public_api[T: FuncOrClass](item: T) -> T:
     """
     Register the function or class as a public API.
     """
+
+    if isinstance(item, AiowayApi):
+        raise ValueError(
+            f"{item=} is already an API. Perhaps you're registering twice?"
+        )
 
     if item.__name__ in _REGISTRY:
         raise KeyError(
@@ -41,10 +60,15 @@ class _ReExportReg(cabc.Mapping[str, FuncOrClass]):
     def __len__(self) -> int:
         return len(_REGISTRY)
 
-    @typing.no_type_check
     def __getitem__(self, name: str) -> FuncOrClass:
+
         original = _REGISTRY[name]
         item = copy.copy(original)
+
+        # Mark it as `AiowayApi`.
+        if typing.TYPE_CHECKING:
+            assert isinstance(item, AiowayApi)
+
         item.__module__ = self.module
         item.__aioway_internal_ref__ = original
         return item

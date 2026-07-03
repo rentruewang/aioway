@@ -9,7 +9,7 @@ import torch
 
 from aioway._iters import TdictIter
 from aioway._utils import tdict_all_equal
-from aioway.dsets import TdictListIter
+from aioway.io import TdictListIter
 from aioway.relalg import NestedLoopJoinIter, ZipIter
 
 

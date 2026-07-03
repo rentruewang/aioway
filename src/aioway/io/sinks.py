@@ -7,6 +7,7 @@ import dataclasses as dcls
 import typing
 
 from aioway._iters import Iter
+from aioway.spaces import AnySpace, Space
 
 __all__ = ["Sink", "sink_dcls"]
 
@@ -37,3 +38,7 @@ class Sink[T = typing.Any](abc.ABC):
     @abc.abstractmethod
     def write(self, batch: T, /) -> None:
         raise NotImplementedError
+
+    @property
+    def space(self) -> Space:
+        return AnySpace()

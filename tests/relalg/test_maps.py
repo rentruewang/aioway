@@ -10,7 +10,7 @@ import tensordict as td
 
 from aioway._iters import TdictIter, node_dcls
 from aioway._utils import tdict_all_equal, tdict_rename
-from aioway.dsets import TdictListIter
+from aioway.io import TdictListIter
 from aioway.relalg import ApplyIter, FuncFilterIter, MapIter, ProjectIter, RenameIter
 
 

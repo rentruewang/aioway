@@ -4,8 +4,8 @@ import pytest
 import torch
 
 from aioway._iters import TensorIter
-from aioway.dsets import TensorListIter
 from aioway.indices import AnnIndexIter, AnnIndexTrainerIter, FaissIndex
+from aioway.io import TensorListIter
 from aioway.spaces import DType
 
 

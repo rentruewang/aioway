@@ -10,11 +10,13 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
+from aioway._api import public_api
 from aioway.spaces import Attr, AttrDict
 
-__all__ = ["Space", "TensorSpace", "TdictSpace", "SpaceList", "space_dcls"]
+__all__ = ["Space", "AnySpace", "TensorSpace", "TdictSpace", "SpaceList", "space_dcls"]
 
 
+@public_api
 @typing.dataclass_transform(frozen_default=True)
 def space_dcls[T](cls: type[Space[T]]):
     """
@@ -26,6 +28,7 @@ def space_dcls[T](cls: type[Space[T]]):
     return dcls.dataclass(frozen=True, slots=True)(cls)
 
 
+@public_api
 @space_dcls
 class Space[T = typing.Any](abc.ABC):
     """
@@ -48,6 +51,18 @@ class Space[T = typing.Any](abc.ABC):
         raise NotImplementedError
 
 
+@public_api
+@space_dcls
+class AnySpace(Space):
+    """
+    A `Space` that imposes no constraints.
+    """
+
+    def contains(self, value):
+        return True
+
+
+@public_api
 @space_dcls
 class TensorSpace(Space[torch.Tensor]):
     "A `Space` that enforces constraints on a `torch.Tensor`."
@@ -79,6 +94,7 @@ class TensorSpace(Space[torch.Tensor]):
         """
 
 
+@public_api
 @space_dcls
 class TdictSpace(Space[td.TensorDict]):
     "A `Space` that checks a `td.TensorDict`."
@@ -110,6 +126,7 @@ class TdictSpace(Space[td.TensorDict]):
         """
 
 
+@public_api
 @space_dcls
 class SpaceList[T = typing.Any](Space[T]):
     """

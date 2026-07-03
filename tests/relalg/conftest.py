@@ -4,7 +4,7 @@
 
 import pytest
 
-from aioway.dsets import TdictFrame, TensorDictFrame
+from aioway.io import TdictFrame, TensorDictFrame
 from aioway.relalg import LoaderIter, LoaderOpt
 from tests.mock import chunk_ok, concat_ok, unionable_ok
 
