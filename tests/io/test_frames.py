@@ -5,7 +5,7 @@ import pytest
 import tensordict as td
 from numpy import random
 
-from aioway.dsets import TdictFrame, TensorDictFrame
+from aioway.io import TdictFrame, TensorDictFrame
 from aioway.relalg import LoaderOpt
 from tests.mock import chunk_ok
 
