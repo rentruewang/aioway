@@ -6,13 +6,13 @@ import pytest
 from torch import optim
 
 from aioway._iters import TensorIter
-from aioway._ufuncs import BuiltUFunc, UFunc
+from aioway._ufuncs import BuiltUFunc, UFunc, UFuncThunk
 from aioway.emits import MlpEmitter, emit, linear_shape
 from aioway.io import TensorListIter, TensorStream
 from aioway.relalg import LoaderOpt
 from aioway.spaces import Attr, AttrSpace, Shape, ShapeSpace
 from aioway.torch.nn import Linear, MSELoss, NnUFunc
-from aioway.torch.optim import OptimizerIter
+from aioway.torch.optim import OptimizerUFunc
 
 
 @pytest.fixture
@@ -47,21 +47,21 @@ def input_dataset(input_attr_space: AttrSpace):
 
 
 @pytest.fixture
-def input_hop(input_dataset: TensorStream) -> TensorIter:
+def input_loader(input_dataset: TensorStream) -> TensorIter:
     return input_dataset(LoaderOpt())
 
 
 @pytest.fixture
-def target_hop(input_hop: TensorIter) -> TensorIter:
-    return input_hop
+def target_loader(input_loader: TensorIter) -> TensorIter:
+    return input_loader
 
 
 @pytest.fixture
-def optimizer(input_hop: TensorListIter, target_hop: TensorIter):
-    opt = optim.AdamW(input_hop.sequence)
-    loss = MSELoss().apply(input_hop, target_hop)
+def optimizer(input_loader: TensorListIter, target_loader: TensorIter):
+    opt = optim.AdamW(input_loader.sequence)
+    loss = MSELoss().apply(input_loader, target_loader)
     assert isinstance(loss, TensorIter)
-    return OptimizerIter(loss=loss, optimizer=opt)
+    return OptimizerUFunc(optimizer=opt).thunk(loss=loss)
 
 
 @pytest.fixture
@@ -113,7 +113,7 @@ def _check_linear(linear: NnUFunc, in_features: int, out_features: int):
     assert linear.nn_init.out_features == out_features
 
 
-def test_optimize(optimizer: OptimizerIter):
+def test_optimize(optimizer: UFuncThunk):
     has_run = False
 
     for _ in optimizer:

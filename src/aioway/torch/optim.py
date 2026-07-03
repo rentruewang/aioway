@@ -1,33 +1,27 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from collections import abc as cabc
+import dataclasses as dcls
 
+import torch
 from torch import optim
 
-from aioway._iters import Iter, TensorIter, node_dcls
+from aioway._api import public_api
+from aioway._ufuncs import UFunc
 
-__all__ = ["OptimizerIter"]
+__all__ = ["OptimizerUFunc"]
 
 
-@node_dcls
-class OptimizerIter(Iter[None]):
+@public_api
+@dcls.dataclass(frozen=True)
+class OptimizerUFunc(UFunc):
     """
-    The optimizer in the `Iter` format.
+    The optimizer `UFunc`.
     """
-
-    loss: TensorIter
-    "The loss that would be optimized."
 
     optimizer: optim.Optimizer
     "The optimizer to call `.step()` on."
 
-    def __post_init__(self) -> None:
-        if self.loss.ndim != 0:
-            raise ValueError(f"The input loss should be 0D, got {self.loss.shape=}.")
-
-    def iterate(self) -> cabc.Generator[None]:
-        for loss in self.loss:
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
-            yield
+    def forward(self, loss: torch.Tensor):
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
