@@ -5,6 +5,7 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
+from aioway.errors import re_raise_func
 from aioway.relalg import LoaderOpt
 from aioway.spaces import Space
 
@@ -92,8 +93,16 @@ class EnvGen[Y, S, R](cabc.Generator[Y, S, R]):
     """
 
     observ_space: Space
+    "Observation space."
+
     action_space: Space
+    "Action space."
+
     generator: cabc.Generator[Y, S, R] = dcls.field(repr=False)
+    """
+    The generator that `EnvGen` wraps.
+    Its inputs (actions) and outputs (observations) would be checked.
+    """
 
     def __iter__(self) -> typing.Self:
         return self
@@ -112,10 +121,10 @@ class EnvGen[Y, S, R](cabc.Generator[Y, S, R]):
     def throw(self, typ, val=None, tb=None) -> Y:
         return self.generator.throw(typ, val, tb)
 
+    @re_raise_func(AssertionError, ValueError)
     def _check_observation(self, observation: Y, /) -> None:
-        if observation not in self.observ_space:
-            raise ValueError
+        assert observation in self.observ_space
 
+    @re_raise_func(AssertionError, ValueError)
     def _check_action(self, action: S, /) -> None:
-        if action not in self.action_space:
-            raise ValueError
+        assert action in self.action_space
