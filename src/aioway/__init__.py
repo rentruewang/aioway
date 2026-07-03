@@ -11,7 +11,6 @@ from . import (
     _ufuncs,
     _utils,
     api,
-    codecs,
     emits,
     errors,
     indices,
