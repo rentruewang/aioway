@@ -4,7 +4,7 @@ import typing
 
 import torch
 
-from aioway.errors import re_raise
+from aioway.errors import re_raise_func
 
 from .attrs import Attr, DType, Shape
 from .spaces import TensorSpace, space_dcls
@@ -26,13 +26,13 @@ class DiscreteSpace(TensorSpace):
             raise ValueError("'n' must be positive.")
 
     @typing.override
-    @re_raise(AssertionError, ValueError)
+    @re_raise_func(AssertionError, ValueError)
     def _check_attr(self, attr: Attr) -> None:
         assert attr.ndim == 1
         assert attr.dtype.family in ["uint", "int"]
 
     @typing.override
-    @re_raise(AssertionError, ValueError)
+    @re_raise_func(AssertionError, ValueError)
     def _check_data(self, value: torch.Tensor) -> None:
         assert torch.all((0 <= value) & (value <= self.n)).item()
 
@@ -62,13 +62,13 @@ class BoxSpace(TensorSpace):
         if not torch.all(self.low <= self.high):
             raise ValueError("'low' must be less than or equal to 'high' elementwise.")
 
-    @re_raise(AssertionError, ValueError)
+    @re_raise_func(AssertionError, ValueError)
     def _check_attr(self, attr: Attr) -> None:
         assert attr.ndim == self.low.ndim + 1
         assert attr.shape[1:] == self.low.shape
         assert attr.dtype.family == "float"
 
-    @re_raise(AssertionError, ValueError)
+    @re_raise_func(AssertionError, ValueError)
     def _check_data(self, value: torch.Tensor) -> None:
         assert torch.all((value >= self.low) & (value <= self.high)).item()
 
@@ -93,7 +93,7 @@ class MultiDiscreteSpace(TensorSpace):
             raise ValueError("All elements of 'nvec' must be positive.")
 
     @typing.override
-    @re_raise(AssertionError, ValueError)
+    @re_raise_func(AssertionError, ValueError)
     def _check_attr(self, attr: Attr) -> None:
         assert attr.ndim == self.nvec.ndim + 1
         assert attr.shape[1:] == self.nvec.shape
@@ -122,13 +122,13 @@ class MultiBinarySpace(TensorSpace):
             raise ValueError("All dimensions of 'shape' must be positive.")
 
     @typing.override
-    @re_raise(AssertionError, ValueError)
+    @re_raise_func(AssertionError, ValueError)
     def _check_attr(self, attr: Attr) -> None:
         assert attr.ndim == self.shape.ndim + 1
         assert attr.shape[1:] == self.shape
         assert attr.dtype.family in ["bool", "int", "uint"]
 
     @typing.override
-    @re_raise(AssertionError, ValueError)
+    @re_raise_func(AssertionError, ValueError)
     def _check_data(self, value: torch.Tensor) -> None:
         assert torch.all((value == 0) | (value == 1)).item()
