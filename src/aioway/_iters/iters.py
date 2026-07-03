@@ -11,6 +11,7 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
+from aioway._api import public_api
 from aioway._utils import decomp_dcls_members, decomp_replace, torch_fake_mode
 from aioway.spaces import Attr, Shape
 
@@ -54,6 +55,7 @@ def current_sample_mode():
     return _sample_mode
 
 
+@public_api
 class Iter[T](cabc.Iterable[T], GraphNode["Iter"], abc.ABC):
     """
     The class that defines [h]igh level [op]erations.
@@ -134,6 +136,7 @@ class Iter[T](cabc.Iterable[T], GraphNode["Iter"], abc.ABC):
         return Iter
 
 
+@public_api
 @node_dcls
 class TensorIter(Iter[torch.Tensor], abc.ABC):
     """
@@ -153,6 +156,7 @@ class TensorIter(Iter[torch.Tensor], abc.ABC):
         return self.attr.ndim
 
 
+@public_api
 @node_dcls
 class TdictIter(Iter[td.TensorDict], abc.ABC):
     """
@@ -172,6 +176,7 @@ class TdictIter(Iter[td.TensorDict], abc.ABC):
         return ProjectIter(self, subset=list(cols))
 
 
+@public_api
 @node_dcls
 class StructIter(Iter[typing.Any]):
     """
@@ -209,6 +214,7 @@ class StructIter(Iter[typing.Any]):
                 return
 
 
+@public_api
 @node_dcls
 class ListIter[T = typing.Any](Iter[cabc.Sequence[T]]):
     "A convenient list of `Iter`s, using a pull strategy to pull in the data when called."

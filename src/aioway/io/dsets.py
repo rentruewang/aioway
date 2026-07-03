@@ -12,12 +12,13 @@ import torch
 from torch.utils import data
 
 from aioway.relalg import LoaderIter, LoaderOpt, TdictLoaderIter, TensorLoaderIter
+from aioway.spaces import AnySpace, Space
 
 __all__ = [
+    "dset_dcls",
     "Dset",
     "Stream",
     "Frame",
-    "dset_dcls",
     "TensorStream",
     "TdictStream",
     "TensorFrame",
@@ -77,6 +78,10 @@ class Dset[T](data.Dataset[T]):
 
         if sess := DsetSession.current():
             sess.push(self)
+
+    @property
+    def space(self) -> Space:
+        return AnySpace()
 
 
 @dset_dcls
