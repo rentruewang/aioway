@@ -5,7 +5,7 @@ import pathlib
 import pytest
 import torch
 
-from aioway.io import (
+from aioway.codecs import (
     AudioLoader,
     AvAudioLoader,
     TorchCodecAudioLoader,

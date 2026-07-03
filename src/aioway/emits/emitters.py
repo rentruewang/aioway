@@ -23,13 +23,13 @@ _EMITTERS: AnySet[Emitter] = AnySet()
 "The emitters that are considered."
 
 
-def emit(observation_space: Space, action_space: Space) -> cabc.Generator[UFunc]:
+def emit(observ_space: Space, action_space: Space) -> cabc.Generator[UFunc]:
     """
     Emit some candidates based on the given spaces.
     """
 
     for emitter in emitters_in_scope():
-        result = emitter(observation_space, action_space)
+        result = emitter(observ_space, action_space)
 
         if result is not NotImplemented:
             yield result
