@@ -5,7 +5,7 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-from .spaces import Space
+from aioway.spaces import Space
 
 __all__ = ["Env", "EnvGen"]
 
