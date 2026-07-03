@@ -6,11 +6,7 @@ import contextlib as ctxl
 import types
 import typing
 
-__all__ = [
-    "AiowayError",
-    "FrameworkUnexpected",
-    "GitHubTicketFiled",
-]
+__all__ = ["AiowayError", "FrameworkUnexpected", "GitHubTicketFiled"]
 
 
 class AiowayError(Exception):

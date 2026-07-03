@@ -3,4 +3,5 @@
 from .attrs import *
 from .dims import *
 from .exact import *
+from .gym import *
 from .spaces import *
