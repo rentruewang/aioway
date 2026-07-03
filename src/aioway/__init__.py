@@ -19,6 +19,7 @@ from . import (
     indices,
     modes,
     relalg,
+    sklearn,
     spaces,
     torch,
 )
