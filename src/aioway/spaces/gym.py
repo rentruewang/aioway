@@ -1,9 +1,12 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import typing
+
 import torch
 
-from aioway.spaces import DType, Shape
+from aioway.errors import re_raise
 
+from .attrs import Attr, DType, Shape
 from .spaces import TensorSpace, space_dcls
 
 __all__ = ["DiscreteSpace", "BoxSpace", "MultiDiscreteSpace", "MultiBinarySpace"]
@@ -22,19 +25,16 @@ class DiscreteSpace(TensorSpace):
         if self.n <= 0:
             raise ValueError("'n' must be positive.")
 
-    def contains(self, value: torch.Tensor) -> bool:
-        return (
-            value.ndim == 0
-            and value.dtype
-            in (
-                torch.uint8,
-                torch.int8,
-                torch.int16,
-                torch.int32,
-                torch.int64,
-            )
-            and 0 <= value.item() < self.n
-        )
+    @typing.override
+    @re_raise(AssertionError, ValueError)
+    def _check_attr(self, attr: Attr) -> None:
+        assert attr.ndim == 1
+        assert attr.dtype.family in ["uint", "int"]
+
+    @typing.override
+    @re_raise(AssertionError, ValueError)
+    def _check_data(self, value: torch.Tensor) -> None:
+        assert torch.all((0 <= value) & (value <= self.n)).item()
 
 
 @space_dcls
@@ -62,11 +62,15 @@ class BoxSpace(TensorSpace):
         if not torch.all(self.low <= self.high):
             raise ValueError("'low' must be less than or equal to 'high' elementwise.")
 
-    def contains(self, value: torch.Tensor) -> bool:
-        if value.shape != self.low.shape:
-            return False
+    @re_raise(AssertionError, ValueError)
+    def _check_attr(self, attr: Attr) -> None:
+        assert attr.ndim == self.low.ndim + 1
+        assert attr.shape[1:] == self.low.shape
+        assert attr.dtype.family == "float"
 
-        return bool(torch.all((value >= self.low) & (value <= self.high)).item())
+    @re_raise(AssertionError, ValueError)
+    def _check_data(self, value: torch.Tensor) -> None:
+        assert torch.all((value >= self.low) & (value <= self.high)).item()
 
 
 @space_dcls
@@ -88,14 +92,17 @@ class MultiDiscreteSpace(TensorSpace):
         if not torch.all(self.nvec > 0):
             raise ValueError("All elements of 'nvec' must be positive.")
 
-    def contains(self, value: torch.Tensor) -> bool:
-        if value.shape != self.nvec.shape:
-            return False
+    @typing.override
+    @re_raise(AssertionError, ValueError)
+    def _check_attr(self, attr: Attr) -> None:
+        assert attr.ndim == self.nvec.ndim + 1
+        assert attr.shape[1:] == self.nvec.shape
+        assert attr.dtype.family in ["uint", "int"]
 
-        if DType.parse(value).family not in ["uint", "int"]:
-            return False
-
-        return bool(torch.all((value >= 0) & (value < self.nvec)).item())
+    @typing.override
+    def _check_data(self, value: torch.Tensor) -> None:
+        nvec_expanded = self.nvec[None, ...]
+        assert torch.all((value >= 0) & (value < nvec_expanded)).item()
 
 
 @space_dcls
@@ -114,8 +121,14 @@ class MultiBinarySpace(TensorSpace):
         if any(d <= 0 for d in self.shape):
             raise ValueError("All dimensions of 'shape' must be positive.")
 
-    def contains(self, value: torch.Tensor) -> bool:
-        if value.shape != self.shape:
-            return False
+    @typing.override
+    @re_raise(AssertionError, ValueError)
+    def _check_attr(self, attr: Attr) -> None:
+        assert attr.ndim == self.shape.ndim + 1
+        assert attr.shape[1:] == self.shape
+        assert attr.dtype.family in ["bool", "int", "uint"]
 
-        return bool(torch.all((value == 0) | (value == 1)).item())
+    @typing.override
+    @re_raise(AssertionError, ValueError)
+    def _check_data(self, value: torch.Tensor) -> None:
+        assert torch.all((value == 0) | (value == 1)).item()

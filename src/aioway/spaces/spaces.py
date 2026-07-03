@@ -29,7 +29,7 @@ def space_dcls[T](cls: type[Space[T]]):
 @space_dcls
 class Space[T = typing.Any](abc.ABC):
     """
-    The base class for spaces. A space describes an input or output,
+    The base class for spaces. A space describes an (batched) input or output,
     and is inspired by `gymnasium`'s `Space` class.
 
     It is also a filtering system.
@@ -53,6 +53,7 @@ class TensorSpace(Space[torch.Tensor]):
     "A `Space` that enforces constraints on a `torch.Tensor`."
 
     @typing.override
+    @typing.final
     def contains(self, value: torch.Tensor, /) -> bool:
         if not isinstance(value, torch.Tensor):
             raise TypeError(f"{type(value)} is not a `torch.Tensor`.")
@@ -83,6 +84,7 @@ class TdictSpace(Space[td.TensorDict]):
     "A `Space` that checks a `td.TensorDict`."
 
     @typing.override
+    @typing.final
     def contains(self, value: td.TensorDict, /) -> bool:
         if not isinstance(value, td.TensorDict):
             raise TypeError(f"{type(value)} is not a `td.TensorDict`.")
