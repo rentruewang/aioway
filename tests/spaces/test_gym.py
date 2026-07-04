@@ -4,13 +4,8 @@
 import pytest
 import torch
 
-from aioway.spaces import (
-    BoxSpace,
-    DiscreteSpace,
-    MultiBinarySpace,
-    MultiDiscreteSpace,
-    Shape,
-)
+from aioway.attrs import Shape
+from aioway.spaces import BoxSpace, DiscreteSpace, MultiBinarySpace, MultiDiscreteSpace
 
 
 @pytest.fixture
@@ -20,17 +15,12 @@ def discrete():
 
 @pytest.fixture
 def box():
-    return BoxSpace(
-        low=torch.zeros(2),
-        high=torch.ones(2),
-    )
+    return BoxSpace(low=torch.zeros(2), high=torch.ones(2))
 
 
 @pytest.fixture
 def multidiscrete():
-    return MultiDiscreteSpace(
-        nvec=torch.tensor([2, 3, 4]),
-    )
+    return MultiDiscreteSpace(nvec=torch.tensor([2, 3, 4]))
 
 
 @pytest.fixture

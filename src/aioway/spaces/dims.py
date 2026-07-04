@@ -9,7 +9,7 @@ import typing
 
 import torch
 
-from aioway.spaces import Attr
+from aioway.attrs import Attr
 
 from .spaces import TensorSpace, space_dcls
 

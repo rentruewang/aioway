@@ -19,7 +19,7 @@ import pickle
 import torch
 
 # %%
-from aioway.spaces import Attr
+from aioway.attrs import Attr
 
 # %%
 

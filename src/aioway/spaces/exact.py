@@ -6,7 +6,7 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-from aioway.spaces import Attr, Device, DType, Layout, Shape
+from aioway.attrs import Attr, Device, DType, Layout, Shape
 
 from .spaces import TensorSpace, space_dcls
 

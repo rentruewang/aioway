@@ -11,7 +11,7 @@ import tensordict as td
 import torch
 
 from aioway._api import public_api
-from aioway.spaces import Attr, AttrDict
+from aioway.attrs import Attr, AttrDict
 
 __all__ = ["Space", "AnySpace", "TensorSpace", "TdictSpace", "SpaceList", "space_dcls"]
 

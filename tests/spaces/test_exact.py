@@ -3,7 +3,8 @@
 import pytest
 import torch
 
-from aioway.spaces import Attr, AttrSpace
+from aioway.attrs import Attr
+from aioway.spaces import AttrSpace
 
 
 @pytest.fixture
