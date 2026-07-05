@@ -9,7 +9,7 @@ import typing
 
 import torch
 
-from aioway.spaces import Attr
+from aioway.attrs import Attr
 
 from .spaces import TensorSpace, space_dcls
 
@@ -81,6 +81,10 @@ class DimSpace(TensorSpace):
 
             if not torch.allclose(summation, ones):
                 raise ValueError
+
+    def _sample_n(self, batch_size: int):
+        tags = [batch_size if t == "b" else 1 for t in self.tags]
+        return torch.randn(*tags)
 
 
 def _valid_dim_tag(tags: str) -> bool:

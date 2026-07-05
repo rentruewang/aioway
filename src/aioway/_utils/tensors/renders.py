@@ -15,7 +15,7 @@ __all__ = [
 
 @typing.no_type_check
 def replace_tensors_with_attr[T](obj: T) -> T:
-    from aioway.spaces import Attr
+    from aioway.attrs import Attr
 
     return replace_tensors(obj, Attr.parse)
 
