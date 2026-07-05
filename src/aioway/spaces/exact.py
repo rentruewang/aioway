@@ -3,8 +3,11 @@
 "The contract that forces the checked data to be exact."
 
 import dataclasses as dcls
+import random
 import typing
 from collections import abc as cabc
+
+import torch
 
 from aioway.attrs import Attr, Device, DType, Layout, Shape
 
@@ -36,6 +39,12 @@ class ShapeSpace(TensorSpace):
 
         raise ValueError
 
+    def _check_data(self, tensor: torch.Tensor) -> None:
+        pass
+
+    def _sample_n(self, batch_size: int) -> torch.Tensor:
+        return torch.randn(batch_size, *self.shape)
+
 
 @space_dcls
 class DTypeSpace(TensorSpace):
@@ -51,6 +60,13 @@ class DTypeSpace(TensorSpace):
     def _check_attr(self, attr: Attr) -> None:
         if attr.dtype not in self.dtypes:
             raise ValueError
+
+    def _check_data(self, tensor: torch.Tensor) -> None:
+        pass
+
+    def _sample_n(self, batch_size: int) -> torch.Tensor:
+        dtype = random.choice(self.dtypes)
+        return torch.randn(batch_size).to(dtype.torch())
 
 
 @space_dcls
@@ -89,6 +105,14 @@ class AttrSpace(TensorSpace):
         check_if_not_none(self.device, attr.device)
         check_if_not_none(self.layout, attr.layout)
         check_if_not_none(self.requires_grad, attr.requires_grad)
+
+    def _sample_n(self, batch_size: int) -> torch.Tensor:
+        attr = self.to_attr()
+        attr = dcls.replace(attr, shape=Shape.parse(batch_size, *attr.shape))
+        return attr.to_fake_tensor()
+
+    def _check_data(self, tensor: torch.Tensor) -> None:
+        pass
 
     def to_attr(self) -> Attr:
         "Convert to `Attr`. If not enough info, will raise `TypeError`."

@@ -5,7 +5,13 @@ import pytest
 import torch
 
 from aioway.attrs import Shape
-from aioway.spaces import BoxSpace, DiscreteSpace, MultiBinarySpace, MultiDiscreteSpace
+from aioway.spaces import (
+    BoxSpace,
+    DiscreteSpace,
+    MultiBinarySpace,
+    MultiDiscreteSpace,
+    Space,
+)
 
 
 @pytest.fixture
@@ -19,21 +25,25 @@ def box():
 
 
 @pytest.fixture
-def multidiscrete():
+def multi_discrete():
     return MultiDiscreteSpace(nvec=torch.tensor([2, 3, 4]))
 
 
 @pytest.fixture
-def multibinary():
+def multi_binary():
     return MultiBinarySpace(shape=Shape.parse(2, 3))
 
 
-def test_discrete_valid(discrete):
+def test_discrete_valid(discrete: Space):
     assert torch.tensor([2]) in discrete
     assert torch.tensor([1, 2]) in discrete
 
 
-def test_discrete_invalid(discrete):
+def test_discrete_valid_sample(discrete: Space):
+    assert discrete.sample() in discrete
+
+
+def test_discrete_invalid(discrete: Space):
     assert torch.tensor(4.0) not in discrete
     assert torch.tensor(-1) not in discrete
 
@@ -43,11 +53,15 @@ def test_discrete_invalid_init():
         DiscreteSpace(n=0)
 
 
-def test_box_valid(box):
+def test_box_valid(box: Space):
     assert torch.tensor([[0.5, 0.2], [0.1, 0.9]]) in box
 
 
-def test_box_invalid(box):
+def test_box_valid_sample(box: Space):
+    assert box.sample() in box
+
+
+def test_box_invalid(box: Space):
     assert torch.tensor([1.5, 0.2]) not in box
     assert torch.tensor([[0.5, 1.2]]) not in box
     assert torch.tensor([0.5]) not in box
@@ -61,31 +75,39 @@ def test_box_invalid_init():
         )
 
 
-def test_multidiscrete_valid(multidiscrete):
-    assert torch.tensor([[1, 2, 3], [0, 1, 2]]) in multidiscrete
+def test_multi_discrete_valid(multi_discrete: Space):
+    assert torch.tensor([[1, 2, 3], [0, 1, 2]]) in multi_discrete
 
 
-def test_multidiscrete_invalid(multidiscrete):
-    assert torch.tensor([1, 2, 3]) not in multidiscrete
-    assert torch.tensor([2, 0, 0]) not in multidiscrete
-    assert torch.tensor([1, 2]) not in multidiscrete
-    assert torch.tensor([1.0, 2.0, 3.0]) not in multidiscrete
+def test_multi_discrete_valid_sample(multi_discrete: Space):
+    assert multi_discrete.sample() in multi_discrete
 
 
-def test_multidiscrete_invalid_init():
+def test_multi_discrete_invalid(multi_discrete: Space):
+    assert torch.tensor([1, 2, 3]) not in multi_discrete
+    assert torch.tensor([2, 0, 0]) not in multi_discrete
+    assert torch.tensor([1, 2]) not in multi_discrete
+    assert torch.tensor([1.0, 2.0, 3.0]) not in multi_discrete
+
+
+def test_multi_discrete_invalid_init():
     with pytest.raises(ValueError):
         MultiDiscreteSpace(nvec=torch.tensor([2, 0]))
 
 
-def test_multibinary_valid(multibinary):
-    assert torch.tensor([[[0, 1, 0], [1, 0, 1]]]) in multibinary  # batch
+def test_multi_binary_valid(multi_binary: Space):
+    assert torch.tensor([[[0, 1, 0], [1, 0, 1]]]) in multi_binary
 
 
-def test_multibinary_invalid(multibinary):
-    assert torch.tensor([[0, 1, 0], [1, 1, 0]]) not in multibinary
-    assert torch.tensor([0, 1, 0]) not in multibinary
+def test_multi_binary_valid_sample(multi_binary: Space):
+    assert multi_binary.sample() in multi_binary
 
 
-def test_multibinary_invalid_init():
+def test_multi_binary_invalid(multi_binary: Space):
+    assert torch.tensor([[0, 1, 0], [1, 1, 0]]) not in multi_binary
+    assert torch.tensor([0, 1, 0]) not in multi_binary
+
+
+def test_multi_binary_invalid_init():
     with pytest.raises(ValueError):
         MultiBinarySpace(shape=Shape.parse())

@@ -5,15 +5,15 @@
 import abc
 import dataclasses as dcls
 import typing
-from collections import abc as cabc
 
 import tensordict as td
 import torch
 
 from aioway._api import public_api
+from aioway._utils import is_fake_tensor, is_real_tensor, torch_fake_mode
 from aioway.attrs import Attr, AttrDict
 
-__all__ = ["Space", "AnySpace", "TensorSpace", "TdictSpace", "SpaceList", "space_dcls"]
+__all__ = ["Space", "AnySpace", "TensorSpace", "TdictSpace", "space_dcls"]
 
 
 @public_api
@@ -50,6 +50,14 @@ class Space[T = typing.Any](abc.ABC):
 
         raise NotImplementedError
 
+    def sample(self, batch_size: int = 1) -> T:
+        with torch_fake_mode():
+            return self._sample_n(batch_size)
+
+    @abc.abstractmethod
+    def _sample_n(self, batch_size: int, /) -> T:
+        raise NotImplementedError
+
 
 @public_api
 @space_dcls
@@ -58,36 +66,46 @@ class AnySpace(Space):
     A `Space` that imposes no constraints.
     """
 
+    @typing.override
     def contains(self, value):
         return True
+
+    @typing.override
+    def _sample_n(self, batch_size: int):
+        return object()
 
 
 @public_api
 @space_dcls
-class TensorSpace(Space[torch.Tensor]):
+class TensorSpace(Space[torch.Tensor], abc.ABC):
     "A `Space` that enforces constraints on a `torch.Tensor`."
 
     @typing.override
     @typing.final
-    def contains(self, value: torch.Tensor, /) -> bool:
-        if not isinstance(value, torch.Tensor):
-            raise TypeError(f"{type(value)} is not a `torch.Tensor`.")
+    def contains(self, tensor: torch.Tensor, /) -> bool:
+        if not isinstance(tensor, torch.Tensor):
+            raise TypeError(f"{type(tensor)} is not a `torch.Tensor`.")
 
-        attr = Attr.parse(value)
+        attr = Attr.parse(tensor)
 
         try:
             self._check_attr(attr)
-            self._check_data(value)
+
+            # Only perform the data checks if all the tensor is real.
+            if not is_fake_tensor(tensor):
+                self._check_data(tensor)
         except ValueError:
             return False
         else:
             return True
 
+    @abc.abstractmethod
     def _check_attr(self, attr: Attr, /) -> None:
         """
         Raise `ValueError` if `self` cannot attach to tensor with `attr`.
         """
 
+    @abc.abstractmethod
     def _check_data(self, tensor: torch.Tensor, /) -> None:
         """
         Raise `ValueError` if `self` is not valid or cannot attach to `tensor`.
@@ -101,49 +119,31 @@ class TdictSpace(Space[td.TensorDict]):
 
     @typing.override
     @typing.final
-    def contains(self, value: td.TensorDict, /) -> bool:
-        if not isinstance(value, td.TensorDict):
-            raise TypeError(f"{type(value)} is not a `td.TensorDict`.")
+    def contains(self, tdict: td.TensorDict, /) -> bool:
+        if not isinstance(tdict, td.TensorDict):
+            raise TypeError(f"{type(tdict)} is not a `td.TensorDict`.")
 
-        attrs = AttrDict.parse(value)
+        attrs = AttrDict.parse(tdict)
 
         try:
             self._check_attrs(attrs)
-            self._check_data(value)
+
+            # Only perform the data checks if all the values are real.
+            if all(map(is_real_tensor, tdict.values())):
+                self._check_data(tdict)
         except ValueError:
             return False
         else:
             return True
 
+    @abc.abstractmethod
     def _check_attrs(self, attrs: AttrDict, /) -> None:
         """
         Raise `ValueError` if `self` cannot attach to tdict with `attrs`.
         """
 
+    @abc.abstractmethod
     def _check_data(self, tdict: td.TensorDict, /) -> None:
         """
         Raise `ValueError` if `self` is not valid or cannot attach to `tdict`.
         """
-
-
-@public_api
-@space_dcls
-class SpaceList[T = typing.Any](Space[T]):
-    """
-    A `SpaceList` describes a list of `Space`s.
-    """
-
-    spaces: cabc.Sequence[Space[T]] = ()
-    "The spaces that this space list contains."
-
-    def contains(self, item: T) -> bool:
-        return all(item in space for space in self.spaces)
-
-    def __iter__(self) -> cabc.Iterator[Space[T]]:
-        yield from self.spaces
-
-    def __len__(self) -> int:
-        return len(self.spaces)
-
-    def __getitem__(self, idx: int, /) -> Space[T]:
-        return self.spaces[idx]

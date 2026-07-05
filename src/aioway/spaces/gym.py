@@ -36,6 +36,9 @@ class DiscreteSpace(TensorSpace):
     def _check_data(self, value: torch.Tensor) -> None:
         assert torch.all((0 <= value) & (value <= self.n)).item()
 
+    def _sample_n(self, batch_size: int) -> torch.Tensor:
+        return torch.rand([batch_size], dtype=torch.long)
+
 
 @space_dcls
 class BoxSpace(TensorSpace):
@@ -61,6 +64,9 @@ class BoxSpace(TensorSpace):
 
         if not torch.all(self.low <= self.high):
             raise ValueError("'low' must be less than or equal to 'high' elementwise.")
+
+    def _sample_n(self, batch_size: int) -> torch.Tensor:
+        return torch.randn(batch_size, *self.low.shape)
 
     @re_raise_func(AssertionError, ValueError)
     def _check_attr(self, attr: Attr) -> None:
@@ -92,6 +98,9 @@ class MultiDiscreteSpace(TensorSpace):
         if not torch.all(self.nvec > 0):
             raise ValueError("All elements of 'nvec' must be positive.")
 
+    def _sample_n(self, batch_size: int) -> torch.Tensor:
+        return torch.rand([batch_size, *self.nvec.shape], dtype=torch.long)
+
     @typing.override
     @re_raise_func(AssertionError, ValueError)
     def _check_attr(self, attr: Attr) -> None:
@@ -120,6 +129,9 @@ class MultiBinarySpace(TensorSpace):
 
         if any(d <= 0 for d in self.shape):
             raise ValueError("All dimensions of 'shape' must be positive.")
+
+    def _sample_n(self, batch_size: int) -> torch.Tensor:
+        return torch.rand([batch_size, *self.shape], dtype=torch.bool)
 
     @typing.override
     @re_raise_func(AssertionError, ValueError)
