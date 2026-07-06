@@ -33,10 +33,16 @@ To run testing, do:
 nox -s test
 ```
 
-To check formatting, run:
+To format the codebase, run:
 
 ```bash
 nox -s format
+```
+
+To just check the formatting (no modification), run:
+
+```bash
+nox -s format_check
 ```
 
 To run type checking with `mypy`, run:
