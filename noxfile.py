@@ -1,5 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+from mypy.checkmember import is_instance_var
 import contextlib as ctxl
 import functools
 import os
@@ -65,6 +66,7 @@ def setup():
 
     _github_cleanup()
     _install_ffmpeg()
+    _install_pdm()
 
 
 @nox_cmd
@@ -151,7 +153,7 @@ def type():
 
 def _github_cleanup():
     # Does nothing outside of GitHub Actions.
-    if not in_github():
+    if not _running_in_github():
         return
 
     _remove_unwanted_files()
@@ -180,8 +182,15 @@ def _log_storage_usage() -> None:
     run("df", "-h")
 
 
+def _install_pdm() -> None:
+    if _pdm_is_installed():
+        return
+
+    run("pipx", "install", "pdm")
+
+
 def _install_ffmpeg() -> None:
-    if ffmpeg_is_installed():
+    if _ffmpeg_is_installed():
         return
 
     # Install since it's not installed yet.
@@ -214,7 +223,7 @@ def pdm_publish():
     pdm_update_deps("install")
 
     # Remove all uncommitted changes s.t. it doesn't mess with builds.
-    if in_github():
+    if _running_in_github():
         run("git", "reset", "--hard", "HEAD")
 
     run("pdm", "publish")
@@ -227,7 +236,7 @@ def pdm_run(*args: str):
 
 def pdm_update_deps(command: str = "sync") -> None:
     # Don't repeatedly reinstall locally.
-    if not in_github():
+    if not _running_in_github():
         return
 
     run("pdm", command, "-G:all")
@@ -247,16 +256,25 @@ def checking_if(condition: str):
 
 
 @checking_if("we are in GitHub Actions")
-def in_github() -> bool:
+def _running_in_github() -> bool:
     "Detect whether or not it is running in GitHub Actions."
 
     return os.getenv("GITHUB_ACTIONS") == "true"
 
 
 @checking_if("ffmpeg is installed")
-def ffmpeg_is_installed():
+def _ffmpeg_is_installed():
     try:
         result = sp.run(["ffmpeg", "-version"], stdout=sp.PIPE, stderr=sp.PIPE)
+        return result.returncode == 0
+    except FileNotFoundError:
+        return False
+
+
+@checking_if("pdm is installed")
+def _pdm_is_installed():
+    try:
+        result = sp.run(["pdm", "--version"], stdout=sp.PIPE, stderr=sp.PIPE)
         return result.returncode == 0
     except FileNotFoundError:
         return False

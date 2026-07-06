@@ -17,11 +17,11 @@ jobs:
       - name: 🔔 Check out
         uses: actions/checkout@v3
 
-      - name: 💣 Prepare
-        run: pip install nox[pbs] && nox -rs setup
-
       - name: ⬇️ Python PDM
         uses: pdm-project/setup-pdm@v4
+
+      - name: 💣 Prepare
+        run: pip install nox[pbs] && nox -rs setup
 
       - name: 📦 Release
         run: nox -rs publish

@@ -8,11 +8,11 @@ jobs:
       - name: 🔔 Check out
         uses: actions/checkout@v3
 
-      - name: 💣 Prepare
-        run: pip install nox[pbs] && nox -rs setup
-
       - name: ⬇️ Python PDM
         uses: pdm-project/setup-pdm@v4
+
+      - name: 💣 Prepare
+        run: pip install nox[pbs] && nox -rs setup
 
       - name: 🏃 Formatting
         run: nox -rs format_check
@@ -24,11 +24,11 @@ jobs:
       - name: 🔔 Check out
         uses: actions/checkout@v3
 
-      - name: 💣 Prepare
-        run: pip install nox[pbs] && nox -rs setup
-
       - name: ⬇️ Python PDM
         uses: pdm-project/setup-pdm@v4
+
+      - name: 💣 Prepare
+        run: pip install nox[pbs] && nox -rs setup
 
       - name: 🏃 Type checking
         run: nox -rs type
