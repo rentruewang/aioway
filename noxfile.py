@@ -54,7 +54,7 @@ def nox_cmd(func: cabc.Callable[[], None]) -> cabc.Callable[[], None]:
         with enter_session(session):
             func()
 
-    _ = nox.session(wrapper)
+    _ = nox.session(reuse_venv=True)(wrapper)
 
     return func
 
@@ -65,6 +65,12 @@ def setup():
 
     _github_cleanup()
     _install_ffmpeg()
+
+
+@nox_cmd
+def install():
+    "Perform installation in the environment."
+    pdm_update_deps("install")
 
 
 @nox_cmd
