@@ -1,6 +1,5 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from mypy.checkmember import is_instance_var
 import contextlib as ctxl
 import functools
 import os
