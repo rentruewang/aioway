@@ -1,5 +1,8 @@
 # Contributing
 
+> We do not welcome purely vibe coded PRs.
+> PRs authors should demonstrate deep understanding of the code they wrote before the PR can be merged.
+
 ## Development installation
 
 First, clone and navigate into the project:
@@ -15,20 +18,42 @@ git clone git@github.com:rentruewang/aioway
 cd aioway/
 ```
 
-I'm using [pdm](https://pdm-project.org/) in this project for dependency management.
-To install all dependencies (including development dependencies) with `pdm`, run
+I'm using [nox](https://nox.thea.codes/) for build management,
+and [pdm](https://pdm-project.org/) in this project for dependency management.
+
+To setup the environment (including development dependencies) with `nox`, run
 
 ```bash
-pdm install -G:all
+nox -s setup
 ```
 
-Alternatively, use of `pip` is also allowed (although might be less robust due to lack of version solving)
+To run testing, do:
 
 ```bash
-pip install -e .
+nox -s test
 ```
 
-Both commands result in an editable installation.
+To format the codebase, run:
+
+```bash
+nox -s format
+```
+
+To just check the formatting (no modification), run:
+
+```bash
+nox -s format_check
+```
+
+To run type checking with `mypy`, run:
+
+```bash
+nox -s type
+```
+
+`format`, `type`, `test` are checked in github actions, and they are required for merging.
+
+Run `nox -l` for all options defined in the project.
 
 ## Recommended development style
 
@@ -42,21 +67,9 @@ Otherwise, follow the following style guide that I personally use (by me): [link
 
 The documentation string style follows the Google style format specified [here](https://mkdocstrings.github.io/griffe/docstrings/#google-style).
 
-### Formatting
-
-Use `autoflake`, `isort`, `black` for consistent formatting.
-
-Prior to commiting, please run the following commands:
-
-```bash
-autoflake .
-isort .
-black .
-```
-
 ### Commit message
 
-Commit message should follow the format:
+Commit message should follow the format (applied during squash and merge):
 
 ```
 {emoji} Message. [([fix] #{issue})]
@@ -65,11 +78,3 @@ Detailed explanation.
 ```
 
 Where `[]` denotes optional in the above commit message. `{emoji}` should be a relevant emoji, and `#{issue}` should be the relevant issue number.
-
-### Typing
-
-Be sure to run `mypy` prior to submitting! There can be issue with `mypy` not finding libraries. The command I use for checking is
-
-```bash
-mypy .
-```
