@@ -8,6 +8,7 @@ from aioway._api import public_api
 from aioway.attrs import Attr
 from aioway.errors import re_raise_func
 
+from .coercions import register_coercsion
 from .spaces import TensorSpace, space_dcls
 
 __all__ = ["ImageSpace", "ByteImageSpace", "FloatImageSpace"]
@@ -48,6 +49,9 @@ class ByteImageSpace(ImageSpace):
     def _check_data(self, tensor: torch.Tensor):
         pass
 
+    def _sample_n(self, n: int) -> torch.Tensor:
+        return torch.randint(0, 256, [n, 3, 224, 224], dtype=torch.uint8)
+
 
 @public_api
 @space_dcls
@@ -62,3 +66,16 @@ class FloatImageSpace(ImageSpace):
     def _check_data(self, tensor: torch.Tensor):
         assert torch.all(tensor >= 0)
         assert torch.all(tensor < 1)
+
+    def _sample_n(self, n: int) -> torch.Tensor:
+        return torch.rand([n, 3, 224, 224], dtype=torch.float32)
+
+
+@register_coercsion
+def byte_is_image(img: ByteImageSpace) -> ImageSpace:
+    return img
+
+
+@register_coercsion
+def float_is_image(img: FloatImageSpace) -> ImageSpace:
+    return img

@@ -3,9 +3,10 @@
 import typing
 
 from aioway._utils import Sign
-from aioway.spaces import Space
 
-__all__ = ["register_space_cast"]
+from .spaces import Space
+
+__all__ = ["register_coercsion", "coerce_space"]
 
 _COERCIONS: dict[_SpaceTypeKey, SpaceCoercion] = {}
 "The coercsion methods."
@@ -23,6 +24,24 @@ class SpaceCoercion[S: Space, T: Space](typing.Protocol):
 
 def register_space_coercion[F: SpaceCoercion](function: F) -> F:
     return function
+
+
+def coerce_space[S: Space, T: Space](space: S, target: type[T]) -> T:
+    """
+    Cast `space`, a `Space` instance, to another space of type `target`.
+
+    If the coercion function is not found, `NotImplemented` is returned.
+    """
+
+    key = _SpaceTypeKey(type(space), target)
+
+    if key not in _COERCIONS:
+        return NotImplemented
+
+    function = _COERCIONS[key]
+    result = function(space)
+    assert isinstance(result, target)
+    return result
 
 
 def register_coercsion(function: SpaceCoercion) -> None:
