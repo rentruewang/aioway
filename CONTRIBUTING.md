@@ -21,10 +21,16 @@ cd aioway/
 I'm using [nox](https://nox.thea.codes/) for build management,
 and [pdm](https://pdm-project.org/) in this project for dependency management.
 
-To setup the environment (including development dependencies) with `nox`, run
+To setup the environment (including development dependencies) with `pdm`, run
 
 ```bash
-nox -s setup
+pdm install -G:all
+```
+
+Then activate with
+
+```bash
+eval $(pdm venv activate)
 ```
 
 To run testing, do:

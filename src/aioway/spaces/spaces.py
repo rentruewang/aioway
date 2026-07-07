@@ -55,7 +55,7 @@ class Space[T = typing.Any](abc.ABC):
             return self._sample_n(batch_size)
 
     @abc.abstractmethod
-    def _sample_n(self, batch_size: int, /) -> T:
+    def _sample_n(self, n: int, /) -> T:
         raise NotImplementedError
 
 

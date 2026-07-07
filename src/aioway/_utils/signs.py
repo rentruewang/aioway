@@ -53,6 +53,10 @@ class Sign:
         assert isinstance(arguments, dict), arguments
         return arguments
 
+    @property
+    def argc(self) -> int:
+        return len(self.signature.parameters)
+
     @classmethod
     def from_callable(cls, func: cabc.Callable) -> typing.Self:
         "Create the signature from a method."
