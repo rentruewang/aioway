@@ -10,7 +10,7 @@ from aioway._api import public_api
 from aioway._iters import Iter, StructIter
 from aioway._utils import Sign, decomp_flatten, decomp_replace, render_fcall
 
-__all__ = ["UFunc", "UFuncThunk", "AdHocUFunc"]
+__all__ = ["UFunc", "UFuncThunk", "IdentityUFunc", "AdHocUFunc"]
 
 
 class UFuncThunk[**P = ..., T = typing.Any](Iter[T]):
@@ -129,9 +129,20 @@ class UFunc[**P, T](abc.ABC):
 
 @public_api
 @dcls.dataclass(frozen=True)
+class IdentityUFunc[T](UFunc):
+    """
+    A `UFunc` that passes the input forward to the output.
+    """
+
+    def forward(self, arg: T) -> T:
+        return arg
+
+
+@public_api
+@dcls.dataclass(frozen=True)
 class AdHocUFunc[**P, T](UFunc):
     """
-    A ad hoc `UFunc` that is useful for wrapping other functions.
+    An ad-hoc `UFunc` that is useful for wrapping other functions.
     """
 
     function: cabc.Callable[P, T]
