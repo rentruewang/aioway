@@ -7,6 +7,7 @@ import typing
 from collections import abc as cabc
 
 import jinja2 as j2
+from torch import nn
 
 from aioway._utils import (
     AnyDict,
@@ -223,6 +224,13 @@ class BuiltUFunc(UFunc):
 
     def _names_of(self, ufunc: UFunc) -> str:
         return self.builder._ufunc_names[ufunc]
+
+    def parameters(self) -> cabc.Generator[nn.Parameter]:
+        from aioway.torch.nn import NnUFunc
+
+        for node in self.builder.nodes:
+            if isinstance(node, ThunkBuilderNode) and isinstance(node.ufunc, NnUFunc):
+                yield from node.ufunc.module.parameters()
 
     def codegen(self, name: str) -> str:
         "Generate the definition."
