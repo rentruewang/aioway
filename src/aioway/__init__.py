@@ -20,4 +20,5 @@ from . import (
     sklearn,
     spaces,
     torch,
+    trainers,
 )
