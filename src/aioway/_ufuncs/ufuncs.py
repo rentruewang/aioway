@@ -1,6 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import abc
+import contextlib as ctxl
 import dataclasses as dcls
 import inspect
 import typing
@@ -10,7 +11,12 @@ from aioway._api import public_api
 from aioway._iters import Iter, StructIter
 from aioway._utils import Sign, decomp_flatten, decomp_replace, render_fcall
 
-__all__ = ["UFunc", "UFuncThunk", "IdentityUFunc", "AdHocUFunc"]
+from .profs import UFuncProf
+
+__all__ = ["UFunc", "UFuncThunk", "IdentityUFunc", "AdHocUFunc", "ufunc_profiler"]
+
+_ufunc_profiler: UFuncProf = ctxl.nullcontext
+"The profiler that would be entered."
 
 
 class UFuncThunk[**P = ..., T = typing.Any](Iter[T]):
@@ -91,7 +97,9 @@ class UFunc[**P, T](abc.ABC):
         """
 
         self.validate_signature(*args, **kwargs)
-        return self.forward(*args, **kwargs)
+
+        with _ufunc_profiler(self):
+            return self.forward(*args, **kwargs)
 
     def _repr(self) -> str:
         "The `__repr__` of the instance itself, excluding signature."
@@ -125,6 +133,19 @@ class UFunc[**P, T](abc.ABC):
             _ = self._signature.bind(*args, **kwargs)
         except TypeError as te:
             raise TypeError(f"{self!r} gets a bad input.") from te
+
+
+@ctxl.contextmanager
+def ufunc_profiler(prof: UFuncProf) -> cabc.Generator[None]:
+    "Set the global profiler to the custom one."
+
+    global _ufunc_profiler
+    before, _ufunc_profiler = _ufunc_profiler, prof
+
+    try:
+        yield
+    finally:
+        _ufunc_profiler = before
 
 
 @public_api
