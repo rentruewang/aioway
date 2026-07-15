@@ -1,10 +1,33 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import contextlib as ctxl
+from collections import abc as cabc
+
 import pytest
 import torch
 
-from aioway._ufuncs import BuiltUFunc, CompoundBuilder
+from aioway._ufuncs import (
+    BuiltUFunc,
+    CallUFuncProf,
+    CompoundBuilder,
+    UFuncProf,
+    UFuncProfStack,
+    ufunc_profiler,
+)
 from aioway.torch.nn import Linear, MSELoss
+
+
+def _profilers() -> cabc.Generator[UFuncProf]:
+    yield ctxl.nullcontext
+    yield CallUFuncProf()
+
+    yield UFuncProfStack([ctxl.nullcontext])
+    yield UFuncProfStack([ctxl.nullcontext, CallUFuncProf()])
+
+
+@pytest.fixture(params=_profilers())
+def profiler(request: pytest.FixtureRequest):
+    return request.param
 
 
 @pytest.fixture
@@ -24,12 +47,12 @@ def test_mlp(built_mlp: BuiltUFunc):
     assert out.shape == (13, 10)
 
 
-def test_mlp_codege(built_mlp: BuiltUFunc):
+def test_mlp_codegen(built_mlp: BuiltUFunc):
     generated = built_mlp.codegen("mlp")
     assert generated
 
 
-def test_loss():
+def test_loss(profiler: UFuncProf):
     builder = CompoundBuilder()
     input = builder.input("input")
     hidden_1 = builder.thunk(Linear(in_features=5, out_features=10).ufunc, input)
@@ -39,5 +62,8 @@ def test_loss():
     graph = builder.output(loss)
 
     t = torch.randn(13, 5)
-    out = graph(input=t)
+
+    with ufunc_profiler(profiler):
+        out = graph(input=t)
+
     assert out.shape == ()
