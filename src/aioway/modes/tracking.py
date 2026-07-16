@@ -17,9 +17,9 @@ from aioway._utils import (
     torch_fake_mode,
 )
 
-from ..modules import NnFwdMode, NnFwdThunk, NnInitMode, NnInitThunk
-from ..tensors import TorchDispMode, TorchDispThunk, TorchFuncMode, TorchFuncThunk
 from .hists import Hist, HistTensorGraph
+from .modules import NnFwdMode, NnFwdThunk, NnInitMode, NnInitThunk
+from .tensors import TorchDispMode, TorchDispThunk, TorchFuncMode, TorchFuncThunk
 
 if typing.TYPE_CHECKING:
     from aioway.modes import AtenThunk
