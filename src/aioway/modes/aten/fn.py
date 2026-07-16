@@ -8,8 +8,10 @@ import typing
 
 from aioway._utils import is_aten_op
 
-from ..tensors import TorchDispThunk
 from .aten import Aten, find_aten
+
+if typing.TYPE_CHECKING:
+    from aioway.modes import TorchDispThunk
 
 __all__ = ["AtenThunk"]
 
