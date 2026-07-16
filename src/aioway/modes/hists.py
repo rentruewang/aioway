@@ -20,7 +20,7 @@ from aioway._utils import (
 )
 from aioway.attrs import Attr
 
-from ..modes import ModeThunk
+from .modes import ModeThunk
 
 LOGGER = logging.getLogger(__name__)
 
