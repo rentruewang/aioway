@@ -8,7 +8,7 @@ from aioway._ufuncs import UFunc
 from aioway._utils import Sign
 
 if typing.TYPE_CHECKING:
-    from .spaces import Space
+    from aioway.spaces import Space
 
 __all__ = ["register_coercsion", "coerce_space", "Coercion", "CoercionOutput"]
 
