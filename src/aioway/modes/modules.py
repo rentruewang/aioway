@@ -2,8 +2,6 @@
 
 "Module fwd/init modes, similar to `torch` function/dispatch modes."
 
-from aioway._ufuncs import UFunc
-
 import abc
 import logging
 import typing
@@ -13,7 +11,7 @@ import torch
 from torch import nn
 
 from aioway._thunks import AnyThunk
-from aioway._utils import render_fcall, render_torch_func_name, track_call_count, Sign
+from aioway._utils import Sign, render_fcall, render_torch_func_name, track_call_count
 
 from .modes import Mode, ModeStack, ModeThunk
 
