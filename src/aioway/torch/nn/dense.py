@@ -2,14 +2,14 @@
 
 from torch import nn
 
-from .modules import NnInit, nn_init_dcls
+from .modules import NnInit_, nn_init_dcls
 from .ufuncs import NnLayerUFunc
 
 __all__ = ["Identity", "Linear", "Bilinear"]
 
 
 @nn_init_dcls
-class Identity(NnInit):
+class Identity(NnInit_):
     """
     A placeholder identity operator that is argument-insensitive.
     """
@@ -19,7 +19,7 @@ class Identity(NnInit):
 
 
 @nn_init_dcls
-class Linear(NnInit):
+class Linear(NnInit_):
     """
     Apply the transformation A @ x + b.
     """
@@ -45,7 +45,7 @@ class Linear(NnInit):
 
 
 @nn_init_dcls
-class Bilinear(NnInit):
+class Bilinear(NnInit_):
     """
     Apply the transformation x1 @ A @ x2 + b.
     """

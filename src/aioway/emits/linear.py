@@ -5,7 +5,7 @@ import typing
 from aioway._ufuncs import BuilderNode, CompoundBuilder, UFunc
 from aioway.emits import Emitter, emitter_dcls
 from aioway.spaces import AttrSpace, ShapeSpace, Space
-from aioway.torch.nn import CELU, GELU, Linear, NnInit, ReLU, ReLU6, Sigmoid, Tanh
+from aioway.torch.nn import CELU, GELU, Linear, NnInit_, ReLU, ReLU6, Sigmoid, Tanh
 
 from .emitters import FuncEmitter
 
@@ -95,7 +95,7 @@ class MlpEmitter(Emitter):
         return builder.output(x)
 
     @property
-    def _nn_init(self) -> NnInit:
+    def _nn_init(self) -> NnInit_:
         match self.activation:
             case None:
                 return NotImplemented

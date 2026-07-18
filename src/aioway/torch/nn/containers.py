@@ -6,14 +6,14 @@ from torch import nn
 
 from aioway.modes import NnInitThunk
 
-from .modules import NnInit, nn_init_dcls
+from .modules import NnInit_, nn_init_dcls
 from .ufuncs import NnLayerUFunc
 
 __all__ = ["Sequential"]
 
 
 @nn_init_dcls
-class Sequential(NnInit):
+class Sequential(NnInit_):
     """
     The wrapper for `nn.Sequential`.
 

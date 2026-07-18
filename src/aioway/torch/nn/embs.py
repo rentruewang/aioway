@@ -4,14 +4,14 @@ import typing
 
 from torch import nn
 
-from .modules import NnInit, nn_init_dcls
+from .modules import NnInit_, nn_init_dcls
 from .ufuncs import NnLayerUFunc
 
 __all__ = ["Embedding"]
 
 
 @nn_init_dcls
-class _BaseEmbedding(NnInit):
+class _BaseEmbedding(NnInit_):
     NN: typing.ClassVar[type[nn.Module]] = NotImplemented
     UFUNC = NnLayerUFunc
 

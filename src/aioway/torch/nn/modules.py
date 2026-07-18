@@ -14,9 +14,9 @@ from aioway.modes import NnInitThunk
 
 from .ufuncs import NnUFunc, NnUFuncThunk
 
-__all__ = ["NnInit", "nn_init_dcls", "find_nn_init", "build_nn_iter"]
+__all__ = ["NnInit_", "nn_init_dcls", "find_nn_init", "build_nn_iter"]
 
-_NN_INITS: dict[cabc.Callable[..., nn.Module], type[NnInit]] = {}
+_NN_INITS: dict[cabc.Callable[..., nn.Module], type[NnInit_]] = {}
 
 
 @typing.dataclass_transform()
@@ -27,7 +27,7 @@ def nn_init_dcls(cls):
 
 
 @nn_init_dcls
-class NnInit(abc.ABC):
+class NnInit_(abc.ABC):
     """
     `NnInit` records the signature of an `nn.Module` initialization, and creates it.
 
@@ -75,7 +75,7 @@ class NnInit(abc.ABC):
         return self.ufunc.thunk(*args, **kwargs)
 
 
-def find_nn_init(thunk: NnInitThunk, /) -> NnInit | None:
+def find_nn_init(thunk: NnInitThunk, /) -> NnInit_ | None:
     """
     Find the `NnInit` type, based on the `nn.Module` type.
     If `NnInit` is not found, `None` is returned.

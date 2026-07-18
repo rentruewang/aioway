@@ -4,23 +4,23 @@
 from torch import nn
 
 from aioway.modes import NnInitThunk
-from aioway.torch.nn import NnInit, Sequential, find_nn_init
+from aioway.torch.nn import NnInit_, Sequential, find_nn_init
 
 
-def test_layer_nn_init(layer_nn_init: NnInit):
-    assert isinstance(layer_nn_init, NnInit)
+def test_layer_nn_init(layer_nn_init: NnInit_):
+    assert isinstance(layer_nn_init, NnInit_)
 
 
-def test_layer_nn_init_module(layer_nn_init: NnInit):
+def test_layer_nn_init_module(layer_nn_init: NnInit_):
     module = layer_nn_init()
     assert isinstance(module, nn.Module)
 
 
-def test_loss_nn_init(loss_nn_init: NnInit):
-    assert isinstance(loss_nn_init, NnInit)
+def test_loss_nn_init(loss_nn_init: NnInit_):
+    assert isinstance(loss_nn_init, NnInit_)
 
 
-def test_loss_nn_init_module(loss_nn_init: NnInit):
+def test_loss_nn_init_module(loss_nn_init: NnInit_):
     module = loss_nn_init()
     assert isinstance(module, nn.Module)
 

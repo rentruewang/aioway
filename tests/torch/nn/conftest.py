@@ -7,7 +7,7 @@ from torch import nn
 
 from aioway._utils import render_fcall
 from aioway.modes import NnInitThunk
-from aioway.torch.nn import NnInit, find_nn_init
+from aioway.torch.nn import NnInit_, find_nn_init
 
 
 class _ModuleOpts(typing.NamedTuple):
@@ -96,7 +96,7 @@ def layer_thunk(layer_opts: _ModuleOpts):
 
 
 @pytest.fixture
-def layer_nn_init(layer_thunk: NnInitThunk) -> NnInit:
+def layer_nn_init(layer_thunk: NnInitThunk) -> NnInit_:
     "The `NnInit` from layers in `nn.Module`."
     result = find_nn_init(layer_thunk)
     assert result
@@ -110,7 +110,7 @@ def loss_thunk(loss_opts: _ModuleOpts):
 
 
 @pytest.fixture
-def loss_nn_init(loss_thunk: NnInitThunk) -> NnInit:
+def loss_nn_init(loss_thunk: NnInitThunk) -> NnInit_:
     "The `NnInit` from losses in `nn.Module`."
     result = find_nn_init(loss_thunk)
     assert result

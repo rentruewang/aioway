@@ -13,7 +13,7 @@ from aioway._iters import TensorIter
 from aioway._ufuncs import UFunc, UFuncThunk
 
 if typing.TYPE_CHECKING:
-    from aioway.torch.nn import NnInit
+    from aioway.torch.nn import NnInit_
 
 __all__ = ["NnUFunc", "NnUFuncThunk"]
 
@@ -23,7 +23,7 @@ class NnUFuncThunk(UFuncThunk, TensorIter):
         super().__init__(*args, **kwargs)
 
     @property
-    def nn_init(self) -> NnInit:
+    def nn_init(self) -> NnInit_:
         return self.ufunc.nn_init
 
     @property
@@ -55,7 +55,7 @@ class NnUFuncThunk(UFuncThunk, TensorIter):
 class NnUFunc(UFunc, abc.ABC):
     THUNK: typing.ClassVar[type[UFuncThunk]] = NnUFuncThunk
 
-    def __init__(self, init: NnInit, module: nn.Module) -> None:
+    def __init__(self, init: NnInit_, module: nn.Module) -> None:
         self.nn_init = init
         self.module = module
 

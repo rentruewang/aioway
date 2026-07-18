@@ -2,7 +2,7 @@
 
 from torch import nn
 
-from .modules import NnInit, nn_init_dcls
+from .modules import NnInit_, nn_init_dcls
 from .ufuncs import NnLayerUFunc
 
 __all__ = [
@@ -19,7 +19,7 @@ __all__ = [
 
 
 @nn_init_dcls
-class ReLU(NnInit):
+class ReLU(NnInit_):
     "Applies the rectified linear unit function element-wise."
 
     NN = nn.ReLU
@@ -27,7 +27,7 @@ class ReLU(NnInit):
 
 
 @nn_init_dcls
-class ReLU6(NnInit):
+class ReLU6(NnInit_):
     "Applies the ReLU6 function element-wise."
 
     NN = nn.ReLU6
@@ -35,7 +35,7 @@ class ReLU6(NnInit):
 
 
 @nn_init_dcls
-class CELU(NnInit):
+class CELU(NnInit_):
     "Applies the CELU function element-wise."
 
     NN = nn.CELU
@@ -43,7 +43,7 @@ class CELU(NnInit):
 
 
 @nn_init_dcls
-class GELU(NnInit):
+class GELU(NnInit_):
     "Applies the GELU function element-wise."
 
     NN = nn.GELU
@@ -51,7 +51,7 @@ class GELU(NnInit):
 
 
 @nn_init_dcls
-class Sigmoid(NnInit):
+class Sigmoid(NnInit_):
     "Applies the Sigmoid function element-wise."
 
     NN = nn.Sigmoid
@@ -59,7 +59,7 @@ class Sigmoid(NnInit):
 
 
 @nn_init_dcls
-class Tanh(NnInit):
+class Tanh(NnInit_):
     "Applies the Tanh function element-wise."
 
     NN = nn.Tanh
@@ -67,7 +67,7 @@ class Tanh(NnInit):
 
 
 @nn_init_dcls
-class Softmin(NnInit):
+class Softmin(NnInit_):
     "Applies the Softmin function to an n-dimensional input Tensor."
 
     NN = nn.Softmin
@@ -75,7 +75,7 @@ class Softmin(NnInit):
 
 
 @nn_init_dcls
-class Softmax(NnInit):
+class Softmax(NnInit_):
     "Applies the Softmax function to an n-dimensional input Tensor."
 
     NN = nn.Softmax
@@ -83,7 +83,7 @@ class Softmax(NnInit):
 
 
 @nn_init_dcls
-class LogSoftmax(NnInit):
+class LogSoftmax(NnInit_):
     "Applies the LogSoftmax function to an n-dimensional input Tensor."
 
     NN = nn.LogSoftmax

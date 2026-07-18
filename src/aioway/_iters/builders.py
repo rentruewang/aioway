@@ -21,7 +21,7 @@ from aioway.relalg import (
     StackIter,
     ZipIter,
 )
-from aioway.torch.nn import BaseLoss, NnInit
+from aioway.torch.nn import BaseLoss, NnInit_
 
 __all__ = ["Builder"]
 
@@ -58,10 +58,10 @@ class TensorBuilder(Builder):
         trainer = AnnIndexTrainerIter(index, self.iterator)
         return Builder(trainer)
 
-    def apply_layer(self, nn_init: NnInit) -> Builder:
+    def apply_layer(self, nn_init: NnInit_) -> Builder:
         return Builder(nn_init.apply(input=self.iterator))
 
-    def apply_loss(self, target: TensorBuilder, nn_init: NnInit) -> Builder:
+    def apply_loss(self, target: TensorBuilder, nn_init: NnInit_) -> Builder:
         assert isinstance(nn_init, BaseLoss), type(nn_init)
 
         return Builder(nn_init.apply(input=self.iterator, target=target.iterator))
