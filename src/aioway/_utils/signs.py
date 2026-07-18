@@ -39,7 +39,10 @@ class Sign:
 
     def bind(self, *args, **kwargs) -> inspect.BoundArguments:
         """
-        Bind the arguments and return a `BoundArguments`. Raise `TypeError` if binding failed.
+        Bind the arguments and return a `BoundArguments`.
+
+        Raises:
+            TypeError: if binding failed.
         """
 
         return self.signature.bind(*args, **kwargs)
