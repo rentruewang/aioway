@@ -108,7 +108,7 @@ class NnInitThunk[**P = ...](ModeThunk):
     if typing.TYPE_CHECKING:
 
         @property
-        def func(self) -> nn.Module: ...
+        def func(self) -> type[nn.Module]: ...
 
     def __init__(
         self, func: cabc.Callable[P, nn.Module], *args: P.args, **kwargs: P.kwargs

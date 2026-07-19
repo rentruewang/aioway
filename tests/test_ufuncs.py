@@ -16,7 +16,6 @@ from aioway._ufuncs import (
     ufunc_profiler,
 )
 from aioway.torch.nn import nn_ufunc
-from aioway.torch.nn_ import MSELoss
 
 
 def _profilers() -> cabc.Generator[UFuncProf]:
@@ -63,7 +62,7 @@ def test_loss(profiler: UFuncProf):
     hidden_2 = builder.thunk(
         nn_ufunc(nn.Linear, in_features=10, out_features=5), hidden_1
     )
-    loss = builder.thunk(MSELoss().ufunc, hidden_2, input)
+    loss = builder.thunk(nn_ufunc(nn.MSELoss), hidden_2, input)
 
     graph = builder.output(loss)
 

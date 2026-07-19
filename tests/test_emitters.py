@@ -3,7 +3,7 @@
 import typing
 
 import pytest
-from torch import optim
+from torch import nn, optim
 
 from aioway._iters import TensorIter
 from aioway._ufuncs import BuiltUFunc, UFunc, UFuncThunk
@@ -12,8 +12,7 @@ from aioway.emits import MlpEmitter, emit, linear_shape
 from aioway.io import TensorListIter, TensorStream
 from aioway.relalg import LoaderOpt
 from aioway.spaces import AttrSpace, ShapeSpace
-from aioway.torch.nn import NnUFunc
-from aioway.torch.nn_ import MSELoss
+from aioway.torch.nn import NnUFunc, nn_ufunc
 from aioway.torch.optim import OptimizerUFunc
 
 
@@ -61,8 +60,8 @@ def target_loader(input_loader: TensorIter) -> TensorIter:
 @pytest.fixture
 def optimizer(input_loader: TensorListIter, target_loader: TensorIter):
     opt = optim.AdamW(input_loader.sequence)
-    loss = MSELoss().apply(input_loader, target_loader)
-    assert isinstance(loss, TensorIter)
+    loss = nn_ufunc(nn.MSELoss).thunk(input_loader, target_loader)
+    assert isinstance(loss, UFuncThunk)
     return OptimizerUFunc(optimizer=opt).thunk(loss=loss)
 
 

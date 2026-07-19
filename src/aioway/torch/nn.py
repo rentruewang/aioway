@@ -10,7 +10,7 @@ from collections import abc as cabc
 import torch
 from torch import nn
 
-from aioway._ufuncs import UFunc
+from aioway._ufuncs import UFunc, UFuncThunk
 from aioway._utils import Sign
 from aioway.modes import NnInitThunk
 
@@ -32,10 +32,22 @@ def nn_ufunc[**P, T: nn.Module](
     return ufunc_type(module, *args, **kwargs)
 
 
+class NnUFuncThunk(UFuncThunk):
+    if typing.TYPE_CHECKING:
+        _ufunc: NnUFunc
+
+    @typing.override
+    def rebuild(self) -> typing.Self:
+        self._ufunc.build()
+        return self
+
+
 class NnUFunc[**P = ...](UFunc, abc.ABC):
     """
     The `UFunc` for `nn.Module` type.
     """
+
+    THUNK = NnUFuncThunk
 
     def __init__(
         self, func: cabc.Callable[P, nn.Module], *args: P.args, **kwargs: P.kwargs
@@ -54,6 +66,10 @@ class NnUFunc[**P = ...](UFunc, abc.ABC):
     def _verify_signature(self) -> None:
         # This is supposed to raise `TypeError` upon wrong arguments.
         self._init_signature.bind(*self._args, **self._kwargs)
+
+    @property
+    def func(self):
+        return self._func
 
     def build(self) -> None:
         "Rebuild the `self.module`. This is useful for rebuilding under different modes."

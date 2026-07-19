@@ -45,14 +45,12 @@ class ModeThunk[**P = ..., T = typing.Any]:
         return self._func
 
     @property
-    @typing.no_type_check
-    def args(self) -> P.args:
+    def args(self) -> typing.Any:
         "The positional args."
         return self._args
 
     @property
-    @typing.no_type_check
-    def kwargs(self) -> P.kwargs:
+    def kwargs(self) -> typing.Any:
         "The keyword arguments."
         return self._kwargs
 
