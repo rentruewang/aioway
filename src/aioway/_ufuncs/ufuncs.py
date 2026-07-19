@@ -132,7 +132,8 @@ class UFunc[**P = ..., T = typing.Any](abc.ABC):
         try:
             _ = self._signature.bind(*args, **kwargs)
         except TypeError as te:
-            raise TypeError(f"{self!r} gets a bad input.") from te
+            rendered_failure = render_fcall(self, *args, **kwargs)
+            raise TypeError(f"{rendered_failure} is not valid.") from te
 
 
 @ctxl.contextmanager

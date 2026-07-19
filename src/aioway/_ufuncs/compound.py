@@ -226,7 +226,7 @@ class BuiltUFunc(UFunc):
         return self.builder._ufunc_names[ufunc]
 
     def parameters(self) -> cabc.Generator[nn.Parameter]:
-        from aioway.torch.nn_ import NnUFunc
+        from aioway.torch.nn import NnUFunc
 
         for node in self.builder.nodes:
             if isinstance(node, ThunkBuilderNode) and isinstance(node.ufunc, NnUFunc):

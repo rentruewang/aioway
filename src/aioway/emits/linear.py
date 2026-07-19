@@ -2,10 +2,13 @@
 
 import typing
 
+from torch import nn
+
 from aioway._ufuncs import BuilderNode, CompoundBuilder, UFunc
 from aioway.emits import Emitter, emitter_dcls
 from aioway.spaces import AttrSpace, ShapeSpace, Space
-from aioway.torch.nn_ import CELU, GELU, Linear, NnInit_, ReLU, ReLU6, Sigmoid, Tanh
+from aioway.torch.nn import NnLayerUFunc, module_ufunc
+from aioway.torch.nn_ import Linear
 
 from .emitters import FuncEmitter
 
@@ -86,7 +89,8 @@ class MlpEmitter(Emitter):
 
         for in_feats, out_feats in zip(sizes[:-1], sizes[1:]):
             x = builder.thunk(
-                Linear(in_features=in_feats, out_features=out_feats).ufunc, x
+                module_ufunc(nn.Linear, in_features=in_feats, out_features=out_feats),
+                x,
             )
 
             if activ is not NotImplemented:
@@ -95,27 +99,26 @@ class MlpEmitter(Emitter):
         return builder.output(x)
 
     @property
-    def _nn_init(self) -> NnInit_:
+    def _nn_init(self) -> type[nn.Module]:
         match self.activation:
             case None:
                 return NotImplemented
             case "relu":
-                return ReLU()
+                return nn.ReLU
             case "relu6":
-                return ReLU6()
+                return nn.ReLU6
             case "celu":
-                return CELU()
+                return nn.CELU
             case "gelu":
-                return GELU()
+                return nn.GELU
             case "sigmoid":
-                return Sigmoid()
+                return nn.Sigmoid
             case "tanh":
-                return Tanh()
+                return nn.Tanh
 
     @property
     def _activ_ufunc(self) -> UFunc:
-        nn_init = self._nn_init
-        if nn_init is NotImplemented:
+        if self._nn_init is NotImplemented:
             return NotImplemented
-        else:
-            return nn_init.ufunc
+
+        return NnLayerUFunc(self._nn_init)
