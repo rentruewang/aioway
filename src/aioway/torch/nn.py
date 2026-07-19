@@ -26,6 +26,12 @@ class _ModuleType[**P, T: nn.Module](typing.Protocol):
 def nn_ufunc[**P, T: nn.Module](
     module: _ModuleType[P, T], *args: P.args, **kwargs: P.kwargs
 ):
+    """
+    The factory function for `NnUFunc`.
+
+    Depends on whether or not it's a loss function, route to `NnLossUFunc` or `NnLayerUFunc`.
+    """
+
     type_name = module.__name__
 
     ufunc_type = NnLossUFunc if type_name.endswith("Loss") else NnLayerUFunc
@@ -33,6 +39,12 @@ def nn_ufunc[**P, T: nn.Module](
 
 
 class NnUFuncThunk(UFuncThunk):
+    """
+    The thunk type for `NnUFunc`.
+
+    This overwrites `.rebuild()` to make use of `NnUFunc`'s modification.
+    """
+
     if typing.TYPE_CHECKING:
         _ufunc: NnUFunc
 
