@@ -7,7 +7,7 @@ from torch import nn
 
 from aioway._utils import render_fcall
 from aioway.modes import NnInitThunk
-from aioway.torch.nn import NnInit_, find_nn_init
+from aioway.torch.nn_ import NnInit_, find_nn_init
 
 
 class _ModuleOpts(typing.NamedTuple):

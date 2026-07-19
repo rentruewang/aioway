@@ -10,7 +10,7 @@ from aioway._utils import AnyDict, is_fake_tensor, torch_fake_mode
 from aioway.io import TensorListIter
 from aioway.modes import NnInitThunk
 from aioway.relalg import StackIter
-from aioway.torch.nn import NnUFuncThunk, build_nn_iter
+from aioway.torch.nn_ import NnUFuncThunk, build_nn_iter
 
 
 @pytest.fixture

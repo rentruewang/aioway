@@ -21,7 +21,7 @@ from aioway.relalg import (
     StackIter,
     ZipIter,
 )
-from aioway.torch.nn import BaseLoss, NnInit_
+from aioway.torch.nn_ import BaseLoss, NnInit_
 
 __all__ = ["Builder"]
 

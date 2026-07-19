@@ -13,7 +13,7 @@ from aioway._iters import TensorIter
 from aioway._ufuncs import UFunc, UFuncThunk
 
 if typing.TYPE_CHECKING:
-    from aioway.torch.nn import NnInit_
+    from aioway.torch.nn_ import NnInit_
 
 __all__ = ["NnUFunc", "NnUFuncThunk"]
 
