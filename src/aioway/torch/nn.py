@@ -14,7 +14,7 @@ from aioway._ufuncs import UFunc
 from aioway._utils import Sign
 from aioway.modes import NnInitThunk
 
-__all__ = ["module_ufunc", "NnUFunc", "NnLayerUFunc", "NnLossUFunc"]
+__all__ = ["nn_ufunc", "NnUFunc", "NnLayerUFunc", "NnLossUFunc"]
 
 
 class _ModuleType[**P, T: nn.Module](typing.Protocol):
@@ -23,7 +23,7 @@ class _ModuleType[**P, T: nn.Module](typing.Protocol):
     def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T: ...
 
 
-def module_ufunc[**P, T: nn.Module](
+def nn_ufunc[**P, T: nn.Module](
     module: _ModuleType[P, T], *args: P.args, **kwargs: P.kwargs
 ):
     type_name = module.__name__
@@ -48,12 +48,12 @@ class NnUFunc[**P = ...](UFunc, abc.ABC):
         self.build()
 
     @property
-    def __signature__(self) -> inspect.Signature:
-        return self._siganture.signature
+    def __init_signature__(self) -> inspect.Signature:
+        return self._init_signature.signature
 
     def _verify_signature(self) -> None:
         # This is supposed to raise `TypeError` upon wrong arguments.
-        self._siganture.bind(*self._args, **self._kwargs)
+        self._init_signature.bind(*self._args, **self._kwargs)
 
     def build(self) -> None:
         "Rebuild the `self.module`. This is useful for rebuilding under different modes."
@@ -62,16 +62,19 @@ class NnUFunc[**P = ...](UFunc, abc.ABC):
         thunk = NnInitThunk(self._func, *self._args, **self._kwargs)
         self._module: nn.Module = thunk()
 
+    def parameters(self) -> cabc.Generator[nn.Parameter]:
+        yield from self.module.parameters()
+
     @property
     def module(self) -> nn.Module:
         return self._module
 
     @property
-    def _siganture(self) -> Sign:
+    def _init_signature(self) -> Sign:
         return Sign.from_callable(self._func)
 
     def arguments(self):
-        return self._signature.apply(*self._args, **self._kwargs)
+        return self._init_signature.apply(*self._args, **self._kwargs)
 
 
 class NnLayerUFunc[**P = ...](NnUFunc[P]):

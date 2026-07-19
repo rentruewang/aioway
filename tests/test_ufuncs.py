@@ -15,7 +15,7 @@ from aioway._ufuncs import (
     UFuncProfStack,
     ufunc_profiler,
 )
-from aioway.torch.nn import module_ufunc
+from aioway.torch.nn import nn_ufunc
 from aioway.torch.nn_ import MSELoss
 
 
@@ -36,11 +36,9 @@ def profiler(request: pytest.FixtureRequest):
 def built_mlp():
     builder = CompoundBuilder()
     input = builder.input("input")
-    hidden_1 = builder.thunk(
-        module_ufunc(nn.Linear, in_features=5, out_features=10), input
-    )
+    hidden_1 = builder.thunk(nn_ufunc(nn.Linear, in_features=5, out_features=10), input)
     hidden_2 = builder.thunk(
-        module_ufunc(nn.Linear, in_features=10, out_features=10), hidden_1
+        nn_ufunc(nn.Linear, in_features=10, out_features=10), hidden_1
     )
 
     module = builder.output(hidden_2)
@@ -61,11 +59,9 @@ def test_mlp_codegen(built_mlp: BuiltUFunc):
 def test_loss(profiler: UFuncProf):
     builder = CompoundBuilder()
     input = builder.input("input")
-    hidden_1 = builder.thunk(
-        module_ufunc(nn.Linear, in_features=5, out_features=10), input
-    )
+    hidden_1 = builder.thunk(nn_ufunc(nn.Linear, in_features=5, out_features=10), input)
     hidden_2 = builder.thunk(
-        module_ufunc(nn.Linear, in_features=10, out_features=5), hidden_1
+        nn_ufunc(nn.Linear, in_features=10, out_features=5), hidden_1
     )
     loss = builder.thunk(MSELoss().ufunc, hidden_2, input)
 

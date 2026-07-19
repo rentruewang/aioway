@@ -12,7 +12,8 @@ from aioway.emits import MlpEmitter, emit, linear_shape
 from aioway.io import TensorListIter, TensorStream
 from aioway.relalg import LoaderOpt
 from aioway.spaces import AttrSpace, ShapeSpace
-from aioway.torch.nn_ import Linear, MSELoss, NnUFunc
+from aioway.torch.nn import NnUFunc
+from aioway.torch.nn_ import MSELoss
 from aioway.torch.optim import OptimizerUFunc
 
 
@@ -109,9 +110,14 @@ def test_mlp_emitter(
 
 def _check_linear(linear: NnUFunc, in_features: int, out_features: int):
     assert isinstance(linear, NnUFunc)
-    assert isinstance(linear.nn_init, Linear)
-    assert linear.nn_init.in_features == in_features
-    assert linear.nn_init.out_features == out_features
+
+    # The modern way to check subsets.
+    args = linear.arguments()
+    target = {
+        "in_features": in_features,
+        "out_features": out_features,
+    }
+    assert args.items() >= target.items()
 
 
 def test_optimize(optimizer: UFuncThunk):

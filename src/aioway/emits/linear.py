@@ -7,8 +7,7 @@ from torch import nn
 from aioway._ufuncs import BuilderNode, CompoundBuilder, UFunc
 from aioway.emits import Emitter, emitter_dcls
 from aioway.spaces import AttrSpace, ShapeSpace, Space
-from aioway.torch.nn import NnLayerUFunc, module_ufunc
-from aioway.torch.nn_ import Linear
+from aioway.torch.nn import NnLayerUFunc, NnUFunc, nn_ufunc
 
 from .emitters import FuncEmitter
 
@@ -16,7 +15,7 @@ __all__ = ["linear_shape", "linear_from_attr", "MlpEmitter"]
 
 
 @FuncEmitter
-def linear_shape(observation_space: Space, action_space: Space) -> UFunc:
+def linear_shape(observation_space: Space, action_space: Space) -> NnUFunc:
     """
     `Linear` module from `ShapeSpace`s.
     """
@@ -27,13 +26,13 @@ def linear_shape(observation_space: Space, action_space: Space) -> UFunc:
     if not isinstance(action_space, ShapeSpace):
         return NotImplemented
 
-    return Linear(
-        in_features=observation_space[-1], out_features=action_space[-1]
-    ).ufunc
+    return nn_ufunc(
+        nn.Linear, in_features=observation_space[-1], out_features=action_space[-1]
+    )
 
 
 @FuncEmitter
-def linear_from_attr(observation_space: Space, action_space: Space) -> UFunc:
+def linear_from_attr(observation_space: Space, action_space: Space) -> NnUFunc:
     """
     `Linear` module from `AttrShape`s.
     """
@@ -49,7 +48,7 @@ def linear_from_attr(observation_space: Space, action_space: Space) -> UFunc:
     if (act_shape := action_space.shape) is None:
         return NotImplemented
 
-    return Linear(in_features=observ_shape[-1], out_features=act_shape[-1]).ufunc
+    return nn_ufunc(nn.Linear, in_features=observ_shape[-1], out_features=act_shape[-1])
 
 
 type Activation = typing.Literal[
@@ -89,7 +88,7 @@ class MlpEmitter(Emitter):
 
         for in_feats, out_feats in zip(sizes[:-1], sizes[1:]):
             x = builder.thunk(
-                module_ufunc(nn.Linear, in_features=in_feats, out_features=out_feats),
+                nn_ufunc(nn.Linear, in_features=in_feats, out_features=out_feats),
                 x,
             )
 
