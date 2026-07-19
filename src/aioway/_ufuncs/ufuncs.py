@@ -75,7 +75,7 @@ class UFuncThunk[**P = ..., T = typing.Any](Iter[T]):
 
 
 @public_api
-class UFunc[**P, T](abc.ABC):
+class UFunc[**P = ..., T = typing.Any](abc.ABC):
     """
     `UFunc`, inspired by `numpy`, stands for universal functions,
     and are the building blocks of other APIs (like thunks and iters).
