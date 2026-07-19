@@ -3,4 +3,4 @@
 "The adaptor module between `torch` and `aioway`."
 
 # `torch` doesn't expose the items from these top level as well.
-from . import nn_, optim
+from . import nn, optim
