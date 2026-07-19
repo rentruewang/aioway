@@ -14,7 +14,7 @@ from aioway._ufuncs import (
     UFuncProfStack,
     ufunc_profiler,
 )
-from aioway.torch.nn import Linear, MSELoss
+from aioway.torch.nn_ import Linear, MSELoss
 
 
 def _profilers() -> cabc.Generator[UFuncProf]:
