@@ -11,7 +11,7 @@ import torch
 from torch import nn
 
 from aioway._thunks import AnyThunk
-from aioway._utils import render_fcall, render_torch_func_name, track_call_count
+from aioway._utils import Sign, render_fcall, render_torch_func_name, track_call_count
 
 from .modes import Mode, ModeStack, ModeThunk
 
@@ -108,7 +108,7 @@ class NnInitThunk[**P = ...](ModeThunk):
     if typing.TYPE_CHECKING:
 
         @property
-        def func(self) -> nn.Module: ...
+        def func(self) -> type[nn.Module]: ...
 
     def __init__(
         self, func: cabc.Callable[P, nn.Module], *args: P.args, **kwargs: P.kwargs
@@ -117,6 +117,10 @@ class NnInitThunk[**P = ...](ModeThunk):
 
         if not isinstance(self.func, type) or not issubclass(self.func, nn.Module):
             raise TypeError(f"{self.func} should be a subclass of `nn.Module`.")
+
+        # Validate the signature.
+        module_signature = Sign.from_callable(func)
+        module_signature.bind(*args, **kwargs)
 
     def __repr__(self):
         func_name = render_torch_func_name(self.func)

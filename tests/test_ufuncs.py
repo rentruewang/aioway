@@ -5,6 +5,7 @@ from collections import abc as cabc
 
 import pytest
 import torch
+from torch import nn
 
 from aioway._ufuncs import (
     BuiltUFunc,
@@ -14,7 +15,7 @@ from aioway._ufuncs import (
     UFuncProfStack,
     ufunc_profiler,
 )
-from aioway.torch.nn import Linear, MSELoss
+from aioway.torch.nn import nn_ufunc
 
 
 def _profilers() -> cabc.Generator[UFuncProf]:
@@ -34,8 +35,10 @@ def profiler(request: pytest.FixtureRequest):
 def built_mlp():
     builder = CompoundBuilder()
     input = builder.input("input")
-    hidden_1 = builder.thunk(Linear(in_features=5, out_features=10).ufunc, input)
-    hidden_2 = builder.thunk(Linear(in_features=10, out_features=10).ufunc, hidden_1)
+    hidden_1 = builder.thunk(nn_ufunc(nn.Linear, in_features=5, out_features=10), input)
+    hidden_2 = builder.thunk(
+        nn_ufunc(nn.Linear, in_features=10, out_features=10), hidden_1
+    )
 
     module = builder.output(hidden_2)
     return module
@@ -55,9 +58,11 @@ def test_mlp_codegen(built_mlp: BuiltUFunc):
 def test_loss(profiler: UFuncProf):
     builder = CompoundBuilder()
     input = builder.input("input")
-    hidden_1 = builder.thunk(Linear(in_features=5, out_features=10).ufunc, input)
-    hidden_2 = builder.thunk(Linear(in_features=10, out_features=5).ufunc, hidden_1)
-    loss = builder.thunk(MSELoss().ufunc, hidden_2, input)
+    hidden_1 = builder.thunk(nn_ufunc(nn.Linear, in_features=5, out_features=10), input)
+    hidden_2 = builder.thunk(
+        nn_ufunc(nn.Linear, in_features=10, out_features=5), hidden_1
+    )
+    loss = builder.thunk(nn_ufunc(nn.MSELoss), hidden_2, input)
 
     graph = builder.output(loss)
 

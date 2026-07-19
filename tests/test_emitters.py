@@ -3,7 +3,7 @@
 import typing
 
 import pytest
-from torch import optim
+from torch import nn, optim
 
 from aioway._iters import TensorIter
 from aioway._ufuncs import BuiltUFunc, UFunc, UFuncThunk
@@ -12,7 +12,7 @@ from aioway.emits import MlpEmitter, emit, linear_shape
 from aioway.io import TensorListIter, TensorStream
 from aioway.relalg import LoaderOpt
 from aioway.spaces import AttrSpace, ShapeSpace
-from aioway.torch.nn import Linear, MSELoss, NnUFunc
+from aioway.torch.nn import NnUFunc, nn_ufunc
 from aioway.torch.optim import OptimizerUFunc
 
 
@@ -60,8 +60,8 @@ def target_loader(input_loader: TensorIter) -> TensorIter:
 @pytest.fixture
 def optimizer(input_loader: TensorListIter, target_loader: TensorIter):
     opt = optim.AdamW(input_loader.sequence)
-    loss = MSELoss().apply(input_loader, target_loader)
-    assert isinstance(loss, TensorIter)
+    loss = nn_ufunc(nn.MSELoss).thunk(input_loader, target_loader)
+    assert isinstance(loss, UFuncThunk)
     return OptimizerUFunc(optimizer=opt).thunk(loss=loss)
 
 
@@ -109,9 +109,14 @@ def test_mlp_emitter(
 
 def _check_linear(linear: NnUFunc, in_features: int, out_features: int):
     assert isinstance(linear, NnUFunc)
-    assert isinstance(linear.nn_init, Linear)
-    assert linear.nn_init.in_features == in_features
-    assert linear.nn_init.out_features == out_features
+
+    # The modern way to check subsets.
+    args = linear.arguments()
+    target = {
+        "in_features": in_features,
+        "out_features": out_features,
+    }
+    assert args.items() >= target.items()
 
 
 def test_optimize(optimizer: UFuncThunk):

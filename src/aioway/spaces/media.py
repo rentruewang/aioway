@@ -7,8 +7,8 @@ import torch
 from aioway._api import public_api
 from aioway._ufuncs import IdentityUFunc
 from aioway.attrs import Attr
-from aioway.coercions import CoercionOutput, register_coercsion
 from aioway.errors import re_raise_func
+from aioway.spaces import CoercionOutput, register_coercsion
 
 from .spaces import TensorSpace, space_dcls
 

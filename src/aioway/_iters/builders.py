@@ -8,6 +8,7 @@ from collections import abc as cabc
 
 import tensordict as td
 import torch
+from torch import nn
 
 from aioway._iters import IndexibleIter, Iter, ListIter, TdictIter, TensorIter
 from aioway.indices import AnnIndexTrainerIter, FaissIndex
@@ -21,7 +22,7 @@ from aioway.relalg import (
     StackIter,
     ZipIter,
 )
-from aioway.torch.nn import BaseLoss, NnInit
+from aioway.torch.nn import NnLayerUFunc, NnLossUFunc
 
 __all__ = ["Builder"]
 
@@ -58,13 +59,21 @@ class TensorBuilder(Builder):
         trainer = AnnIndexTrainerIter(index, self.iterator)
         return Builder(trainer)
 
-    def apply_layer(self, nn_init: NnInit) -> Builder:
-        return Builder(nn_init.apply(input=self.iterator))
+    def apply_layer[**P, T: nn.Module](
+        self, module: cabc.Callable[P, T], *args: P.args, **kwargs: P.kwargs
+    ) -> Builder:
+        ufunc = NnLayerUFunc(module, *args, **kwargs)
+        return Builder(ufunc.thunk(self.iterator))
 
-    def apply_loss(self, target: TensorBuilder, nn_init: NnInit) -> Builder:
-        assert isinstance(nn_init, BaseLoss), type(nn_init)
-
-        return Builder(nn_init.apply(input=self.iterator, target=target.iterator))
+    def apply_loss[**P, T: nn.Module](
+        self,
+        target: TensorBuilder,
+        module: cabc.Callable[P, T],
+        *args: P.args,
+        **kwargs: P.kwargs,
+    ) -> Builder:
+        ufunc = NnLossUFunc(module, *args, **kwargs)
+        return Builder(ufunc.thunk(self.iterator, target.iterator))
 
     @classmethod
     def cat(cls, items: cabc.Sequence[TensorIter], dim: int = 0) -> typing.Self:

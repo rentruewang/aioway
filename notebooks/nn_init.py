@@ -21,16 +21,20 @@ from torch import nn
 
 # %%
 from aioway.modes import NnInitThunk
-from aioway.torch.nn import find_nn_init
+from aioway.torch.nn import NnUFunc, nn_ufunc
 
 # %%
-nn_init = find_nn_init(NnInitThunk(func=nn.Linear, in_features=3, out_features=5))
+nn_init = NnInitThunk(func=nn.Linear, in_features=3, out_features=5)
 nn_init
 
 # %%
 assert nn_init
 module = nn_init()
 module
+
+# %%
+ufunc = nn_ufunc(nn.Linear, 3, 5)
+assert isinstance(ufunc, NnUFunc)
 
 # %% [markdown]
 # Note that our `nn_init` has the same signature as `module`, and almost the same `repr` as well.

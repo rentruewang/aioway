@@ -2,8 +2,7 @@
 
 import pytest
 
-from aioway.coercions import coerce_space
-from aioway.spaces import ByteImageSpace, FloatImageSpace, ImageSpace
+from aioway.spaces import ByteImageSpace, FloatImageSpace, ImageSpace, coerce_space
 
 
 @pytest.fixture

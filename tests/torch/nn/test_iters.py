@@ -6,11 +6,11 @@ import torch
 from torch import nn
 
 from aioway._iters import TensorIter, sample_mode
+from aioway._ufuncs import UFuncThunk
 from aioway._utils import AnyDict, is_fake_tensor, torch_fake_mode
 from aioway.io import TensorListIter
-from aioway.modes import NnInitThunk
 from aioway.relalg import StackIter
-from aioway.torch.nn import NnUFuncThunk, build_nn_iter
+from aioway.torch.nn import nn_ufunc
 
 
 @pytest.fixture
@@ -24,37 +24,23 @@ def maybe_sample_mode(request: pytest.FixtureRequest):
         yield
 
 
-def test_layer_hop(layer_thunk, tensor_init: TensorIter, maybe_sample_mode):
-    thunk = build_nn_iter(layer_thunk, tensor_init)
-    assert isinstance(thunk, NnUFuncThunk)
-    assert all(isinstance(param, nn.Parameter) for param in thunk.parameters())
-
-
-def test_loss_hop(loss_thunk, tensor_init: TensorIter, maybe_sample_mode):
-    result = build_nn_iter(loss_thunk, tensor_init, tensor_init)
-    assert isinstance(result, NnUFuncThunk)
-
-
 def test_iter_mse(tensor_init: TensorIter, maybe_sample_mode):
-    result = build_nn_iter(NnInitThunk(nn.MSELoss), tensor_init, tensor_init)
-
-    assert result
-    out = next(iter(result))
+    thunk = nn_ufunc(nn.MSELoss).thunk(tensor_init, tensor_init)
+    out = next(iter(thunk))
     assert isinstance(out, torch.Tensor)
 
 
 def test_iter_linear(tensor_init: TensorIter, maybe_sample_mode):
-    linear = build_nn_iter(NnInitThunk(nn.Linear, 30, 31), tensor_init)
-    assert linear
+    thunk = nn_ufunc(nn.Linear, 30, 31).thunk(tensor_init)
 
-    result = next(iter(linear))
+    result = next(iter(thunk))
     assert isinstance(result, torch.Tensor)
     assert result.shape == (100, 31)
 
 
 def test_iter_replace_with_function(tensor_init: TensorListIter):
-    def replace_init(hop):
-        if not isinstance(hop, TensorListIter):
+    def replace_init(thunk):
+        if not isinstance(thunk, TensorListIter):
             return NotImplemented
 
         return TensorListIter([torch.randn(101, 31)])
@@ -82,8 +68,7 @@ def test_iter_no_replace_with_function(tensor_init: TensorIter):
 
 def test_iter_linear_rebuild(tensor_init: TensorIter):
     with torch_fake_mode():
-        linear = build_nn_iter(NnInitThunk(nn.Linear, 30, 31), tensor_init)
-        assert linear
+        linear: UFuncThunk = nn_ufunc(nn.Linear, 30, 31).thunk(tensor_init)
 
         result = next(iter(linear))
         assert isinstance(result, torch.Tensor)
