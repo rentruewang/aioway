@@ -2,7 +2,7 @@
 
 import pytest
 
-from aioway.spaces import ByteImageSpace, FloatImageSpace, ImageSpace, coerce_space
+from aioway.spaces import ByteImageSpace, FloatImageSpace, ImageSpace, cast_space
 
 
 @pytest.fixture
@@ -22,4 +22,4 @@ def img(request: pytest.FixtureRequest):
 
 def test_coerce(img: ImageSpace):
     assert isinstance(img, ImageSpace)
-    assert coerce_space(img, ImageSpace).out_space is img
+    assert cast_space(img, ImageSpace).in_space is img

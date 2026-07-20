@@ -8,8 +8,8 @@ from aioway._api import public_api
 from aioway._ufuncs import IdentityUFunc
 from aioway.attrs import Attr
 from aioway.errors import re_raise_func
-from aioway.spaces import CoercionOutput, register_coercsion
 
+from .casts import CastedSpaceUFunc, register_cast
 from .spaces import TensorSpace, space_dcls
 
 __all__ = ["ImageSpace", "ByteImageSpace", "FloatImageSpace"]
@@ -72,11 +72,11 @@ class FloatImageSpace(ImageSpace):
         return torch.rand([n, 3, 224, 224], dtype=torch.float32)
 
 
-@register_coercsion
-def byte_is_image(img: ByteImageSpace) -> CoercionOutput[ImageSpace]:
-    return CoercionOutput(img, IdentityUFunc())
+@register_cast(ByteImageSpace, ImageSpace)
+def byte_is_image(img: ByteImageSpace) -> CastedSpaceUFunc[ImageSpace]:
+    return CastedSpaceUFunc(img, IdentityUFunc())
 
 
-@register_coercsion
-def float_is_image(img: FloatImageSpace) -> CoercionOutput[ImageSpace]:
-    return CoercionOutput(img, IdentityUFunc())
+@register_cast(FloatImageSpace, ImageSpace)
+def float_is_image(img: FloatImageSpace) -> CastedSpaceUFunc[ImageSpace]:
+    return CastedSpaceUFunc(img, IdentityUFunc())
