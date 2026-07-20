@@ -1,0 +1,42 @@
+name: Docs
+on: [push]
+
+jobs:
+  docs:
+    name: 📚 Docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🔔 Check out
+        uses: actions/checkout@v3
+        with:
+          lfs: true
+
+      - name: ⬇️ Python PDM
+        uses: pdm-project/setup-pdm@v4
+
+      - name: 💣 Prepare
+        run: pip install nox[pbs] && nox -rs setup
+
+      - name: 📚 Build docs
+        run: nox -rs docs
+
+      - name: 📦 Upload site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/
+
+  publish:
+    name: 🚀 Publish
+    runs-on: ubuntu-latest
+    needs: docs
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 🚀 Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

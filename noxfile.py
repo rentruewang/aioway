@@ -4,6 +4,7 @@ import contextlib as ctxl
 import functools
 import os
 import pathlib
+import shutil
 import subprocess as sp
 import sys
 from collections import abc as cabc
@@ -15,6 +16,12 @@ ROOT = pathlib.Path(__file__).parent
 
 VENV = os.getenv("VIRTUAL_ENV")
 "The venv folder if we are in venv."
+
+PUBLIC = ROOT / "public"
+"The deployement folder path."
+
+DOCS = ROOT / "docs"
+"The path for root documentations."
 
 _session: nox.Session | None = None
 "The global session to simplfy code."
@@ -150,6 +157,26 @@ def type():
     pdm_run("mypy", "--install-types", "--non-interactive", "src")
 
 
+@nox_cmd
+def docs():
+    "Build the documents, move to 'public' folder."
+
+    PUBLIC.mkdir(exist_ok=True)
+    if not (ignore := PUBLIC / ".gitignore").exists():
+        ignore.write_text("*")
+
+    sphinx()
+    shutil.copytree(DOCS, PUBLIC, dirs_exist_ok=True)
+    shutil.copytree(DOCS / "build" / "html", PUBLIC / "api", dirs_exist_ok=True)
+
+
+@nox_cmd
+def sphinx():
+    "Run the sphinx documentation build site"
+
+    pdm_run("make", "-C", str(DOCS), "html")
+
+
 def _github_cleanup():
     # Does nothing outside of GitHub Actions.
     if not _running_in_github():
@@ -277,3 +304,16 @@ def _pdm_is_installed():
         return result.returncode == 0
     except FileNotFoundError:
         return False
+
+
+@ctxl.contextmanager
+def chdir(to: os.PathLike) -> cabc.Generator[os.PathLike]:
+    to = pathlib.Path(to)
+    assert to.exists()
+    before = os.getcwd()
+    os.chdir(to)
+
+    try:
+        yield to
+    finally:
+        os.chdir(before)
