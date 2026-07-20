@@ -5,7 +5,7 @@
 groups = ["default", "build", "debugging", "docs", "faiss", "networkx", "pre-commit", "sklearn", "tests"]
 strategy = []
 lock_version = "4.5.0"
-content_hash = "sha256:8ec4d70b5c27dfd81f0fbb9d5a8eb6cf85f2a0f90dc41fd4948c202ac81cdf8a"
+content_hash = "sha256:bca2b6000f4324a88a8a286f408cbd150c3c4d77ebdba91e896cf2f0e4e26e6e"
 
 [[metadata.targets]]
 requires_python = ">=3.14,<3.15"
@@ -1563,6 +1563,23 @@ summary = ""
 files = [
     {file = "mypy_extensions-1.1.0-py3-none-any.whl", hash = "sha256:1be4cccdb0f2482337c4743e60421de3a356cd97508abadd57d47403e94f5505"},
     {file = "mypy_extensions-1.1.0.tar.gz", hash = "sha256:52e68efc3284861e772bbcd66823fde5ae21fd2fdb51c62a211403730b916558"},
+]
+
+[[package]]
+name = "myst-parser"
+version = "5.1.0"
+summary = ""
+dependencies = [
+    "docutils",
+    "jinja2",
+    "markdown-it-py",
+    "mdit-py-plugins",
+    "pyyaml",
+    "sphinx",
+]
+files = [
+    {file = "myst_parser-5.1.0-py3-none-any.whl", hash = "sha256:9c91c52b3cdb4d94a6506e4fab4e2f296c7623a0da0dcbe6de1565c3dad67a8a"},
+    {file = "myst_parser-5.1.0.tar.gz", hash = "sha256:ab69322dc6719dcc7f296479dbb70181b66df6ed315064f92dbc85c0e1bf2f02"},
 ]
 
 [[package]]
