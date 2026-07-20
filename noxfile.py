@@ -174,7 +174,7 @@ def docs():
 def sphinx():
     "Run the sphinx documentation build site"
 
-    run("make", "-C", str(DOCS), "html")
+    pdm_run("make", "-C", str(DOCS), "html")
 
 
 def _github_cleanup():
