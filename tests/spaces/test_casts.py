@@ -22,4 +22,4 @@ def img(request: pytest.FixtureRequest):
 
 def test_coerce(img: ImageSpace):
     assert isinstance(img, ImageSpace)
-    assert cast_space(img, ImageSpace).out_space is img
+    assert cast_space(img, ImageSpace).in_space is img

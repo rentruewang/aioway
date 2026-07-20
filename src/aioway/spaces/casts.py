@@ -3,13 +3,13 @@
 import abc
 import dataclasses as dcls
 import typing
+from collections import abc as cabc
 
 from aioway._ufuncs import UFunc
-from aioway._utils import Sign
-from collections import abc as cabc
+
 from .spaces import Space
 
-__all__ = ["register_cast", "cast_space", "Caster", "CastedUFunc"]
+__all__ = ["register_cast", "cast_space", "Caster", "CastedUFunc", "CastedSpaceUFunc"]
 
 _CASTERS: dict[tuple[type[Space], type[Space]], Caster] = {}
 "The casters organized by `tuple[type[Space], type[Space]]`."
@@ -36,6 +36,16 @@ class CastedUFunc[S: Space = Space, T: Space = Space](UFunc):
         return self.func(item)
 
 
+class CastedSpaceUFunc[S: Space = Space](typing.NamedTuple):
+    "The tuple with the output cast space and the ufunc."
+
+    space: S
+    "The space that is casted."
+
+    ufunc: UFunc
+    "The function that would be used for conversion."
+
+
 @typing.runtime_checkable
 class Caster[S: Space, T: Space](typing.Protocol):
     """
@@ -44,30 +54,32 @@ class Caster[S: Space, T: Space](typing.Protocol):
     """
 
     @abc.abstractmethod
-    def __call__(self, observ_space_type: S, /) -> CastedUFunc[T]:
+    def __call__(self, observ_space_type: S, /) -> CastedSpaceUFunc[T]:
         raise NotImplementedError
 
 
-def register_cast[C: Caster](cast: C) -> C:
-    signature = Sign.from_callable(cast)
+def register_cast(input_type, output_type):
+    if not _is_space_type(input_type):
+        raise TypeError(f"{input_type=} is not a `type[Space]`.")
+    if not _is_space_type(output_type):
+        raise TypeError(f"{output_type=} is not a `type[Space]`.")
 
-    assert len(signature.parameters) == 1
-    input_space_type = next(
-        iter(Sign.from_callable(cast).parameters.values())
-    ).annotation
-    output_space_type = typing.get_args(signature.return_annotation)[0]
-    in_out_types = input_space_type, output_space_type
+    def decorator[C: Caster](cast: C) -> C:
+        in_out_types = input_type, output_type
 
-    if in_out_types in _CASTERS:
-        raise KeyError(
-            f"{in_out_types} already exits. Current: {_CASTERS[in_out_types]}."
-        )
+        # Do the register here.
+        if in_out_types in _CASTERS:
+            raise KeyError(
+                f"{in_out_types} already exits. Current: {_CASTERS[in_out_types]}."
+            )
+        _CASTERS[in_out_types] = cast
 
-    _CASTERS[in_out_types] = cast
-    return cast
+        return cast
+
+    return decorator
 
 
-def cast_space[S: Space, T: Space](space: S, target: type[T]) -> CastedUFunc[S, T]:
+def cast_space(space: Space, target_type: type[Space], /) -> CastedUFunc:
     """
     Cast `space`, a `Space` instance, to another space of type `target`.
 
@@ -75,9 +87,9 @@ def cast_space[S: Space, T: Space](space: S, target: type[T]) -> CastedUFunc[S, 
     """
 
     input_type = type(space)
-    cast = _CASTERS[input_type, target]
-    return
-    return cast(space)
+    cast = _CASTERS[input_type, target_type]
+    target_space, ufunc = cast(space)
+    return CastedUFunc(ufunc, space, target_space)
 
 
 def _is_space_type(obj) -> typing.TypeIs[type[Space]]:
