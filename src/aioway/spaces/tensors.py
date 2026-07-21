@@ -7,8 +7,8 @@ import torch
 from aioway._ufuncs import AdHocUFunc
 from aioway.attrs import Shape
 
+from .attrs import ShapeSpace
 from .casts import CastedSpaceUFunc, register_cast
-from .exact import ShapeSpace
 
 __all__ = ["flatten_tensor"]
 
