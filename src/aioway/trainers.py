@@ -1,6 +1,5 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-
 from torch import nn, optim
 
 from aioway._ufuncs import BuiltUFunc, UFunc
