@@ -67,7 +67,7 @@ Run `nox -l` for all options defined in the project.
 
 Please write code matching the style of the surrounding code.
 
-Otherwise, follow the following style guide that I personally use (by me): [link](https://github.com/rentruewang/mind/blob/main/py/CONTRIBUTING.md).
+Otherwise, follow the following style guide that I personally use (by me): [link](https://github.com/rentruewang/mind/blob/main/CONTRIBUTING.md).
 
 ### Documentation
 
