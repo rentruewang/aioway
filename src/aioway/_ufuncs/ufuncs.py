@@ -96,7 +96,7 @@ class UFunc[**P = ..., T = typing.Any](abc.ABC):
         The signature of it would be checked prior to calling.
         """
 
-        self.validate_signature(*args, **kwargs)
+        self._validate_signature(*args, **kwargs)
 
         with _ufunc_profiler(self):
             return self.forward(*args, **kwargs)
@@ -112,7 +112,7 @@ class UFunc[**P = ..., T = typing.Any](abc.ABC):
 
     def thunk(self, *args, **kwargs) -> typing.Any:
         "A `UFunc` takes thunks and tranform it into other thunks."
-        self.validate_signature(*args, **kwargs)
+        self._validate_signature(*args, **kwargs)
         return self.THUNK(self, *args, **kwargs)
 
     @property
@@ -124,7 +124,7 @@ class UFunc[**P = ..., T = typing.Any](abc.ABC):
         "The signature of the `UFunc`."
         return Sign.from_callable(self.forward)
 
-    def validate_signature(self, *args, **kwargs) -> None:
+    def _validate_signature(self, *args, **kwargs) -> None:
         # This only checks the signature names, not types,
         # so it's perfect for our usage, because `__call__`, `thunk`,
         # both share the same signature but with different types.

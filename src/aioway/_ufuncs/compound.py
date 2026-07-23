@@ -21,7 +21,8 @@ from .ufuncs import UFunc
 
 __all__ = ["CompoundBuilder", "BuilderNode", "BuiltUFunc"]
 
-_CODEGEN_TEMPLATE: j2.Template = j2.Template("""
+_CODEGEN_TEMPLATE: j2.Template = j2.Template(
+    """
 class {{ module }}(nn.Module):
     def __init__(self, {{ init_signature }}):
         super().__init__()
@@ -34,7 +35,8 @@ class {{ module }}(nn.Module):
         {% for stmt in fwd_stmts %}
         {{ stmt }}
         {% endfor %}
-""")
+"""
+)
 
 
 @dcls.dataclass
@@ -158,7 +160,7 @@ class ThunkBuilderNode(BuilderNode):
     kwargs: dict[str, typing.Any]
 
     def __init__(self, ufunc: UFunc, *args, **kwargs):
-        ufunc.validate_signature(*args, **kwargs)
+        ufunc._validate_signature(*args, **kwargs)
 
         self.ufunc = ufunc
         self.args = args
