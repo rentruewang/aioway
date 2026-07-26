@@ -36,7 +36,7 @@ class Attr:
     A normal `torch.Tensor` consists of 5 attributes,
     `device`, `dtype`, `shape`, `layout`, `requires_grad`.
 
-    The `Attr` type allows these `torch` specific types to work with common types.s
+    The `Attr` type allows these `torch` specific types to work with common types.
     """
 
     dtype: DType
