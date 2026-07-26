@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"The module for NMF, temporarily."
+"The module for NMF."
 
 import typing
 from collections import abc as cabc
@@ -100,7 +100,7 @@ class NMFTrainerModule(nn.Module):
         h_right, n = self.right.shape
         assert h_left == h_right, {"left": h_left, "right": h_right}
 
-    def forward(self, matrix: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, matrix: torch.Tensor) -> None:
         assert matrix.ndim == 3
         assert matrix.shape[1] == self._m
         assert matrix.shape[2] == self._n
@@ -111,8 +111,6 @@ class NMFTrainerModule(nn.Module):
         self.optim.zero_grad()
         loss.backward()
         self.optim.step()
-
-        return self.left, self.right
 
 
 @FuncEmitter

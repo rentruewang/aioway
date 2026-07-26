@@ -1,0 +1,72 @@
+# Copyright (c) AIoWay Authors - All Rights Reserved
+
+"The module for contrastive loss."
+
+from collections import abc as cabc
+
+import torch
+from torch import nn, optim
+from torch.nn import functional as F
+
+from aioway._ufuncs import UFunc
+from aioway.emits import Emitter, emitter_dcls
+from aioway.spaces import Space, TensorSpace
+from aioway.torch.nn import AnyNnUFunc, NnUFunc
+
+__all__ = ["ContrastiveLoss", "ContrastiveLossEmitter"]
+
+
+class ContrastiveLoss(nn.Module):
+    def __init__(
+        self,
+        module: nn.Module,
+        loss_fn: nn.Module,
+        optim_type: cabc.Callable[..., optim.Optimizer],
+    ):
+        super().__init__()
+
+        self.module = module
+        self.loss_fn = loss_fn
+        self.optimizer = optim_type(self.module.parameters())
+
+    def forward(self, tensor: torch.Tensor) -> torch.Tensor:
+        assert tensor.ndim >= 1
+        batch_size = len(tensor)
+
+        out = self.module(tensor)
+
+        # Flatten so we can apply the cross entropy easier.
+        out = out.view(batch_size, -1)
+        matrix = out @ out.T
+        label = torch.arange(batch_size)
+
+        loss = F.cross_entropy(matrix, label)
+        loss_t = F.cross_entropy(matrix.T, label)
+
+        return (loss + loss_t) / 2
+
+
+@emitter_dcls
+class ContrastiveLossEmitter(Emitter):
+    """
+    Contrastive loss's emitter. This depends on another emitter to emit the actual `UFunc`.
+    """
+
+    emitter: Emitter
+    "The default emitter when it's time to emit."
+
+    def __call__(self, observation_space: Space, action_space: Space, /) -> UFunc:
+        if not isinstance(observation_space, TensorSpace):
+            return NotImplemented
+
+        if not isinstance(action_space, TensorSpace):
+            return NotImplemented
+
+        # In batch negative is a reconstruction error.
+        if observation_space != action_space:
+            return NotImplemented
+
+        emission = self.emitter(observation_space, action_space)
+
+        assert isinstance(emission, NnUFunc)
+        return AnyNnUFunc(ContrastiveLoss, emission.module, nn.MSELoss(), optim.Adam)
