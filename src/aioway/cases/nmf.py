@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"The module for NMF, temporarily."
+"The module for NMF."
 
 import typing
 from collections import abc as cabc
