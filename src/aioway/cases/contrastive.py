@@ -69,4 +69,4 @@ class ContrastiveLossEmitter(Emitter):
         emission = self.emitter(observation_space, action_space)
 
         assert isinstance(emission, NnUFunc)
-        return AnyNnUFunc(ContrastiveLoss, emission.module, nn.MSELoss())
+        return AnyNnUFunc(ContrastiveLoss, emission.module, nn.MSELoss(), optim.Adam)
