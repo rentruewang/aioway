@@ -78,6 +78,14 @@ class BoxSpace(TensorSpace):
     def _check_data(self, value: torch.Tensor) -> None:
         assert torch.all((value >= self.low) & (value <= self.high)).item()
 
+    @property
+    def shape(self) -> torch.Size:
+        return self.low.shape
+
+    @property
+    def ndim(self) -> int:
+        return len(self.shape)
+
 
 @space_dcls
 class MultiDiscreteSpace(TensorSpace):

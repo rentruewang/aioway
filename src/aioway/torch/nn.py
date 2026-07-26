@@ -14,7 +14,7 @@ from aioway._ufuncs import UFunc, UFuncThunk
 from aioway._utils import Sign
 from aioway.modes import NnInitThunk
 
-__all__ = ["nn_ufunc", "NnUFunc", "NnLayerUFunc", "NnLossUFunc"]
+__all__ = ["nn_ufunc", "NnUFunc", "NnLayerUFunc", "NnLossUFunc", "AnyNnUFunc"]
 
 
 class _ModuleType[**P, T: nn.Module](typing.Protocol):
@@ -105,6 +105,7 @@ class NnUFunc[**P = ...](UFunc, abc.ABC):
         return self._init_signature.apply(*self._args, **self._kwargs)
 
 
+@typing.final
 class NnLayerUFunc[**P = ...](NnUFunc[P]):
     "The `NnUFunc` for layers that are not losses."
 
@@ -116,6 +117,7 @@ class NnLayerUFunc[**P = ...](NnUFunc[P]):
         return output
 
 
+@typing.final
 class NnLossUFunc[**P = ...](NnUFunc[P]):
     "The `NnUFunc` for layers that are losses."
 
@@ -126,3 +128,14 @@ class NnLossUFunc[**P = ...](NnUFunc[P]):
         output = self.module(input, target)
         assert isinstance(output, torch.Tensor)
         return output
+
+
+@typing.final
+class AnyNnUFunc(NnUFunc):
+    """
+    Wrapper for any `nn.Module`.
+    """
+
+    @typing.override
+    def forward(self, *args, **kwargs) -> typing.Any:
+        return self.module(*args, **kwargs)

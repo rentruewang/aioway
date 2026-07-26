@@ -50,9 +50,9 @@ class Space[T = typing.Any](abc.ABC):
 
         raise NotImplementedError
 
-    def sample(self, batch_size: int = 1) -> T:
+    def sample(self, n: int = 1) -> T:
         with torch_fake_mode():
-            return self._sample_n(batch_size)
+            return self._sample_n(n)
 
     @abc.abstractmethod
     def _sample_n(self, n: int, /) -> T:
