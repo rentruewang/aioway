@@ -43,6 +43,7 @@ class Attr:
     """
     The shape of individual items in the column.
     """
+
     device: Device = Device.parse("cpu")
     """
     The device for the column.
