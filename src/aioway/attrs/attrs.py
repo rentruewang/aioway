@@ -32,6 +32,11 @@ type AttrLike = Attr | AttrLikeDict | torch.Tensor
 class Attr:
     """
     The "type" for a `torch.Tensor`, describing everything we want to know about it.
+
+    A normal `torch.Tensor` consists of 5 attributes,
+    `device`, `dtype`, `shape`, `layout`, `requires_grad`.
+
+    The `Attr` type allows these `torch` specific types to work with common types.
     """
 
     dtype: DType
@@ -43,6 +48,7 @@ class Attr:
     """
     The shape of individual items in the column.
     """
+
     device: Device = Device.parse("cpu")
     """
     The device for the column.
