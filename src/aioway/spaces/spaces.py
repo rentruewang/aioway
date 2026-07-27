@@ -114,6 +114,42 @@ class TensorSpace(Space[torch.Tensor], abc.ABC):
 
 @public_api
 @space_dcls
+class TensorClassSpace[T: td.TensorClass](Space[T]):
+    "A `Space` that checks a `td.TensorClass`."
+
+    klass: type[T]
+    "The class for which to check."
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.klass, type):
+            raise TypeError(f"{self.klass=} should be a type.")
+
+        if not issubclass(self.klass, td.TensorClass):
+            raise TypeError(f"{self.klass=} should be a subclass of `td.TensorClass`.")
+
+    @typing.final
+    def contains(self, inst: T) -> bool:
+        if not isinstance(inst, self.klass):
+            raise TypeError(
+                f"{inst=} should be an instance of `{self.klass!s}`. "
+                f"But {type(inst)=}."
+            )
+
+        try:
+            self._check_data(inst)
+        except ValueError:
+            return False
+
+        return True
+
+    def _check_data(self, data: T) -> None:
+        """
+        Check if the value of the field is OK. Raise `ValueError` if failed.
+        """
+
+
+@public_api
+@space_dcls
 class TdictSpace(Space[td.TensorDict]):
     "A `Space` that checks a `td.TensorDict`."
 
