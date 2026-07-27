@@ -109,13 +109,13 @@ class TensorSpace(Space[torch.Tensor], abc.ABC):
     @abc.abstractmethod
     def _check_attr(self, attr: Attr, /) -> None:
         """
-        Raise `ValueError` if `self` cannot attach to tensor with `attr`.
+        Raise `ValueError` if `self` is incompatible with tensor with `attr`.
         """
 
     @abc.abstractmethod
     def _check_data(self, tensor: torch.Tensor, /) -> None:
         """
-        Raise `ValueError` if `self` is not valid or cannot attach to `tensor`.
+        Raise `ValueError` if `self` is not valid or is incompatible with `tensor`.
         """
 
 
@@ -166,7 +166,7 @@ class TensorClassSpace[T: td.TensorClass](Space[T], abc.ABC):
     @abc.abstractmethod
     def _check_attrs(self, attrs: AttrDict, /) -> None:
         """
-        Raise `ValueError` if `self` cannot attach to tdict with `attrs`.
+        Raise `ValueError` if `self` is incompatible with tdict with `attrs`.
         """
 
     @abc.abstractmethod
@@ -203,11 +203,11 @@ class TdictSpace(Space[td.TensorDict]):
     @abc.abstractmethod
     def _check_attrs(self, attrs: AttrDict, /) -> None:
         """
-        Raise `ValueError` if `self` cannot attach to tdict with `attrs`.
+        Raise `ValueError` if `self` is incompatible with tdict with `attrs`.
         """
 
     @abc.abstractmethod
     def _check_data(self, tdict: td.TensorDict, /) -> None:
         """
-        Raise `ValueError` if `self` is not valid or cannot attach to `tdict`.
+        Raise `ValueError` if `self` is not valid or is incompatible with `tdict`.
         """
