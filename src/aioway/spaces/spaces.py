@@ -158,6 +158,7 @@ class TensorClassSpace[T: td.TensorClass](Space[T], abc.ABC):
 
     @typing.no_type_check
     def _to_attr_dict(self, inst: T) -> AttrDict:
+        assert dcls.is_dataclass(inst)
         fields = dcls.asdict(inst)
         attr_dict = AttrDict.parse(fields)
         return attr_dict
