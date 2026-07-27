@@ -13,7 +13,14 @@ from aioway._api import public_api
 from aioway._utils import is_fake_tensor, is_real_tensor, torch_fake_mode
 from aioway.attrs import Attr, AttrDict
 
-__all__ = ["Space", "AnySpace", "TensorSpace", "TdictSpace", "space_dcls"]
+__all__ = [
+    "Space",
+    "AnySpace",
+    "TensorSpace",
+    "TdictSpace",
+    "TensorClassSpace",
+    "space_dcls",
+]
 
 
 @public_api
@@ -102,13 +109,70 @@ class TensorSpace(Space[torch.Tensor], abc.ABC):
     @abc.abstractmethod
     def _check_attr(self, attr: Attr, /) -> None:
         """
-        Raise `ValueError` if `self` cannot attach to tensor with `attr`.
+        Raise `ValueError` if `self` is incompatible with tensor with `attr`.
         """
 
     @abc.abstractmethod
     def _check_data(self, tensor: torch.Tensor, /) -> None:
         """
-        Raise `ValueError` if `self` is not valid or cannot attach to `tensor`.
+        Raise `ValueError` if `self` is not valid or is incompatible with `tensor`.
+        """
+
+
+@public_api
+@space_dcls
+class TensorClassSpace[T: td.TensorClass](Space[T], abc.ABC):
+    "A `Space` that checks a `td.TensorClass`."
+
+    KLASS: typing.ClassVar[type[T]]
+    "The class for which to check."
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.KLASS, type):
+            raise TypeError(f"{self.KLASS=} should be a type.")
+
+        if not issubclass(self.KLASS, td.TensorClass):
+            raise TypeError(f"{self.KLASS=} should be a subclass of `td.TensorClass`.")
+
+    @typing.final
+    def contains(self, inst: T) -> bool:
+        if not isinstance(inst, self.KLASS):
+            raise TypeError(
+                f"{inst=} should be an instance of `{self.KLASS!s}`. "
+                f"But {type(inst)=}."
+            )
+
+        attr_dict = self._to_attr_dict(inst)
+
+        try:
+            self._check_attrs(attr_dict)
+        except ValueError:
+            return False
+
+        try:
+            self._check_data(inst)
+        except ValueError:
+            return False
+
+        return True
+
+    @typing.no_type_check
+    def _to_attr_dict(self, inst: T) -> AttrDict:
+        assert dcls.is_dataclass(inst)
+        fields = dcls.asdict(inst)
+        attr_dict = AttrDict.parse(fields)
+        return attr_dict
+
+    @abc.abstractmethod
+    def _check_attrs(self, attrs: AttrDict, /) -> None:
+        """
+        Raise `ValueError` if `self` is incompatible with tdict with `attrs`.
+        """
+
+    @abc.abstractmethod
+    def _check_data(self, inst: T, /) -> None:
+        """
+        Raise `ValueError` if `inst` is not acceptable.
         """
 
 
@@ -139,11 +203,11 @@ class TdictSpace(Space[td.TensorDict]):
     @abc.abstractmethod
     def _check_attrs(self, attrs: AttrDict, /) -> None:
         """
-        Raise `ValueError` if `self` cannot attach to tdict with `attrs`.
+        Raise `ValueError` if `self` is incompatible with tdict with `attrs`.
         """
 
     @abc.abstractmethod
     def _check_data(self, tdict: td.TensorDict, /) -> None:
         """
-        Raise `ValueError` if `self` is not valid or cannot attach to `tdict`.
+        Raise `ValueError` if `self` is not valid or is incompatible with `tdict`.
         """
