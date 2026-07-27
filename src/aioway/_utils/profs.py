@@ -10,9 +10,7 @@ import time
 import typing
 from collections import abc as cabc
 
-from aioway._utils import AnyDict
-
-from .types import Stack
+from .types import AnyDict, Stack
 
 __all__ = ["Profiler", "ProfilerStack", "CallerProfiler", "ProfilerCollection"]
 
