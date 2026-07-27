@@ -143,6 +143,7 @@ class TensorClassSpace[T: td.TensorClass](Space[T], abc.ABC):
             )
 
         attr_dict = self._to_attr_dict(inst)
+
         try:
             self._check_attrs(attr_dict)
         except ValueError:
