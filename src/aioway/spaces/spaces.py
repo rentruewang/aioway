@@ -13,7 +13,14 @@ from aioway._api import public_api
 from aioway._utils import is_fake_tensor, is_real_tensor, torch_fake_mode
 from aioway.attrs import Attr, AttrDict
 
-__all__ = ["Space", "AnySpace", "TensorSpace", "TdictSpace", "space_dcls"]
+__all__ = [
+    "Space",
+    "AnySpace",
+    "TensorSpace",
+    "TdictSpace",
+    "TensorClassSpace",
+    "space_dcls",
+]
 
 
 @public_api
@@ -114,26 +121,32 @@ class TensorSpace(Space[torch.Tensor], abc.ABC):
 
 @public_api
 @space_dcls
-class TensorClassSpace[T: td.TensorClass](Space[T]):
+class TensorClassSpace[T: td.TensorClass](Space[T], abc.ABC):
     "A `Space` that checks a `td.TensorClass`."
 
-    klass: type[T]
+    KLASS: typing.ClassVar[type[T]]
     "The class for which to check."
 
     def __post_init__(self) -> None:
-        if not isinstance(self.klass, type):
-            raise TypeError(f"{self.klass=} should be a type.")
+        if not isinstance(self.KLASS, type):
+            raise TypeError(f"{self.KLASS=} should be a type.")
 
-        if not issubclass(self.klass, td.TensorClass):
-            raise TypeError(f"{self.klass=} should be a subclass of `td.TensorClass`.")
+        if not issubclass(self.KLASS, td.TensorClass):
+            raise TypeError(f"{self.KLASS=} should be a subclass of `td.TensorClass`.")
 
     @typing.final
     def contains(self, inst: T) -> bool:
-        if not isinstance(inst, self.klass):
+        if not isinstance(inst, self.KLASS):
             raise TypeError(
-                f"{inst=} should be an instance of `{self.klass!s}`. "
+                f"{inst=} should be an instance of `{self.KLASS!s}`. "
                 f"But {type(inst)=}."
             )
+
+        attr_dict = self._to_attr_dict(inst)
+        try:
+            self._check_attrs(attr_dict)
+        except ValueError:
+            return False
 
         try:
             self._check_data(inst)
@@ -142,9 +155,22 @@ class TensorClassSpace[T: td.TensorClass](Space[T]):
 
         return True
 
-    def _check_data(self, data: T) -> None:
+    @typing.no_type_check
+    def _to_attr_dict(self, inst: T) -> AttrDict:
+        fields = dcls.asdict(inst)
+        attr_dict = AttrDict.parse(fields)
+        return attr_dict
+
+    @abc.abstractmethod
+    def _check_attrs(self, attrs: AttrDict, /) -> None:
         """
-        Check if the value of the field is OK. Raise `ValueError` if failed.
+        Raise `ValueError` if `self` cannot attach to tdict with `attrs`.
+        """
+
+    @abc.abstractmethod
+    def _check_data(self, inst: T, /) -> None:
+        """
+        Raise `ValueError` if `inst` is not acceptable.
         """
 
 
