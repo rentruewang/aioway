@@ -7,11 +7,12 @@ import contextlib as ctxl
 import dataclasses as dcls
 import logging
 import typing
+import warnings
 from collections import abc as cabc
 
 from aioway._utils import Stack, find_nested_tensors
 
-__all__ = ["Mode", "ModeStack", "ModeThunk"]
+__all__ = ["Mode", "ModeCtx", "ModeStack", "ModeThunk"]
 
 LOGGER = logging.getLogger(__name__)
 
@@ -61,6 +62,43 @@ class ModeThunk[**P = ..., T = typing.Any]:
         return any(tensor.requires_grad for tensor in self.inputs())
 
 
+class ModeCtx[T: ModeThunk](abc.ABC):
+    "The adaptor for torch contexts."
+
+    def __init__(self, mode: Mode[T]) -> None:
+        super().__init__()
+        self.mode = mode
+
+    def __torch_call__(self, name: str, func, types, args=(), kwargs=None) -> object:
+        kwargs = kwargs or {}
+
+        # Since we mimick torch's execution model (our stack is synced with theirs),
+        # where a mode is pushed onto a stack during `with` and borrowed whenever invoked,
+        # torch only will invoke those modes when they are the top most mode on the stack.
+        #
+        # Here we check our assumption about prioritizing the top mode on stack,
+        # and warn if it's not what we expected, by checking inside `__torch_*__` calls.
+        if self.mode.STACK.top() is not self.mode:
+            warnings.warn(
+                f"Modes mismatch in `{name}`. "
+                f"`torch` has changed their `{name}` execution model. "
+                "This may cause bugs.",
+                RuntimeWarning,
+            )
+
+        with self.mode.STACK.borrow() as mode:
+            assert self.mode is mode
+            # The mode can be turned off.
+            if not self.mode.on:
+                return func(*args, **kwargs)
+
+            return self._impl(func, types, args, kwargs)
+
+    @abc.abstractmethod
+    def _impl(self, func, types, args, kwargs) -> object:
+        raise NotImplementedError
+
+
 @dcls.dataclass
 class Mode[T: ModeThunk = ModeThunk, V = object](abc.ABC):
     """
@@ -70,6 +108,13 @@ class Mode[T: ModeThunk = ModeThunk, V = object](abc.ABC):
     STACK: typing.ClassVar[ModeStack]
     "The stack."
 
+    _TORCH_MODE: typing.ClassVar[cabc.Callable[..., ModeCtx]]
+    """
+    The actual context passed to `torch`.
+    These are specific modes that honor the `on` switch (hence private function).
+
+    Since enter and 
+    """
     _: dcls.KW_ONLY
 
     on: bool = True
@@ -84,7 +129,7 @@ class Mode[T: ModeThunk = ModeThunk, V = object](abc.ABC):
         which is much less elegant than `ctxl.contextmanager` (I know it's necessary).
         """
 
-        with self.STACK.hold(self), self.enter():
+        with self.STACK.hold(self), self._TORCH_MODE(self):
             yield self
 
     @abc.abstractmethod
@@ -96,10 +141,6 @@ class Mode[T: ModeThunk = ModeThunk, V = object](abc.ABC):
         """
 
         raise NotImplementedError
-
-    @ctxl.contextmanager
-    def enter(self) -> cabc.Generator[None]:
-        yield
 
     @ctxl.contextmanager
     def switch(self, on: bool, /):
