@@ -6,6 +6,7 @@ import abc
 import contextlib as ctxl
 import dataclasses as dcls
 import logging
+import contextlib as ctxl
 import typing
 import warnings
 from collections import abc as cabc
@@ -73,7 +74,11 @@ class ModeCtx[T: ModeThunk](abc.ABC):
 
     def __init__(self, mode: Mode[T]) -> None:
         super().__init__()
+
         self.mode = mode
+
+        if not isinstance(self, ctxl.AbstractContextManager):
+            raise ValueError(f"{type(self)=} is not a context manager.")
 
     def __torch_call__(self, name: str, func, types, args=(), kwargs=None) -> object:
         kwargs = kwargs or {}
