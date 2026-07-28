@@ -8,7 +8,6 @@ import logging
 import typing
 
 import rich
-from torch import nn
 
 from aioway._utils import (
     current_fake_mode,
@@ -17,8 +16,7 @@ from aioway._utils import (
     torch_fake_mode,
 )
 
-from .hists import Hist, HistTensorGraph
-from .modules import NnFwdMode, NnFwdThunk, NnInitMode, NnInitThunk
+from .hists import HistTensorGraph
 from .tensors import TorchDispMode, TorchDispThunk, TorchFuncMode, TorchFuncThunk
 
 if typing.TYPE_CHECKING:
@@ -33,8 +31,6 @@ __all__ = [
     "LogTorchDis",
     "RouteTorchDisp",
     "RouteTorchFunc",
-    "PrintNnInit",
-    "PrintNnFwd",
 ]
 
 LOGGER = logging.getLogger(__name__)
@@ -44,22 +40,6 @@ class _HasRichFlagMixin:
     def __init__(self, rich: bool = False) -> None:
         super().__init__()
         self._rich = rich
-
-
-class PrintNnInit(NnInitMode):
-    def run(self, thunk: NnInitThunk) -> nn.Module:
-        print("invoke", thunk)
-        result = thunk()
-        print("return", thunk, "->", result)
-        return result
-
-
-class PrintNnFwd(NnFwdMode):
-    def run(self, thunk: NnFwdThunk) -> object:
-        print("invoke", thunk)
-        result = thunk()
-        print("return", thunk, "->", replace_tensors_with_attr(result))
-        return result
 
 
 class PrintTorchFunc(_HasRichFlagMixin, TorchFuncMode):
@@ -141,38 +121,6 @@ class CloneDispatchOp(TorchDispMode):
 
 
 @dcls.dataclass
-class RouteNnInit(NnInitMode):
-    "The router at the `nn.Module` init level."
-
-    history: Hist[NnInitThunk] = dcls.field(default_factory=Hist)
-    """
-    The history. Since it doesn't make sense to connect with `torch.Tensor`,
-    we just use a plain `Hist` to store the history (no graph is needed).
-    """
-
-    @typing.override
-    def run(self, thunk: NnInitThunk, /) -> nn.Module:
-        result = self.history.execute(thunk)
-        assert isinstance(result, nn.Module), type(result)
-        return result
-
-
-@dcls.dataclass
-class RouteNnFwd(NnFwdMode):
-    "The router at the `nn.Module` forward level."
-
-    history: HistTensorGraph[NnFwdThunk] = dcls.field(default_factory=HistTensorGraph)
-    """
-    The history. Since `nn.Module`s in forward can be connected with `torch.Tensor`
-    to for a computation graph on the module level, we use `HistTensorGraph`.
-    """
-
-    @typing.override
-    def run(self, thunk: NnFwdThunk, /) -> object:
-        return self.history.execute(thunk)
-
-
-@dcls.dataclass
 class RouteTorchDisp(TorchDispMode):
     "The router at the torch dispatch level."
 
@@ -221,8 +169,6 @@ class RouteTorchFunc(TorchFuncMode):
 class HistoryCollection(typing.NamedTuple):
     function: HistTensorGraph[TorchFuncThunk]
     dispatch: HistTensorGraph[TorchDispThunk | AtenThunk]
-    nn_init: Hist[NnInitThunk]
-    nn_fwd: Hist[NnFwdThunk]
 
 
 @ctxl.contextmanager
@@ -231,18 +177,11 @@ def track_fn():
     Track all calls into the torch dispatch mode as `TorchIrThunk`.
     """
 
-    init = RouteNnInit()
-    fwd = RouteNnFwd()
     dis = RouteTorchDisp()
     func = RouteTorchFunc()
 
-    with func(), dis(), init(), fwd():
-        yield HistoryCollection(
-            function=func.history,
-            dispatch=dis.history,
-            nn_init=init.history,
-            nn_fwd=fwd.history,
-        )
+    with func(), dis():
+        yield HistoryCollection(function=func.history, dispatch=dis.history)
 
 
 @ctxl.contextmanager

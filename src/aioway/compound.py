@@ -15,7 +15,6 @@ from aioway._utils import (
     decomp_replace,
     render_fcall,
 )
-from aioway.modes import forward_nn_module
 
 __all__ = ["CompoundBuilder", "BuilderNode", "BuiltUFunc"]
 
@@ -169,7 +168,7 @@ class ThunkBuilderNode(BuilderNode):
         args = decomp_replace(self.args, compute_node)
         kwargs = decomp_replace(self.kwargs, compute_node)
 
-        return forward_nn_module(self.module, *args, **kwargs)
+        return self.module(*args, **kwargs)
 
     def deps(self):
         yield from decomp_flatten(self.args, BuilderNode)
