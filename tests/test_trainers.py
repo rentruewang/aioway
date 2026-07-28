@@ -6,6 +6,7 @@ import pytest
 import torch
 from torch import nn
 
+from aioway.attrs import Shape
 from aioway.emits import MlpEmitter
 from aioway.io import TensorFrame
 from aioway.spaces import ShapeSpace
@@ -27,7 +28,7 @@ class _TensorFrame(TensorFrame):
 
     @property
     def space(self):
-        return ShapeSpace(self.tensor.shape[1:])
+        return ShapeSpace(Shape.parse(self.tensor.shape[1:]))
 
 
 @pytest.fixture

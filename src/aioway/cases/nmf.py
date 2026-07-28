@@ -13,7 +13,6 @@ from aioway.attrs import Attr, AttrDict
 from aioway.emits import FuncEmitter
 from aioway.errors import re_raise_func
 from aioway.spaces import BoxSpace, Space, TdictSpace, TensorSpace, space_dcls
-from aioway.torch.nn import AnyNnUFunc, NnUFunc
 
 __all__ = ["NMFSpace", "PairSpace", "NMFTrainerModule", "train_nmf"]
 
@@ -114,7 +113,7 @@ class NMFTrainerModule(nn.Module):
 
 
 @FuncEmitter
-def train_nmf(observation_space: Space, action_space: Space) -> NnUFunc:
+def train_nmf(observation_space: Space, action_space: Space) -> nn.Module:
     if not isinstance(observation_space, NMFSpace):
         return NotImplemented
 
@@ -130,4 +129,4 @@ def train_nmf(observation_space: Space, action_space: Space) -> NnUFunc:
     loss = nn.MSELoss()
     optim_type = optim.Adam
 
-    return AnyNnUFunc(NMFTrainerModule, left, right, loss, optim_type)
+    return NMFTrainerModule(left, right, loss, optim_type)

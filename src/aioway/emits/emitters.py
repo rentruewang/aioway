@@ -6,7 +6,8 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-from aioway._ufuncs import UFunc
+from torch import nn
+
 from aioway._utils import AnySet
 from aioway.spaces import Space
 
@@ -15,6 +16,7 @@ __all__ = [
     "Emitter",
     "FuncEmitter",
     "emitter_dcls",
+    "emit_one",
     "emit",
     "emitters_in_scope",
 ]
@@ -23,7 +25,15 @@ _EMITTERS: AnySet[Emitter] = AnySet()
 "The emitters that are considered."
 
 
-def emit(observ_space: Space, action_space: Space) -> cabc.Generator[UFunc]:
+def emit_one(observ_space: Space, action_space: Space) -> nn.Module:
+    """
+    A convenient wrapper to only emit the first target found.
+    """
+
+    return next(emit(observ_space=observ_space, action_space=action_space))
+
+
+def emit(observ_space: Space, action_space: Space) -> cabc.Generator[nn.Module]:
     """
     Emit some candidates based on the given spaces.
     """
@@ -37,7 +47,7 @@ def emit(observ_space: Space, action_space: Space) -> cabc.Generator[UFunc]:
 
 class EmitterLike(typing.Protocol):
     """
-    The baseline function that `emit` uses to generate `UFunc`s.
+    The baseline function that `emit` uses to generate `nn.Module`s.
     If the space is not supported, `NotImplemented` should be returned.
 
     All the `BaseLine`s are registered, and iterated over during `Emitter` call.
@@ -46,7 +56,7 @@ class EmitterLike(typing.Protocol):
     """
 
     @abc.abstractmethod
-    def __call__(self, observation_space: Space, action_space: Space, /) -> UFunc:
+    def __call__(self, observation_space: Space, action_space: Space, /) -> nn.Module:
         raise NotImplementedError
 
 
@@ -92,7 +102,7 @@ class FuncEmitter(Emitter):
     The function to wrap.
     """
 
-    def __call__(self, observation_space: Space, action_space: Space) -> UFunc:
+    def __call__(self, observation_space: Space, action_space: Space) -> nn.Module:
         return self.function(observation_space, action_space)
 
 

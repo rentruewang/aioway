@@ -3,13 +3,13 @@
 import abc
 
 import torch
+from torch import nn
 
 from aioway._api import public_api
-from aioway._ufuncs import IdentityUFunc
 from aioway.attrs import Attr
 from aioway.errors import re_raise_func
 
-from .casts import CastedSpaceUFunc, register_cast
+from .casts import CastedSpaceModule, register_cast
 from .spaces import TensorSpace, space_dcls
 
 __all__ = ["ImageSpace", "ByteImageSpace", "FloatImageSpace"]
@@ -73,10 +73,10 @@ class FloatImageSpace(ImageSpace):
 
 
 @register_cast(ByteImageSpace, ImageSpace)
-def byte_is_image(img: ByteImageSpace) -> CastedSpaceUFunc[ImageSpace]:
-    return CastedSpaceUFunc(img, IdentityUFunc())
+def byte_is_image(img: ByteImageSpace) -> CastedSpaceModule[ImageSpace]:
+    return CastedSpaceModule(img, nn.Identity())
 
 
 @register_cast(FloatImageSpace, ImageSpace)
-def float_is_image(img: FloatImageSpace) -> CastedSpaceUFunc[ImageSpace]:
-    return CastedSpaceUFunc(img, IdentityUFunc())
+def float_is_image(img: FloatImageSpace) -> CastedSpaceModule[ImageSpace]:
+    return CastedSpaceModule(img, nn.Identity())

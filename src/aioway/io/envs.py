@@ -5,7 +5,8 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-from aioway._ufuncs import UFunc
+from torch import nn
+
 from aioway.emits import emit
 from aioway.errors import re_raise_func
 from aioway.relalg import LoaderOpt
@@ -61,7 +62,7 @@ class Env[O = typing.Any, A = typing.Any](abc.ABC):
     def action_space(self) -> Space:
         raise NotImplementedError
 
-    def emit(self) -> cabc.Generator[UFunc]:
+    def emit(self) -> cabc.Generator[nn.Module]:
         yield from emit(self.observ_space, self.action_space)
 
 
