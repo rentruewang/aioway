@@ -65,6 +65,12 @@ class ModeThunk[**P = ..., T = typing.Any]:
 class ModeCtx[T: ModeThunk](abc.ABC):
     "The adaptor for torch contexts."
 
+    if typing.TYPE_CHECKING:
+
+        def __enter__(self) -> typing.Any: ...
+
+        def __exit__(self, *args, **kwargs) -> typing.Any: ...
+
     def __init__(self, mode: Mode[T]) -> None:
         super().__init__()
         self.mode = mode
@@ -89,6 +95,7 @@ class ModeCtx[T: ModeThunk](abc.ABC):
 
         with self.mode.STACK.borrow() as mode:
             assert self.mode is mode
+
             # The mode can be turned off.
             if not self.mode.on:
                 return func(*args, **kwargs)
@@ -116,6 +123,7 @@ class Mode[T: ModeThunk = ModeThunk, V = object](abc.ABC):
 
     Since enter and 
     """
+
     _: dcls.KW_ONLY
 
     on: bool = True
