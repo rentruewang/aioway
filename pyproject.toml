@@ -18,7 +18,6 @@ dependencies = [
     "rich>=14",
     "pillow>=12",
     "av>=17",
-    "jinja2>=3.1.6",
     "transformers>=5",
     "tokenizers>=0.22",
 ]

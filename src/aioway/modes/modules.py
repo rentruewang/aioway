@@ -15,7 +15,14 @@ from aioway._utils import Sign, render_fcall, render_torch_func_name, track_call
 
 from .modes import Mode, ModeStack, ModeThunk
 
-__all__ = ["NnFwdThunk", "NnInitThunk", "NnFwdMode", "NnInitMode"]
+__all__ = [
+    "NnFwdThunk",
+    "NnInitThunk",
+    "NnFwdMode",
+    "NnInitMode",
+    "init_nn_module",
+    "forward_nn_module",
+]
 
 LOGGER = logging.getLogger(__name__)
 
@@ -24,6 +31,20 @@ FORWARDS: ModeStack[NnFwdMode] = ModeStack()
 
 INITS: ModeStack[NnInitMode] = ModeStack()
 "`NnInitMode` that is currently entered."
+
+
+def init_nn_module[**P, T: nn.Module](
+    module_type: cabc.Callable[P, T], *args: P.args, **kwargs: P.kwargs
+) -> T:
+    thunk = NnInitThunk(module_type, *args, **kwargs)
+    return thunk()
+
+
+def forward_nn_module(
+    module: nn.Module, *args: typing.Any, **kwargs: typing.Any
+) -> typing.Any:
+    thunk = NnFwdThunk(module, *args, **kwargs)
+    return thunk()
 
 
 @typing.final

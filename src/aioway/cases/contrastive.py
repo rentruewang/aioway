@@ -8,10 +8,8 @@ import torch
 from torch import nn, optim
 from torch.nn import functional as F
 
-from aioway._ufuncs import UFunc
 from aioway.emits import Emitter, emitter_dcls
 from aioway.spaces import Space, TensorSpace
-from aioway.torch.nn import AnyNnUFunc, NnUFunc
 
 __all__ = ["ContrastiveLoss", "ContrastiveLossEmitter"]
 
@@ -55,7 +53,7 @@ class ContrastiveLossEmitter(Emitter):
     emitter: Emitter
     "The default emitter when it's time to emit."
 
-    def __call__(self, observation_space: Space, action_space: Space, /) -> UFunc:
+    def __call__(self, observation_space: Space, action_space: Space, /) -> nn.Module:
         if not isinstance(observation_space, TensorSpace):
             return NotImplemented
 
@@ -68,5 +66,5 @@ class ContrastiveLossEmitter(Emitter):
 
         emission = self.emitter(observation_space, action_space)
 
-        assert isinstance(emission, NnUFunc)
-        return AnyNnUFunc(ContrastiveLoss, emission.module, nn.MSELoss(), optim.Adam)
+        assert isinstance(emission, nn.Module)
+        return ContrastiveLoss(emission, nn.MSELoss(), optim.Adam)

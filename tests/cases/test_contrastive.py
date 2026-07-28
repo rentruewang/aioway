@@ -8,7 +8,6 @@ from aioway.attrs import Shape
 from aioway.cases import ContrastiveLoss, ContrastiveLossEmitter
 from aioway.emits import emit_one, linear_from_attr
 from aioway.spaces import AttrSpace
-from aioway.torch.nn import NnUFunc
 
 
 @pytest.fixture
@@ -23,8 +22,8 @@ def test_emit_contrastive(contrastive):
         AttrSpace(shape=Shape.parse([3, 5, 7])),
     )
 
-    assert isinstance(out, NnUFunc)
-    assert isinstance(out.module, ContrastiveLoss)
+    assert isinstance(out, nn.Module)
+    assert isinstance(out, ContrastiveLoss)
 
 
 def test_contrastive_loss():

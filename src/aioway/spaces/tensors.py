@@ -2,19 +2,18 @@
 
 "Some common tensor operations."
 
-import torch
+from torch import nn
 
-from aioway._ufuncs import AdHocUFunc
 from aioway.attrs import Shape
 
 from .attrs import ShapeSpace
-from .casts import CastedSpaceUFunc, register_cast
+from .casts import CastedSpaceModule, register_cast
 
 __all__ = ["flatten_tensor"]
 
 
 @register_cast(ShapeSpace, ShapeSpace)
-def flatten_tensor(input_space: ShapeSpace) -> CastedSpaceUFunc:
+def flatten_tensor(input_space: ShapeSpace) -> CastedSpaceModule:
     flattened = input_space.shape.numel()
     output_space = ShapeSpace(Shape.parse(flattened))
-    return CastedSpaceUFunc(output_space, ufunc=AdHocUFunc(torch.flatten))
+    return CastedSpaceModule(output_space, module=nn.Flatten())

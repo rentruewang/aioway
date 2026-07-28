@@ -3,17 +3,15 @@
 import typing
 
 import pytest
-from torch import nn, optim
+from torch import nn
 
 from aioway._iters import TensorIter
-from aioway._ufuncs import BuiltUFunc, UFunc, UFuncThunk
 from aioway.attrs import Attr, Shape
-from aioway.emits import MlpEmitter, emit, linear_shape
+from aioway.compound import BuiltModule
+from aioway.emits import MlpEmitter, emit, emit_one, linear_shape
 from aioway.io import TensorListIter, TensorStream
 from aioway.relalg import LoaderOpt
 from aioway.spaces import AttrSpace, ShapeSpace
-from aioway.torch.nn import NnUFunc, nn_ufunc
-from aioway.torch.optim import OptimizerUFunc
 
 
 @pytest.fixture
@@ -58,14 +56,6 @@ def target_loader(input_loader: TensorIter) -> TensorIter:
 
 
 @pytest.fixture
-def optimizer(input_loader: TensorListIter, target_loader: TensorIter):
-    opt = optim.AdamW(input_loader.sequence)
-    loss = nn_ufunc(nn.MSELoss).thunk(input_loader, target_loader)
-    assert isinstance(loss, UFuncThunk)
-    return OptimizerUFunc(optimizer=opt).thunk(loss=loss)
-
-
-@pytest.fixture
 def consider_linear():
     with linear_shape.consider():
         yield
@@ -80,49 +70,29 @@ def consider_mlp():
 def test_just_linear(
     input_shape_space: ShapeSpace, output_space: ShapeSpace, consider_linear
 ):
-    linear_found = False
-
-    for ufunc in emit(input_shape_space, output_space):
-        assert isinstance(ufunc, UFunc)
-
-        if isinstance(ufunc, NnUFunc):
-            linear_found = True
-            _check_linear(
-                ufunc,
-                in_features=input_shape_space.shape[-1],
-                out_features=output_space.shape[-1],
-            )
-
-    assert linear_found
+    module = emit_one(input_shape_space, output_space)
+    assert isinstance(module, nn.Linear)
+    _check_linear(
+        module,
+        in_features=input_shape_space.shape[-1],
+        out_features=output_space.shape[-1],
+    )
 
 
 def test_mlp_emitter(
     input_shape_space: ShapeSpace, output_space: ShapeSpace, consider_mlp
 ):
     mlp_found = False
-    for ufunc in emit(input_shape_space, output_space):
-        if isinstance(ufunc, BuiltUFunc):
+    for module in emit(input_shape_space, output_space):
+        if isinstance(module, BuiltModule):
             mlp_found = True
 
     assert mlp_found
 
 
-def _check_linear(linear: NnUFunc, in_features: int, out_features: int):
-    assert isinstance(linear, NnUFunc)
+def _check_linear(linear: nn.Linear, in_features: int, out_features: int):
+    assert isinstance(linear, nn.Linear)
 
     # The modern way to check subsets.
-    args = linear.arguments()
-    target = {
-        "in_features": in_features,
-        "out_features": out_features,
-    }
-    assert args.items() >= target.items()
-
-
-def test_optimize(optimizer: UFuncThunk):
-    has_run = False
-
-    for _ in optimizer:
-        has_run = True
-
-    assert has_run
+    assert linear.in_features == in_features
+    assert linear.out_features == out_features

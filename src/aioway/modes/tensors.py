@@ -119,6 +119,8 @@ class TorchModeOnOff[T: ModeThunk](Mode[T, object], abc.ABC):
     """
     The actual context passed to `torch`.
     These are specific modes that honor the `on` switch (hence private function).
+
+    Since enter and 
     """
 
     @typing.override

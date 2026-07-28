@@ -82,7 +82,9 @@ class HasParam(abc.ABC):
     providing `parameters(select)` which iterates over the tensors and filter them.
     """
 
-    def parameters(self, select: TensorFilter = filter_tensor_off, /):
+    def parameters(
+        self, select: TensorFilter = filter_tensor_off, /
+    ) -> cabc.Generator[torch.Tensor]:
         """
         Calls `.tensors()` and then use `select` to iterate over the tensors.
         """

@@ -5,7 +5,7 @@
 groups = ["default", "build", "debugging", "docs", "faiss", "networkx", "pre-commit", "sklearn", "tests"]
 strategy = []
 lock_version = "4.5.0"
-content_hash = "sha256:bca2b6000f4324a88a8a286f408cbd150c3c4d77ebdba91e896cf2f0e4e26e6e"
+content_hash = "sha256:87672e62986864f297c730218e0912aeb9d44a04a9a2e7793dbe8a7d49bba6d9"
 
 [[metadata.targets]]
 requires_python = ">=3.14,<3.15"

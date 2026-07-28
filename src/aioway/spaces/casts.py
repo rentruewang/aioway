@@ -5,20 +5,20 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-from aioway._ufuncs import UFunc
+from torch import nn
 
 from .spaces import Space
 
-__all__ = ["register_cast", "cast_space", "Caster", "CastedUFunc", "CastedSpaceUFunc"]
+__all__ = ["register_cast", "cast_space", "Caster", "CastedModule", "CastedSpaceModule"]
 
 _CASTERS: dict[tuple[type[Space], type[Space]], Caster] = {}
 "The casters organized by `tuple[type[Space], type[Space]]`."
 
 
 @dcls.dataclass(frozen=True)
-class CastedUFunc[S: Space = Space, T: Space = Space](UFunc):
+class CastedModule[S: Space = Space, T: Space = Space](nn.Module):
     """
-    `CastedUFunc` outputs the space,
+    `CastedModule` outputs the space,
     and the corresponding `UFunc` that would generate valid outputs.
     """
 
@@ -36,13 +36,13 @@ class CastedUFunc[S: Space = Space, T: Space = Space](UFunc):
         return self.func(item)
 
 
-class CastedSpaceUFunc[S: Space = Space](typing.NamedTuple):
-    "The tuple with the output cast space and the ufunc."
+class CastedSpaceModule[S: Space = Space](typing.NamedTuple):
+    "The tuple with the output cast space and the module."
 
     space: S
     "The space that is casted."
 
-    ufunc: UFunc
+    module: nn.Module
     "The function that would be used for conversion."
 
 
@@ -54,7 +54,7 @@ class Caster[S: Space, T: Space](typing.Protocol):
     """
 
     @abc.abstractmethod
-    def __call__(self, observ_space_type: S, /) -> CastedSpaceUFunc[T]:
+    def __call__(self, observ_space_type: S, /) -> CastedSpaceModule[T]:
         raise NotImplementedError
 
 
@@ -79,7 +79,7 @@ def register_cast(input_type, output_type):
     return decorator
 
 
-def cast_space(space: Space, target_type: type[Space], /) -> CastedUFunc:
+def cast_space(space: Space, target_type: type[Space], /) -> CastedModule:
     """
     Cast `space`, a `Space` instance, to another space of type `target`.
 
@@ -88,8 +88,8 @@ def cast_space(space: Space, target_type: type[Space], /) -> CastedUFunc:
 
     input_type = type(space)
     cast = _CASTERS[input_type, target_type]
-    target_space, ufunc = cast(space)
-    return CastedUFunc(ufunc, space, target_space)
+    target_space, module = cast(space)
+    return CastedModule(module, space, target_space)
 
 
 def _is_space_type(obj) -> typing.TypeIs[type[Space]]:
