@@ -6,7 +6,7 @@ from torch import nn, optim
 
 from aioway.attrs import Shape
 from aioway.cases import ContrastiveLoss, ContrastiveLossEmitter
-from aioway.emits import emit, linear_from_attr
+from aioway.emits import emit_one, linear_from_attr
 from aioway.spaces import AttrSpace
 from aioway.torch.nn import NnUFunc
 
@@ -18,12 +18,13 @@ def contrastive():
 
 
 def test_emit_contrastive(contrastive):
-    for out in emit(
+    out = emit_one(
         AttrSpace(shape=Shape.parse([3, 5, 7])),
         AttrSpace(shape=Shape.parse([3, 5, 7])),
-    ):
-        assert isinstance(out, NnUFunc)
-        assert isinstance(out.module, ContrastiveLoss)
+    )
+
+    assert isinstance(out, NnUFunc)
+    assert isinstance(out.module, ContrastiveLoss)
 
 
 def test_contrastive_loss():

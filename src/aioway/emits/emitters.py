@@ -15,12 +15,21 @@ __all__ = [
     "Emitter",
     "FuncEmitter",
     "emitter_dcls",
+    "emit_one",
     "emit",
     "emitters_in_scope",
 ]
 
 _EMITTERS: AnySet[Emitter] = AnySet()
 "The emitters that are considered."
+
+
+def emit_one(observ_space: Space, action_space: Space) -> UFunc:
+    """
+    A convenient wrapper to only emit the first target found.
+    """
+
+    return next(emit(observ_space=observ_space, action_space=action_space))
 
 
 def emit(observ_space: Space, action_space: Space) -> cabc.Generator[UFunc]:
