@@ -5,19 +5,14 @@ import torch
 from torch import nn
 
 from aioway.compound import BuiltModule, CompoundBuilder
-from aioway.modes import init_nn_module
 
 
 @pytest.fixture
 def built_mlp():
     builder = CompoundBuilder()
     input = builder.input("input")
-    hidden_1 = builder.thunk(
-        init_nn_module(nn.Linear, in_features=5, out_features=10), input
-    )
-    hidden_2 = builder.thunk(
-        init_nn_module(nn.Linear, in_features=10, out_features=10), hidden_1
-    )
+    hidden_1 = builder.thunk(nn.Linear(in_features=5, out_features=10), input)
+    hidden_2 = builder.thunk(nn.Linear(in_features=10, out_features=10), hidden_1)
 
     module = builder.output(hidden_2)
     return module
@@ -32,13 +27,9 @@ def test_mlp(built_mlp: BuiltModule):
 def test_loss():
     builder = CompoundBuilder()
     input = builder.input("input")
-    hidden_1 = builder.thunk(
-        init_nn_module(nn.Linear, in_features=5, out_features=10), input
-    )
-    hidden_2 = builder.thunk(
-        init_nn_module(nn.Linear, in_features=10, out_features=5), hidden_1
-    )
-    loss = builder.thunk(init_nn_module(nn.MSELoss), hidden_2, input)
+    hidden_1 = builder.thunk(nn.Linear(in_features=5, out_features=10), input)
+    hidden_2 = builder.thunk(nn.Linear(in_features=10, out_features=5), hidden_1)
+    loss = builder.thunk(nn.MSELoss(), hidden_2, input)
 
     graph = builder.output(loss)
 

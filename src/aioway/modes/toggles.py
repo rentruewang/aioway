@@ -3,13 +3,11 @@
 import contextlib as ctxl
 import typing
 
-from .modes import ModeStack
-from .modules import FORWARDS, INITS
-from .tensors import DISPATCHES, FUNCTIONS
+from .modes import ModeStack, dispatches, functions
 
 __all__ = ["active_mode", "set_mode", "mode_off"]
 
-type _ModeName = typing.Literal["function", "dispatch", "init", "forward"]
+type _ModeName = typing.Literal["function", "dispatch"]
 
 
 def active_mode(mode: _ModeName):
@@ -19,25 +17,15 @@ def active_mode(mode: _ModeName):
 
     match mode:
         case "function":
-            return FUNCTIONS
+            return functions()
         case "dispatch":
-            return DISPATCHES
-        case "init":
-            return INITS
-        case "forward":
-            return FORWARDS
+            return dispatches()
         case _:
             raise ValueError(f"Unexpected {mode=} is not supported.")
 
 
 @ctxl.contextmanager
-def set_mode(
-    *,
-    function: bool | None = None,
-    dispatch: bool | None = None,
-    init: bool | None = None,
-    forward: bool | None,
-):
+def set_mode(*, function: bool | None = None, dispatch: bool | None = None):
     """
     Turn on or off `__torch_function__` / `__torch_dispatch__` mode for the given scope,
     for the modes that are **currently activated**.
@@ -61,15 +49,13 @@ def set_mode(
             if flag is not None:
                 ctx.enter_context(stack.switch(flag))
 
-        _switch_if_not_none(FUNCTIONS, function)
-        _switch_if_not_none(DISPATCHES, dispatch)
-        _switch_if_not_none(INITS, init)
-        _switch_if_not_none(FORWARDS, forward)
+        _switch_if_not_none(functions(), function)
+        _switch_if_not_none(dispatches(), dispatch)
 
         yield
 
 
 @ctxl.contextmanager
 def mode_off():
-    with set_mode(function=False, dispatch=False, init=False, forward=False):
+    with set_mode(function=False, dispatch=False):
         yield

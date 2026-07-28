@@ -6,7 +6,6 @@ from torch import nn
 
 from aioway.compound import BuilderNode, CompoundBuilder
 from aioway.emits import Emitter, emitter_dcls
-from aioway.modes import init_nn_module
 from aioway.spaces import AttrSpace, ShapeSpace, Space
 
 from .emitters import FuncEmitter
@@ -26,9 +25,7 @@ def linear_shape(observation_space: Space, action_space: Space) -> nn.Module:
     if not isinstance(action_space, ShapeSpace):
         return NotImplemented
 
-    return init_nn_module(
-        nn.Linear, in_features=observation_space[-1], out_features=action_space[-1]
-    )
+    return nn.Linear(in_features=observation_space[-1], out_features=action_space[-1])
 
 
 @FuncEmitter
@@ -48,9 +45,7 @@ def linear_from_attr(observation_space: Space, action_space: Space) -> nn.Module
     if (act_shape := action_space.shape) is None:
         return NotImplemented
 
-    return init_nn_module(
-        nn.Linear, in_features=observ_shape[-1], out_features=act_shape[-1]
-    )
+    return nn.Linear(in_features=observ_shape[-1], out_features=act_shape[-1])
 
 
 type Activation = typing.Literal[
@@ -90,7 +85,7 @@ class MlpEmitter(Emitter):
 
         for in_feats, out_feats in zip(sizes[:-1], sizes[1:]):
             x = builder.thunk(
-                init_nn_module(nn.Linear, in_features=in_feats, out_features=out_feats),
+                nn.Linear(in_features=in_feats, out_features=out_feats),
                 x,
             )
 

@@ -9,8 +9,6 @@ from aioway.modes import (
     AtenThunk,
     HistTensorGraph,
     ModeThunk,
-    NnFwdThunk,
-    NnInitThunk,
     TorchDispThunk,
     TorchFuncThunk,
 )
@@ -20,8 +18,6 @@ def _fn_cls():
     yield AtenThunk
     yield TorchDispThunk
     yield TorchFuncThunk
-    yield NnInitThunk
-    yield NnFwdThunk
 
     yield Aten
 
@@ -30,7 +26,6 @@ def _input_cls():
     yield HistTensorGraph
     yield ModeThunk
     yield AtenThunk
-    yield NnFwdThunk
     yield AtenThunk
     yield Aten
 
