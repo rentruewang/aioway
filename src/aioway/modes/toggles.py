@@ -3,8 +3,7 @@
 import contextlib as ctxl
 import typing
 
-from .modes import ModeStack
-from .tensors import DISPATCHES, FUNCTIONS
+from .modes import ModeStack, dispatches, functions
 
 __all__ = ["active_mode", "set_mode", "mode_off"]
 
@@ -18,9 +17,9 @@ def active_mode(mode: _ModeName):
 
     match mode:
         case "function":
-            return FUNCTIONS
+            return functions()
         case "dispatch":
-            return DISPATCHES
+            return dispatches()
         case _:
             raise ValueError(f"Unexpected {mode=} is not supported.")
 
@@ -50,8 +49,8 @@ def set_mode(*, function: bool | None = None, dispatch: bool | None = None):
             if flag is not None:
                 ctx.enter_context(stack.switch(flag))
 
-        _switch_if_not_none(FUNCTIONS, function)
-        _switch_if_not_none(DISPATCHES, dispatch)
+        _switch_if_not_none(functions(), function)
+        _switch_if_not_none(dispatches(), dispatch)
 
         yield
 

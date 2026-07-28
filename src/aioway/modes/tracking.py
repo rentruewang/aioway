@@ -17,7 +17,7 @@ from aioway._utils import (
 )
 
 from .hists import HistTensorGraph
-from .tensors import TorchDispMode, TorchDispThunk, TorchFuncMode, TorchFuncThunk
+from .modes import TorchDispMode, TorchDispThunk, TorchFuncMode, TorchFuncThunk
 
 if typing.TYPE_CHECKING:
     from aioway.modes import AtenThunk
