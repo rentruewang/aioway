@@ -76,8 +76,9 @@ class ModeCtx[T: ModeThunk](abc.ABC):
         # where a mode is pushed onto a stack during `with` and borrowed whenever invoked,
         # torch only will invoke those modes when they are the top most mode on the stack.
         #
-        # Here we check our assumption about prioritizing the top mode on stack,
-        # and warn if it's not what we expected, by checking inside `__torch_*__` calls.
+        # Here we check if `__torch_*__` call is synced to ours.
+        # If fail, our assumption about prioritizing the top mode on stack is incorrect.
+        # A warning is emitted to notify us that we need to update the execution model.
         if self.mode.STACK.top() is not self.mode:
             warnings.warn(
                 f"Modes mismatch in `{name}`. "
