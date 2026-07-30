@@ -3,10 +3,9 @@
 import pytest
 import torch
 
-from aioway._iters import TensorIter
 from aioway.attrs import DType
-from aioway.indices import AnnIndexIter, AnnIndexTrainerIter, FaissIndex
 from aioway.io import TensorListIter
+from aioway.relalg import AnnIndexIter, AnnIndexTrainerIter, FaissIndex, TensorIter
 
 
 @pytest.fixture

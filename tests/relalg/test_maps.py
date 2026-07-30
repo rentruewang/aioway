@@ -8,10 +8,17 @@ from collections import abc as cabc
 import pytest
 import tensordict as td
 
-from aioway._iters import TdictIter, node_dcls
 from aioway._utils import tdict_all_equal, tdict_rename
 from aioway.io import TdictListIter
-from aioway.relalg import ApplyIter, FuncFilterIter, MapIter, ProjectIter, RenameIter
+from aioway.relalg import (
+    ApplyIter,
+    FuncFilterIter,
+    MapIter,
+    ProjectIter,
+    RenameIter,
+    TdictIter,
+    node_dcls,
+)
 
 
 @dcls.dataclass

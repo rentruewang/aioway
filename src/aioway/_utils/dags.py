@@ -6,9 +6,23 @@ import graphlib
 import typing
 from collections import abc as cabc
 
-__all__ = ["DagNodeKey", "dag_node_key", "topo_sort"]
+import torch
+
+__all__ = ["TensorInput", "DagNodeKey", "dag_node_key", "topo_sort"]
 
 type DagLike[T] = cabc.Iterable[DagNodeKeyLike[T]] | dict[T, cabc.Iterable[T]]
+
+
+@typing.runtime_checkable
+class TensorInput(typing.Protocol):
+    """
+    `TensorInput` marks a class whose value depend on input tensors for computation.
+    """
+
+    def inputs(self) -> cabc.Iterable[torch.Tensor]:
+        "The tensor operands (inputs to the function)"
+
+        raise NotImplementedError
 
 
 @typing.runtime_checkable

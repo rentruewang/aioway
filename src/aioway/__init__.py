@@ -5,7 +5,6 @@
 from . import (
     _api,
     _costs,
-    _iters,
     _sess,
     _thunks,
     _utils,
@@ -13,7 +12,6 @@ from . import (
     compound,
     emits,
     errors,
-    indices,
     io,
     modes,
     relalg,
