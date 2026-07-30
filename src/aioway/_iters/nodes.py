@@ -9,7 +9,6 @@ import textwrap
 import typing
 from collections import abc as cabc
 
-import torch
 from rich import table
 
 from aioway._utils import (
@@ -23,19 +22,7 @@ from aioway._utils import (
     topo_sort,
 )
 
-__all__ = ["TensorInput", "GraphNode", "node_dcls"]
-
-
-@typing.runtime_checkable
-class TensorInput(typing.Protocol):
-    """
-    `TensorInput` marks a class whose value depend on input tensors for computation.
-    """
-
-    def inputs(self) -> cabc.Iterable[torch.Tensor]:
-        "The tensor operands (inputs to the function)"
-
-        raise NotImplementedError
+__all__ = ["GraphNode", "node_dcls"]
 
 
 @typing.dataclass_transform()
