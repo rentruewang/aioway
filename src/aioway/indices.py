@@ -9,8 +9,8 @@ from collections import abc as cabc
 import numpy as np
 import torch
 
-from aioway._iters import Iter, TensorIter, node_dcls
 from aioway._utils import FloatArray, IntArray
+from aioway.relalg import Iter, TensorIter, node_dcls
 
 __all__ = ["AnnIndex", "AnnResult", "AnnIndexIter", "AnnIndexTrainerIter", "FaissIndex"]
 

@@ -7,10 +7,9 @@ import contextlib as ctxl
 import typing
 from collections import abc as cabc
 
-from aioway._iters import current_sample_mode, sample_mode
 from aioway._utils import AnyDict, torch_fake_mode
 
-from .iters import Iter
+from .iters import Iter, current_sample_mode, sample_mode
 
 __all__ = ["IterProc", "SampleIterProc", "CacheIterProc", "iter_cache", "iter_cache_on"]
 
