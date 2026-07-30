@@ -12,7 +12,6 @@ from . import (
     compound,
     emits,
     errors,
-    indices,
     io,
     modes,
     relalg,
