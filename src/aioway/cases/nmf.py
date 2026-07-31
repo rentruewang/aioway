@@ -13,8 +13,8 @@ from aioway.emits import FuncEmitter
 from aioway.errors import re_raise_func
 from aioway.spaces import (
     Attr,
-    Schema,
     BoxSpace,
+    Schema,
     Space,
     TdictSpace,
     TensorSpace,
