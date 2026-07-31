@@ -13,7 +13,7 @@ from aioway.emits import FuncEmitter
 from aioway.errors import re_raise_func
 from aioway.spaces import (
     Attr,
-    AttrDict,
+    Schema,
     BoxSpace,
     Space,
     TdictSpace,
@@ -72,7 +72,7 @@ class PairSpace(TdictSpace):
     target: TensorSpace
     "Target space of the pair."
 
-    def _check_attrs(self, attrs: AttrDict) -> None:
+    def _check_attrs(self, attrs: Schema) -> None:
         assert len(attrs) == 2
         assert attrs.keys() == {"input", "target"}
 

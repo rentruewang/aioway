@@ -297,13 +297,13 @@ class AttrSpace(TensorSpace):
     def to_attr(self) -> Attr:
         "Convert to `Attr`. If not enough info, will raise `TypeError`."
 
-        attr_dict: typing.Any = {}
+        schema: typing.Any = {}
 
         def add_if_not_none(key, val):
             if val is None:
                 return
 
-            attr_dict[key] = val
+            schema[key] = val
 
         add_if_not_none("shape", self.shape)
         add_if_not_none("dtype", self.dtype)
@@ -311,7 +311,7 @@ class AttrSpace(TensorSpace):
         add_if_not_none("layout", self.layout)
         add_if_not_none("requires_grad", self.requires_grad)
 
-        return Attr.parse(attr_dict)
+        return Attr.parse(schema)
 
     @classmethod
     def from_attr(cls, attr: Attr, /) -> typing.Self:

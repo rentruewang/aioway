@@ -17,12 +17,12 @@ from aioway._utils import is_real_tensor, torch_fake_mode
 from .spaces import Space, space_dcls
 from .tensors import Attr, AttrLike, DType
 
-__all__ = ["AttrDict", "TdictSpace", "TensorClassSpace"]
+__all__ = ["Schema", "TdictSpace", "TensorClassSpace"]
 
 
-class AttrDict(collections.UserDict[str, Attr]):
+class Schema(collections.UserDict[str, Attr]):
     """
-    `AttrDict` is a `dict[str, Attr]` with additional utilities.
+    `Schema` is a `dict[str, Attr]` with additional utilities.
     """
 
     def __hash__(self):
@@ -52,14 +52,14 @@ class AttrDict(collections.UserDict[str, Attr]):
 
     def rename(self, **renames: str) -> typing.Self:
         """
-        Renames the current `AttrDict`.
+        Renames the current `Schema`.
         """
 
         return type(self)({renames.get(key, key): val for key, val in self.items()})
 
     def select(self, *cols: str, strict: bool = False) -> typing.Self:
         """
-        Select subset of columns in the `AttrDict`.
+        Select subset of columns in the `Schema`.
         If `strict`, all keys should be present, or `KeyValue` would be raised.
         """
 
@@ -84,8 +84,8 @@ class AttrDict(collections.UserDict[str, Attr]):
         return cls({key: Attr.parse(tensor) for key, tensor in mapping.items()})
 
 
-def attr_dict(mapping: cabc.Mapping[str, AttrLike], /) -> AttrDict:
-    return AttrDict.parse(mapping)
+def schema(mapping: cabc.Mapping[str, AttrLike], /) -> Schema:
+    return Schema.parse(mapping)
 
 
 @public_api
@@ -111,10 +111,10 @@ class TensorClassSpace[T: td.TensorClass](Space[T], abc.ABC):
                 f"But {type(inst)=}."
             )
 
-        attr_dict = self._to_attr_dict(inst)
+        schema = self._to_schema(inst)
 
         try:
-            self._check_attrs(attr_dict)
+            self._check_attrs(schema)
         except ValueError:
             return False
 
@@ -126,14 +126,14 @@ class TensorClassSpace[T: td.TensorClass](Space[T], abc.ABC):
         return True
 
     @typing.no_type_check
-    def _to_attr_dict(self, inst: T) -> AttrDict:
+    def _to_schema(self, inst: T) -> Schema:
         assert dcls.is_dataclass(inst)
         fields = dcls.asdict(inst)
-        attr_dict = AttrDict.parse(fields)
-        return attr_dict
+        schema = Schema.parse(fields)
+        return schema
 
     @abc.abstractmethod
-    def _check_attrs(self, attrs: AttrDict, /) -> None:
+    def _check_attrs(self, attrs: Schema, /) -> None:
         """
         Raise `ValueError` if `self` is incompatible with tdict with `attrs`.
         """
@@ -156,7 +156,7 @@ class TdictSpace(Space[td.TensorDict]):
         if not isinstance(tdict, td.TensorDict):
             raise TypeError(f"{type(tdict)} is not a `td.TensorDict`.")
 
-        attrs = AttrDict.parse(tdict)
+        attrs = Schema.parse(tdict)
 
         try:
             self._check_attrs(attrs)
@@ -170,7 +170,7 @@ class TdictSpace(Space[td.TensorDict]):
             return True
 
     @abc.abstractmethod
-    def _check_attrs(self, attrs: AttrDict, /) -> None:
+    def _check_attrs(self, attrs: Schema, /) -> None:
         """
         Raise `ValueError` if `self` is incompatible with tdict with `attrs`.
         """
