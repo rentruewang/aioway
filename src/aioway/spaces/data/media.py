@@ -8,9 +8,10 @@ from torch import nn
 from aioway._api import public_api
 from aioway.errors import re_raise_func
 
-from .casts import CastedSpaceModule, register_cast
-from .spaces import space_dcls
-from .tensors import Attr, TensorSpace
+from ..casts import CastedSpaceModule, register_cast
+from ..spaces import space_dcls
+from .attrs import Attr
+from .tensors import TensorSpace
 
 __all__ = ["ImageSpace", "ByteImageSpace", "FloatImageSpace"]
 

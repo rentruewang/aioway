@@ -7,7 +7,6 @@ import dataclasses as dcls
 import typing
 
 from aioway._api import public_api
-from aioway._utils import torch_fake_mode
 
 __all__ = ["Space", "SpaceLike", "AnySpace", "space_dcls"]
 
@@ -52,14 +51,6 @@ class Space[T = typing.Any](abc.ABC):
 
         raise NotImplementedError
 
-    def sample(self, n: int = 1) -> T:
-        with torch_fake_mode():
-            return self._sample_n(n)
-
-    @abc.abstractmethod
-    def _sample_n(self, n: int, /) -> T:
-        raise NotImplementedError
-
 
 @public_api
 @space_dcls
@@ -71,7 +62,3 @@ class AnySpace(Space):
     @typing.override
     def contains(self, value):
         return True
-
-    @typing.override
-    def _sample_n(self, batch_size: int):
-        return object()

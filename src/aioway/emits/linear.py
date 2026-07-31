@@ -6,7 +6,7 @@ from torch import nn
 
 from aioway.compound import BuilderNode, CompoundBuilder
 from aioway.emits import Emitter, emitter_dcls
-from aioway.spaces import AttrSpace, ShapeSpace, Space
+from aioway.spaces import AttrSpace, ModuleSpace, ShapeSpace
 
 from .emitters import FuncEmitter
 
@@ -14,10 +14,13 @@ __all__ = ["linear_shape", "linear_from_attr", "MlpEmitter"]
 
 
 @FuncEmitter
-def linear_shape(observation_space: Space, action_space: Space) -> nn.Module:
+def linear_shape(space: ModuleSpace) -> nn.Module:
     """
     `Linear` module from `ShapeSpace`s.
     """
+
+    observation_space = space.observ_space
+    action_space = space.action_space
 
     if not isinstance(observation_space, ShapeSpace):
         return NotImplemented
@@ -29,10 +32,13 @@ def linear_shape(observation_space: Space, action_space: Space) -> nn.Module:
 
 
 @FuncEmitter
-def linear_from_attr(observation_space: Space, action_space: Space) -> nn.Module:
+def linear_from_attr(space: ModuleSpace) -> nn.Module:
     """
     `Linear` module from `AttrShape`s.
     """
+
+    observation_space = space.observ_space
+    action_space = space.action_space
 
     if not isinstance(observation_space, AttrSpace):
         return NotImplemented
@@ -69,7 +75,10 @@ class MlpEmitter(Emitter):
     The activation to use.
     """
 
-    def __call__(self, observation_space: Space, action_space: Space) -> nn.Module:
+    def __call__(self, space: ModuleSpace) -> nn.Module:
+        observation_space = space.observ_space
+        action_space = space.action_space
+
         if not isinstance(observation_space, ShapeSpace):
             return NotImplemented
 

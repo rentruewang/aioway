@@ -6,8 +6,11 @@ import torch
 
 from aioway.errors import re_raise_func
 
-from .spaces import space_dcls
-from .tensors import Attr, DType, Shape, TensorSpace
+from ..spaces import space_dcls
+from .attrs import Attr
+from .dtypes import DType
+from .shapes import Shape
+from .tensors import TensorSpace
 
 __all__ = ["DiscreteSpace", "BoxSpace", "MultiDiscreteSpace", "MultiBinarySpace"]
 

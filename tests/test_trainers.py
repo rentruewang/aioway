@@ -25,8 +25,7 @@ class _TensorFrame(TensorFrame):
     def __getitems__(self, idx):
         return list(self.tensor[idx])
 
-    @property
-    def space(self):
+    def __space__(self):
         return ShapeSpace(Shape.parse(self.tensor.shape[1:]))
 
 
