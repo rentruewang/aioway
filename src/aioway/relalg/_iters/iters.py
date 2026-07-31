@@ -13,7 +13,7 @@ import torch
 
 from aioway._api import public_api
 from aioway._utils import decomp_dcls_members, decomp_replace, torch_fake_mode
-from aioway.attrs import Attr, Shape
+from aioway.spaces import Attr, Shape
 
 from .nodes import GraphNode, node_dcls
 

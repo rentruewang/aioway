@@ -4,10 +4,10 @@ import typing
 
 import torch
 
-from aioway.attrs import Attr, DType, Shape
 from aioway.errors import re_raise_func
 
-from .spaces import TensorSpace, space_dcls
+from .spaces import space_dcls
+from .tensors import Attr, DType, Shape, TensorSpace
 
 __all__ = ["DiscreteSpace", "BoxSpace", "MultiDiscreteSpace", "MultiBinarySpace"]
 

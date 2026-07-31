@@ -6,10 +6,9 @@ import pytest
 import torch
 from torch import nn
 
-from aioway.attrs import Shape
 from aioway.emits import MlpEmitter
 from aioway.io import TensorFrame
-from aioway.spaces import ShapeSpace
+from aioway.spaces import Shape, ShapeSpace
 from aioway.trainers import Trainer
 
 

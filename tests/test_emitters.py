@@ -5,12 +5,11 @@ import typing
 import pytest
 from torch import nn
 
-from aioway.attrs import Attr, Shape
 from aioway.compound import BuiltModule
 from aioway.emits import MlpEmitter, emit, emit_one, linear_shape
 from aioway.io import TensorListIter, TensorStream
 from aioway.relalg import LoaderOpt, TensorIter
-from aioway.spaces import AttrSpace, ShapeSpace
+from aioway.spaces import Attr, AttrSpace, Shape, ShapeSpace
 
 
 @pytest.fixture

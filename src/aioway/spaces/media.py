@@ -6,11 +6,11 @@ import torch
 from torch import nn
 
 from aioway._api import public_api
-from aioway.attrs import Attr
 from aioway.errors import re_raise_func
 
 from .casts import CastedSpaceModule, register_cast
-from .spaces import TensorSpace, space_dcls
+from .spaces import space_dcls
+from .tensors import Attr, TensorSpace
 
 __all__ = ["ImageSpace", "ByteImageSpace", "FloatImageSpace"]
 

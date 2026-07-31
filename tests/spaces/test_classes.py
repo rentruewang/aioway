@@ -4,8 +4,7 @@ import pytest
 import tensordict as td
 import torch
 
-from aioway.attrs import AttrDict
-from aioway.spaces import TensorClassSpace
+from aioway.spaces import AttrDict, TensorClassSpace
 
 
 class LossTensorClass(td.TensorClass):
