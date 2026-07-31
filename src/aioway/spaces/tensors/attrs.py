@@ -2,24 +2,24 @@
 
 "Schema is a collection of metadata describing the 'type' of data."
 
-import collections
 import dataclasses as dcls
 import json
 import logging
 import typing
 from collections import abc as cabc
 
-import tensordict as td
 import torch
 
 from aioway._utils import torch_fake_mode
 
+from ..spaces import space_dcls
 from .devices import Device, DeviceLike
 from .dtypes import DType, DTypeLike
 from .layouts import Layout, LayoutLike
 from .shapes import Shape, ShapeLike
+from .tensors import TensorSpace
 
-__all__ = ["Attr", "AttrLike", "AttrDict"]
+__all__ = ["Attr", "AttrLike", "AttrSpace"]
 
 
 LOGGER = logging.getLogger(__name__)
@@ -73,6 +73,15 @@ class Attr:
 
         if not isinstance(self.shape, Shape):
             raise TypeError(type(self.shape))
+
+    def __space__(self) -> AttrSpace:
+        return AttrSpace(
+            shape=self.shape,
+            dtype=self.dtype,
+            device=self.device,
+            layout=self.layout,
+            requires_grad=self.requires_grad,
+        )
 
     def __bool__(self):
         return True
@@ -240,69 +249,76 @@ class AttrLikeDict(typing.TypedDict):
     layout: typing.NotRequired[LayoutLike]
 
 
-class AttrDict(collections.UserDict[str, Attr]):
+@space_dcls
+class AttrSpace(TensorSpace):
     """
-    `AttrDict` is a `dict[str, Attr]` with additional utilities.
+    Tag that specify `Attr`s that should be respected.
     """
 
-    def __hash__(self):
-        return hash(json.dumps({key: val.__getstate__() for key, val in self.items()}))
+    _: dcls.KW_ONLY
 
-    @property
-    def dtype(self) -> DType | None:
-        """
-        Get the dtype of the attributes.
-        Like `td.TensorDict.dtype`, this is `None` when the types are not homogenious.
-        """
+    shape: Shape | None = None
+    "The given shape, if given, that must match."
 
-        if len(dt := {attr.dtype for attr in self.values()}) != 1:
-            return None
+    dtype: DType | None = None
+    "The given dtype, if given, that must match."
 
-        # Get the only one.
-        return next(iter(dt))
+    device: Device | None = None
+    "The given device, if given, that must match."
 
-    @property
-    def requires_grad(self) -> bool:
-        """
-        The `requires_grad`-ness of the `td.TensorDict`.
-        It's `True` if any of the attributes is `True`.
-        """
+    layout: Layout | None = None
+    "The given layout, if given, that must match."
 
-        return any(attr.requires_grad for attr in self.values())
+    requires_grad: bool | None = None
+    "The given requires_grad, if given, that must match."
 
-    def rename(self, **renames: str) -> typing.Self:
-        """
-        Renames the current `AttrDict`.
-        """
+    def _check_attr(self, attr: Attr) -> None:
+        def check_if_not_none[T](left: T | None, right: T):
+            if left is None:
+                return
 
-        return type(self)({renames.get(key, key): val for key, val in self.items()})
+            if left != right:
+                raise ValueError
 
-    def select(self, *cols: str, strict: bool = False) -> typing.Self:
-        """
-        Select subset of columns in the `AttrDict`.
-        If `strict`, all keys should be present, or `KeyValue` would be raised.
-        """
+        check_if_not_none(self.shape, attr.shape)
+        check_if_not_none(self.dtype, attr.dtype)
+        check_if_not_none(self.device, attr.device)
+        check_if_not_none(self.layout, attr.layout)
+        check_if_not_none(self.requires_grad, attr.requires_grad)
 
-        result = type(self)({key: val for key, val in self.items() if key in cols})
+    def _sample_n(self, batch_size: int) -> torch.Tensor:
+        attr = self.to_attr()
+        attr = dcls.replace(attr, shape=Shape.parse(batch_size, *attr.shape))
+        return attr.to_fake_tensor()
 
-        if strict and len(result) != len(cols):
-            not_found = [col for col in cols if col not in result]
-            raise KeyError(
-                f"These keys: {not_found} are not found, which is disallowed in strict mode."
-            )
+    def _check_data(self, tensor: torch.Tensor) -> None:
+        pass
 
-        return result
+    def to_attr(self) -> Attr:
+        "Convert to `Attr`. If not enough info, will raise `TypeError`."
 
-    def to_fake_tensordict(self) -> td.TensorDict:
-        with torch_fake_mode():
-            return td.TensorDict(
-                {key: attr.to_fake_tensor() for key, attr in self.items()}
-            )
+        schema: typing.Any = {}
+
+        def add_if_not_none(key, val):
+            if val is None:
+                return
+
+            schema[key] = val
+
+        add_if_not_none("shape", self.shape)
+        add_if_not_none("dtype", self.dtype)
+        add_if_not_none("device", self.device)
+        add_if_not_none("layout", self.layout)
+        add_if_not_none("requires_grad", self.requires_grad)
+
+        return Attr.parse(schema)
 
     @classmethod
-    def parse(cls, mapping: cabc.Mapping[str, AttrLike], /) -> typing.Self:
-        return cls({key: Attr.parse(tensor) for key, tensor in mapping.items()})
-
-
-def attr_dict(mapping: cabc.Mapping[str, AttrLike], /) -> AttrDict:
-    return AttrDict.parse(mapping)
+    def from_attr(cls, attr: Attr, /) -> typing.Self:
+        return cls(
+            shape=attr.shape,
+            device=attr.device,
+            dtype=attr.dtype,
+            layout=attr.layout,
+            requires_grad=attr.requires_grad,
+        )

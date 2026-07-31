@@ -4,10 +4,9 @@ import pytest
 import torch
 from torch import nn, optim
 
-from aioway.attrs import Shape
 from aioway.cases import ContrastiveLoss, ContrastiveLossEmitter
 from aioway.emits import emit_one, linear_from_attr
-from aioway.spaces import AttrSpace
+from aioway.spaces import AttrSpace, Shape
 
 
 @pytest.fixture

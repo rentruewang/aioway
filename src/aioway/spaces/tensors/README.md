@@ -12,4 +12,4 @@ There are multiple supported types of metadata:
 
 These 5 objects uniquely define a `torch.Tensor` (as evidenced in interal subclass maker).
 
-There are 2 types of schemas: `Attr` and `AttrDict` (representing schema in a table), where the latter is a collection of former.
+There are 2 types of schemas: `Attr` and `Schema` (representing schema in a table), where the latter is a collection of former.

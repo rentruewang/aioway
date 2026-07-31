@@ -18,7 +18,7 @@ from aioway._utils import (
     replace_tensors_with_attr,
     topo_sort,
 )
-from aioway.attrs import Attr
+from aioway.spaces import Attr
 
 from .modes import ModeThunk
 

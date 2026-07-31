@@ -6,21 +6,10 @@ import abc
 import dataclasses as dcls
 import typing
 
-import tensordict as td
-import torch
-
 from aioway._api import public_api
-from aioway._utils import is_fake_tensor, is_real_tensor, torch_fake_mode
-from aioway.attrs import Attr, AttrDict
+from aioway._utils import torch_fake_mode
 
-__all__ = [
-    "Space",
-    "AnySpace",
-    "TensorSpace",
-    "TdictSpace",
-    "TensorClassSpace",
-    "space_dcls",
-]
+__all__ = ["Space", "SpaceLike", "AnySpace", "space_dcls"]
 
 
 @public_api
@@ -33,6 +22,12 @@ def space_dcls[T](cls: type[Space[T]]):
     """
 
     return dcls.dataclass(frozen=True, slots=True)(cls)
+
+
+@public_api
+@typing.runtime_checkable
+class SpaceLike[T](typing.Protocol):
+    def __space__(self) -> Space[T]: ...
 
 
 @public_api
@@ -80,134 +75,3 @@ class AnySpace(Space):
     @typing.override
     def _sample_n(self, batch_size: int):
         return object()
-
-
-@public_api
-@space_dcls
-class TensorSpace(Space[torch.Tensor], abc.ABC):
-    "A `Space` that enforces constraints on a `torch.Tensor`."
-
-    @typing.override
-    @typing.final
-    def contains(self, tensor: torch.Tensor, /) -> bool:
-        if not isinstance(tensor, torch.Tensor):
-            raise TypeError(f"{type(tensor)} is not a `torch.Tensor`.")
-
-        attr = Attr.parse(tensor)
-
-        try:
-            self._check_attr(attr)
-
-            # Only perform the data checks if all the tensor is real.
-            if not is_fake_tensor(tensor):
-                self._check_data(tensor)
-        except ValueError:
-            return False
-        else:
-            return True
-
-    @abc.abstractmethod
-    def _check_attr(self, attr: Attr, /) -> None:
-        """
-        Raise `ValueError` if `self` is incompatible with tensor with `attr`.
-        """
-
-    @abc.abstractmethod
-    def _check_data(self, tensor: torch.Tensor, /) -> None:
-        """
-        Raise `ValueError` if `self` is not valid or is incompatible with `tensor`.
-        """
-
-
-@public_api
-@space_dcls
-class TensorClassSpace[T: td.TensorClass](Space[T], abc.ABC):
-    "A `Space` that checks a `td.TensorClass`."
-
-    KLASS: typing.ClassVar[type[T]]
-    "The class for which to check."
-
-    def __post_init__(self) -> None:
-        if not isinstance(self.KLASS, type):
-            raise TypeError(f"{self.KLASS=} should be a type.")
-
-        if not issubclass(self.KLASS, td.TensorClass):
-            raise TypeError(f"{self.KLASS=} should be a subclass of `td.TensorClass`.")
-
-    @typing.final
-    def contains(self, inst: T) -> bool:
-        if not isinstance(inst, self.KLASS):
-            raise TypeError(
-                f"{inst=} should be an instance of `{self.KLASS!s}`. "
-                f"But {type(inst)=}."
-            )
-
-        attr_dict = self._to_attr_dict(inst)
-
-        try:
-            self._check_attrs(attr_dict)
-        except ValueError:
-            return False
-
-        try:
-            self._check_data(inst)
-        except ValueError:
-            return False
-
-        return True
-
-    @typing.no_type_check
-    def _to_attr_dict(self, inst: T) -> AttrDict:
-        assert dcls.is_dataclass(inst)
-        fields = dcls.asdict(inst)
-        attr_dict = AttrDict.parse(fields)
-        return attr_dict
-
-    @abc.abstractmethod
-    def _check_attrs(self, attrs: AttrDict, /) -> None:
-        """
-        Raise `ValueError` if `self` is incompatible with tdict with `attrs`.
-        """
-
-    @abc.abstractmethod
-    def _check_data(self, inst: T, /) -> None:
-        """
-        Raise `ValueError` if `inst` is not acceptable.
-        """
-
-
-@public_api
-@space_dcls
-class TdictSpace(Space[td.TensorDict]):
-    "A `Space` that checks a `td.TensorDict`."
-
-    @typing.override
-    @typing.final
-    def contains(self, tdict: td.TensorDict, /) -> bool:
-        if not isinstance(tdict, td.TensorDict):
-            raise TypeError(f"{type(tdict)} is not a `td.TensorDict`.")
-
-        attrs = AttrDict.parse(tdict)
-
-        try:
-            self._check_attrs(attrs)
-
-            # Only perform the data checks if all the values are real.
-            if all(map(is_real_tensor, tdict.values())):
-                self._check_data(tdict)
-        except ValueError:
-            return False
-        else:
-            return True
-
-    @abc.abstractmethod
-    def _check_attrs(self, attrs: AttrDict, /) -> None:
-        """
-        Raise `ValueError` if `self` is incompatible with tdict with `attrs`.
-        """
-
-    @abc.abstractmethod
-    def _check_data(self, tdict: td.TensorDict, /) -> None:
-        """
-        Raise `ValueError` if `self` is not valid or is incompatible with `tdict`.
-        """

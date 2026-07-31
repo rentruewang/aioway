@@ -4,8 +4,7 @@ import pytest
 import tensordict as td
 import torch
 
-from aioway.attrs import AttrDict
-from aioway.spaces import TensorClassSpace
+from aioway.spaces import Schema, TensorClassSpace
 
 
 class LossTensorClass(td.TensorClass):
@@ -16,7 +15,7 @@ class LossTensorClass(td.TensorClass):
 class LossTensorAllPositive(TensorClassSpace):
     KLASS = LossTensorClass
 
-    def _check_attrs(self, attrs: AttrDict):
+    def _check_attrs(self, attrs: Schema):
         assert attrs.keys() == {"input", "target"}
 
     def _check_data(self, data: LossTensorClass):

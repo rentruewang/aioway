@@ -9,9 +9,8 @@ import typing
 
 import torch
 
-from aioway.attrs import Attr
-
-from .spaces import TensorSpace, space_dcls
+from .spaces import space_dcls
+from .tensors import Attr, TensorSpace
 
 __all__ = ["DimSpace", "DimInfo"]
 

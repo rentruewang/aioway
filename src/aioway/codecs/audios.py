@@ -10,7 +10,7 @@ from torch.utils import data
 from torchcodec import decoders as dec
 
 from aioway._utils import current_fake_mode, torch_set_fake_mode_func
-from aioway.attrs import Attr
+from aioway.spaces import Attr
 
 from ._av import AudioStream
 from ._bases import TorchCompatible
