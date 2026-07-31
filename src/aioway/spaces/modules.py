@@ -4,7 +4,7 @@ import abc
 
 from torch import nn
 
-from aioway.spaces import DataSpace
+from .data import DataSpace
 
 __all__ = ["ModuleSpace"]
 

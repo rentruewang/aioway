@@ -10,8 +10,8 @@ import torch
 from aioway._api import public_api
 from aioway._utils import is_fake_tensor
 
-from ..data import DataSpace
 from ..spaces import space_dcls
+from .data import DataSpace
 
 if typing.TYPE_CHECKING:
     from .attrs import Attr
