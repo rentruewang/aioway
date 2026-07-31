@@ -10,7 +10,7 @@ import torch
 from aioway._api import public_api
 from aioway._utils import is_fake_tensor
 
-from ..spaces import Space, space_dcls
+from ..spaces import DataSpace, space_dcls
 
 if typing.TYPE_CHECKING:
     from .attrs import Attr
@@ -20,7 +20,7 @@ __all__ = ["TensorSpace"]
 
 @public_api
 @space_dcls
-class TensorSpace(Space[torch.Tensor], abc.ABC):
+class TensorSpace(DataSpace[torch.Tensor], abc.ABC):
     "A `Space` that enforces constraints on a `torch.Tensor`."
 
     @typing.override

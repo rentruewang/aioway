@@ -9,7 +9,7 @@ import typing
 from aioway._api import public_api
 from aioway._utils import torch_fake_mode
 
-__all__ = ["Space", "SpaceLike", "AnySpace", "space_dcls"]
+__all__ = ["Space", "SpaceLike", "DataSpace", "AnySpace", "space_dcls"]
 
 
 @public_api
@@ -52,6 +52,10 @@ class Space[T = typing.Any](abc.ABC):
 
         raise NotImplementedError
 
+
+@public_api
+@space_dcls
+class DataSpace[T = typing.Any](Space[T], abc.ABC):
     def sample(self, n: int = 1) -> T:
         with torch_fake_mode():
             return self._sample_n(n)
@@ -63,7 +67,7 @@ class Space[T = typing.Any](abc.ABC):
 
 @public_api
 @space_dcls
-class AnySpace(Space):
+class AnySpace(DataSpace):
     """
     A `Space` that imposes no constraints.
     """

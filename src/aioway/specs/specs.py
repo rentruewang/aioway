@@ -1,16 +1,13 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from aioway.spaces import Space
-import abc
-import abc
-import dataclasses as dcls
-import typing
-from collections import abc as cabc
+import abc, typing
 
 from torch import nn
 
+from aioway.spaces import DataSpace
 
-class Spec[O = typing.Any, A = typing.Any](abc.ABC):
+
+class Spec[O, A](abc.ABC):
     """
     An spec accepts actions (outputs from the models),
     and observations (inputs to the models).
@@ -28,14 +25,14 @@ class Spec[O = typing.Any, A = typing.Any](abc.ABC):
 
     @property
     @abc.abstractmethod
-    def observ_space(self) -> Space:
+    def observ_space(self) -> DataSpace:
         "The observation space."
 
         raise NotImplementedError
 
     @property
     @abc.abstractmethod
-    def action_space(self) -> Space:
+    def action_space(self) -> DataSpace:
         "The action space."
 
         raise NotImplementedError

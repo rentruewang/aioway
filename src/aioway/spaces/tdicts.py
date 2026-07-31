@@ -14,7 +14,7 @@ import tensordict as td
 from aioway._api import public_api
 from aioway._utils import is_real_tensor, torch_fake_mode
 
-from .spaces import Space, space_dcls
+from .spaces import DataSpace, space_dcls
 from .tensors import Attr, AttrLike, DType
 
 __all__ = ["Schema", "TdictSpace", "TensorClassSpace"]
@@ -90,7 +90,7 @@ def schema(mapping: cabc.Mapping[str, AttrLike], /) -> Schema:
 
 @public_api
 @space_dcls
-class TensorClassSpace[T: td.TensorClass](Space[T], abc.ABC):
+class TensorClassSpace[T: td.TensorClass](DataSpace[T], abc.ABC):
     "A `Space` that checks a `td.TensorClass`."
 
     KLASS: typing.ClassVar[type[T]]
@@ -147,7 +147,7 @@ class TensorClassSpace[T: td.TensorClass](Space[T], abc.ABC):
 
 @public_api
 @space_dcls
-class TdictSpace(Space[td.TensorDict]):
+class TdictSpace(DataSpace[td.TensorDict]):
     "A `Space` that checks a `td.TensorDict`."
 
     @typing.override
