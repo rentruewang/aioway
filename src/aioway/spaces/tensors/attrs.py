@@ -74,6 +74,15 @@ class Attr:
         if not isinstance(self.shape, Shape):
             raise TypeError(type(self.shape))
 
+    def __space__(self) -> AttrSpace:
+        return AttrSpace(
+            shape=self.shape,
+            dtype=self.dtype,
+            device=self.device,
+            layout=self.layout,
+            requires_grad=self.requires_grad,
+        )
+
     def __bool__(self):
         return True
 
