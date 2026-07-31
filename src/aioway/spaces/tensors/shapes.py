@@ -42,6 +42,9 @@ class Shape(TorchAttrBase[torch.Size], cabc.Sequence[int]):
     __match_args__ = ("shape",)
     TYPE = torch.Size
 
+    def __space__(self) -> ShapeSpace:
+        return ShapeSpace(self)
+
     def __getstate__(self) -> object:
         return tuple(self._data)
 

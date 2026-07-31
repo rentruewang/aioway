@@ -9,7 +9,7 @@ import typing
 from aioway._api import public_api
 from aioway._utils import torch_fake_mode
 
-__all__ = ["Space", "AnySpace", "space_dcls"]
+__all__ = ["Space", "SpaceLike", "AnySpace", "space_dcls"]
 
 
 @public_api
@@ -22,6 +22,12 @@ def space_dcls[T](cls: type[Space[T]]):
     """
 
     return dcls.dataclass(frozen=True, slots=True)(cls)
+
+
+@public_api
+@typing.runtime_checkable
+class SpaceLike[T](typing.Protocol):
+    def __space__(self) -> Space[T]: ...
 
 
 @public_api
