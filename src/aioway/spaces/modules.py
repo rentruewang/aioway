@@ -1,13 +1,15 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import abc, typing
+import abc
 
 from torch import nn
 
 from aioway.spaces import DataSpace
 
+__all__ = ["ModuleSpace"]
 
-class Spec[O, A](abc.ABC):
+
+class ModuleSpace[O, A](abc.ABC):
     """
     An spec accepts actions (outputs from the models),
     and observations (inputs to the models).
