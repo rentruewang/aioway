@@ -4,6 +4,8 @@ import abc
 
 from torch import nn
 
+from aioway._utils import torch_fake_mode
+
 from .data import DataSpace
 
 __all__ = ["ModuleSpace"]
@@ -21,6 +23,10 @@ class ModuleSpace[O, A](abc.ABC):
     """
 
     def __contains__(self, module: nn.Module) -> bool:
+        with torch_fake_mode():
+            return self._check_contains(module)
+
+    def _check_contains(self, module: nn.Module) -> bool:
         input = self.observ_space.sample()
         output = module(input)
         return output in self.action_space
