@@ -14,8 +14,8 @@ from aioway.errors import re_raise_func
 from aioway.spaces import (
     Attr,
     BoxSpace,
+    ModuleSpace,
     Schema,
-    Space,
     TdictSpace,
     TensorSpace,
     space_dcls,
@@ -120,7 +120,10 @@ class NMFTrainerModule(nn.Module):
 
 
 @FuncEmitter
-def train_nmf(observation_space: Space, action_space: Space) -> nn.Module:
+def train_nmf(space: ModuleSpace) -> nn.Module:
+    observation_space = space.observ_space
+    action_space = space.action_space
+
     if not isinstance(observation_space, NMFSpace):
         return NotImplemented
 

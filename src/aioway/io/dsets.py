@@ -12,7 +12,7 @@ import torch
 from torch.utils import data
 
 from aioway.relalg import LoaderIter, LoaderOpt, TdictLoaderIter, TensorLoaderIter
-from aioway.spaces import AnySpace, Space
+from aioway.spaces import AnyDataSpace, DataSpace
 
 __all__ = [
     "dset_dcls",
@@ -64,6 +64,9 @@ class Dset[T](data.Dataset[T]):
     def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> LoaderIter:
         return LoaderIter(dset=self, opts=opts)
 
+    def __space__(self) -> DataSpace:
+        return AnyDataSpace()
+
     def _setup(self) -> None:
         """
         Subclass should overwrite this function to perform setup. Can raise errors.
@@ -78,10 +81,6 @@ class Dset[T](data.Dataset[T]):
 
         if sess := DsetSession.current():
             sess.push(self)
-
-    @property
-    def space(self) -> Space:
-        return AnySpace()
 
 
 @dset_dcls

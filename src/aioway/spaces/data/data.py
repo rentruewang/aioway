@@ -9,7 +9,7 @@ from aioway._utils import torch_fake_mode
 
 from ..spaces import Space, space_dcls
 
-__all__ = ["DataSpace"]
+__all__ = ["DataSpace", "AnyDataSpace"]
 
 
 @public_api
@@ -22,3 +22,13 @@ class DataSpace[T](Space[T], abc.ABC):
     @abc.abstractmethod
     def _sample_n(self, n: int, /) -> T:
         raise NotImplementedError
+
+
+@public_api
+@space_dcls
+class AnyDataSpace(DataSpace, abc.ABC):
+    def contains(self, obj):
+        return True
+
+    def _sample_n(self, n: int, /):
+        return object()

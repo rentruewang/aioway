@@ -5,12 +5,9 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-from torch import nn
-
-from aioway.emits import emit
 from aioway.errors import re_raise_func
 from aioway.relalg import LoaderOpt
-from aioway.spaces import Space
+from aioway.spaces import DataSpace, ModuleSpace, Space, StatelessSpace
 
 from .dsets import Dset
 from .sinks import Sink
@@ -31,6 +28,9 @@ class Env[O = typing.Any, A = typing.Any](abc.ABC):
 
     def __call__(self) -> cabc.Generator[O, A, None]:
         yield from self.generator()
+
+    def __space__(self) -> ModuleSpace:
+        return StatelessSpace(self.observ_space, self.action_space)
 
     def generator(self) -> EnvGen[O, A, None]:
         """
@@ -54,16 +54,13 @@ class Env[O = typing.Any, A = typing.Any](abc.ABC):
 
     @property
     @abc.abstractmethod
-    def observ_space(self) -> Space:
+    def observ_space(self) -> DataSpace:
         raise NotImplementedError
 
     @property
     @abc.abstractmethod
-    def action_space(self) -> Space:
+    def action_space(self) -> DataSpace:
         raise NotImplementedError
-
-    def emit(self) -> cabc.Generator[nn.Module]:
-        yield from emit(self.observ_space, self.action_space)
 
 
 class IoEnv(Env):
@@ -78,12 +75,12 @@ class IoEnv(Env):
     @property
     @typing.override
     def observ_space(self):
-        return self._dset.space
+        return self._dset.__space__()
 
     @property
     @typing.override
     def action_space(self):
-        return self._sink.space
+        return self._sink.__space__()
 
     @typing.override
     def interact(self):

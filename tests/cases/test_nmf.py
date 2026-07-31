@@ -6,7 +6,7 @@ from torch import nn
 
 from aioway.cases import NMFSpace, NMFTrainerModule, train_nmf
 from aioway.emits import emit_one
-from aioway.spaces import BoxSpace
+from aioway.spaces import BoxSpace, StatelessSpace
 
 
 @pytest.fixture
@@ -17,8 +17,10 @@ def nmf():
 
 def test_emit_nmf(nmf):
     out = emit_one(
-        NMFSpace(3, 5, 7),
-        BoxSpace(torch.zeros([]), torch.ones([])),
+        StatelessSpace(
+            NMFSpace(3, 5, 7),
+            BoxSpace(torch.zeros([]), torch.ones([])),
+        )
     )
 
     assert isinstance(out, nn.Module)
