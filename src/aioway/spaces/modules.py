@@ -1,7 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import abc
-import dataclasses as dcls
 import typing
 
 from torch import nn
@@ -9,11 +8,13 @@ from torch import nn
 from aioway._utils import torch_fake_mode
 
 from .data import DataSpace
+from .spaces import Space, space_dcls
 
 __all__ = ["ModuleSpace", "StatelessSpace"]
 
 
-class ModuleSpace[O, A](abc.ABC):
+@space_dcls
+class ModuleSpace[O, A](Space[nn.Module], abc.ABC):
     """
     An spec accepts actions (outputs from the models),
     and observations (inputs to the models).
@@ -24,7 +25,8 @@ class ModuleSpace[O, A](abc.ABC):
     The constructor takes the observation space and the action space.
     """
 
-    def __contains__(self, module: nn.Module) -> bool:
+    @typing.override
+    def contains(self, module: nn.Module) -> bool:
         with torch_fake_mode():
             return self._check_contains(module)
 
@@ -48,7 +50,7 @@ class ModuleSpace[O, A](abc.ABC):
         raise NotImplementedError
 
 
-@dcls.dataclass(frozen=True)
+@space_dcls
 class StatelessSpace(ModuleSpace):
     observ: DataSpace
     "The input of the `nn.Module`."
