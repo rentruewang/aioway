@@ -13,7 +13,7 @@ __all__ = ["TdictEnv"]
 
 @typing.final
 class IteratorEnv[T](Env[T]):
-    "An env around a normal"
+    "An env around a normal iterator."
 
     def __init__(self, iterator: cabc.Iterator[T], space: DataSpace) -> None:
         self._iter = iterator
@@ -37,10 +37,56 @@ class IteratorEnv[T](Env[T]):
 
 
 @typing.final
+class CachedIteratorEnv[T](Env[T]):
+    "An env that caches its iterator."
+
+    def __init__(
+        self,
+        iterator: cabc.Iterator[T],
+        space: DataSpace,
+        idx: int = 0,
+        cache: list[T] | None = None,
+    ) -> None:
+        self._iter = iterator
+        self._space = space
+        self._idx = idx
+        self._cache: list[T] = cache or []
+
+    def __iter__(self) -> typing.Self:
+        return self
+
+    @property
+    @typing.override
+    def observ_space(self) -> DataSpace:
+        return self._space
+
+    @typing.override
+    def _get_next(self) -> T:
+        if self._idx > len(self._cache):
+            raise RuntimeError("Impossible.")
+
+        if self._idx == len(self._cache):
+            # If this line raises `StopIteration`,
+            # next `next` call will also hit this line,
+            # which is intended because the iterator is exhausted.
+            item = next(self._iter)
+            self._cache.append(item)
+
+        assert self._idx < len(self._cache)
+        result = self._cache[self._idx]
+        self._idx += 1
+        return result
+
+    @typing.override
+    def clone(self) -> typing.Self:
+        # No copy for cache.
+        return type(self)(self._iter, self._space, self._idx, self._cache)
+
+
+@typing.final
 class ListEnv[T](Env[T]):
     """
     This kind of `Env` stores a list of inputs and yield them one by one.
-    Each should be a
     """
 
     def __init__(self, sequence: cabc.Sequence[T], space: DataSpace) -> None:
