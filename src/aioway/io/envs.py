@@ -1,5 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import copy
 import abc
 import enum
 import typing
@@ -70,6 +71,14 @@ class Env[Y](cabc.Iterator[Y], abc.ABC):
     @re_raise_func(AssertionError, ValueError)
     def _check_observation(self, observation: Y, /) -> None:
         assert observation in self.observ_space
+
+    @abc.abstractmethod
+    def clone(self) -> typing.Self:
+        """
+        Clone the current `Env`. By default calls `copy.copy`.
+        Subclass should overwrite the behavior.
+        """
+        return copy.copy(self)
 
     @property
     def status(self) -> EnvStatus:
