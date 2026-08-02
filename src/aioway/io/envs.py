@@ -1,133 +1,124 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import abc
-import dataclasses as dcls
+import copy
+import enum
 import typing
 from collections import abc as cabc
 
 from aioway.errors import re_raise_func
-from aioway.relalg import LoaderOpt
-from aioway.spaces import DataSpace, ModuleSpace, Space, StatelessSpace
+from aioway.spaces import DataSpace, ModuleSpace
 
-from .dsets import Dset
-from .sinks import Sink
-
-__all__ = ["Env", "EnvGen"]
+__all__ = ["EnvStatus", "Env", "ActionableEnv"]
 
 
-class Env[O = typing.Any, A = typing.Any](abc.ABC):
+class EnvStatus(enum.StrEnum):
     """
-    An environment accepts actions (outputs from the models),
-    and outputs observations (inputs to the models).
-
-    It's the environemnt in RL, but adapted to also work with supervised learning etc,
-    by using the `Generator` abstraction (using `.send` to send actions).
-
-    The constructor takes the observation space and the action space.
+    The status of the environment.
     """
 
-    def __call__(self) -> cabc.Generator[O, A, None]:
-        yield from self.generator()
+    PENDING = enum.auto()
+    "The environment is not started yet."
 
-    def __space__(self) -> ModuleSpace:
-        return StatelessSpace(self.observ_space, self.action_space)
+    RUNNING = enum.auto()
+    "The environment is running."
 
-    def generator(self) -> EnvGen[O, A, None]:
-        """
-        Wrap the generator, check all its observations and actions.
-        """
-
-        return EnvGen(
-            observ_space=self.observ_space,
-            action_space=self.action_space,
-            generator=self.interact(),
-        )
-
-    @abc.abstractmethod
-    def interact(self) -> cabc.Generator[O, A, None]:
-        """
-        Yields a generator that can accept actions from the agents,
-        or ignores them (`action = yield observation`).
-        """
-
-        raise NotImplementedError
-
-    @property
-    @abc.abstractmethod
-    def observ_space(self) -> DataSpace:
-        raise NotImplementedError
-
-    @property
-    @abc.abstractmethod
-    def action_space(self) -> DataSpace:
-        raise NotImplementedError
+    FINISHED = enum.auto()
+    "The environment is done executing."
 
 
-class IoEnv(Env):
-    "An `Env` that supports inputs and outputs."
-
-    def __init__(self, dset: Dset, sink: Sink, opt: LoaderOpt) -> None:
-        super().__init__()
-        self._dset = dset
-        self._sink = sink
-        self._opt = opt
-
-    @property
-    @typing.override
-    def observ_space(self):
-        return self._dset.__space__()
-
-    @property
-    @typing.override
-    def action_space(self):
-        return self._sink.__space__()
-
-    @typing.override
-    def interact(self):
-        for observ in self._dset(self._opt):
-            action = yield observ
-            self._sink.write(action)
-
-
-@dcls.dataclass(frozen=True)
-class EnvGen[Y, S, R](cabc.Generator[Y, S, R]):
+class Env[Y](cabc.Iterator[Y], abc.ABC):
     """
-    The environment generator, performing checks while implementing the generator protocol.
+    The environment protocol defines how I/O could be consumed.
     """
 
-    observ_space: Space
-    "Observation space."
-
-    action_space: Space
-    "Action space."
-
-    generator: cabc.Generator[Y, S, R] = dcls.field(repr=False)
-    """
-    The generator that `EnvGen` wraps.
-    Its inputs (actions) and outputs (observations) would be checked.
-    """
+    def __init__(self) -> None:
+        self._status = EnvStatus.PENDING
 
     def __iter__(self) -> typing.Self:
         return self
 
     def __next__(self) -> Y:
-        observation = next(self.generator)
-        self._check_observation(observation)
-        return observation
+        self._status_start()
 
-    def send(self, action: S, /) -> Y:
-        self._check_action(action)
-        observation = self.generator.send(action)
-        self._check_observation(observation)
-        return observation
+        try:
+            return self._get_next()
+        except StopIteration:
+            # Set to finish after done.
+            self._status_done()
+            raise
 
-    def throw(self, typ, val=None, tb=None) -> Y:
-        return self.generator.throw(typ, val, tb)
+    @abc.abstractmethod
+    def __space__(self) -> ModuleSpace:
+        """
+        The space that this `Env` satisfies.
+        """
+
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def _get_next(self) -> Y:
+        raise NotImplementedError
+
+    @property
+    def observ_space(self) -> DataSpace:
+        return self.__space__().observ_space
+
+    @property
+    def action_space(self) -> DataSpace:
+        return self.__space__().action_space
 
     @re_raise_func(AssertionError, ValueError)
     def _check_observation(self, observation: Y, /) -> None:
         assert observation in self.observ_space
 
+    @abc.abstractmethod
+    def clone(self) -> typing.Self:
+        """
+        Clone the current `Env`. By default calls `copy.copy`.
+        Subclass should overwrite the behavior.
+        """
+        return copy.copy(self)
+
+    @property
+    def status(self) -> EnvStatus:
+        "The status of the environment."
+
+        return self._status
+
+    def _status_start(self):
+        if self._status is EnvStatus.PENDING:
+            self._status = EnvStatus.RUNNING
+
+    def _status_done(self):
+        self._status = EnvStatus.FINISHED
+
+
+class ActionableEnv[Y, S, R](Env[Y], cabc.Generator[Y, S, R]):
+    """
+    The `Env` that supports `.send`.
+
+    This is similar to `gym.Env` but with a cleaner generator interface.
+
+    This does not support reset, as we favor a new generator everytime,
+    and persistent info should be handled by the instance that generates an `Env`.
+    """
+
     @re_raise_func(AssertionError, ValueError)
-    def _check_action(self, action: S, /) -> None:
+    def send(self, action: S, /) -> Y:
         assert action in self.action_space
+        observ = self._step(action)
+        assert observ in self.observ_space
+        return observ
+
+    @abc.abstractmethod
+    def _get_first(self) -> Y:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def _step(self, action: S, /) -> Y:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def throw(self, typ, val=None, tb=None) -> Y:
+        raise NotImplementedError
