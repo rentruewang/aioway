@@ -8,7 +8,7 @@ from aioway.spaces import DataSpace
 
 from .envs import Env
 
-__all__ = ["TdictEnv"]
+__all__ = ["IteratorEnv", "CachedIteratorEnv", "ListEnv"]
 
 
 @typing.final
@@ -54,6 +54,12 @@ class CachedIteratorEnv[T](Env[T]):
 
     def __iter__(self) -> typing.Self:
         return self
+
+    def __len__(self) -> int:
+        return len(self._cache)
+
+    def __getitem__(self, idx: int) -> T:
+        return self._cache[idx]
 
     @property
     @typing.override
