@@ -1,7 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import copy
 import abc
+import copy
 import enum
 import typing
 from collections import abc as cabc
@@ -9,7 +9,7 @@ from collections import abc as cabc
 from aioway.errors import re_raise_func
 from aioway.spaces import DataSpace, ModuleSpace
 
-__all__ = ["EnvStatus", "Env", "ResetEnv"]
+__all__ = ["EnvStatus", "Env", "ActionableEnv"]
 
 
 class EnvStatus(enum.StrEnum):
