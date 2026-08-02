@@ -7,7 +7,7 @@ import typing
 from collections import abc as cabc
 
 from aioway.errors import re_raise_func
-from aioway.spaces import DataSpace, ModuleSpace
+from aioway.spaces import DataSpace
 
 __all__ = ["EnvStatus", "Env", "InteractiveEnv"]
 
@@ -49,24 +49,14 @@ class Env[Y](cabc.Iterator[Y], abc.ABC):
             raise
 
     @abc.abstractmethod
-    def __space__(self) -> ModuleSpace:
-        """
-        The space that this `Env` satisfies.
-        """
-
-        raise NotImplementedError
-
-    @abc.abstractmethod
     def _get_next(self) -> Y:
         raise NotImplementedError
 
     @property
+    @abc.abstractmethod
     def observ_space(self) -> DataSpace:
-        return self.__space__().observ_space
-
-    @property
-    def action_space(self) -> DataSpace:
-        return self.__space__().action_space
+        "The observation space."
+        raise NotImplementedError
 
     @re_raise_func(AssertionError, ValueError)
     def _check_observation(self, observation: Y, /) -> None:
@@ -111,14 +101,31 @@ class InteractiveEnv[Y, S, R](Env[Y], cabc.Generator[Y, S, R]):
         assert observ in self.observ_space
         return observ
 
-    @abc.abstractmethod
-    def _get_first(self) -> Y:
-        raise NotImplementedError
+    @re_raise_func(AssertionError, ValueError)
+    def throw(self, typ, val=None, tb=None) -> Y:
+        observ = self._throw(typ, val=val, tb=tb)
+        assert observ in self.observ_space
+        return observ
 
     @abc.abstractmethod
     def _step(self, action: S, /) -> Y:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def throw(self, typ, val=None, tb=None) -> Y:
+    def _throw(self, typ, val=None, tb=None) -> Y:
+        raise NotImplementedError
+
+    @typing.override
+    def _get_next(self) -> Y:
+        assert self.status is EnvStatus.PENDING
+        return self._get_first()
+
+    @abc.abstractmethod
+    def _get_first(self) -> Y:
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def action_space(self) -> DataSpace:
+        "The action space."
         raise NotImplementedError
