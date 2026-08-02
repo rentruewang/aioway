@@ -6,7 +6,7 @@ import typing
 from collections import abc as cabc
 
 from aioway.errors import re_raise_func
-from aioway.spaces import DataSpace
+from aioway.spaces import DataSpace, ModuleSpace
 
 __all__ = ["EnvStatus", "Env", "ResetEnv"]
 
@@ -48,15 +48,24 @@ class Env[Y](cabc.Iterator[Y], abc.ABC):
             raise
 
     @abc.abstractmethod
+    def __space__(self) -> ModuleSpace:
+        """
+        The space that this `Env` satisfies.
+        """
+
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def _get_next(self) -> Y:
         raise NotImplementedError
 
     @property
-    @abc.abstractmethod
     def observ_space(self) -> DataSpace:
-        "Observation space."
+        return self.__space__().observ_space
 
-        raise NotImplementedError
+    @property
+    def action_space(self) -> DataSpace:
+        return self.__space__().action_space
 
     @re_raise_func(AssertionError, ValueError)
     def _check_observation(self, observation: Y, /) -> None:
@@ -76,13 +85,31 @@ class Env[Y](cabc.Iterator[Y], abc.ABC):
         self._status = EnvStatus.FINISHED
 
 
-class ResetEnv[Y](Env[Y], abc.ABC):
+class ActionableEnv[Y, S, R](Env[Y], cabc.Generator[Y, S, R]):
     """
-    This is an environment that supports resetting.
+    The `Env` that supports `.send`.
 
-    After calling `.reset`, a `next` call is needed to restart the `Env`.
+    This is similar to `gym.Env` but with a cleaner generator interface.
+
+    This does not support reset, as we favor a new generator everytime,
+    and persistent info should be handled by the instance that generates an `Env`.
     """
+
+    @re_raise_func(AssertionError, ValueError)
+    def send(self, action: S, /) -> Y:
+        assert action in self.action_space
+        observ = self._step(action)
+        assert observ in self.observ_space
+        return observ
 
     @abc.abstractmethod
-    def reset(self) -> None:
+    def _get_first(self) -> Y:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def _step(self, action: S, /) -> Y:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def throw(self, typ, val=None, tb=None) -> Y:
         raise NotImplementedError
