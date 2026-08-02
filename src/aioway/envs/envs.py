@@ -9,7 +9,7 @@ from collections import abc as cabc
 from aioway.errors import re_raise_func
 from aioway.spaces import DataSpace, ModuleSpace
 
-__all__ = ["EnvStatus", "Env", "ActionableEnv"]
+__all__ = ["EnvStatus", "Env", "InteractiveEnv"]
 
 
 class EnvStatus(enum.StrEnum):
@@ -94,7 +94,7 @@ class Env[Y](cabc.Iterator[Y], abc.ABC):
         self._status = EnvStatus.FINISHED
 
 
-class ActionableEnv[Y, S, R](Env[Y], cabc.Generator[Y, S, R]):
+class InteractiveEnv[Y, S, R](Env[Y], cabc.Generator[Y, S, R]):
     """
     The `Env` that supports `.send`.
 
