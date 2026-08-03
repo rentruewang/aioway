@@ -10,6 +10,8 @@ import tensordict as td
 from .attrs import Attr, AttrLike
 from .dtypes import DType
 
+__all__ = ["Schema"]
+
 
 class Schema(collections.UserDict[str, Attr]):
     """

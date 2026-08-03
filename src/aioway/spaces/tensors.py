@@ -9,7 +9,6 @@ import torch
 
 from aioway._api import public_api
 from aioway._torch import is_fake_tensor
-from aioway.spaces import Space
 
 from .spaces import Space, space_dcls
 

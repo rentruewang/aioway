@@ -6,7 +6,7 @@ from torch import nn
 
 from aioway.compound import BuilderNode, CompoundBuilder
 from aioway.emits import Emitter, emitter_dcls
-from aioway.spaces import AttrSpace, ModuleSpace, ShapeSpace
+from aioway.spaces import AttrSpace, ShapeSpace, Space
 
 from .emitters import FuncEmitter
 
@@ -14,41 +14,35 @@ __all__ = ["linear_shape", "linear_from_attr", "MlpEmitter"]
 
 
 @FuncEmitter
-def linear_shape(space: ModuleSpace) -> nn.Module:
+def linear_shape(observ: Space, action: Space) -> nn.Module:
     """
     `Linear` module from `ShapeSpace`s.
     """
 
-    observation_space = space.observ_space
-    action_space = space.action_space
-
-    if not isinstance(observation_space, ShapeSpace):
+    if not isinstance(observ, ShapeSpace):
         return NotImplemented
 
-    if not isinstance(action_space, ShapeSpace):
+    if not isinstance(action, ShapeSpace):
         return NotImplemented
 
-    return nn.Linear(in_features=observation_space[-1], out_features=action_space[-1])
+    return nn.Linear(in_features=observ[-1], out_features=action[-1])
 
 
 @FuncEmitter
-def linear_from_attr(space: ModuleSpace) -> nn.Module:
+def linear_from_attr(observ: Space, action: Space) -> nn.Module:
     """
     `Linear` module from `AttrShape`s.
     """
 
-    observation_space = space.observ_space
-    action_space = space.action_space
-
-    if not isinstance(observation_space, AttrSpace):
+    if not isinstance(observ, AttrSpace):
         return NotImplemented
 
-    if not isinstance(action_space, AttrSpace):
+    if not isinstance(action, AttrSpace):
         return NotImplemented
 
-    if (observ_shape := observation_space.shape) is None:
+    if (observ_shape := observ.shape) is None:
         return NotImplemented
-    if (act_shape := action_space.shape) is None:
+    if (act_shape := action.shape) is None:
         return NotImplemented
 
     return nn.Linear(in_features=observ_shape[-1], out_features=act_shape[-1])
@@ -75,17 +69,14 @@ class MlpEmitter(Emitter):
     The activation to use.
     """
 
-    def __call__(self, space: ModuleSpace) -> nn.Module:
-        observation_space = space.observ_space
-        action_space = space.action_space
-
-        if not isinstance(observation_space, ShapeSpace):
+    def __call__(self, observ: Space, action: Space) -> nn.Module:
+        if not isinstance(observ, ShapeSpace):
             return NotImplemented
 
-        if not isinstance(action_space, ShapeSpace):
+        if not isinstance(action, ShapeSpace):
             return NotImplemented
 
-        sizes = [observation_space[-1], *self.hidden_sizes, action_space[-1]]
+        sizes = [observ[-1], *self.hidden_sizes, action[-1]]
 
         builder = CompoundBuilder()
 

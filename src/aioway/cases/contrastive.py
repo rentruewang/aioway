@@ -9,7 +9,7 @@ from torch import nn, optim
 from torch.nn import functional as F
 
 from aioway.emits import Emitter, emitter_dcls
-from aioway.spaces import ModuleSpace, StatelessSpace, TensorSpace
+from aioway.spaces import Space, TensorSpace
 
 __all__ = ["ContrastiveLoss", "ContrastiveLossEmitter"]
 
@@ -53,24 +53,18 @@ class ContrastiveLossEmitter(Emitter):
     emitter: Emitter
     "The default emitter when it's time to emit."
 
-    def __call__(self, space: ModuleSpace, /) -> nn.Module:
-        if not isinstance(space, StatelessSpace):
+    def __call__(self, observ: Space, action: Space, /) -> nn.Module:
+        if not isinstance(observ, TensorSpace):
             return NotImplemented
 
-        obs = space.observ_space
-        act = space.action_space
-
-        if not isinstance(obs, TensorSpace):
-            return NotImplemented
-
-        if not isinstance(act, TensorSpace):
+        if not isinstance(action, TensorSpace):
             return NotImplemented
 
         # In batch negative is a reconstruction error.
-        if obs != act:
+        if observ != action:
             return NotImplemented
 
-        emission = self.emitter(space)
+        emission = self.emitter(observ, action)
 
         assert isinstance(emission, nn.Module)
         return ContrastiveLoss(emission, nn.MSELoss(), optim.Adam)

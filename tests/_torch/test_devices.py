@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from aioway.spaces import Device
+from aioway._torch import Device
 
 
 def _cpus():

@@ -11,7 +11,7 @@ from aioway._utils import is_list_of, is_tuple_of
 
 from ._bases import TorchAttrBase
 
-__all__ = ["ShapeLike", "Shape", "ShapeSpace"]
+__all__ = ["ShapeLike", "Shape"]
 
 LOGGER = logging.getLogger(__name__)
 
