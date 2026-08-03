@@ -12,7 +12,8 @@ from aioway._api import public_api
 from aioway._utils import decomp_replace
 from aioway.spaces import Attr, Shape
 
-from .execs import Exec, ExecIter
+from .execs import Exec
+from .iters import ExecIter
 from .nodes import node_dcls
 
 __all__ = [

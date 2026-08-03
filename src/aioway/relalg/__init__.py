@@ -3,6 +3,7 @@
 from .execs import *
 from .funcs import *
 from .indices import *
+from .iters import *
 from .joins import *
 from .loaders import *
 from .maps import *
