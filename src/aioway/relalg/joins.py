@@ -8,7 +8,7 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from ._iters import IndexibleIter, TdictIter, node_dcls
+from .iters import IndexibleIter, TdictIter, node_dcls
 
 __all__ = ["ZipIter", "NestedLoopJoinIter"]
 

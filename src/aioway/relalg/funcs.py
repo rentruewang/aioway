@@ -8,7 +8,7 @@ from collections import abc as cabc
 
 import torch
 
-from ._iters import Iter, TensorIter, node_dcls
+from .iters import Iter, TensorIter, node_dcls
 
 __all__ = ["CatIter", "StackIter"]
 

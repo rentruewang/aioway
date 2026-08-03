@@ -12,7 +12,7 @@ import torch
 
 from aioway._utils import tdict_rename
 
-from ._iters import TdictIter, node_dcls
+from .iters import TdictIter, node_dcls
 
 __all__ = ["MapIter", "ApplyIter", "FuncFilterIter", "RenameIter"]
 

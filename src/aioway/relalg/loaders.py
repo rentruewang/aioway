@@ -12,7 +12,7 @@ from torch.utils import data
 
 from aioway._utils import HasLen
 
-from ._iters import Iter, TdictIter, TensorIter, node_dcls
+from .iters import Iter, TdictIter, TensorIter, node_dcls
 
 __all__ = ["LoaderOpt", "LoaderIter", "TensorLoaderIter", "TdictLoaderIter"]
 
