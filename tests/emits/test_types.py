@@ -1,8 +1,9 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from aioway.emits import PairLossModule
-from torch import nn
 import pytest
+from torch import nn
+
+from aioway.emits import PairLossModule
 
 
 def _loss_modules():

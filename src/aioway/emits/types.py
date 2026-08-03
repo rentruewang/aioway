@@ -1,7 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from torch import nn
 import torch
+from torch import nn
 
 __all__ = ["PairLossModule"]
 
