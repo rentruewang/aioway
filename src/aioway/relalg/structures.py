@@ -1,5 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+"Pack / unpack common structures in `Exec`s."
 
 import abc
 import typing
