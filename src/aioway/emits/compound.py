@@ -16,7 +16,7 @@ from aioway._utils import (
     render_fcall,
 )
 
-__all__ = ["CompoundBuilder", "BuilderNode", "BuiltUFunc"]
+__all__ = ["CompoundBuilder", "BuilderNode", "BuiltModule"]
 
 
 @dcls.dataclass
