@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"The iterator class."
+"The executor for the relational algebra API."
 
 import abc
 import contextlib as ctxl
@@ -112,14 +112,14 @@ class Exec[T](cabc.Iterable[T], GraphNode["Exec"], abc.ABC):
         return id(self)
 
     @typing.final
-    def __iter__(self) -> IterProc[T]:
+    def __iter__(self) -> ExecIter[T]:
         # If `sample_mode` is on, use the `.sample()` method.
         if _sample_mode:
-            return SampleIterProc(self)
+            return SampleExecIter(self)
 
         # Else yield from the `.iterate()` method.
         else:
-            return CacheIterProc(self)
+            return CacheExecIter(self)
 
     @abc.abstractmethod
     def iterate(self) -> cabc.Iterator[T]:
@@ -239,7 +239,7 @@ class StructExec(Exec[typing.Any]):
         start_it = lambda it: (iter(it) if isinstance(it, Exec) else NotImplemented)
 
         # Get the next item.
-        next_it = lambda it: (next(it) if isinstance(it, IterProc) else NotImplemented)
+        next_it = lambda it: (next(it) if isinstance(it, ExecIter) else NotImplemented)
 
         # Inside the structure, call `iter` on all `Exec`s.
         struct_of_iter = decomp_replace(self.struct, start_it)
@@ -313,7 +313,9 @@ class IndexibleExec(TdictExec, abc.ABC):
         raise NotImplementedError
 
 
-class IterProc[T = typing.Any](cabc.Iterator[T], abc.ABC):
+class ExecIter[T = typing.Any](cabc.Iterator[T], abc.ABC):
+    "The iterator class for executor"
+
     def __init__(self, iterable: Exec) -> None:
         self._iter = iterable
 
@@ -322,7 +324,7 @@ class IterProc[T = typing.Any](cabc.Iterator[T], abc.ABC):
         raise NotImplementedError
 
 
-class SampleIterProc[T = typing.Any](IterProc[T]):
+class SampleExecIter[T = typing.Any](ExecIter[T]):
     """
     Calls the `Exec.sample` method, which returns a fake output.
     This is invoked when `sample_mode` is on.
@@ -342,7 +344,7 @@ class SampleIterProc[T = typing.Any](IterProc[T]):
             return self._iter.sample()
 
 
-class CacheIterProc[T = typing.Any](IterProc[T]):
+class CacheExecIter[T = typing.Any](ExecIter[T]):
     """
     Calls the `.iterate` method, and cache it if `iter_cache` is enabled.
     This allows `.iterate` to be generators (more elegant).
