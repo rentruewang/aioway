@@ -12,7 +12,9 @@ from torch.utils import data
 
 from aioway._utils import HasLen
 
-from .execs import Exec, TdictExec, TensorExec, node_dcls
+from .execs import Exec
+from .nodes import node_dcls
+from .structures import TdictExec, TensorExec
 
 __all__ = ["LoaderOpt", "LoaderExec", "TensorLoaderExec", "TdictLoaderExec"]
 

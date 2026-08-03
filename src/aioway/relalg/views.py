@@ -9,8 +9,9 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from .execs import TdictExec, TensorExec, node_dcls
 from .maps import MapExec
+from .nodes import node_dcls
+from .structures import TdictExec, TensorExec
 
 __all__ = ["ColumnViewExec", "ProjectExec"]
 

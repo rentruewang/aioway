@@ -12,7 +12,8 @@ import torch
 
 from aioway._utils import tdict_rename
 
-from .execs import TdictExec, node_dcls
+from .nodes import node_dcls
+from .structures import TdictExec
 
 __all__ = ["MapExec", "ApplyExec", "FuncFilterExec", "RenameExec"]
 

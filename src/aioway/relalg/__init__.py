@@ -7,4 +7,5 @@ from .joins import *
 from .loaders import *
 from .maps import *
 from .nodes import *
+from .structures import *
 from .views import *

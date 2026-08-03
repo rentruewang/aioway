@@ -8,7 +8,8 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from .execs import IndexibleExec, TdictExec, node_dcls
+from .nodes import node_dcls
+from .structures import IndexibleExec, TdictExec
 
 __all__ = ["ZipExec", "NestedLoopJoinExec"]
 

@@ -8,7 +8,9 @@ from collections import abc as cabc
 
 import torch
 
-from .execs import Exec, TensorExec, node_dcls
+from .execs import Exec
+from .nodes import node_dcls
+from .structures import TensorExec
 
 __all__ = ["CatExec", "StackExec"]
 
