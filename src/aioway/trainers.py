@@ -6,7 +6,6 @@ from torch import nn, optim
 from aioway.emits import emit_one
 from aioway.io import Dset
 from aioway.relalg import LoaderOpt
-from aioway.spaces import StatelessSpace
 
 __all__ = ["Trainer"]
 
@@ -17,7 +16,7 @@ class Trainer:
         self._module: nn.Module | None = None
 
     def fit(self, x: Dset, y: Dset, loader_opt: LoaderOpt = LoaderOpt()):
-        self._module = emit_one(StatelessSpace(x.__space__(), y.__space__()))
+        self._module = emit_one(x.__space__(), y.__space__())
         assert isinstance(self.module, nn.Module), self.module
         optimizer = optim.AdamW(self.module.parameters())
 

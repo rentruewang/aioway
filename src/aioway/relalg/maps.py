@@ -10,7 +10,7 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway._utils import tdict_rename
+from aioway._tdicts import tdict_rename
 
 from .nodes import node_dcls
 from .structures import TdictExec

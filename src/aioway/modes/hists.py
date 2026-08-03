@@ -11,14 +11,8 @@ from collections import abc as cabc
 import torch
 
 from aioway._thunks import Thunk
-from aioway._utils import (
-    TensorInput,
-    find_nested_tensors,
-    is_leaf_has_grad,
-    replace_tensors_with_attr,
-    topo_sort,
-)
-from aioway.spaces import Attr
+from aioway._torch import Attr, is_leaf_has_grad, replace_tensors_with_attr
+from aioway._utils import TensorInput, find_nested_tensors, topo_sort
 
 from .modes import ModeThunk
 

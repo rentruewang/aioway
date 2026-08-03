@@ -9,7 +9,7 @@ from collections import abc as cabc
 from torch import nn
 
 from aioway._utils import AnySet
-from aioway.spaces import ModuleSpace
+from aioway.spaces import Space
 
 __all__ = [
     "EmitterLike",
@@ -25,21 +25,21 @@ _EMITTERS: AnySet[Emitter] = AnySet()
 "The emitters that are considered."
 
 
-def emit_one(space: ModuleSpace, /) -> nn.Module:
+def emit_one(observ: Space, action: Space, /) -> nn.Module:
     """
     A convenient wrapper to only emit the first target found.
     """
 
-    return next(emit(space))
+    return next(emit(observ, action))
 
 
-def emit(space: ModuleSpace, /) -> cabc.Generator[nn.Module]:
+def emit(observ: Space, action: Space, /) -> cabc.Generator[nn.Module]:
     """
     Emit some candidates based on the given spaces.
     """
 
     for emitter in emitters_in_scope():
-        result = emitter(space)
+        result = emitter(observ, action)
 
         if result is not NotImplemented:
             yield result
@@ -56,7 +56,7 @@ class EmitterLike(typing.Protocol):
     """
 
     @abc.abstractmethod
-    def __call__(self, space: ModuleSpace, /) -> nn.Module:
+    def __call__(self, observ: Space, action: Space, /) -> nn.Module:
         raise NotImplementedError
 
 
@@ -102,8 +102,8 @@ class FuncEmitter(Emitter):
     The function to wrap.
     """
 
-    def __call__(self, space: ModuleSpace) -> nn.Module:
-        return self.function(space)
+    def __call__(self, observ: Space, action: Space, /) -> nn.Module:
+        return self.function(observ, action)
 
 
 def emitters_in_scope() -> AnySet[Emitter]:

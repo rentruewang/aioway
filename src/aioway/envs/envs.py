@@ -6,7 +6,7 @@ import abc
 
 from aioway.envs import EnvState
 from aioway.errors import re_raise_func
-from aioway.spaces import DataSpace
+from aioway.spaces import Space
 
 __all__ = ["Env", "EnvObserv", "RlEnvObserv"]
 
@@ -74,12 +74,12 @@ class Env[O, A, R](abc.ABC):
 
     @property
     @abc.abstractmethod
-    def observ_space(self) -> DataSpace:
+    def observ_space(self) -> Space:
         "The observation space."
         raise NotImplementedError
 
     @property
     @abc.abstractmethod
-    def action_space(self) -> DataSpace:
+    def action_space(self) -> Space:
         "The action space."
         raise NotImplementedError

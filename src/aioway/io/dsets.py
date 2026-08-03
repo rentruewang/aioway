@@ -12,7 +12,7 @@ import torch
 from torch.utils import data
 
 from aioway.relalg import LoaderExec, LoaderOpt, TdictLoaderExec, TensorLoaderExec
-from aioway.spaces import AnyDataSpace, DataSpace
+from aioway.spaces import AnySpace, Space
 
 __all__ = [
     "dset_dcls",
@@ -64,8 +64,8 @@ class Dset[T](data.Dataset[T]):
     def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> LoaderExec:
         return LoaderExec(dset=self, opts=opts)
 
-    def __space__(self) -> DataSpace:
-        return AnyDataSpace()
+    def __space__(self) -> Space:
+        return AnySpace()
 
     def _setup(self) -> None:
         """

@@ -5,11 +5,12 @@ import typing
 import pytest
 from torch import nn
 
+from aioway._torch import Attr, Shape
 from aioway.compound import BuiltModule
 from aioway.emits import MlpEmitter, emit, emit_one, linear_shape
 from aioway.io import TensorListExec, TensorStream
 from aioway.relalg import LoaderOpt, TensorExec
-from aioway.spaces import Attr, AttrSpace, Shape, ShapeSpace, StatelessSpace
+from aioway.spaces import AttrSpace, ShapeSpace
 
 
 @pytest.fixture
@@ -68,7 +69,7 @@ def consider_mlp():
 def test_just_linear(
     input_shape_space: ShapeSpace, output_space: ShapeSpace, consider_linear
 ):
-    module = emit_one(StatelessSpace(input_shape_space, output_space))
+    module = emit_one(input_shape_space, output_space)
     assert isinstance(module, nn.Linear)
     _check_linear(
         module,
@@ -81,7 +82,7 @@ def test_mlp_emitter(
     input_shape_space: ShapeSpace, output_space: ShapeSpace, consider_mlp
 ):
     mlp_found = False
-    for module in emit(StatelessSpace(input_shape_space, output_space)):
+    for module in emit(input_shape_space, output_space):
         if isinstance(module, BuiltModule):
             mlp_found = True
 

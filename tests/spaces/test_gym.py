@@ -4,12 +4,12 @@
 import pytest
 import torch
 
+from aioway._torch import Shape
 from aioway.spaces import (
     BoxSpace,
     DiscreteSpace,
     MultiBinarySpace,
     MultiDiscreteSpace,
-    Shape,
     Space,
 )
 

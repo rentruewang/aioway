@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from aioway._utils import current_fake_mode, torch_fake_mode
+from aioway._torch import current_fake_mode, torch_fake_mode
 from aioway.modes import fake_fn, track_fn
 
 

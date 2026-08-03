@@ -7,7 +7,7 @@ import pytest
 import tensordict as td
 import torch
 
-from aioway._utils import tdict_all_equal
+from aioway._tdicts import tdict_all_equal
 from aioway.io import TdictListExec
 from aioway.relalg import NestedLoopJoinExec, TdictExec, ZipExec
 

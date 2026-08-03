@@ -9,17 +9,10 @@ import tensordict as td
 import torch
 from torch import nn, optim
 
+from aioway._torch import Attr, Schema
 from aioway.emits import FuncEmitter
 from aioway.errors import re_raise_func
-from aioway.spaces import (
-    Attr,
-    BoxSpace,
-    ModuleSpace,
-    Schema,
-    TdictSpace,
-    TensorSpace,
-    space_dcls,
-)
+from aioway.spaces import BoxSpace, Space, TdictSpace, TensorSpace, space_dcls
 
 __all__ = ["NMFSpace", "PairSpace", "NMFTrainerModule", "train_nmf"]
 
@@ -120,19 +113,16 @@ class NMFTrainerModule(nn.Module):
 
 
 @FuncEmitter
-def train_nmf(space: ModuleSpace) -> nn.Module:
-    observation_space = space.observ_space
-    action_space = space.action_space
-
-    if not isinstance(observation_space, NMFSpace):
+def train_nmf(observ: Space, action: Space) -> nn.Module:
+    if not isinstance(observ, NMFSpace):
         return NotImplemented
 
-    if not (isinstance(action_space, BoxSpace) and action_space.ndim == 0):
+    if not (isinstance(action, BoxSpace) and action.ndim == 0):
         return NotImplemented
 
-    hidden = observation_space.hidden
-    rows = observation_space.num_rows
-    cols = observation_space.num_cols
+    hidden = observ.hidden
+    rows = observ.num_rows
+    cols = observ.num_cols
 
     left = nn.Parameter(torch.empty(hidden, rows))
     right = nn.Parameter(torch.empty(hidden, cols))
