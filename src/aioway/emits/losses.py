@@ -9,7 +9,7 @@ from aioway.spaces import Space, TClsSpace
 
 from .emitters import emitter_function
 
-__all__ = ["PairLossModule", "LossTCls", "LossSpace"]
+__all__ = ["PairLossModule", "LossTCls", "LossSpace", "dispatch_mse_loss"]
 
 
 class LossTCls(td.TensorClass):
@@ -49,5 +49,8 @@ class PairLossModule(nn.Module):
 
 
 @emitter_function
-def dispatch_loss(observ: Space, action: Space) -> PairLossModule:
-    raise NotImplementedError
+def dispatch_mse_loss(observ: Space, action: Space) -> PairLossModule:
+    if not isinstance(action, LossSpace):
+        return NotImplemented
+
+    return PairLossModule(nn.MSELoss())
