@@ -5,7 +5,6 @@
 from .dags import *
 from .decomps import *
 from .logging import *
-from .modules import *
 from .platforms import *
 from .profs import *
 from .renders import *
