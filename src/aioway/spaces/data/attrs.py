@@ -10,7 +10,7 @@ from collections import abc as cabc
 
 import torch
 
-from aioway._utils import torch_fake_mode
+from aioway._tensors import torch_fake_mode
 
 from ..spaces import space_dcls
 from .devices import Device, DeviceLike

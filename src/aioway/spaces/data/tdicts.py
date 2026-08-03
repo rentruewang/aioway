@@ -12,7 +12,7 @@ from collections import abc as cabc
 import tensordict as td
 
 from aioway._api import public_api
-from aioway._utils import is_real_tensor, torch_fake_mode
+from aioway._tensors import is_real_tensor, torch_fake_mode
 
 from ..spaces import space_dcls
 from .attrs import Attr, AttrLike

@@ -16,6 +16,7 @@
 import torch
 
 from aioway._utils import *
+from aioway._tensors import *
 from aioway.modes import *
 
 # %%

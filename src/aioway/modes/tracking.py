@@ -9,12 +9,12 @@ import typing
 
 import rich
 
-from aioway._utils import (
+from aioway._tensors import (
     current_fake_mode,
-    replace_tensors,
     replace_tensors_with_attr,
     torch_fake_mode,
 )
+from aioway._utils import replace_tensors
 
 from .hists import HistTensorGraph
 from .modes import TorchDispMode, TorchDispThunk, TorchFuncMode, TorchFuncThunk

@@ -8,7 +8,7 @@ import typing
 import torch
 
 from aioway._api import public_api
-from aioway._utils import is_fake_tensor
+from aioway._tensors import is_fake_tensor
 
 from ..spaces import space_dcls
 from .data import DataSpace

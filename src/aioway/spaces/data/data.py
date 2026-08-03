@@ -5,7 +5,7 @@
 import abc
 
 from aioway._api import public_api
-from aioway._utils import torch_fake_mode
+from aioway._tensors import torch_fake_mode
 
 from ..spaces import Space, space_dcls
 

@@ -5,7 +5,7 @@ import typing
 
 from torch import nn
 
-from aioway._utils import torch_fake_mode
+from aioway._tensors import torch_fake_mode
 
 from .data import DataSpace
 from .spaces import Space, space_dcls
