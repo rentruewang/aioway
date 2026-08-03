@@ -6,17 +6,10 @@ from collections import abc as cabc
 
 import numpy as np
 import torch
-from torch import nn
 
 from aioway._utils import is_list_of, is_tuple_of
 
-from ..casts import CastedSpaceModule, register_cast
-from ..spaces import space_dcls
 from ._bases import TorchAttrBase
-from .tensors import TensorSpace
-
-if typing.TYPE_CHECKING:
-    from .attrs import Attr
 
 __all__ = ["ShapeLike", "Shape", "ShapeSpace"]
 
@@ -41,9 +34,6 @@ class Shape(TorchAttrBase[torch.Size], cabc.Sequence[int]):
 
     __match_args__ = ("shape",)
     TYPE = torch.Size
-
-    def __space__(self) -> ShapeSpace:
-        return ShapeSpace(self)
 
     def __getstate__(self) -> object:
         return tuple(self._data)
@@ -218,40 +208,3 @@ class Shape(TorchAttrBase[torch.Size], cabc.Sequence[int]):
                 return cls(torch.Size(dims_array))
 
         raise ValueError
-
-
-@space_dcls
-class ShapeSpace(TensorSpace):
-    """
-    Check if the `torch.Tensor` has the same shape.
-    """
-
-    shape: Shape
-    """
-    The shape to check.
-    """
-
-    def __len__(self) -> int:
-        return len(self.shape)
-
-    def __getitem__(self, idx: int) -> int:
-        return self.shape[idx]
-
-    def _check_attr(self, attr: Attr) -> None:
-        if self.shape == attr.shape:
-            return
-
-        raise ValueError
-
-    def _check_data(self, tensor: torch.Tensor) -> None:
-        pass
-
-    def _sample_n(self, batch_size: int) -> torch.Tensor:
-        return torch.randn(batch_size, *self.shape)
-
-
-@register_cast(ShapeSpace, ShapeSpace)
-def flatten_tensor(input_space: ShapeSpace) -> CastedSpaceModule:
-    flattened = input_space.shape.numel()
-    output_space = ShapeSpace(Shape.parse(flattened))
-    return CastedSpaceModule(output_space, module=nn.Flatten())

@@ -10,8 +10,8 @@ import tensordict as td
 import torch
 
 from aioway._api import public_api
+from aioway._torch import Attr, Shape
 from aioway._utils import decomp_replace
-from aioway.spaces import Attr, Shape
 
 from .execs import Exec
 from .iters import ExecIter

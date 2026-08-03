@@ -9,13 +9,12 @@ import tensordict as td
 import torch
 from torch import nn, optim
 
+from aioway._torch import Attr, Schema
 from aioway.emits import FuncEmitter
 from aioway.errors import re_raise_func
 from aioway.spaces import (
-    Attr,
     BoxSpace,
     ModuleSpace,
-    Schema,
     TdictSpace,
     TensorSpace,
     space_dcls,

@@ -7,7 +7,7 @@ import contextlib as ctxl
 import typing
 from collections import abc as cabc
 
-from aioway._tensors import torch_fake_mode
+from aioway._torch import torch_fake_mode
 from aioway._utils import AnyDict
 
 from .execs import Exec, current_sample_mode, sample_mode

@@ -1,4 +1,4 @@
-# `Attr`s
+# Schemas
 
 The package, schemas, is a collection of metadata describing the 'type' of data.
 

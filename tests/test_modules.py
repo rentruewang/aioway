@@ -7,7 +7,7 @@ import torch
 from torch import nn
 
 from aioway._modules import rebuild_module
-from aioway._tensors import (
+from aioway._torch import (
     is_fake_tensor,
     is_real_tensor,
     torch_fake_mode,

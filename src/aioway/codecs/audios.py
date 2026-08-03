@@ -9,8 +9,7 @@ import torch
 from torch.utils import data
 from torchcodec import decoders as dec
 
-from aioway._tensors import current_fake_mode, torch_set_fake_mode_func
-from aioway.spaces import Attr
+from aioway._torch import Attr, current_fake_mode, torch_set_fake_mode_func
 
 from ._av import AudioStream
 from ._bases import TorchCompatible

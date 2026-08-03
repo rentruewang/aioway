@@ -9,7 +9,7 @@ import typing
 
 import rich
 
-from aioway._tensors import (
+from aioway._torch import (
     current_fake_mode,
     replace_tensors_with_attr,
     torch_fake_mode,
