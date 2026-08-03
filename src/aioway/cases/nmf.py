@@ -10,7 +10,7 @@ import torch
 from torch import nn, optim
 
 from aioway._torch import Attr, Schema
-from aioway.emits import FuncEmitter
+from aioway.emits import emitter_function
 from aioway.errors import re_raise_func
 from aioway.spaces import BoxSpace, Space, TdictSpace, TensorSpace, space_dcls
 
@@ -112,7 +112,7 @@ class NMFTrainerModule(nn.Module):
         self.optim.step()
 
 
-@FuncEmitter
+@emitter_function
 def train_nmf(observ: Space, action: Space) -> nn.Module:
     if not isinstance(observ, NMFSpace):
         return NotImplemented

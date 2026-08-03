@@ -4,17 +4,16 @@ import typing
 
 from torch import nn
 
-from aioway.compound import BuilderNode, CompoundBuilder
-from aioway.emits import Emitter, emitter_dcls
 from aioway.spaces import AttrSpace, ShapeSpace, Space
 
-from .emitters import FuncEmitter
+from .compound import BuilderNode, BuiltModule, CompoundBuilder
+from .emitters import Emitter, emitter_dcls, emitter_function
 
-__all__ = ["linear_shape", "linear_from_attr", "MlpEmitter"]
+__all__ = ["linear_shape", "linear_from_attr", "MlpEmitter", "MlpCompoundEmitter"]
 
 
-@FuncEmitter
-def linear_shape(observ: Space, action: Space) -> nn.Module:
+@emitter_function
+def linear_shape(observ: Space, action: Space) -> nn.Linear:
     """
     `Linear` module from `ShapeSpace`s.
     """
@@ -28,7 +27,7 @@ def linear_shape(observ: Space, action: Space) -> nn.Module:
     return nn.Linear(in_features=observ[-1], out_features=action[-1])
 
 
-@FuncEmitter
+@emitter_function
 def linear_from_attr(observ: Space, action: Space) -> nn.Module:
     """
     `Linear` module from `AttrShape`s.
@@ -54,9 +53,9 @@ type Activation = typing.Literal[
 
 
 @emitter_dcls
-class MlpEmitter(Emitter):
+class _MlpEmitter(Emitter):
     """
-    Emits a simple MLP with hidden sizes and activation.
+    Emits a `nn.Sequential` module.
     """
 
     hidden_sizes: list[int]
@@ -69,7 +68,41 @@ class MlpEmitter(Emitter):
     The activation to use.
     """
 
-    def __call__(self, observ: Space, action: Space) -> nn.Module:
+
+@emitter_dcls
+class MlpEmitter(_MlpEmitter):
+    """
+    Emits a `nn.Sequential` module.
+    """
+
+    def __call__(self, observ: Space, action: Space) -> nn.Sequential:
+        if not isinstance(observ, ShapeSpace):
+            return NotImplemented
+
+        if not isinstance(action, ShapeSpace):
+            return NotImplemented
+
+        sizes = [observ[-1], *self.hidden_sizes, action[-1]]
+
+        module = nn.Sequential()
+        activ = _activ_module(self.activation)
+
+        for in_feats, out_feats in zip(sizes[:-1], sizes[1:]):
+            module.append(nn.Linear(in_features=in_feats, out_features=out_feats))
+
+            if activ is not NotImplemented:
+                module.append(activ)
+
+        return module
+
+
+@emitter_dcls
+class MlpCompoundEmitter(_MlpEmitter):
+    """
+    Emits a simple MLP with hidden sizes and activation.
+    """
+
+    def __call__(self, observ: Space, action: Space) -> BuiltModule:
         if not isinstance(observ, ShapeSpace):
             return NotImplemented
 
@@ -81,7 +114,7 @@ class MlpEmitter(Emitter):
         builder = CompoundBuilder()
 
         x: BuilderNode = builder.input("input")
-        activ = self._activ_module
+        activ = _activ_module(self.activation)
 
         for in_feats, out_feats in zip(sizes[:-1], sizes[1:]):
             x = builder.thunk(
@@ -94,20 +127,20 @@ class MlpEmitter(Emitter):
 
         return builder.output(x)
 
-    @property
-    def _activ_module(self) -> nn.Module:
-        match self.activation:
-            case None:
-                return NotImplemented
-            case "relu":
-                return nn.ReLU()
-            case "relu6":
-                return nn.ReLU6()
-            case "celu":
-                return nn.CELU()
-            case "gelu":
-                return nn.GELU()
-            case "sigmoid":
-                return nn.Sigmoid()
-            case "tanh":
-                return nn.Tanh()
+
+def _activ_module(activation: Activation) -> nn.Module:
+    match activation:
+        case None:
+            return NotImplemented
+        case "relu":
+            return nn.ReLU()
+        case "relu6":
+            return nn.ReLU6()
+        case "celu":
+            return nn.CELU()
+        case "gelu":
+            return nn.GELU()
+        case "sigmoid":
+            return nn.Sigmoid()
+        case "tanh":
+            return nn.Tanh()

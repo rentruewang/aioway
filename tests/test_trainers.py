@@ -7,7 +7,7 @@ import torch
 from torch import nn
 
 from aioway._torch import Shape
-from aioway.emits import MlpEmitter
+from aioway.emits import MlpCompoundEmitter
 from aioway.io import TensorFrame
 from aioway.spaces import ShapeSpace
 from aioway.trainers import Trainer
@@ -47,7 +47,7 @@ def y():
 
 @pytest.fixture(autouse=True)
 def mlp_emitter():
-    with MlpEmitter([17, 19]).consider():
+    with MlpCompoundEmitter([17, 19]).consider():
         yield
 
 
