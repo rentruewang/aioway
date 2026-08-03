@@ -6,7 +6,7 @@ import abc
 import dataclasses as dcls
 import typing
 
-from aioway.relalg import Iter
+from aioway.relalg import Exec
 from aioway.spaces import AnyDataSpace, DataSpace
 
 __all__ = ["Sink", "sink_dcls"]
@@ -20,7 +20,7 @@ def sink_dcls(cls):
 @sink_dcls
 class Sink[T = typing.Any](abc.ABC):
     """
-    Consumes a `Iter` and writes to some external location.
+    Consumes a `Exec` and writes to some external location.
     """
 
     TYPE: typing.ClassVar[type[T]]
@@ -28,7 +28,7 @@ class Sink[T = typing.Any](abc.ABC):
     The type to check
     """
 
-    def __call__(self, hop: Iter[T]) -> None:
+    def __call__(self, hop: Exec[T]) -> None:
         for batch in hop:
             if not isinstance(batch, self.TYPE):
                 raise TypeError(f"The batch has {type(batch)=}, expected {self.TYPE}.")

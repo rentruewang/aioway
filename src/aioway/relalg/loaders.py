@@ -12,9 +12,11 @@ from torch.utils import data
 
 from aioway._utils import HasLen
 
-from ._iters import Iter, TdictIter, TensorIter, node_dcls
+from .execs import Exec
+from .nodes import node_dcls
+from .structures import TdictExec, TensorExec
 
-__all__ = ["LoaderOpt", "LoaderIter", "TensorLoaderIter", "TdictLoaderIter"]
+__all__ = ["LoaderOpt", "LoaderExec", "TensorLoaderExec", "TdictLoaderExec"]
 
 
 @dcls.dataclass(frozen=True)
@@ -37,9 +39,9 @@ class LoaderOpt:
 
 
 @node_dcls
-class LoaderIter[T = typing.Any](Iter[T]):
+class LoaderExec[T = typing.Any](Exec[T]):
     """
-    A `Iter` backed by a `torch` `DataLoader`.
+    A `Exec` backed by a `torch` `DataLoader`.
     """
 
     _: dcls.KW_ONLY
@@ -78,16 +80,16 @@ class LoaderIter[T = typing.Any](Iter[T]):
 
 
 @node_dcls
-class TensorLoaderIter(LoaderIter[torch.Tensor], TensorIter):
+class TensorLoaderExec(LoaderExec[torch.Tensor], TensorExec):
     """
-    A `Iter` to load `torch.Tensor`.
+    A `Exec` to load `torch.Tensor`.
     """
 
 
 @node_dcls
-class TdictLoaderIter(LoaderIter[td.TensorDict], TdictIter):
+class TdictLoaderExec(LoaderExec[td.TensorDict], TdictExec):
     """
-    A `Iter` to load `td.TensorDict`.
+    A `Exec` to load `td.TensorDict`.
     """
 
     @typing.override

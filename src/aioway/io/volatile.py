@@ -8,11 +8,11 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway.relalg import IndexibleIter, TensorIter, node_dcls
+from aioway.relalg import IndexibleExec, TensorExec, node_dcls
 
 from .dsets import TdictFrame, dset_dcls
 
-__all__ = ["TensorDictFrame", "TensorListIter", "TdictListIter"]
+__all__ = ["TensorDictFrame", "TensorListExec", "TdictListExec"]
 
 
 @typing.final
@@ -49,8 +49,8 @@ class TensorDictFrame(TdictFrame):
 
 
 @node_dcls
-class TensorListIter(TensorIter):
-    "A `Iter` backed by a list of `torch.Tensor`."
+class TensorListExec(TensorExec):
+    "A `Exec` backed by a list of `torch.Tensor`."
 
     sequence: cabc.Sequence[torch.Tensor]
     "List of `torch.Tensor`s."
@@ -75,7 +75,7 @@ class TensorListIter(TensorIter):
 
 
 @node_dcls
-class TdictListIter(IndexibleIter):
+class TdictListExec(IndexibleExec):
     "A `Stream` backed by a list of `TensorDict`."
 
     sequence: cabc.Sequence[td.TensorDict]

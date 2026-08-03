@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"The iterator processor."
+"The iterator for the `Exec`s."
 
 import abc
 import contextlib as ctxl
@@ -9,22 +9,21 @@ from collections import abc as cabc
 
 from aioway._utils import AnyDict, torch_fake_mode
 
-from .iters import Iter, current_sample_mode, sample_mode
+from .execs import Exec, current_sample_mode, sample_mode
 
-__all__ = ["IterProc", "SampleIterProc", "CacheIterProc", "iter_cache", "iter_cache_on"]
+__all__ = ["ExecIter", "SampleExecIter", "CacheExecIter", "iter_cache", "iter_cache_on"]
 
-
-_iter_cache: AnyDict[Iter] | None = None
-"The cache instance for `Iter`."
+_iter_cache: AnyDict[Exec] | None = None
+"The cache instance for `Exec`."
 
 
 @ctxl.contextmanager
-def iter_cache_on() -> cabc.Generator[AnyDict[Iter]]:
+def iter_cache_on() -> cabc.Generator[AnyDict[Exec]]:
     """
-    Turn on caching for `Iter`. The cache is re-used in nested `iter_cache_on` blocks.
+    Turn on caching for `Exec`. The cache is re-used in nested `iter_cache_on` blocks.
 
     Returns:
-        A context manager that when activates, intercept all `Iter.__next__` calls,
+        A context manager that when activates, intercept all `Exec.__next__` calls,
         and stores the outputs s.t. second `.__next__()` uses the previous rersult.
     """
 
@@ -34,7 +33,7 @@ def iter_cache_on() -> cabc.Generator[AnyDict[Iter]]:
         yield _iter_cache
         return
 
-    _iter_cache = AnyDict[Iter](Iter)
+    _iter_cache = AnyDict[Exec](Exec)
 
     try:
         yield _iter_cache
@@ -42,9 +41,9 @@ def iter_cache_on() -> cabc.Generator[AnyDict[Iter]]:
         _iter_cache = None
 
 
-def iter_cache() -> AnyDict[Iter]:
+def iter_cache() -> AnyDict[Exec]:
     """
-    The active cache for `Iter`. If there is no active session, raise `RuntimeError`.
+    The active cache for `Exec`. If there is no active session, raise `RuntimeError`.
     """
 
     if _iter_cache is None:
@@ -53,8 +52,10 @@ def iter_cache() -> AnyDict[Iter]:
     return _iter_cache
 
 
-class IterProc[T = typing.Any](cabc.Iterator[T], abc.ABC):
-    def __init__(self, iterable: Iter) -> None:
+class ExecIter[T = typing.Any](cabc.Iterator[T], abc.ABC):
+    "The iterator class for executor"
+
+    def __init__(self, iterable: Exec) -> None:
         self._iter = iterable
 
     @abc.abstractmethod
@@ -62,13 +63,13 @@ class IterProc[T = typing.Any](cabc.Iterator[T], abc.ABC):
         raise NotImplementedError
 
 
-class SampleIterProc[T = typing.Any](IterProc[T]):
+class SampleExecIter[T = typing.Any](ExecIter[T]):
     """
-    Calls the `Iter.sample` method, which returns a fake output.
+    Calls the `Exec.sample` method, which returns a fake output.
     This is invoked when `sample_mode` is on.
     """
 
-    def __init__(self, iterable: Iter) -> None:
+    def __init__(self, iterable: Exec) -> None:
         super().__init__(iterable)
         assert current_sample_mode()
 
@@ -82,13 +83,13 @@ class SampleIterProc[T = typing.Any](IterProc[T]):
             return self._iter.sample()
 
 
-class CacheIterProc[T = typing.Any](IterProc[T]):
+class CacheExecIter[T = typing.Any](ExecIter[T]):
     """
     Calls the `.iterate` method, and cache it if `iter_cache` is enabled.
     This allows `.iterate` to be generators (more elegant).
     """
 
-    def __init__(self, iterable: Iter) -> None:
+    def __init__(self, iterable: Exec) -> None:
         super().__init__(iterable)
 
         self.__idx: int = 0
@@ -130,5 +131,5 @@ class CacheIterProc[T = typing.Any](IterProc[T]):
         return self.idx != 0
 
     @property
-    def iterator(self) -> Iter:
+    def iterator(self) -> Exec:
         return self._iter

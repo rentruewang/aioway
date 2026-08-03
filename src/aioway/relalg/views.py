@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"Columns of `Iter`."
+"Columns of `Exec`."
 
 import dataclasses as dcls
 import typing
@@ -9,21 +9,22 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from ._iters import TdictIter, TensorIter, node_dcls
-from .maps import MapIter
+from .maps import MapExec
+from .nodes import node_dcls
+from .structures import TdictExec, TensorExec
 
-__all__ = ["ColumnViewIter", "ProjectIter"]
+__all__ = ["ColumnViewExec", "ProjectExec"]
 
 
 @node_dcls
-class ColumnViewIter(TensorIter):
+class ColumnViewExec(TensorExec):
     """
-    A column reference (on a `Iter`).
+    A column reference (on a `Exec`).
     Performs `__next__` and yield `torch.Tensor`s.
     """
 
-    input: TdictIter
-    "The input `TdictIter` to perform views on."
+    input: TdictExec
+    "The input `TdictExec` to perform views on."
 
     col: str
     "The column to view on."
@@ -42,7 +43,7 @@ class ColumnViewIter(TensorIter):
 
 
 @node_dcls
-class ProjectIter(MapIter):
+class ProjectExec(MapExec):
     """
     Projection of the input table. The `subset` should be a subset of the input columns.
     """

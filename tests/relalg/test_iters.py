@@ -6,19 +6,19 @@ from collections import abc as cabc
 
 import pytest
 
-from aioway.relalg import Iter, StructIter, iter_cache_on
+from aioway.relalg import Exec, StructExec, iter_cache_on
 
 
 def test_iter_struct():
     @dcls.dataclass
-    class ItemIter[T](Iter[T]):
+    class ItemExec[T](Exec[T]):
         item: T
 
         def iterate(self) -> cabc.Generator[T]:
             yield self.item
 
-    iterable = {"hello": ItemIter("world"), "number": ItemIter(3)}
-    result = list(StructIter(iterable))
+    iterable = {"hello": ItemExec("world"), "number": ItemExec(3)}
+    result = list(StructExec(iterable))
     assert result == [{"hello": "world", "number": 3}]
 
 
@@ -26,14 +26,14 @@ def test_iter_struct():
 def test_iter_cache(cache: bool):
     number: int = 0
 
-    class CacheLogIter(Iter):
+    class CacheLogExec(Exec):
         def iterate(self):
             nonlocal number
             while True:
                 number += 1
                 yield number
 
-    logger = iter(CacheLogIter())
+    logger = iter(CacheLogExec())
     cacher = iter_cache_on if cache else ctxl.nullcontext
 
     with cacher():

@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"The binary `Iter`s that consumes 2 `Iter`s."
+"The binary `Exec`s that consumes 2 `Exec`s."
 
 import typing
 from collections import abc as cabc
@@ -8,23 +8,24 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from ._iters import IndexibleIter, TdictIter, node_dcls
+from .nodes import node_dcls
+from .structures import IndexibleExec, TdictExec
 
-__all__ = ["ZipIter", "NestedLoopJoinIter"]
+__all__ = ["ZipExec", "NestedLoopJoinExec"]
 
 
 @node_dcls
-class ZipIter(TdictIter):
+class ZipExec(TdictExec):
     """
     `ZipStream` is similar to what `zip` does.
     """
 
-    left: TdictIter
+    left: TdictExec
     """
     The LHS stream.
     """
 
-    right: TdictIter
+    right: TdictExec
     """
     The RHS stream.
     """
@@ -41,7 +42,7 @@ class ZipIter(TdictIter):
 
 
 @node_dcls
-class NestedLoopJoinIter(TdictIter):
+class NestedLoopJoinExec(TdictExec):
     """
     This is a stream that combines 2 input streams in a nested-loop matter,
     as in `[[x, y] for x in left for y in right if x.key == y.key]`.
@@ -49,12 +50,12 @@ class NestedLoopJoinIter(TdictIter):
     The end result would be merged with `tensordict.merge_tensordicts`.
     """
 
-    left: TdictIter
+    left: TdictExec
     """
     LHS is a normal stream. Will only be iterated over once.
     """
 
-    right: IndexibleIter
+    right: IndexibleExec
     """
     RHS is a `Stream` supporting index access, thus requiring materialization.
     """
