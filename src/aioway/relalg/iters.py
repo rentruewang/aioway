@@ -12,13 +12,10 @@ import tensordict as td
 import torch
 
 from aioway._api import public_api
-from aioway._utils import decomp_dcls_members, decomp_replace, torch_fake_mode
+from aioway._utils import AnyDict, decomp_dcls_members, decomp_replace, torch_fake_mode
 from aioway.spaces import Attr, Shape
 
 from .nodes import GraphNode, node_dcls
-
-if typing.TYPE_CHECKING:
-    from .procs import IterProc
 
 __all__ = [
     "Iter",
@@ -29,10 +26,19 @@ __all__ = [
     "IndexibleIter",
     "sample_mode",
     "current_sample_mode",
+    "IterProc",
+    "SampleIterProc",
+    "CacheIterProc",
+    "iter_cache",
+    "iter_cache_on",
 ]
 
 _sample_mode: bool = False
 "Whether or not `Iter` is using fake data."
+
+
+_iter_cache: AnyDict[Iter] | None = None
+"The cache instance for `Iter`."
 
 
 @ctxl.contextmanager
@@ -55,6 +61,41 @@ def current_sample_mode():
     return _sample_mode
 
 
+@ctxl.contextmanager
+def iter_cache_on() -> cabc.Generator[AnyDict[Iter]]:
+    """
+    Turn on caching for `Iter`. The cache is re-used in nested `iter_cache_on` blocks.
+
+    Returns:
+        A context manager that when activates, intercept all `Iter.__next__` calls,
+        and stores the outputs s.t. second `.__next__()` uses the previous rersult.
+    """
+
+    global _iter_cache
+
+    if _iter_cache is not None:
+        yield _iter_cache
+        return
+
+    _iter_cache = AnyDict[Iter](Iter)
+
+    try:
+        yield _iter_cache
+    finally:
+        _iter_cache = None
+
+
+def iter_cache() -> AnyDict[Iter]:
+    """
+    The active cache for `Iter`. If there is no active session, raise `RuntimeError`.
+    """
+
+    if _iter_cache is None:
+        raise RuntimeError("`iter_cache` can only be called in `iter_cache_on` scope.")
+
+    return _iter_cache
+
+
 @public_api
 class Iter[T](cabc.Iterable[T], GraphNode["Iter"], abc.ABC):
     """
@@ -70,9 +111,6 @@ class Iter[T](cabc.Iterable[T], GraphNode["Iter"], abc.ABC):
 
     @typing.final
     def __iter__(self) -> IterProc[T]:
-        # Every iteration should yield a new `Iterator`.
-        from .procs import CacheIterProc, SampleIterProc
-
         # If `sample_mode` is on, use the `.sample()` method.
         if _sample_mode:
             return SampleIterProc(self)
@@ -195,8 +233,6 @@ class StructIter(Iter[typing.Any]):
 
     @typing.override
     def iterate(self):
-        from .procs import IterProc
-
         # Start the iterator and store the started iterators into an `AnySet`.
         start_it = lambda it: (iter(it) if isinstance(it, Iter) else NotImplemented)
 
@@ -273,3 +309,84 @@ class IndexibleIter(TdictIter, abc.ABC):
         """
 
         raise NotImplementedError
+
+
+class IterProc[T = typing.Any](cabc.Iterator[T], abc.ABC):
+    def __init__(self, iterable: Iter) -> None:
+        self._iter = iterable
+
+    @abc.abstractmethod
+    def __next__(self) -> T:
+        raise NotImplementedError
+
+
+class SampleIterProc[T = typing.Any](IterProc[T]):
+    """
+    Calls the `Iter.sample` method, which returns a fake output.
+    This is invoked when `sample_mode` is on.
+    """
+
+    def __init__(self, iterable: Iter) -> None:
+        super().__init__(iterable)
+        assert current_sample_mode()
+
+    def __iter__(self):
+        return self
+
+    @typing.final
+    def __next__(self) -> T:
+        # Set sample mode to false to avoid self recursion.
+        with sample_mode(False), torch_fake_mode():
+            return self._iter.sample()
+
+
+class CacheIterProc[T = typing.Any](IterProc[T]):
+    """
+    Calls the `.iterate` method, and cache it if `iter_cache` is enabled.
+    This allows `.iterate` to be generators (more elegant).
+    """
+
+    def __init__(self, iterable: Iter) -> None:
+        super().__init__(iterable)
+
+        self.__idx: int = 0
+        self.__gen = iterable.iterate()
+
+    def __iter__(self):
+        return self
+
+    @typing.final
+    def __next__(self) -> T:
+        # If `StopIteration` is raised here, it's done.
+
+        with iter_cache_on():
+            answer = self.read()
+
+        self.__idx += 1
+        return answer
+
+    def read(self) -> T:
+        if _iter_cache is None:
+            return next(self.__gen)
+
+        elif self.iterator not in _iter_cache:
+            _iter_cache[self.iterator] = next(self.__gen)
+
+        result: typing.Any = _iter_cache[self.iterator]
+        return result
+
+    @property
+    def idx(self) -> int:
+        "Get the current iteration count."
+
+        return self.__idx
+
+    @property
+    def started(self) -> bool:
+        "Shortcut function to check if `self.idx == 0`."
+
+        return self.idx != 0
+
+    @property
+    def iterator(self) -> Iter:
+        return self._iter
