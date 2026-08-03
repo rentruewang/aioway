@@ -99,8 +99,10 @@ def iter_cache() -> AnyDict[Exec]:
 @public_api
 class Exec[T](cabc.Iterable[T], GraphNode["Exec"], abc.ABC):
     """
-    The class that defines [h]igh level [op]erations.
     It produces iterators that computes the desired batch, represented by the node.
+
+    It acts as a node in a DAG (that supports multiple fan-outs), that is,
+    repeated `next` calls in the same pass would be cached.
 
     `Exec` is the node that would be evaluated during run time.
     It will output `torch.Tensor`, or a container that makes up of them.
