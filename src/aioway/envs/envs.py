@@ -4,6 +4,7 @@
 
 import abc
 
+from aioway.envs import EnvState
 from aioway.errors import re_raise_func
 from aioway.spaces import DataSpace
 
@@ -22,27 +23,56 @@ class Env[O, A, R](abc.ABC):
     and persistent info should be handled by the instance that generates an `Env`.
     """
 
-    @re_raise_func(AssertionError, ValueError)
-    def reset(self) -> O:
-        state = self._reset()
-        assert state in self.observ_space
-        return state
-
-    @re_raise_func(AssertionError, ValueError)
-    def step(self, action: A, /) -> O:
-        assert action in self.action_space
-
-        state = self._step(action)
-        assert state in self.observ_space
-        return state
+    type _EnvState = EnvState[O]
+    "Alias of `EnvState` in the class to save some typing."
 
     @abc.abstractmethod
-    def _reset(self) -> O:
+    def snapshot(self) -> _EnvState:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def _step(self, action: A, /) -> O:
-        "The step implementaiton. Raise `StopIteration` when done."
+    def restore(self, state: _EnvState) -> None:
+        raise NotImplementedError
+
+    # The state property.
+    # Using a "forwarding" method s.t. `snapshot`, `restore` can be polymorphic
+    def __snapshot(self) -> _EnvState:
+        return self.snapshot()
+
+    def __restore(self, state: _EnvState):
+        self.restore(state)
+
+    state = property(__snapshot, __restore)
+    "The state of the `Env`"
+
+    def observ(self):
+        observ = self.state.observ()
+        assert observ in self.observ_space
+        return observ
+
+    @re_raise_func(AssertionError, ValueError)
+    def step(self, action: A, /) -> R:
+        assert action in self.action_space
+
+        reward = self._step(action)
+        return reward
+
+    @abc.abstractmethod
+    def _step(self, action: A, /) -> R:
+        """
+        The step implementaiton.
+
+        Args:
+            action: The action to accept.
+
+        Returns:
+            The reward, if any.
+
+            e.g. This is `None` in supervised learning algorithms).
+
+        Raises:
+            StopIteration: When done.
+        """
         raise NotImplementedError
 
     @property

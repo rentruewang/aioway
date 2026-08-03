@@ -5,9 +5,11 @@
 import abc
 
 
-class EnvState[S = object](abc.ABC):
+class EnvState[S = object, O = object](abc.ABC):
     """
     `EnvState` is the state for the environment.
+
+    A state supports exposing observation
     """
 
     @abc.abstractmethod
@@ -16,4 +18,8 @@ class EnvState[S = object](abc.ABC):
 
     @abc.abstractmethod
     def __setstate__(self, item: S) -> None:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def observ(self) -> O:
         raise NotImplementedError
