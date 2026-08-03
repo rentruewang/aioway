@@ -18,12 +18,12 @@ from aioway.spaces import Attr, Shape
 from .nodes import GraphNode, node_dcls
 
 __all__ = [
-    "Iter",
-    "TensorIter",
-    "TdictIter",
-    "StructIter",
-    "ListIter",
-    "IndexibleIter",
+    "Exec",
+    "TensorExec",
+    "TdictExec",
+    "StructExec",
+    "ListExec",
+    "IndexibleExec",
     "sample_mode",
     "current_sample_mode",
     "IterProc",
@@ -34,11 +34,11 @@ __all__ = [
 ]
 
 _sample_mode: bool = False
-"Whether or not `Iter` is using fake data."
+"Whether or not `Exec` is using fake data."
 
 
-_iter_cache: AnyDict[Iter] | None = None
-"The cache instance for `Iter`."
+_iter_cache: AnyDict[Exec] | None = None
+"The cache instance for `Exec`."
 
 
 @ctxl.contextmanager
@@ -62,12 +62,12 @@ def current_sample_mode():
 
 
 @ctxl.contextmanager
-def iter_cache_on() -> cabc.Generator[AnyDict[Iter]]:
+def iter_cache_on() -> cabc.Generator[AnyDict[Exec]]:
     """
-    Turn on caching for `Iter`. The cache is re-used in nested `iter_cache_on` blocks.
+    Turn on caching for `Exec`. The cache is re-used in nested `iter_cache_on` blocks.
 
     Returns:
-        A context manager that when activates, intercept all `Iter.__next__` calls,
+        A context manager that when activates, intercept all `Exec.__next__` calls,
         and stores the outputs s.t. second `.__next__()` uses the previous rersult.
     """
 
@@ -77,7 +77,7 @@ def iter_cache_on() -> cabc.Generator[AnyDict[Iter]]:
         yield _iter_cache
         return
 
-    _iter_cache = AnyDict[Iter](Iter)
+    _iter_cache = AnyDict[Exec](Exec)
 
     try:
         yield _iter_cache
@@ -85,9 +85,9 @@ def iter_cache_on() -> cabc.Generator[AnyDict[Iter]]:
         _iter_cache = None
 
 
-def iter_cache() -> AnyDict[Iter]:
+def iter_cache() -> AnyDict[Exec]:
     """
-    The active cache for `Iter`. If there is no active session, raise `RuntimeError`.
+    The active cache for `Exec`. If there is no active session, raise `RuntimeError`.
     """
 
     if _iter_cache is None:
@@ -97,12 +97,12 @@ def iter_cache() -> AnyDict[Iter]:
 
 
 @public_api
-class Iter[T](cabc.Iterable[T], GraphNode["Iter"], abc.ABC):
+class Exec[T](cabc.Iterable[T], GraphNode["Exec"], abc.ABC):
     """
     The class that defines [h]igh level [op]erations.
     It produces iterators that computes the desired batch, represented by the node.
 
-    `Iter` is the node that would be evaluated during run time.
+    `Exec` is the node that would be evaluated during run time.
     It will output `torch.Tensor`, or a container that makes up of them.
     """
 
@@ -139,8 +139,8 @@ class Iter[T](cabc.Iterable[T], GraphNode["Iter"], abc.ABC):
 
     def rebuild(self):
         """
-        Rebuild the current `Iter`. This is useful when you are switching contexts,
-        e.g. switching on real mode after configuring the `Iter` in fake mode.
+        Rebuild the current `Exec`. This is useful when you are switching contexts,
+        e.g. switching on real mode after configuring the `Exec` in fake mode.
 
         If `self._rebuild()` is not overwritten, defaults to shallow copying `self`.
         """
@@ -153,16 +153,16 @@ class Iter[T](cabc.Iterable[T], GraphNode["Iter"], abc.ABC):
         return copy.copy(self)
 
     @typing.override
-    def deps(self) -> cabc.Iterator[Iter]:
+    def deps(self) -> cabc.Iterator[Exec]:
         "Decompose `self`, get the immediate dependencies."
 
-        for hop in decomp_dcls_members(self, Iter):
+        for hop in decomp_dcls_members(self, Exec):
             yield hop
 
     @property
     def size(self) -> int:
         """
-        The length of the current stream `TdictIter`.
+        The length of the current stream `TdictExec`.
 
         This should be defined for relational algebra purposes.
         """
@@ -171,12 +171,12 @@ class Iter[T](cabc.Iterable[T], GraphNode["Iter"], abc.ABC):
 
     @classmethod
     def deps_type(cls):
-        return Iter
+        return Exec
 
 
 @public_api
 @node_dcls
-class TensorIter(Iter[torch.Tensor], abc.ABC):
+class TensorExec(Exec[torch.Tensor], abc.ABC):
     """
     An iterator of batches of `torch.Tensor`.
     """
@@ -196,31 +196,31 @@ class TensorIter(Iter[torch.Tensor], abc.ABC):
 
 @public_api
 @node_dcls
-class TdictIter(Iter[td.TensorDict], abc.ABC):
+class TdictExec(Exec[td.TensorDict], abc.ABC):
     """
     An iterator of batches of `td.TensorDict`.
 
     This is the core abstraction used by the relational algebra operators.
     """
 
-    def column(self, col: str) -> TensorIter:
-        from aioway.relalg.views import ColumnViewIter
+    def column(self, col: str) -> TensorExec:
+        from aioway.relalg.views import ColumnViewExec
 
-        return ColumnViewIter(self, col)
+        return ColumnViewExec(self, col)
 
-    def select(self, *cols: str) -> TdictIter:
-        from aioway.relalg.views import ProjectIter
+    def select(self, *cols: str) -> TdictExec:
+        from aioway.relalg.views import ProjectExec
 
-        return ProjectIter(self, subset=list(cols))
+        return ProjectExec(self, subset=list(cols))
 
 
 @public_api
 @node_dcls
-class StructIter(Iter[typing.Any]):
+class StructExec(Exec[typing.Any]):
     """
-    An `Iter` that transforms structures of `Iter`s to `Iter` of structures.
+    An `Exec` that transforms structures of `Exec`s to `Exec` of structures.
 
-    E.g. `[Iter[int], Iter[int]] -> Iter[[int, int]]`.
+    E.g. `[Exec[int], Exec[int]] -> Exec[[int, int]]`.
     """
 
     struct: typing.Any
@@ -234,12 +234,12 @@ class StructIter(Iter[typing.Any]):
     @typing.override
     def iterate(self):
         # Start the iterator and store the started iterators into an `AnySet`.
-        start_it = lambda it: (iter(it) if isinstance(it, Iter) else NotImplemented)
+        start_it = lambda it: (iter(it) if isinstance(it, Exec) else NotImplemented)
 
         # Get the next item.
         next_it = lambda it: (next(it) if isinstance(it, IterProc) else NotImplemented)
 
-        # Inside the structure, call `iter` on all `Iter`s.
+        # Inside the structure, call `iter` on all `Exec`s.
         struct_of_iter = decomp_replace(self.struct, start_it)
 
         # Inside the structure, call `next` on all `IterProc`s, until `StopIteration`.
@@ -252,19 +252,19 @@ class StructIter(Iter[typing.Any]):
 
 @public_api
 @node_dcls
-class ListIter[T = typing.Any](Iter[cabc.Sequence[T]]):
-    "A convenient list of `Iter`s, using a pull strategy to pull in the data when called."
+class ListExec[T = typing.Any](Exec[cabc.Sequence[T]]):
+    "A convenient list of `Exec`s, using a pull strategy to pull in the data when called."
 
-    seqs: cabc.Sequence[Iter[T]]
+    seqs: cabc.Sequence[Exec[T]]
     """
-    The hop list that this `ListIter` represents.
+    The hop list that this `ListExec` represents.
     """
 
     def __repr__(self) -> str:
         return repr(self.seqs)
 
     @typing.overload
-    def __getitem__(self, key: int) -> Iter[T]: ...
+    def __getitem__(self, key: int) -> Exec[T]: ...
 
     @typing.overload
     def __getitem__(self, key: slice) -> typing.Self: ...
@@ -285,7 +285,7 @@ class ListIter[T = typing.Any](Iter[cabc.Sequence[T]]):
 
 
 @node_dcls
-class IndexibleIter(TdictIter, abc.ABC):
+class IndexibleExec(TdictExec, abc.ABC):
     """
     A stream with `__len__` and `__getitem__`.
     """
@@ -312,7 +312,7 @@ class IndexibleIter(TdictIter, abc.ABC):
 
 
 class IterProc[T = typing.Any](cabc.Iterator[T], abc.ABC):
-    def __init__(self, iterable: Iter) -> None:
+    def __init__(self, iterable: Exec) -> None:
         self._iter = iterable
 
     @abc.abstractmethod
@@ -322,11 +322,11 @@ class IterProc[T = typing.Any](cabc.Iterator[T], abc.ABC):
 
 class SampleIterProc[T = typing.Any](IterProc[T]):
     """
-    Calls the `Iter.sample` method, which returns a fake output.
+    Calls the `Exec.sample` method, which returns a fake output.
     This is invoked when `sample_mode` is on.
     """
 
-    def __init__(self, iterable: Iter) -> None:
+    def __init__(self, iterable: Exec) -> None:
         super().__init__(iterable)
         assert current_sample_mode()
 
@@ -346,7 +346,7 @@ class CacheIterProc[T = typing.Any](IterProc[T]):
     This allows `.iterate` to be generators (more elegant).
     """
 
-    def __init__(self, iterable: Iter) -> None:
+    def __init__(self, iterable: Exec) -> None:
         super().__init__(iterable)
 
         self.__idx: int = 0
@@ -388,5 +388,5 @@ class CacheIterProc[T = typing.Any](IterProc[T]):
         return self.idx != 0
 
     @property
-    def iterator(self) -> Iter:
+    def iterator(self) -> Exec:
         return self._iter

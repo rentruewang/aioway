@@ -7,8 +7,8 @@ from torch import nn
 
 from aioway.compound import BuiltModule
 from aioway.emits import MlpEmitter, emit, emit_one, linear_shape
-from aioway.io import TensorListIter, TensorStream
-from aioway.relalg import LoaderOpt, TensorIter
+from aioway.io import TensorListExec, TensorStream
+from aioway.relalg import LoaderOpt, TensorExec
 from aioway.spaces import Attr, AttrSpace, Shape, ShapeSpace, StatelessSpace
 
 
@@ -31,7 +31,7 @@ def output_space():
 def input_dataset(input_attr_space: AttrSpace):
     class FakeInputDset(TensorStream):
         def __call__(self, *_):
-            return TensorListIter(
+            return TensorListExec(
                 [input_attr_space.to_attr().to_fake_tensor().requires_grad_()]
             )
 
@@ -44,12 +44,12 @@ def input_dataset(input_attr_space: AttrSpace):
 
 
 @pytest.fixture
-def input_loader(input_dataset: TensorStream) -> TensorIter:
+def input_loader(input_dataset: TensorStream) -> TensorExec:
     return input_dataset(LoaderOpt())
 
 
 @pytest.fixture
-def target_loader(input_loader: TensorIter) -> TensorIter:
+def target_loader(input_loader: TensorExec) -> TensorExec:
     return input_loader
 
 

@@ -11,7 +11,7 @@ import tensordict as td
 import torch
 from torch.utils import data
 
-from aioway.relalg import LoaderIter, LoaderOpt, TdictLoaderIter, TensorLoaderIter
+from aioway.relalg import LoaderExec, LoaderOpt, TdictLoaderExec, TensorLoaderExec
 from aioway.spaces import AnyDataSpace, DataSpace
 
 __all__ = [
@@ -36,9 +36,9 @@ class _TensorAttrMixin(data.Dataset[torch.Tensor], metaclass=abc.ABCMeta):
     A `torch.Tensor` `Dataset` should also provide `.attr`.
     """
 
-    def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> TensorLoaderIter:
+    def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> TensorLoaderExec:
         # Set batch size to the ones provided.
-        return TensorLoaderIter(dset=self, opts=opts)
+        return TensorLoaderExec(dset=self, opts=opts)
 
 
 class _TdictAttrsMixin(data.Dataset[td.TensorDict], metaclass=abc.ABCMeta):
@@ -46,8 +46,8 @@ class _TdictAttrsMixin(data.Dataset[td.TensorDict], metaclass=abc.ABCMeta):
     A `td.TensorDict` `Dataset` should also provide `.attr`.
     """
 
-    def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> TdictLoaderIter:
-        return TdictLoaderIter(dset=self, opts=opts)
+    def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> TdictLoaderExec:
+        return TdictLoaderExec(dset=self, opts=opts)
 
 
 @dset_dcls
@@ -61,8 +61,8 @@ class Dset[T](data.Dataset[T]):
         self._setup()
         self._register()
 
-    def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> LoaderIter:
-        return LoaderIter(dset=self, opts=opts)
+    def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> LoaderExec:
+        return LoaderExec(dset=self, opts=opts)
 
     def __space__(self) -> DataSpace:
         return AnyDataSpace()

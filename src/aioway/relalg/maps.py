@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"The `Iter`s that apply a transformation on the input `Iter`."
+"The `Exec`s that apply a transformation on the input `Exec`."
 
 import abc
 import dataclasses as dcls
@@ -12,15 +12,15 @@ import torch
 
 from aioway._utils import tdict_rename
 
-from .iters import TdictIter, node_dcls
+from .execs import TdictExec, node_dcls
 
-__all__ = ["MapIter", "ApplyIter", "FuncFilterIter", "RenameIter"]
+__all__ = ["MapExec", "ApplyExec", "FuncFilterExec", "RenameExec"]
 
 
 @node_dcls
-class MapIter(TdictIter, abc.ABC):
+class MapExec(TdictExec, abc.ABC):
     """
-    The shared base class for all the `map` like `Iter`s,
+    The shared base class for all the `map` like `Exec`s,
     which share the trait of::
 
         #. Having 1 child, named `source`.
@@ -35,13 +35,13 @@ class MapIter(TdictIter, abc.ABC):
         where each input row can correspond to one or multiple or 0 rows, in the same minibatch.
     """
 
-    source: TdictIter
+    source: TdictExec
     """
     The source stream that will be yielded from.
     """
 
     def __post_init__(self):
-        if not isinstance(self.source, TdictIter):
+        if not isinstance(self.source, TdictExec):
             raise ValueError(
                 f"{self.source=} should have been a `Stream`. Got {type(self.source)=}"
             )
@@ -77,9 +77,9 @@ class MapIter(TdictIter, abc.ABC):
 
 
 @node_dcls
-class ApplyIter(MapIter):
+class ApplyExec(MapExec):
     """
-    A `Iter` that you can customize what the `__next__` function do.
+    A `Exec` that you can customize what the `__next__` function do.
 
     The full loop would be something like:
 
@@ -101,9 +101,9 @@ class ApplyIter(MapIter):
 
 
 @node_dcls
-class FuncFilterIter(MapIter):
+class FuncFilterExec(MapExec):
     """
-    A `Iter` that filteres on its inputs, based on a preducate function.
+    A `Exec` that filteres on its inputs, based on a preducate function.
 
     The input is being used to generate predicate,
     and the output of predicate must be a boolean `torch.Tensor` of the same length as the input.
@@ -134,7 +134,7 @@ class FuncFilterIter(MapIter):
 
 
 @node_dcls
-class RenameIter(MapIter):
+class RenameExec(MapExec):
     """
     Renames some columns in the inputs in the outputs.
     """

@@ -8,15 +8,15 @@ from collections import abc as cabc
 
 import torch
 
-from .iters import Iter, TensorIter, node_dcls
+from .execs import Exec, TensorExec, node_dcls
 
-__all__ = ["CatIter", "StackIter"]
+__all__ = ["CatExec", "StackExec"]
 
 
 @node_dcls
-class _CatStackIter(TensorIter, abc.ABC):
+class _CatStackExec(TensorExec, abc.ABC):
     """
-    The `Iter` implementation for `torch.cat` / `torch.stack`.
+    The `Exec` implementation for `torch.cat` / `torch.stack`.
     """
 
     FUNCTION: typing.ClassVar[cabc.Callable[..., torch.Tensor]]
@@ -26,8 +26,8 @@ class _CatStackIter(TensorIter, abc.ABC):
     because `torch` has complicated type stubs, annoying to deal with.
     """
 
-    tensors: list[Iter[torch.Tensor]]
-    "The list of `Iter` that would evaluate each to a `torch.Tensor`."
+    tensors: list[Exec[torch.Tensor]]
+    "The list of `Exec` that would evaluate each to a `torch.Tensor`."
 
     dim: int = 0
     "The `dim` flag that would be passed to `.function`."
@@ -39,14 +39,14 @@ class _CatStackIter(TensorIter, abc.ABC):
 
 
 @node_dcls
-class CatIter(_CatStackIter):
-    "The `Iter` backed by `torch.cat`."
+class CatExec(_CatStackExec):
+    "The `Exec` backed by `torch.cat`."
 
     FUNCTION = torch.cat
 
 
 @node_dcls
-class StackIter(_CatStackIter):
-    "The `Iter` backed by `torch.stack`."
+class StackExec(_CatStackExec):
+    "The `Exec` backed by `torch.stack`."
 
     FUNCTION = torch.stack

@@ -11,9 +11,9 @@ import torch
 
 from aioway._utils import FloatArray, IntArray
 
-from .iters import Iter, TensorIter, node_dcls
+from .execs import Exec, TensorExec, node_dcls
 
-__all__ = ["AnnIndex", "AnnResult", "AnnIndexIter", "AnnIndexTrainerIter", "FaissIndex"]
+__all__ = ["AnnIndex", "AnnResult", "AnnIndexExec", "AnnIndexTrainerExec", "FaissIndex"]
 
 
 @dcls.dataclass(frozen=True)
@@ -134,7 +134,7 @@ class FaissIndex(AnnIndex):
 
 
 @node_dcls
-class AnnIndexTrainerIter(Iter[None]):
+class AnnIndexTrainerExec(Exec[None]):
     """
     Train the index for future usage.
     """
@@ -144,7 +144,7 @@ class AnnIndexTrainerIter(Iter[None]):
     The index to train.
     """
 
-    data: TensorIter
+    data: TensorExec
     """
     The data to index.
     """
@@ -156,7 +156,7 @@ class AnnIndexTrainerIter(Iter[None]):
 
 
 @node_dcls
-class AnnIndexIter(TensorIter):
+class AnnIndexExec(TensorExec):
     """
     Iterate and yield the indices.
     """
@@ -166,7 +166,7 @@ class AnnIndexIter(TensorIter):
     The index to train.
     """
 
-    query: TensorIter
+    query: TensorExec
     """
     The querying tensor.
     """
