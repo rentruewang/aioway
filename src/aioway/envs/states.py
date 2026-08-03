@@ -5,7 +5,7 @@
 import abc
 
 
-class EnvState[S = object, O = object](abc.ABC):
+class EnvState[O = object, S = object](abc.ABC):
     """
     `EnvState` is the state for the environment.
 

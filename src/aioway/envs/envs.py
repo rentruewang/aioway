@@ -23,23 +23,20 @@ class Env[O, A, R](abc.ABC):
     and persistent info should be handled by the instance that generates an `Env`.
     """
 
-    type _EnvState = EnvState[O]
-    "Alias of `EnvState` in the class to save some typing."
-
     @abc.abstractmethod
-    def snapshot(self) -> _EnvState:
+    def snapshot(self) -> EnvState[O]:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def restore(self, state: _EnvState) -> None:
+    def restore(self, state: EnvState[O]) -> None:
         raise NotImplementedError
 
     # The state property.
     # Using a "forwarding" method s.t. `snapshot`, `restore` can be polymorphic
-    def __snapshot(self) -> _EnvState:
+    def __snapshot(self) -> EnvState[O]:
         return self.snapshot()
 
-    def __restore(self, state: _EnvState):
+    def __restore(self, state: EnvState[O]):
         self.restore(state)
 
     state = property(__snapshot, __restore)
