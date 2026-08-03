@@ -1,35 +1,16 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import pytest
-import tensordict as td
 import torch
 
-from aioway.spaces import Schema, TensorClassSpace
-
-
-class LossTensorClass(td.TensorClass):
-    input: torch.Tensor
-    target: torch.Tensor
-
-
-class LossTensorAllPositive(TensorClassSpace):
-    KLASS = LossTensorClass
-
-    def _check_attrs(self, attrs: Schema):
-        assert attrs.keys() == {"input", "target"}
-
-    def _check_data(self, data: LossTensorClass):
-        assert isinstance(data, LossTensorClass)
-
-    def _sample_n(self, n: int):
-        return LossTensorClass(torch.randn(n), torch.randn(n))
+from aioway.emits import LossSpace, LossTCls
 
 
 @pytest.fixture
 def loss_space():
-    return LossTensorAllPositive()
+    return LossSpace()
 
 
-def test_loss_space(loss_space: LossTensorAllPositive):
-    inst = LossTensorClass(torch.randn(3, 5), torch.randn(3, 5))
+def test_loss_space(loss_space: LossSpace):
+    inst = LossTCls(torch.randn(3, 5), torch.randn(3, 5))
     assert inst in loss_space

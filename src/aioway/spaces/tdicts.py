@@ -13,12 +13,12 @@ from aioway._torch import Schema, is_real_tensor
 
 from .spaces import Space, space_dcls
 
-__all__ = ["Schema", "TdictSpace", "TensorClassSpace"]
+__all__ = ["Schema", "TdictSpace", "TClsSpace"]
 
 
 @public_api
 @space_dcls
-class TensorClassSpace[T: td.TensorClass](Space[T], abc.ABC):
+class TClsSpace[T: td.TensorClass](Space[T], abc.ABC):
     "A `Space` that checks a `td.TensorClass`."
 
     KLASS: typing.ClassVar[type[T]]
