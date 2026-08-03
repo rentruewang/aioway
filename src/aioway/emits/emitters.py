@@ -18,6 +18,7 @@ __all__ = [
     "emitter_dcls",
     "emit_one",
     "emit",
+    "emitter_function",
     "emitters_in_scope",
 ]
 
@@ -41,8 +42,10 @@ def emit(observ: Space, action: Space, /) -> cabc.Generator[nn.Module]:
     for emitter in emitters_in_scope():
         result = emitter(observ, action)
 
-        if result is not NotImplemented:
-            yield result
+        if result is NotImplemented:
+            continue
+
+        yield result
 
 
 class EmitterLike(typing.Protocol):
@@ -104,6 +107,11 @@ class FuncEmitter(Emitter):
 
     def __call__(self, observ: Space, action: Space, /) -> nn.Module:
         return self.function(observ, action)
+
+
+def emitter_function(emitter: EmitterLike) -> FuncEmitter:
+    "The decorator function to wrap a function as an `Emitter`."
+    return FuncEmitter(emitter)
 
 
 def emitters_in_scope() -> AnySet[Emitter]:

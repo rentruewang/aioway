@@ -5,15 +5,13 @@ import typing
 from torch import nn
 
 from aioway.compound import BuilderNode, CompoundBuilder
-from aioway.emits import Emitter, emitter_dcls
+from aioway.emits import Emitter, emitter_dcls, emitter_function
 from aioway.spaces import AttrSpace, ShapeSpace, Space
-
-from .emitters import FuncEmitter
 
 __all__ = ["linear_shape", "linear_from_attr", "MlpEmitter"]
 
 
-@FuncEmitter
+@emitter_function
 def linear_shape(observ: Space, action: Space) -> nn.Module:
     """
     `Linear` module from `ShapeSpace`s.
@@ -28,7 +26,7 @@ def linear_shape(observ: Space, action: Space) -> nn.Module:
     return nn.Linear(in_features=observ[-1], out_features=action[-1])
 
 
-@FuncEmitter
+@emitter_function
 def linear_from_attr(observ: Space, action: Space) -> nn.Module:
     """
     `Linear` module from `AttrShape`s.
