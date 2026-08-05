@@ -20,14 +20,24 @@ def image_space():
     return FloatImageSpace(3)
 
 
+@pytest.fixture(params=[3, 5, 1000])
+def feat_size(request: pytest.FixtureRequest):
+    return request.param
+
+
 @pytest.fixture
-def output_space():
-    return ShapeSpace(Shape.parse(3))
+def output_space(feat_size: int):
+    return ShapeSpace(Shape.parse(feat_size))
 
 
-def test_emit_image_regressor(image_emitter, image_space, output_space):
+def test_emit_image_regressor(
+    image_emitter,
+    image_space: FloatImageSpace,
+    output_space: ShapeSpace,
+    feat_size: int,
+):
     image_mod = emit_one(image_space, output_space)
     assert isinstance(image_mod, nn.Module)
 
     img = image_space.sample(7)
-    assert image_mod(img).shape == (7, 3)
+    assert image_mod(img).shape == (7, feat_size)

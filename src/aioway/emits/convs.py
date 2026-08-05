@@ -8,7 +8,7 @@ from torch import nn
 
 from aioway._torch import Shape
 from aioway._utils import is_list_of
-from aioway.spaces import ImageSpace, ShapeSpace, Space
+from aioway.spaces import FloatImageSpace, ShapeSpace, Space
 
 from ._utils import Activation, activation_module
 from .emitters import Emitter, emitter_dcls
@@ -41,7 +41,7 @@ class ImageRegressorEmitter(Emitter):
         return self._size
 
     def __call__(self, observ: Space, action: Space) -> nn.Sequential:
-        if not isinstance(observ, ImageSpace):
+        if not isinstance(observ, FloatImageSpace):
             return NotImplemented
 
         if not isinstance(action, ShapeSpace):
