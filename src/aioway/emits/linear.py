@@ -1,11 +1,11 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import typing
 
 from torch import nn
 
 from aioway.spaces import AttrSpace, ShapeSpace, Space
 
+from ._utils import Activation, activation_module
 from .compound import BuilderNode, BuiltModule, CompoundBuilder
 from .emitters import Emitter, emitter_dcls, emitter_function
 
@@ -47,11 +47,6 @@ def linear_from_attr(observ: Space, action: Space) -> nn.Module:
     return nn.Linear(in_features=observ_shape[-1], out_features=act_shape[-1])
 
 
-type Activation = typing.Literal[
-    None, "relu", "relu6", "celu", "gelu", "sigmoid", "tanh"
-]
-
-
 @emitter_dcls
 class _MlpEmitter(Emitter):
     """
@@ -84,16 +79,20 @@ class MlpEmitter(_MlpEmitter):
 
         sizes = [observ[-1], *self.hidden_sizes, action[-1]]
 
-        module = nn.Sequential()
-        activ = _activ_module(self.activation)
+        modules: list[nn.Module] = []
+        activ = activation_module(self.activation)
 
         for in_feats, out_feats in zip(sizes[:-1], sizes[1:]):
-            module.append(nn.Linear(in_features=in_feats, out_features=out_feats))
+            modules.append(nn.Linear(in_features=in_feats, out_features=out_feats))
 
             if activ is not NotImplemented:
-                module.append(activ)
+                modules.append(activ)
 
-        return module
+        # Drop the last one.
+        if activ is not NotImplemented:
+            modules.pop()
+
+        return nn.Sequential(*modules)
 
 
 @emitter_dcls
@@ -114,7 +113,7 @@ class MlpCompoundEmitter(_MlpEmitter):
         builder = CompoundBuilder()
 
         x: BuilderNode = builder.input("input")
-        activ = _activ_module(self.activation)
+        activ = activation_module(self.activation)
 
         for in_feats, out_feats in zip(sizes[:-1], sizes[1:]):
             x = builder.thunk(
@@ -126,21 +125,3 @@ class MlpCompoundEmitter(_MlpEmitter):
                 x = builder.thunk(activ, x)
 
         return builder.output(x)
-
-
-def _activ_module(activation: Activation) -> nn.Module:
-    match activation:
-        case None:
-            return NotImplemented
-        case "relu":
-            return nn.ReLU()
-        case "relu6":
-            return nn.ReLU6()
-        case "celu":
-            return nn.CELU()
-        case "gelu":
-            return nn.GELU()
-        case "sigmoid":
-            return nn.Sigmoid()
-        case "tanh":
-            return nn.Tanh()
