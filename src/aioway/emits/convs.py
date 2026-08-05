@@ -66,7 +66,7 @@ class ImageRegressorEmitter(Emitter):
             if activation is not NotImplemented:
                 modules.append(activation)
 
-        seq = nn.Sequential(*modules)
+        seq = nn.Sequential(*modules, nn.Flatten())
 
         sim_in = observ.sample()
         sim_out = seq(sim_in)
