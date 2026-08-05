@@ -5,7 +5,7 @@
 groups = ["default", "build", "debugging", "docs", "faiss", "networkx", "pre-commit", "sklearn", "tests"]
 strategy = []
 lock_version = "4.5.0"
-content_hash = "sha256:87672e62986864f297c730218e0912aeb9d44a04a9a2e7793dbe8a7d49bba6d9"
+content_hash = "sha256:200b7a0665ac50528ebc30f6b6fc5c520cd057178567f024f3d175643ec3d593"
 
 [[metadata.targets]]
 requires_python = ">=3.14,<3.15"
@@ -789,6 +789,19 @@ files = [
     {file = "hf_xet-1.5.0-cp37-abi3-win_amd64.whl", hash = "sha256:2806c7c17b4d23f8d88f7c4814f838c3b6150773fe339c20af23e1cfaf2797e4"},
     {file = "hf_xet-1.5.0-cp37-abi3-win_arm64.whl", hash = "sha256:b6c9df403040248c76d808d3e047d64db2d923bae593eb244c41e425cf6cd7be"},
     {file = "hf_xet-1.5.0.tar.gz", hash = "sha256:e0fb0a34d9f406eed88233e829a67ec016bec5af19e480eac65a233ea289a948"},
+]
+
+[[package]]
+name = "hoptorch"
+version = "0.1.4"
+summary = ""
+dependencies = [
+    "pyvers",
+    "torch",
+]
+files = [
+    {file = "hoptorch-0.1.4-py3-none-any.whl", hash = "sha256:fc0b49e5a8b2370db8b47185fedaf91b3c6cf7f6e726079bb02aca6dbf8bb04f"},
+    {file = "hoptorch-0.1.4.tar.gz", hash = "sha256:958e22455460342f195c63f989543da6fcc66337b2f8fca1980454209d36d450"},
 ]
 
 [[package]]
@@ -2374,11 +2387,11 @@ files = [
 
 [[package]]
 name = "pyvers"
-version = "0.2.2"
+version = "0.2.3"
 summary = ""
 files = [
-    {file = "pyvers-0.2.2-py3-none-any.whl", hash = "sha256:c4696408a0b15fbaa90df33d3bc579cf23a74a73541858f5470216f12f51f3b1"},
-    {file = "pyvers-0.2.2.tar.gz", hash = "sha256:205026bcd0b4c09198cb3a32f243fd179ef012882ce16d93dcb755320acd56f7"},
+    {file = "pyvers-0.2.3-py3-none-any.whl", hash = "sha256:6f5b5612f2f4bd08caa49baa70fc5f875fc7da701a5385c13e244eea6b8114dd"},
+    {file = "pyvers-0.2.3.tar.gz", hash = "sha256:c4b81c3a033963245e124cdecb052783c9c4cea3bb08c051833af1c44faa6283"},
 ]
 
 [[package]]
@@ -3033,6 +3046,26 @@ files = [
     {file = "torchcodec-0.10.0-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:bb882c12ca07dcf6d82833db67e6b565693a4bccfeab6696697620e43e465556"},
     {file = "torchcodec-0.10.0-cp314-cp314-manylinux_2_28_x86_64.whl", hash = "sha256:bec2b938ad4b294bd71d0b0ab4976037c740be0c80be79e67803ebed4eff270e"},
     {file = "torchcodec-0.10.0-cp314-cp314-win_amd64.whl", hash = "sha256:4734eb82146516049e1070152eb3013d7b9689159ef35db7c0894d130d4e335d"},
+]
+
+[[package]]
+name = "torchrl"
+version = "0.13.3"
+summary = ""
+dependencies = [
+    "cloudpickle",
+    "hoptorch",
+    "numpy",
+    "packaging",
+    "pyvers",
+    "tensordict",
+    "torch",
+]
+files = [
+    {file = "torchrl-0.13.3-cp314-cp314-macosx_12_0_arm64.whl", hash = "sha256:3cbcac363bf396343d292debe3db3bfddf48371138b8d9006f4c23da9db665e7"},
+    {file = "torchrl-0.13.3-cp314-cp314-manylinux_2_28_aarch64.whl", hash = "sha256:afbaf7bd4cc4fb53bbe435d273d1fb30469dcc7611c6190426a173a3e116c805"},
+    {file = "torchrl-0.13.3-cp314-cp314-manylinux_2_28_x86_64.whl", hash = "sha256:00ebb75f9a49945c00a5f51c96d421f3d162e41faa63567c3ae9768c36d4c12b"},
+    {file = "torchrl-0.13.3-cp314-cp314-win_amd64.whl", hash = "sha256:39ba41c5e47d593a7b391eafe2bc653818a95e7003105aa6abad2691bd63404e"},
 ]
 
 [[package]]
