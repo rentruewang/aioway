@@ -10,8 +10,7 @@ import typing
 import torch
 
 from .attrs import Attr
-from .spaces import space_dcls
-from .tensors import TensorSpace
+from .spaces import TensorSpace, space_dcls
 
 __all__ = ["DimSpace", "DimInfo"]
 

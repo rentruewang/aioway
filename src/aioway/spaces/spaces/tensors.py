@@ -8,14 +8,25 @@ import typing
 import torch
 
 from aioway._api import public_api
-from aioway._torch import is_fake_tensor
+from aioway._torch import Attr, is_fake_tensor
 
 from .spaces import Space, space_dcls
 
-if typing.TYPE_CHECKING:
-    from .attrs import Attr
+__all__ = ["IsTensorSpace", "TensorSpace"]
 
-__all__ = ["TensorSpace"]
+
+@public_api
+@space_dcls
+class IsTensorSpace(Space[torch.Tensor], abc.ABC):
+    "Constrains only that the item is a `torch.Tensor`"
+
+    @typing.override
+    @typing.final
+    def contains(self, tensor: torch.Tensor, /) -> bool:
+        return isinstance(tensor, torch.Tensor)
+
+    def _sample_n(self, n):
+        return torch.zeros([n])
 
 
 @public_api
@@ -26,8 +37,6 @@ class TensorSpace(Space[torch.Tensor], abc.ABC):
     @typing.override
     @typing.final
     def contains(self, tensor: torch.Tensor, /) -> bool:
-        from .attrs import Attr
-
         if not isinstance(tensor, torch.Tensor):
             raise TypeError(f"{type(tensor)} is not a `torch.Tensor`.")
 
