@@ -3,74 +3,31 @@
 "A collection of tensors and their `Space`s."
 
 import abc
-import dataclasses as dcls
 import typing
 
 import tensordict as td
+import torch
 
 from aioway._api import public_api
 from aioway._torch import Schema, is_real_tensor
 
 from .spaces import Space, space_dcls
 
-__all__ = ["Schema", "TdictSpace", "TClsSpace"]
+__all__ = ["IsTdictSpace", "TdictSpace"]
 
 
 @public_api
 @space_dcls
-class TClsSpace[T: td.TensorClass](Space[T], abc.ABC):
-    "A `Space` that checks a `td.TensorClass`."
+class IsTdictSpace(Space[td.TensorDict]):
+    "Constrains only that the item is a `td.TensorDict`."
 
-    KLASS: typing.ClassVar[type[T]]
-    "The class for which to check."
-
-    def __post_init__(self) -> None:
-        if not isinstance(self.KLASS, type):
-            raise TypeError(f"{self.KLASS=} should be a type.")
-
-        if not issubclass(self.KLASS, td.TensorClass):
-            raise TypeError(f"{self.KLASS=} should be a subclass of `td.TensorClass`.")
-
+    @typing.override
     @typing.final
-    def contains(self, inst: T) -> bool:
-        if not isinstance(inst, self.KLASS):
-            raise TypeError(
-                f"{inst=} should be an instance of `{self.KLASS!s}`. "
-                f"But {type(inst)=}."
-            )
+    def contains(self, tdict: td.TensorDict, /) -> bool:
+        return isinstance(tdict, td.TensorDict)
 
-        schema = self._to_schema(inst)
-
-        try:
-            self._check_attrs(schema)
-        except ValueError:
-            return False
-
-        try:
-            self._check_data(inst)
-        except ValueError:
-            return False
-
-        return True
-
-    @typing.no_type_check
-    def _to_schema(self, inst: T) -> Schema:
-        assert dcls.is_dataclass(inst)
-        fields = dcls.asdict(inst)
-        schema = Schema.parse(fields)
-        return schema
-
-    @abc.abstractmethod
-    def _check_attrs(self, attrs: Schema, /) -> None:
-        """
-        Raise `ValueError` if `self` is incompatible with tdict with `attrs`.
-        """
-
-    @abc.abstractmethod
-    def _check_data(self, inst: T, /) -> None:
-        """
-        Raise `ValueError` if `inst` is not acceptable.
-        """
+    def _sample_n(self, n):
+        return td.TensorDict({"a": torch.zeros([n])})
 
 
 @public_api

@@ -12,7 +12,21 @@ from aioway._torch import Attr, is_fake_tensor
 
 from .spaces import Space, space_dcls
 
-__all__ = ["TensorSpace"]
+__all__ = ["IsTensorSpace", "TensorSpace"]
+
+
+@public_api
+@space_dcls
+class IsTensorSpace(Space[torch.Tensor], abc.ABC):
+    "Constrains only that the item is a `torch.Tensor`"
+
+    @typing.override
+    @typing.final
+    def contains(self, tensor: torch.Tensor, /) -> bool:
+        return isinstance(tensor, torch.Tensor)
+
+    def _sample_n(self, n):
+        return torch.zeros([n])
 
 
 @public_api

@@ -1,16 +1,11 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import pytest
 import torch
 
-from aioway.emits import LossSpace, LossTCls
+from aioway.emits import LossTCls
+from aioway.spaces import space_for_tcls
 
 
-@pytest.fixture
-def loss_space():
-    return LossSpace()
-
-
-def test_loss_space(loss_space: LossSpace):
+def test_loss_space():
     inst = LossTCls(torch.randn(3, 5), torch.randn(3, 5))
-    assert inst in loss_space
+    assert inst in space_for_tcls(LossTCls)

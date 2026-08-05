@@ -3,5 +3,6 @@
 "The core `Space` abstractions."
 
 from .spaces import *
+from .tclss import *
 from .tdicts import *
 from .tensors import *
