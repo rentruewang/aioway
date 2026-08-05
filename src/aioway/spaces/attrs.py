@@ -11,8 +11,7 @@ from torch import nn
 from aioway._torch import Attr, Device, DType, Layout, Shape
 
 from .casts import CastedSpaceModule, register_cast
-from .spaces import space_dcls
-from .tensors import TensorSpace
+from .spaces import TensorSpace, space_dcls
 
 __all__ = ["AttrSpace", "ShapeSpace"]
 

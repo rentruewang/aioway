@@ -7,8 +7,7 @@ import torch
 from aioway._torch import Attr, DType, Shape
 from aioway.errors import re_raise_func
 
-from .spaces import space_dcls
-from .tensors import TensorSpace
+from .spaces import TensorSpace, space_dcls
 
 __all__ = ["DiscreteSpace", "BoxSpace", "MultiDiscreteSpace", "MultiBinarySpace"]
 
