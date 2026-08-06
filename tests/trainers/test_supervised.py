@@ -77,7 +77,7 @@ def trainer(
     data_loader: data.DataLoader,
 ):
     return SupervisedTrainer(
-        train_loss,
+        compute_loss=train_loss,
         optimizer=opt,
         dataloader=data_loader,
         max_grad_norm=1,
