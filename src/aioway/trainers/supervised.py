@@ -16,7 +16,7 @@ from aioway.errors import re_raise_func
 __all__ = [
     "VectorPair",
     "SupervisedTrainer",
-    "SupervisedLoss",
+    "ComputeSlLoss",
     "optimize",
     "optimize_clip",
 ]
@@ -83,8 +83,18 @@ class TrainLoss(typing.Protocol):
     def __call__(self, batch: VectorPair) -> torch.Tensor: ...
 
 
-class SupervisedLoss(nn.Module):
-    def __init__(self, module: nn.Module, loss_func: nn.Module) -> None:
+class _LossFunc(typing.Protocol):
+    "A loss function must have `(input, target) -> loss` signature."
+
+    def __call__(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor: ...
+
+
+class ComputeSlLoss(nn.Module):
+    """
+    The module that wraps a supervised learning
+    """
+
+    def __init__(self, module: nn.Module, loss_func: _LossFunc) -> None:
         super().__init__()
         self.module = module
         self.loss_func = loss_func

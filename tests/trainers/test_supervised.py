@@ -3,9 +3,10 @@
 import pytest
 import torch
 from torch import nn, optim
+from torch.nn import functional as F
 from torch.utils import data
 
-from aioway.trainers import SupervisedLoss, SupervisedTrainer, VectorPair
+from aioway.trainers import ComputeSlLoss, SupervisedTrainer, VectorPair
 
 
 class _RandomDataset(data.Dataset):
@@ -54,13 +55,14 @@ def module(in_feats, out_feats):
 
 
 def _train_loss():
-    yield nn.MSELoss()
-    yield nn.SmoothL1Loss()
+    yield F.mse_loss
+    yield F.smooth_l1_loss
+    yield F.l1_loss
 
 
 @pytest.fixture(params=_train_loss())
 def train_loss(request: pytest.FixtureRequest, module: nn.Module):
-    return SupervisedLoss(module, request.param)
+    return ComputeSlLoss(module, request.param)
 
 
 @pytest.fixture
