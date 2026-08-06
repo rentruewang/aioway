@@ -7,7 +7,7 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.19.5
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
@@ -36,8 +36,6 @@
 #
 #
 
-# %%
-
 # %% [markdown]
 # ## Quick Start
 #
@@ -46,10 +44,9 @@
 # collect a trajectory:
 #
 #
-
-import tensordict as td
-
+#
 # %%
+import tensordict as td
 import torch
 from tensordict import nn as tnn
 from torch import nn
@@ -160,7 +157,6 @@ print(nested)
 #
 
 # %%
-
 env = trl_envs.GymEnv("Pendulum-v1")
 print("Action spec:", env.action_spec)
 print("Observation spec:", env.observation_spec)
@@ -175,13 +171,13 @@ print("Observation spec:", env.observation_spec)
 #
 
 # %%
-td = env.reset()
-print("Reset output:", td)
+tdict = env.reset()
+print("Reset output:", tdict)
 
 # Sample a random action and take a step
-td["action"] = env.action_spec.rand()
-td = env.step(td)
-print("Step output:", td)
+tdict["action"] = env.action_spec.rand()
+tdict = env.step(tdict)
+print("Step output:", tdict)
 
 # %% [markdown]
 # Notice that :meth:`~torchrl.envs.EnvBase.step` returns the same td.TensorDict
@@ -223,12 +219,12 @@ def make_env():
 
 # Run 4 environments in parallel
 vec_env = trl_envs.SerialEnv(4, make_env)
-td = vec_env.reset()
-print("Batched reset:", td.batch_size)
+tdict = vec_env.reset()
+print("Batched reset:", tdict.batch_size)
 
-td["action"] = vec_env.action_spec.rand()
-td = vec_env.step(td)
-print("Batched step:", td.batch_size)
+tdict["action"] = vec_env.action_spec.rand()
+tdict = vec_env.step(tdict)
+print("Batched step:", tdict.batch_size)
 
 vec_env.close()
 
@@ -251,15 +247,13 @@ vec_env.close()
 #
 
 # %%
-
-
 module = nn.Linear(3, 2)
 td_module = tnn.TensorDictModule(module, in_keys=["observation"], out_keys=["action"])
 
 # The module reads "observation" and writes "action"
-td = td.TensorDict(observation=torch.randn(4, 3), batch_size=[4])
-td_module(td)
-print(td)  # Now has "action" key
+t = td.TensorDict(observation=torch.randn(4, 3), batch_size=[4])
+td_module(t)
+print(t)
 
 # %% [markdown]
 # This pattern has a powerful benefit: modules become composable. You can
@@ -276,7 +270,7 @@ print(td)  # Now has "action" key
 # %%
 
 # trl_mods.MLP for vector observations - specify input/output dims and hidden layers
-mlp = trl_mods.trl_mods.MLP(in_features=64, out_features=10, num_cells=[128, 128])
+mlp = trl_mods.MLP(in_features=64, out_features=10, num_cells=[128, 128])
 print(mlp(torch.randn(4, 64)).shape)
 
 # trl_mods.ConvNet for image observations - outputs a flat feature vector
@@ -311,10 +305,10 @@ policy = tnn.ProbabilisticTensorDictSequential(
     ),
 )
 
-td = td.TensorDict(observation=torch.randn(4, 3), batch_size=[4])
-policy(td)
-print("Sampled action:", td["action"].shape)
-print("Log prob:", td["action_log_prob"].shape)
+tdict = td.TensorDict(observation=torch.randn(4, 3), batch_size=[4])
+policy(tdict)
+print("Sampled action:", tdict["action"].shape)
+print("Log prob:", tdict["action_log_prob"].shape)
 
 # %% [markdown]
 # The ``trl_mods.TanhNormal`` distribution squashes samples to [-1, 1], which is useful
