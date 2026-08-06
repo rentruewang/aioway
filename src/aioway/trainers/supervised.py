@@ -13,7 +13,13 @@ from torch.utils import data
 
 from aioway.errors import re_raise_func
 
-__all__ = ["VectorPair", "SupervisedTrainer", "optimize", "optimize_clip"]
+__all__ = [
+    "VectorPair",
+    "SupervisedTrainer",
+    "SupervisedLoss",
+    "optimize",
+    "optimize_clip",
+]
 
 
 class VectorPair(td.TensorClass):
@@ -27,14 +33,14 @@ class VectorPair(td.TensorClass):
 
     @re_raise_func(AssertionError, ValueError)
     def __post_init__(self) -> None:
-        assert self.x.ndim == self.y.ndim == 2
+        assert self.x.ndim == self.y.ndim
         assert len(self.x) == len(self.y)
-        self.auto_batch_size_(batch_dims=0)
+        self.auto_batch_size_()
 
 
 @dcls.dataclass
 class SupervisedTrainer:
-    module: nn.Module
+    compute_loss: nn.Module
     "The module to use."
 
     optimizer: optim.Optimizer
@@ -63,9 +69,9 @@ class SupervisedTrainer:
         Train one single step.
         """
 
-        loss = self.module(batch)
+        loss = self.compute_loss(batch)
         assert isinstance(loss, torch.Tensor)
-        optimize_clip(self.optimizer, loss, self.module, self.max_grad_norm)
+        optimize_clip(self.optimizer, loss, self.compute_loss, self.max_grad_norm)
         return loss
 
 
@@ -75,6 +81,17 @@ class TrainLoss(typing.Protocol):
     """
 
     def __call__(self, batch: VectorPair) -> torch.Tensor: ...
+
+
+class SupervisedLoss(nn.Module):
+    def __init__(self, module: nn.Module, loss_func: nn.Module) -> None:
+        super().__init__()
+        self.module = module
+        self.loss_func = loss_func
+
+    def forward(self, batch: VectorPair) -> torch.Tensor:
+        pred = self.module(batch.x)
+        return self.loss_func(pred, batch.y)
 
 
 @ctxl.contextmanager
