@@ -206,7 +206,7 @@ print("Transformed env:", env)
 #
 # RL algorithms are data-hungry. Running multiple environment instances in
 # parallel can dramatically speed up data collection. TorchRL's
-# :class:`~trl_envs.SerialEnv` runs environments in separate processes,
+# :class:`~trl_envs.SerialEnv` runs environments multiple times,
 # returning batched TensorDicts:
 #
 
