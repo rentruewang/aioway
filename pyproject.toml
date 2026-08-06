@@ -20,7 +20,8 @@ dependencies = [
     "av>=17",
     "transformers>=5",
     "tokenizers>=0.22",
-    "torchrl>=0.13.3",
+    "torchrl>=0.13",
+    "gymnasium>=1",
 ]
 
 [project.optional-dependencies]

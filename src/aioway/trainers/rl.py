@@ -3,9 +3,13 @@
 from debugpy.launcher.debuggee import process
 from torchrl import envs as trl_envs
 from torchrl import collectors as trl_cols
+from torchrl import objectives as trl_objs
+from torchrl import data as trl_data
+
 import contextlib as ctxl
 
-from torch import nn
+
+from torch import nn, optim
 
 from collections import abc as cabc
 
@@ -38,3 +42,23 @@ def collector(
         yield collector
     finally:
         collector.shutdown()
+
+
+def train_rl(
+    loss_fn: trl_objs.LossModule,
+    optimizer: optim.Optimizer,
+    collector: trl_cols.Collector,
+    buffer: trl_data.ReplayBuffer,
+    batch_size: int,
+):
+    for i, batch in enumerate(collector):
+        buffer.extend(batch)
+
+        # Sample a batch.
+        sample = buffer.sample(batch_size)
+        loss = loss_fn(sample)
+
+        # Standard PyTorch optimization step
+        optimizer.zero_grad()
+        loss["loss"].backward()
+        optimizer.step()
