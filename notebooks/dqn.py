@@ -47,14 +47,21 @@
 #
 #
 
+import tensordict as td
+
 # %%
 import torch
-from torchrl.envs import GymEnv
-from torchrl.modules import MLP, QValueActor
+from tensordict import nn as tnn
+from torch import nn
+from torchrl import collectors as trl_cols
+from torchrl import data as trl_data
+from torchrl import envs as trl_envs
+from torchrl import modules as trl_mods
+from torchrl import objectives as trl_objs
 
-env = GymEnv("CartPole-v1")
-actor = QValueActor(
-    MLP(
+env = trl_envs.GymEnv("CartPole-v1")
+actor = trl_mods.QValueActor(
+    trl_mods.MLP(
         in_features=env.observation_spec["observation"].shape[-1],
         out_features=2,
         num_cells=[64, 64],
@@ -69,31 +76,29 @@ print(
 
 # %% [markdown]
 # That's it! We wrapped a Gym environment, created a Q-value actor with an
-# MLP backbone, and used :meth:`~torchrl.envs.EnvBase.rollout` to collect
-# a full trajectory. The result is a :class:`~tensordict.TensorDict`
+# trl_mods.MLP backbone, and used :meth:`~torchrl.envs.EnvBase.rollout` to collect
+# a full trajectory. The result is a :class:`~td.TensorDict`
 # containing observations, actions, rewards, and more.
 #
 # Now let's understand each component in detail.
 #
-# ## TensorDict: The Data Backbone
+# ## td.TensorDict: The Data Backbone
 #
-# At the heart of TorchRL is :class:`~tensordict.TensorDict` - a dictionary-like
+# At the heart of TorchRL is :class:`~td.TensorDict` - a dictionary-like
 # container that holds tensors and supports batched operations. Think of it as
 # a "tensor of dictionaries" or a "dictionary of tensors" that knows about its
 # batch dimensions.
 #
-# Why TensorDict? In RL, we constantly pass around groups of related tensors:
-# observations, actions, rewards, done flags, next observations, etc. TensorDict
+# Why td.TensorDict? In RL, we constantly pass around groups of related tensors:
+# observations, actions, rewards, done flags, next observations, etc. td.TensorDict
 # keeps these organized and lets us manipulate them as a unit.
 #
 #
 
 # %%
-from tensordict import TensorDict
-
-# Create a TensorDict representing a batch of 4 transitions
+# Create a td.TensorDict representing a batch of 4 transitions
 batch_size = 4
-data = TensorDict(
+data = td.TensorDict(
     obs=torch.randn(batch_size, 3),
     action=torch.randn(batch_size, 2),
     reward=torch.randn(batch_size, 1),
@@ -129,8 +134,8 @@ print("Stacked shape:", stacked.batch_size)
 #
 
 # %%
-nested = TensorDict(
-    observation=TensorDict(
+nested = td.TensorDict(
+    observation=td.TensorDict(
         pixels=torch.randn(4, 3, 84, 84),
         vector=torch.randn(4, 10),
         batch_size=[4],
@@ -149,15 +154,14 @@ print(nested)
 #
 # **Creating Environments**
 #
-# The simplest way to create an environment is with :class:`~torchrl.envs.GymEnv`,
+# The simplest way to create an environment is with :class:`~torchrl.envs.trl_envs.GymEnv`,
 # which wraps any Gymnasium (or legacy Gym) environment:
 #
 #
 
 # %%
-from torchrl.envs import GymEnv
 
-env = GymEnv("Pendulum-v1")
+env = trl_envs.GymEnv("Pendulum-v1")
 print("Action spec:", env.action_spec)
 print("Observation spec:", env.observation_spec)
 
@@ -180,8 +184,8 @@ td = env.step(td)
 print("Step output:", td)
 
 # %% [markdown]
-# Notice that :meth:`~torchrl.envs.EnvBase.step` returns the same TensorDict
-# with additional keys filled in: the ``"next"`` sub-TensorDict contains the
+# Notice that :meth:`~torchrl.envs.EnvBase.step` returns the same td.TensorDict
+# with additional keys filled in: the ``"next"`` sub-td.TensorDict contains the
 # resulting observation, reward, and done flag.
 #
 # **Transforms**
@@ -194,13 +198,10 @@ print("Step output:", td)
 #
 
 # %%
-from torchrl.envs import Compose, StepCounter, TransformedEnv
 
-env = TransformedEnv(
-    GymEnv("Pendulum-v1"),
-    Compose(
-        StepCounter(max_steps=200),  # Track steps and auto-terminate
-    ),
+env = trl_envs.TransformedEnv(
+    trl_envs.GymEnv("Pendulum-v1"),
+    trl_envs.Compose([trl_envs.StepCounter(max_steps=200)]),
 )
 print("Transformed env:", env)
 
@@ -214,11 +215,10 @@ print("Transformed env:", env)
 #
 
 # %%
-from torchrl import envs as trl_envs
 
 
 def make_env():
-    return GymEnv("Pendulum-v1")
+    return trl_envs.GymEnv("Pendulum-v1")
 
 
 # Run 4 environments in parallel
@@ -245,20 +245,19 @@ vec_env.close()
 # **tnn.TensorDictModule**
 #
 # The core building block is :class:`~tensordict.nn.tnn.TensorDictModule`. It wraps
-# any ``nn.Module`` and specifies which TensorDict keys to read as inputs and
+# any ``nn.Module`` and specifies which td.TensorDict keys to read as inputs and
 # which keys to write as outputs:
 #
 #
 
 # %%
-from tensordict import nn as tnn
-from torch import nn
+
 
 module = nn.Linear(3, 2)
 td_module = tnn.TensorDictModule(module, in_keys=["observation"], out_keys=["action"])
 
 # The module reads "observation" and writes "action"
-td = TensorDict(observation=torch.randn(4, 3), batch_size=[4])
+td = td.TensorDict(observation=torch.randn(4, 3), batch_size=[4])
 td_module(td)
 print(td)  # Now has "action" key
 
@@ -275,10 +274,9 @@ print(td)  # Now has "action" key
 #
 
 # %%
-from torchrl import modules as trl_mods
 
-# MLP for vector observations - specify input/output dims and hidden layers
-mlp = trl_mods.MLP(in_features=64, out_features=10, num_cells=[128, 128])
+# trl_mods.MLP for vector observations - specify input/output dims and hidden layers
+mlp = trl_mods.trl_mods.MLP(in_features=64, out_features=10, num_cells=[128, 128])
 print(mlp(torch.randn(4, 64)).shape)
 
 # trl_mods.ConvNet for image observations - outputs a flat feature vector
@@ -313,7 +311,7 @@ policy = tnn.ProbabilisticTensorDictSequential(
     ),
 )
 
-td = TensorDict(observation=torch.randn(4, 3), batch_size=[4])
+td = td.TensorDict(observation=torch.randn(4, 3), batch_size=[4])
 policy(td)
 print("Sampled action:", td["action"].shape)
 print("Log prob:", td["action_log_prob"].shape)
@@ -330,21 +328,20 @@ print("Log prob:", td["action_log_prob"].shape)
 # this efficiently, including batching, device management, and multi-process
 # collection.
 #
-# The :class:`~torchrl.collectors.Collector` collects data
+# The :class:`~trl_cols.Collector` collects data
 # synchronously - it waits for a batch to be ready before returning:
 #
 #
 
 # %%
-from torchrl.collectors import Collector
 
 # A simple deterministic policy for demonstration
 actor = tnn.TensorDictModule(
     nn.Linear(3, 1), in_keys=["observation"], out_keys=["action"]
 )
 
-collector = Collector(
-    create_env_fn=lambda: GymEnv("Pendulum-v1"),
+collector = trl_cols.Collector(
+    create_env_fn=lambda: trl_envs.GymEnv("Pendulum-v1"),
     policy=actor,
     frames_per_batch=200,  # Collect 200 frames per iteration
     total_frames=1000,  # Stop after 1000 total frames
@@ -370,13 +367,12 @@ collector.shutdown()
 #
 
 # %%
-from torchrl.data import LazyTensorStorage, ReplayBuffer
 
-buffer = ReplayBuffer(storage=LazyTensorStorage(max_size=10000))
+buffer = trl_data.ReplayBuffer(storage=trl_data.LazyTensorStorage(max_size=10000))
 
 # Add a batch of experience
 buffer.extend(
-    TensorDict(obs=torch.randn(100, 4), action=torch.randn(100, 2), batch_size=[100])
+    td.TensorDict(obs=torch.randn(100, 4), action=torch.randn(100, 2), batch_size=[100])
 )
 
 # Sample a mini-batch for training
@@ -384,21 +380,20 @@ sample = buffer.sample(32)
 print("Sampled batch:", sample.batch_size)
 
 # %% [markdown]
-# The :class:`~torchrl.data.replay_buffers.LazyTensorStorage` allocates memory lazily based
+# The :class:`~torchrl.data.replay_buffers.trl_data.LazyTensorStorage` allocates memory lazily based
 # on the first batch added. For prioritized experience replay (used in DQN
-# variants), use :class:`~torchrl.data.PrioritizedReplayBuffer`:
+# variants), use :class:`~trl_data.PrioritizedReplayBuffer`:
 #
 #
 
 # %%
-from torchrl.data import PrioritizedReplayBuffer
 
-buffer = PrioritizedReplayBuffer(
+buffer = trl_data.PrioritizedReplayBuffer(
     alpha=0.6,  # Priority exponent
     beta=0.4,  # Importance sampling exponent
-    storage=LazyTensorStorage(max_size=10000),
+    storage=trl_data.LazyTensorStorage(max_size=10000),
 )
-buffer.extend(TensorDict(obs=torch.randn(100, 4), batch_size=[100]))
+buffer.extend(td.TensorDict(obs=torch.randn(100, 4), batch_size=[100]))
 
 # Use return_info=True to get sampling metadata (indices, weights)
 sample, info = buffer.sample(32, return_info=True)
@@ -417,12 +412,11 @@ print("Prioritized sample indices:", info["index"][:5], "...")  # First 5 indice
 # - :class:`~torchrl.objectives.TD3Loss` - Twin Delayed DDPG
 #
 # Here's how to set up a DQN loss. We create a Q-network wrapped in a
-# :class:`~torchrl.modules.QValueActor`, which handles action selection:
+# :class:`~torchrl.modules.trl_mods.QValueActor`, which handles action selection:
 #
 #
 
 # %%
-from torchrl.objectives import DQNLoss
 
 qnet = tnn.TensorDictModule(
     nn.Sequential(nn.Linear(4, 64), nn.ReLU(), nn.Linear(64, 2)),
@@ -430,11 +424,12 @@ qnet = tnn.TensorDictModule(
     out_keys=["action_value"],
 )
 
-# QValueActor wraps the Q-network to select actions and output chosen values
-from torchrl.data import Categorical
+# trl_mods.QValueActor wraps the Q-network to select actions and output chosen values
 
-actor = QValueActor(qnet, in_keys=["observation"], spec=Categorical(n=2))
-loss_fn = DQNLoss(actor, action_space="categorical")
+actor = trl_mods.QValueActor(
+    qnet, in_keys=["observation"], spec=trl_data.Categorical(n=2)
+)
+loss_fn = trl_objs.DQNLoss(actor, action_space="categorical")
 
 # %% [markdown]
 # The loss function expects batches with specific keys. Let's create a
@@ -443,10 +438,10 @@ loss_fn = DQNLoss(actor, action_space="categorical")
 #
 
 # %%
-batch = TensorDict(
+batch = td.TensorDict(
     observation=torch.randn(32, 4),
     action=torch.randint(0, 2, (32,)),
-    next=TensorDict(
+    next=td.TensorDict(
         observation=torch.randn(32, 4),
         reward=torch.randn(32, 1),
         done=torch.zeros(32, 1, dtype=torch.bool),
@@ -474,7 +469,7 @@ print("Loss:", loss_td["loss"])
 torch.manual_seed(0)
 
 # 1. Create the environment
-env = GymEnv("CartPole-v1")
+env = trl_envs.GymEnv("CartPole-v1")
 
 # 2. Build a Q-network and wrap it as a policy
 qnet = tnn.TensorDictModule(
@@ -482,21 +477,21 @@ qnet = tnn.TensorDictModule(
     in_keys=["observation"],
     out_keys=["action_value"],
 )
-policy = QValueActor(qnet, in_keys=["observation"], spec=env.action_spec)
+policy = trl_mods.QValueActor(qnet, in_keys=["observation"], spec=env.action_spec)
 
 # 3. Set up the data collector
-collector = Collector(
-    create_env_fn=lambda: GymEnv("CartPole-v1"),
+collector = trl_cols.Collector(
+    create_env_fn=lambda: trl_envs.GymEnv("CartPole-v1"),
     policy=policy,
     frames_per_batch=100,
     total_frames=2000,
 )
 
 # 4. Create a replay buffer
-buffer = ReplayBuffer(storage=LazyTensorStorage(max_size=10000))
+buffer = trl_data.ReplayBuffer(storage=trl_data.LazyTensorStorage(max_size=10000))
 
-# 5. Set up the loss and optimizer (pass the QValueActor, not just the network)
-loss_fn = DQNLoss(policy, action_space=env.action_spec)
+# 5. Set up the loss and optimizer (pass the trl_mods.QValueActor, not just the network)
+loss_fn = trl_objs.DQNLoss(policy, action_space=env.action_spec)
 optimizer = torch.optim.Adam(policy.parameters(), lr=1e-3)
 
 # 6. Training loop: collect -> store -> sample -> train
