@@ -109,6 +109,7 @@ module = [
     "tensordict.*",
     "torchvision.*",
     "torchcodec.*",
+    "torchrl.*",
 ]
 ignore_missing_imports = true
 

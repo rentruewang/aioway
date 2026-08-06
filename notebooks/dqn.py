@@ -209,18 +209,12 @@ print("Transformed env:", env)
 #
 # RL algorithms are data-hungry. Running multiple environment instances in
 # parallel can dramatically speed up data collection. TorchRL's
-# :class:`~torchrl.envs.SerialEnv` runs environments in separate processes,
+# :class:`~trl_envs.SerialEnv` runs environments in separate processes,
 # returning batched TensorDicts:
-#
-# <div class="alert alert-info"><h4>Note</h4><p>``SerialEnv`` uses multiprocessing. The ``mp_start_method`` parameter
-#    controls how processes are spawned: ``"fork"`` (Linux default) is fast but
-#    can have issues with some libraries; ``"spawn"`` (Windows/macOS default)
-#    is safer but requires code to be guarded with ``if __name__ == "__main__"``.</p></div>
-#
 #
 
 # %%
-from torchrl.envs import SerialEnv
+from torchrl import envs as trl_envs
 
 
 def make_env():
@@ -228,7 +222,7 @@ def make_env():
 
 
 # Run 4 environments in parallel
-vec_env = SerialEnv(4, make_env)
+vec_env = trl_envs.SerialEnv(4, make_env)
 td = vec_env.reset()
 print("Batched reset:", td.batch_size)
 
@@ -248,20 +242,20 @@ vec_env.close()
 # and write to TensorDicts. This makes it easy to build policies that
 # integrate seamlessly with the environment interface.
 #
-# **TensorDictModule**
+# **tnn.TensorDictModule**
 #
-# The core building block is :class:`~tensordict.nn.TensorDictModule`. It wraps
+# The core building block is :class:`~tensordict.nn.tnn.TensorDictModule`. It wraps
 # any ``nn.Module`` and specifies which TensorDict keys to read as inputs and
 # which keys to write as outputs:
 #
 #
 
 # %%
-from tensordict.nn import TensorDictModule
+from tensordict import nn as tnn
 from torch import nn
 
 module = nn.Linear(3, 2)
-td_module = TensorDictModule(module, in_keys=["observation"], out_keys=["action"])
+td_module = tnn.TensorDictModule(module, in_keys=["observation"], out_keys=["action"])
 
 # The module reads "observation" and writes "action"
 td = TensorDict(observation=torch.randn(4, 3), batch_size=[4])
@@ -276,19 +270,19 @@ print(td)  # Now has "action" key
 # **Built-in Networks**
 #
 # TorchRL includes common network architectures used in RL. These are
-# regular PyTorch modules that you can wrap with TensorDictModule:
+# regular PyTorch modules that you can wrap with tnn.TensorDictModule:
 #
 #
 
 # %%
-from torchrl.modules import ConvNet, MLP
+from torchrl import modules as trl_mods
 
 # MLP for vector observations - specify input/output dims and hidden layers
-mlp = MLP(in_features=64, out_features=10, num_cells=[128, 128])
+mlp = trl_mods.MLP(in_features=64, out_features=10, num_cells=[128, 128])
 print(mlp(torch.randn(4, 64)).shape)
 
-# ConvNet for image observations - outputs a flat feature vector
-cnn = ConvNet(num_cells=[32, 64], kernel_sizes=[8, 4], strides=[4, 2])
+# trl_mods.ConvNet for image observations - outputs a flat feature vector
+cnn = trl_mods.ConvNet(num_cells=[32, 64], kernel_sizes=[8, 4], strides=[4, 2])
 print(cnn(torch.randn(4, 3, 84, 84)).shape)
 
 # %% [markdown]
@@ -296,31 +290,25 @@ print(cnn(torch.randn(4, 3, 84, 84)).shape)
 #
 # Many RL algorithms (PPO, SAC, etc.) use stochastic policies that output
 # probability distributions over actions. TorchRL provides
-# :class:`~tensordict.nn.ProbabilisticTensorDictModule` to sample from
+# :class:`~tensordict.nn.tnn.ProbabilisticTensorDictModule` to sample from
 # distributions and optionally compute log-probabilities:
 #
 #
 
 # %%
-from tensordict.nn import (
-    ProbabilisticTensorDictModule,
-    ProbabilisticTensorDictSequential,
-)
-from torchrl.modules import NormalParamExtractor, TanhNormal
-
-# The network outputs mean and std (via NormalParamExtractor)
+# The network outputs mean and std (via trl_mods.NormalParamExtractor)
 net = nn.Sequential(
-    nn.Linear(3, 64), nn.ReLU(), nn.Linear(64, 4), NormalParamExtractor()
+    nn.Linear(3, 64), nn.ReLU(), nn.Linear(64, 4), trl_mods.NormalParamExtractor()
 )
-backbone = TensorDictModule(net, in_keys=["observation"], out_keys=["loc", "scale"])
+backbone = tnn.TensorDictModule(net, in_keys=["observation"], out_keys=["loc", "scale"])
 
 # Combine backbone with a distribution sampler
-policy = ProbabilisticTensorDictSequential(
+policy = tnn.ProbabilisticTensorDictSequential(
     backbone,
-    ProbabilisticTensorDictModule(
+    tnn.ProbabilisticTensorDictModule(
         in_keys=["loc", "scale"],
         out_keys=["action"],
-        distribution_class=TanhNormal,
+        distribution_class=trl_mods.TanhNormal,
         return_log_prob=True,
     ),
 )
@@ -331,7 +319,7 @@ print("Sampled action:", td["action"].shape)
 print("Log prob:", td["action_log_prob"].shape)
 
 # %% [markdown]
-# The ``TanhNormal`` distribution squashes samples to [-1, 1], which is useful
+# The ``trl_mods.TanhNormal`` distribution squashes samples to [-1, 1], which is useful
 # for continuous control. The log-probability accounts for this transformation,
 # which is crucial for policy gradient methods.
 #
@@ -351,7 +339,9 @@ print("Log prob:", td["action_log_prob"].shape)
 from torchrl.collectors import Collector
 
 # A simple deterministic policy for demonstration
-actor = TensorDictModule(nn.Linear(3, 1), in_keys=["observation"], out_keys=["action"])
+actor = tnn.TensorDictModule(
+    nn.Linear(3, 1), in_keys=["observation"], out_keys=["action"]
+)
 
 collector = Collector(
     create_env_fn=lambda: GymEnv("Pendulum-v1"),
@@ -434,7 +424,7 @@ print("Prioritized sample indices:", info["index"][:5], "...")  # First 5 indice
 # %%
 from torchrl.objectives import DQNLoss
 
-qnet = TensorDictModule(
+qnet = tnn.TensorDictModule(
     nn.Sequential(nn.Linear(4, 64), nn.ReLU(), nn.Linear(64, 2)),
     in_keys=["observation"],
     out_keys=["action_value"],
@@ -487,7 +477,7 @@ torch.manual_seed(0)
 env = GymEnv("CartPole-v1")
 
 # 2. Build a Q-network and wrap it as a policy
-qnet = TensorDictModule(
+qnet = tnn.TensorDictModule(
     nn.Sequential(nn.Linear(4, 128), nn.ReLU(), nn.Linear(128, 2)),
     in_keys=["observation"],
     out_keys=["action_value"],
