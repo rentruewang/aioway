@@ -4,18 +4,18 @@ import contextlib as ctxl
 from collections import abc as cabc
 
 from torch import nn, optim
-from torchrl import collectors as trl_cols
-from torchrl import data as trl_data
-from torchrl import envs as trl_envs
-from torchrl import objectives as trl_objs
+from torchrl import collectors as rlcol
+from torchrl import data as rldata
+from torchrl import envs as rlenv
+from torchrl import objectives as rlobj
 
 __all__ = ["vec_env", "collector"]
 
 
 @ctxl.contextmanager
-def vec_env(name: str, processes: int) -> cabc.Generator[trl_envs.ParallelEnv]:
-    env = trl_envs.GymEnv(name)
-    parallel = trl_envs.ParallelEnv(processes, lambda: env)
+def vec_env(name: str, processes: int) -> cabc.Generator[rlenv.ParallelEnv]:
+    env = rlenv.GymEnv(name)
+    parallel = rlenv.ParallelEnv(processes, lambda: env)
 
     try:
         yield parallel
@@ -25,9 +25,9 @@ def vec_env(name: str, processes: int) -> cabc.Generator[trl_envs.ParallelEnv]:
 
 @ctxl.contextmanager
 def collector(
-    env: trl_envs.EnvBase, policy: nn.Module, frames_per_batch: int, total_frames: int
-) -> cabc.Generator[trl_cols.Collector]:
-    collector = trl_cols.Collector(
+    env: rlenv.EnvBase, policy: nn.Module, frames_per_batch: int, total_frames: int
+) -> cabc.Generator[rlcol.Collector]:
+    collector = rlcol.Collector(
         create_env_fn=env,
         policy=policy,
         frames_per_batch=frames_per_batch,
@@ -41,10 +41,10 @@ def collector(
 
 
 def train_rl(
-    loss_fn: trl_objs.LossModule,
+    loss_fn: rlobj.LossModule,
     optimizer: optim.Optimizer,
-    collector: trl_cols.Collector,
-    buffer: trl_data.ReplayBuffer,
+    collector: rlcol.Collector,
+    buffer: rldata.ReplayBuffer,
     batch_size: int,
 ):
     for i, batch in enumerate(collector):
