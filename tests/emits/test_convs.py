@@ -6,13 +6,16 @@ from torchrl import data as rldata
 
 from aioway._specs import float_image_spec, unbounded_box_spec
 from aioway._torch import Shape
-from aioway.emits import emit_one
+from aioway.emits import emit_one, sample_from_spec, set_batch_size
 from aioway.emits.convs import ImageRegressorEmitter
 
 
 @pytest.fixture
 def image_emitter():
-    with ImageRegressorEmitter([5, 6, 7, 8], [1, 2, 3, 4], [1, 2, 3, 4]).consider():
+    with (
+        set_batch_size(4),
+        ImageRegressorEmitter([5, 6, 7, 8], [1, 2, 3, 4], [1, 2, 3, 4]).consider(),
+    ):
         yield
 
 
@@ -40,5 +43,6 @@ def test_emit_image_regressor(
     image_mod = emit_one(image_space, output_space)
     assert isinstance(image_mod, nn.Module)
 
-    img = image_space.sample([7])
+    with set_batch_size(7):
+        img = sample_from_spec(image_space)
     assert image_mod(img).shape == (7, feat_size)
