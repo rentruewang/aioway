@@ -5,7 +5,7 @@ import typing
 import pytest
 
 from aioway._specs import unbounded_box_spec
-from aioway.emits import NormEmitter, NormType, emit_one
+from aioway.emits import NormEmitter, NormType, emit_one, layer_norm_emitter
 
 
 @pytest.fixture(params=typing.get_args(NormType.__value__))
@@ -24,8 +24,14 @@ def num_features(request: pytest.FixtureRequest):
 
 
 @pytest.fixture
-def norm_emitter(norm):
+def batch_inst_norm_emitter(norm):
     with NormEmitter(norm).consider():
+        yield
+
+
+@pytest.fixture
+def layer_norm():
+    with layer_norm_emitter.consider():
         yield
 
 
@@ -35,7 +41,14 @@ def spec(ndim, num_features):
     return unbounded_box_spec(shape=[num_features, *shape])
 
 
-def test_emit_norm(norm_emitter, spec):
+def test_batch_inst_norm(batch_inst_norm_emitter, spec):
+    mod = emit_one(spec, spec)
+    input = spec.sample([13])
+    output = mod(input)
+    assert output.shape == input.shape
+
+
+def test_layer_norm(layer_norm, spec):
     mod = emit_one(spec, spec)
     input = spec.sample([13])
     output = mod(input)
