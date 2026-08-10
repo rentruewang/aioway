@@ -85,43 +85,23 @@ def array_box_spec(
     Args:
         low: The array lower bound. Inclusive.
         high: The array higher bound. Inclusive.
-        shape: The shape of the tensors. Optional. Must match the `low` and `high` shapes.
-        dtype: The dtype of the values. Optional. Must match the `low` and `high` dtypes.
-        device: The device of the tensors. Optional. Must match the `low` and `high` devices.
+        shape: The shape of the tensors. Optional. Casts `low` and `high` shapes.
+        dtype: The dtype of the values. Optional. Casts `low` and `high` dtypes.
+        device: The device of the tensors. Optional. Casts `low` and `high` devices.
 
     Returns:
         A `Bounded` spec.
     """
 
-    torch_device = _exec_if_not_none(device, _parse_device)
-    torch_shape = _exec_if_not_none(shape, _parse_shape)
-    torch_dtype = _exec_if_not_none(dtype, _parse_dtype)
-
     low_tensor = torch.from_numpy(np.asarray(low))
     high_tensor = torch.from_numpy(np.asarray(high))
-
-    for attr_name, attr in [
-        ("device", torch_device),
-        ("shape", torch_shape),
-        ("dtype", torch_dtype),
-    ]:
-        for tensor_name, tensor in [("low", low_tensor), ("high", high_tensor)]:
-            # Since `attr` is optional, no checks if attr is `None`.
-            if attr is None:
-                continue
-
-            if (tensor_attr := getattr(tensor, attr_name)) != attr:
-                raise ValueError(
-                    f"{tensor_name}_tensor.{attr_name}={tensor_attr} "
-                    f"does not match excpected {attr=}."
-                )
 
     return rldata.Bounded(
         low=low_tensor,
         high=high_tensor,
-        shape=torch_shape,
-        device=torch_device,
-        dtype=torch_dtype,
+        device=_exec_if_not_none(device, _parse_device),
+        shape=_exec_if_not_none(shape, _parse_shape),
+        dtype=_exec_if_not_none(dtype, _parse_dtype),
     )
 
 

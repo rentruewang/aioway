@@ -10,7 +10,7 @@ from aioway.emits import emit_one
 
 @pytest.fixture
 def nmf():
-    with NmfEmitter(11, 13, 17).consider():
+    with NmfEmitter(11).consider():
         yield
 
 
