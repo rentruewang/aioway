@@ -1,5 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import typing
 from collections import abc as cabc
 
 from torch.utils import data as dutils
@@ -22,6 +23,7 @@ class AugStream[T](Stream[T]):
         self._dataset = dataset
         self._augment = augment
 
+    @typing.no_type_check
     def __iter__(self) -> cabc.Generator[T]:
-        for item in self._dataset:
+        for item in typing.cast(typing.Any, self._dataset):
             yield from self._augment(item)

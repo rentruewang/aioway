@@ -34,7 +34,7 @@ class LoaderOpt:
     shuffle: bool = False
     "To shuffle or not."
 
-    sampler: data.Sampler[int] | None = None
+    sampler: dutils.Sampler[int] | None = None
     "How to sample in case when want to shuffle."
 
 
