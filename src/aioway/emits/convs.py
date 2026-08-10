@@ -10,6 +10,7 @@ from torchrl import data as rldata
 from aioway._specs import unbounded_box_spec
 from aioway._torch import Shape
 from aioway._utils import is_list_of
+from aioway.emits import sample_from_spec
 
 from ._utils import Activation, activation_module
 from .emitters import Emitter, emitter_dcls
@@ -71,12 +72,12 @@ class ImageRegressorEmitter(Emitter):
 
         seq = nn.Sequential(*modules, nn.Flatten())
 
-        sim_in = observ.sample()
+        sim_in = sample_from_spec(observ)
         sim_out = seq(sim_in)
 
         # Emits a linear final layer, that uses our `linear_shape` logic.
         linear = linear_shape(
-            unbounded_box_spec(shape=Shape.parse(sim_out.shape)), action
+            unbounded_box_spec(shape=Shape.parse(sim_out.shape[1:])), action
         )
 
         seq.append(linear)
