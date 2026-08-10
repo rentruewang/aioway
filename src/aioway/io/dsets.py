@@ -10,9 +10,9 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 from torch.utils import data
+from torchrl import data as rldata
 
 from aioway.relalg import LoaderExec, LoaderOpt, TdictLoaderExec, TensorLoaderExec
-from aioway.spaces import AnySpace, Space
 
 __all__ = [
     "dset_dcls",
@@ -64,8 +64,8 @@ class Dset[T](data.Dataset[T]):
     def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> LoaderExec:
         return LoaderExec(dset=self, opts=opts)
 
-    def __space__(self) -> Space:
-        return AnySpace()
+    def __space__(self) -> rldata.TensorSpec:
+        return NotImplemented
 
     def _setup(self) -> None:
         """

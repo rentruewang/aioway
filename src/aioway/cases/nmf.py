@@ -58,24 +58,17 @@ class NmfEmitter(Emitter):
     hidden: int
     "The hidden latent size."
 
-    num_rows: int
-    "The number of rows to constrain."
-
-    num_cols: int
-    "The number of cols to constrain."
-
     def __call__(
         self, observ: rldata.TensorSpec, action: rldata.TensorSpec
     ) -> nn.Module:
-        if not isinstance(observ, rldata.Bounded):
+        if not (isinstance(observ, rldata.Unbounded) and observ.ndim == 2):
             return NotImplemented
 
         if not (isinstance(action, rldata.UnboundedContinuous) and action.ndim == 0):
             return NotImplemented
 
         hidden = self.hidden
-        rows = self.num_rows
-        cols = self.num_cols
+        rows, cols = observ.shape
 
         left = nn.Parameter(torch.empty(hidden, rows))
         right = nn.Parameter(torch.empty(hidden, cols))

@@ -1,25 +1,21 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import pytest
-import torch
 from torch import nn
 
-from aioway.cases import NMFSpace, NmfTrainerModule, train_nmf
+from aioway._specs import unbounded_box_spec
+from aioway.cases import NmfEmitter, NmfTrainerModule
 from aioway.emits import emit_one
-from aioway.spaces import BoxSpace
 
 
 @pytest.fixture
 def nmf():
-    with train_nmf.consider():
+    with NmfEmitter(11, 13, 17).consider():
         yield
 
 
 def test_emit_nmf(nmf):
-    out = emit_one(
-        NMFSpace(3, 5, 7),
-        BoxSpace(torch.zeros([]), torch.ones([])),
-    )
+    out = emit_one(unbounded_box_spec((3, 5)), unbounded_box_spec(()))
 
     assert isinstance(out, nn.Module)
     assert isinstance(out, NmfTrainerModule)

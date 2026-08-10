@@ -5,8 +5,11 @@ import typing
 import pytest
 import torch
 from torch import nn
+from torch.utils import data
+from torchrl import data as rldata
 
-from aioway._torch import Attr, Shape
+from aioway._specs import unbounded_box_spec
+from aioway._torch import Shape
 from aioway.emits import (
     MlpCompoundEmitter,
     MlpEmitter,
@@ -14,34 +17,22 @@ from aioway.emits import (
     emit_one,
     linear_shape,
 )
-from aioway.io import TensorListExec, TensorStream
-from aioway.relalg import LoaderOpt, TensorExec
-from aioway.spaces import AttrSpace, ShapeSpace
+from aioway.io import TensorStream
 
 
 @pytest.fixture
 def input_shape_space():
-    return ShapeSpace(Shape.parse(3, 4, 6))
-
-
-@pytest.fixture
-def input_attr_space(input_shape_space: ShapeSpace):
-    return AttrSpace.from_attr(Attr.build(dtype="float", shape=input_shape_space.shape))
+    return unbounded_box_spec(Shape.parse(3, 4, 6))
 
 
 @pytest.fixture
 def output_space():
-    return ShapeSpace(Shape.parse(3, 4, 7))
+    return unbounded_box_spec(Shape.parse(3, 4, 7))
 
 
 @pytest.fixture
-def input_dataset(input_attr_space: AttrSpace):
+def input_dataset(input_attr_space: rldata.Unbounded):
     class FakeInputDset(TensorStream):
-        def __call__(self, *_):
-            return TensorListExec(
-                [input_attr_space.to_attr().to_fake_tensor().requires_grad_()]
-            )
-
         @typing.override
         def __iter__(self):
             # Not really using this, so we can afford to make a fake one.
@@ -51,12 +42,12 @@ def input_dataset(input_attr_space: AttrSpace):
 
 
 @pytest.fixture
-def input_loader(input_dataset: TensorStream) -> TensorExec:
-    return input_dataset(LoaderOpt())
+def input_loader(input_dataset: TensorStream):
+    return data.DataLoader(input_dataset)
 
 
 @pytest.fixture
-def target_loader(input_loader: TensorExec) -> TensorExec:
+def target_loader(input_loader: data.DataLoader):
     return input_loader
 
 
@@ -78,7 +69,7 @@ def consider_mlp(request: pytest.FixtureRequest):
 
 
 def test_just_linear(
-    input_shape_space: ShapeSpace, output_space: ShapeSpace, consider_linear
+    input_shape_space: rldata.Unbounded, output_space: rldata.Unbounded, consider_linear
 ):
     module = emit_one(input_shape_space, output_space)
     assert isinstance(module, nn.Linear)
@@ -90,7 +81,10 @@ def test_just_linear(
 
 
 def test_mlp_emitter(
-    input_shape_space: ShapeSpace, output_space: ShapeSpace, consider_mlp, fake_mode
+    input_shape_space: rldata.Unbounded,
+    output_space: rldata.Unbounded,
+    consider_mlp,
+    fake_mode,
 ):
     input = torch.randn(13, 3, 4, 6)
 

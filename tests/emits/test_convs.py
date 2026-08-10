@@ -2,11 +2,12 @@
 
 import pytest
 from torch import nn
+from torchrl import data as rldata
 
+from aioway._specs import float_image, unbounded_box_spec
 from aioway._torch import Shape
 from aioway.emits import emit_one
 from aioway.emits.convs import ImageRegressorEmitter
-from aioway.spaces import FloatImageSpace, ShapeSpace
 
 
 @pytest.fixture
@@ -17,7 +18,7 @@ def image_emitter():
 
 @pytest.fixture
 def image_space():
-    return FloatImageSpace(3)
+    return float_image(3)
 
 
 @pytest.fixture(params=[3, 5, 1000])
@@ -27,13 +28,13 @@ def feat_size(request: pytest.FixtureRequest):
 
 @pytest.fixture
 def output_space(feat_size: int):
-    return ShapeSpace(Shape.parse(feat_size))
+    return unbounded_box_spec(Shape.parse(feat_size))
 
 
 def test_emit_image_regressor(
     image_emitter,
-    image_space: FloatImageSpace,
-    output_space: ShapeSpace,
+    image_space: rldata.TensorSpec,
+    output_space: rldata.TensorSpec,
     feat_size: int,
 ):
     image_mod = emit_one(image_space, output_space)
