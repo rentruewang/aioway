@@ -1,14 +1,13 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 "Normalization layers."
-from .emitters import emitter_dcls
-from .emitters import Emitter
+
 import typing
 
-from .emitters import emitter_function
-from torchrl import data as rldata
 from torch import nn
+from torchrl import data as rldata
 
+from .emitters import Emitter, emitter_dcls
 
 __all__ = ["NormEmitter", "NormType"]
 

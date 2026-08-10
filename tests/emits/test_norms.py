@@ -1,8 +1,10 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from aioway._specs import unbounded_box_spec
 import typing
+
 import pytest
+
+from aioway._specs import unbounded_box_spec
 from aioway.emits import NormEmitter, NormType, emit_one
 
 
