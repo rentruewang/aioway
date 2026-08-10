@@ -7,7 +7,30 @@ from torchrl import data as rldata
 
 from aioway._torch import Device, DeviceLike, DType, DTypeLike, Shape, ShapeLike
 
-__all__ = ["scalar_box_spec", "array_box_spec"]
+__all__ = ["unbounded_box_spec", "scalar_box_spec", "array_box_spec"]
+
+
+def unbounded_box_spec(
+    *, shape: ShapeLike, dtype: DTypeLike, device: DeviceLike
+) -> rldata.Unbounded:
+    """
+    A continuous box spec.
+
+    Args:
+        shape: The shape of the tensors.
+        dtype: The dtype of the values.
+        device: The device of the tensors.
+
+    Returns:
+        An `Unbounded` spec.
+        It would be continuous or discrete depending on the dtype.
+    """
+
+    return rldata.Unbounded(
+        shape=Shape.parse(shape).torch(),
+        device=Device.parse(device).torch(),
+        dtype=DType.parse(dtype).torch(),
+    )
 
 
 def scalar_box_spec(
