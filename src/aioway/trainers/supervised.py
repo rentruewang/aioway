@@ -9,7 +9,7 @@ import tensordict as td
 import torch
 from torch import nn, optim
 from torch.nn import utils as nn_utils
-from torch.utils import data
+from torch.utils import data as dutils
 
 from aioway.errors import re_raise_func
 
@@ -46,7 +46,7 @@ class SupervisedTrainer:
     optimizer: optim.Optimizer
     "The optimizer that optimizes the module."
 
-    dataloader: data.DataLoader[VectorPair]
+    dataloader: dutils.DataLoader[VectorPair]
     "The training dataloader with the pairs of data."
 
     max_grad_norm: float | None = None

@@ -23,7 +23,7 @@ def chunk_collate_decompose_dim(max_len: int, dim: int) -> CollateFunc:
         max_len: The maximum length in the frame dimension to chunk.
 
     Returns:
-        A function that can be passed to `data.DataLoader`'s `collate_fn`.
+        A function that can be passed to `dutils.DataLoader`'s `collate_fn`.
 
         The function takes in a list of `torch.Tensor`,
         it decomposes the first dimension of the tensor,

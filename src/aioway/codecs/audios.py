@@ -6,7 +6,7 @@ import pathlib
 import typing
 
 import torch
-from torch.utils import data
+from torch.utils import data as dutils
 from torchcodec import decoders as dec
 
 from aioway._torch import Attr, current_fake_mode, torch_set_fake_mode_func
@@ -69,7 +69,7 @@ def encode_with_stft(audio: torch.Tensor, /, n_fft: int) -> torch.Tensor:
     return real_result
 
 
-class AudioDataFolder(data.Dataset[torch.Tensor]):
+class AudioDataFolder(dutils.Dataset[torch.Tensor]):
     def __init__(self, loader: AudioLoader, *files: str) -> None:
         super().__init__()
         self._files = files

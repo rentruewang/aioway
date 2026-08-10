@@ -8,7 +8,7 @@ from collections import abc as cabc
 
 import tensordict as td
 import torch
-from torch.utils import data
+from torch.utils import data as dutils
 from torchrl import data as rldata
 
 from aioway.relalg import LoaderExec, LoaderOpt, TdictLoaderExec, TensorLoaderExec
@@ -24,7 +24,7 @@ __all__ = [
 ]
 
 
-class _TensorAttrMixin(data.Dataset[torch.Tensor], metaclass=abc.ABCMeta):
+class _TensorAttrMixin(dutils.Dataset[torch.Tensor], metaclass=abc.ABCMeta):
     """
     A `torch.Tensor` `Dataset` should also provide `.attr`.
     """
@@ -34,7 +34,7 @@ class _TensorAttrMixin(data.Dataset[torch.Tensor], metaclass=abc.ABCMeta):
         return TensorLoaderExec(dset=self, opts=opts)
 
 
-class _TdictAttrsMixin(data.Dataset[td.TensorDict], metaclass=abc.ABCMeta):
+class _TdictAttrsMixin(dutils.Dataset[td.TensorDict], metaclass=abc.ABCMeta):
     """
     A `td.TensorDict` `Dataset` should also provide `.attr`.
     """
@@ -43,7 +43,7 @@ class _TdictAttrsMixin(data.Dataset[td.TensorDict], metaclass=abc.ABCMeta):
         return TdictLoaderExec(dset=self, opts=opts)
 
 
-class Dset[T](data.Dataset[T]):
+class Dset[T](dutils.Dataset[T]):
     """
     The base class for I/O.
     """
@@ -75,7 +75,7 @@ class Dset[T](data.Dataset[T]):
             sess.push(self)
 
 
-class Stream[T = typing.Any](Dset[T], data.IterableDataset[T], abc.ABC):
+class Stream[T = typing.Any](Dset[T], dutils.IterableDataset[T], abc.ABC):
     """
     `Stream` represents a set of sequential data stored somewhere.
     Each item is a single row of data.
@@ -98,7 +98,7 @@ class TdictStream(_TdictAttrsMixin, Stream[td.TensorDict], abc.ABC):
     """
 
 
-class Frame[T = typing.Any](Dset[T], data.Dataset[T], abc.ABC):
+class Frame[T = typing.Any](Dset[T], dutils.Dataset[T], abc.ABC):
     """
     `Frame` is a `Stream` that supports random access.
     Each item retrieved from `Frame` is a single row of data.

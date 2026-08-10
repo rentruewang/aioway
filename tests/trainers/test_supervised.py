@@ -4,12 +4,12 @@ import pytest
 import torch
 from torch import nn, optim
 from torch.nn import functional as F
-from torch.utils import data
+from torch.utils import data as dutils
 
 from aioway.trainers import ComputeSlLoss, SupervisedTrainer, VectorPair
 
 
-class _RandomDataset(data.Dataset):
+class _RandomDataset(dutils.Dataset):
     def __init__(self, size: int, in_feats: int, out_feats: int) -> None:
         super().__init__()
         self._x = torch.randn(size, in_feats)
@@ -46,7 +46,7 @@ def dataset(size, in_feats, out_feats):
 
 @pytest.fixture
 def data_loader(dataset):
-    return data.DataLoader(dataset, batch_size=2, collate_fn=lambda x: x)
+    return dutils.DataLoader(dataset, batch_size=2, collate_fn=lambda x: x)
 
 
 @pytest.fixture
@@ -74,7 +74,7 @@ def opt(module: nn.Module):
 def trainer(
     train_loss: nn.Module,
     opt: optim.Optimizer,
-    data_loader: data.DataLoader,
+    data_loader: dutils.DataLoader,
 ):
     return SupervisedTrainer(
         compute_loss=train_loss,
