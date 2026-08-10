@@ -3,8 +3,7 @@
 import tensordict as td
 import torch
 from torch import nn
-
-from aioway.spaces import Space, space_for_tcls
+from torchrl import data as rldata
 
 from .emitters import emitter_function
 
@@ -30,13 +29,18 @@ class PairLossModule(nn.Module):
         if not type(loss_func).__name__.endswith("Loss"):
             raise TypeError("Only wraps `nn.*Loss` modules.")
 
-    def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-        return self.loss_func(input, target)
+    def forward(self, pair: LossTCls) -> torch.Tensor:
+        return self.loss_func(pair.input, pair.target)
 
 
 @emitter_function
-def dispatch_mse_loss(observ: Space, action: Space) -> PairLossModule:
-    if action != space_for_tcls(LossTCls):
+def dispatch_mse_loss(
+    observ: rldata.TensorSpec, action: rldata.TensorSpec
+) -> PairLossModule:
+    if not isinstance(observ, rldata.Composite) or observ.data_cls != LossTCls:
+        return NotImplemented
+
+    if not isinstance(action, rldata.Unbounded) or action.shape != ():
         return NotImplemented
 
     return PairLossModule(nn.MSELoss())

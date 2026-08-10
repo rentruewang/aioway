@@ -6,6 +6,7 @@ from . import (
     _api,
     _costs,
     _sess,
+    _specs,
     _thunks,
     _torch,
     _utils,
@@ -15,6 +16,5 @@ from . import (
     io,
     modes,
     relalg,
-    spaces,
     trainers,
 )
