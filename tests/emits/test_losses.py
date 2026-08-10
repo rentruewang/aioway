@@ -15,12 +15,16 @@ def emit_mse_loss():
 
 
 def test_emit_mse_loss(emit_mse_loss):
-    input_space = rldata.Composite(data_cls=LossTCls)
+    input_space = rldata.Composite(
+        data_cls=LossTCls, input=unbounded_box_spec(7), target=unbounded_box_spec(7)
+    )
     loss_func = emit_one(input_space, unbounded_box_spec(shape=()))
 
     assert isinstance(loss_func, PairLossModule)
     assert isinstance(loss_func.loss_func, nn.MSELoss)
 
     mse_computed = input_space.sample([10])
+    assert isinstance(mse_computed, LossTCls)
+
     loss = loss_func(mse_computed)
     assert loss.shape == ()
