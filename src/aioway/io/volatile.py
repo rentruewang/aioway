@@ -2,6 +2,7 @@
 
 "The sources that are already in memory."
 
+import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
@@ -10,9 +11,13 @@ import torch
 
 from aioway.relalg import IndexibleExec, TensorExec, node_dcls
 
-from .dsets import TdictFrame, dset_dcls
+from .dsets import TdictFrame
 
-__all__ = ["TensorDictFrame", "TensorListExec", "TdictListExec"]
+__all__ = ["TensorDictFrame", "TensorListExec", "TdictListExec", "dset_dcls"]
+
+
+def dset_dcls(cls):
+    return dcls.dataclass(cls)
 
 
 @typing.final

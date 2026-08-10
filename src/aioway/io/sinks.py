@@ -3,20 +3,13 @@
 "The interface for the `io` package."
 
 import abc
-import dataclasses as dcls
 import typing
 
 from aioway.relalg import Exec
 
-__all__ = ["Sink", "sink_dcls"]
+__all__ = ["Sink"]
 
 
-@typing.dataclass_transform(frozen_default=True)
-def sink_dcls(cls):
-    return dcls.dataclass(frozen=True)(cls)
-
-
-@sink_dcls
 class Sink[T = typing.Any](abc.ABC):
     """
     Consumes a `Exec` and writes to some external location.

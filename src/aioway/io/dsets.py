@@ -3,7 +3,6 @@
 "The interface for the `io` package."
 
 import abc
-import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
@@ -15,7 +14,6 @@ from torchrl import data as rldata
 from aioway.relalg import LoaderExec, LoaderOpt, TdictLoaderExec, TensorLoaderExec
 
 __all__ = [
-    "dset_dcls",
     "Dset",
     "Stream",
     "Frame",
@@ -24,11 +22,6 @@ __all__ = [
     "TensorFrame",
     "TdictFrame",
 ]
-
-
-@typing.dataclass_transform(frozen_default=True)
-def dset_dcls(cls):
-    return dcls.dataclass(frozen=True)(cls)
 
 
 class _TensorAttrMixin(data.Dataset[torch.Tensor], metaclass=abc.ABCMeta):
@@ -50,7 +43,6 @@ class _TdictAttrsMixin(data.Dataset[td.TensorDict], metaclass=abc.ABCMeta):
         return TdictLoaderExec(dset=self, opts=opts)
 
 
-@dset_dcls
 class Dset[T](data.Dataset[T]):
     """
     The base class for I/O.
@@ -83,7 +75,6 @@ class Dset[T](data.Dataset[T]):
             sess.push(self)
 
 
-@dset_dcls
 class Stream[T = typing.Any](Dset[T], data.IterableDataset[T], abc.ABC):
     """
     `Stream` represents a set of sequential data stored somewhere.
@@ -107,7 +98,6 @@ class TdictStream(_TdictAttrsMixin, Stream[td.TensorDict], abc.ABC):
     """
 
 
-@dset_dcls
 class Frame[T = typing.Any](Dset[T], data.Dataset[T], abc.ABC):
     """
     `Frame` is a `Stream` that supports random access.
@@ -123,7 +113,7 @@ class Frame[T = typing.Any](Dset[T], data.Dataset[T], abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def __getitem__(self, idx: int) -> T:
+    def __getitem__(self, index: int) -> T:
         """
         Get 1 item.
         """
@@ -131,7 +121,7 @@ class Frame[T = typing.Any](Dset[T], data.Dataset[T], abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def __getitems__(self, idx: list[int], /) -> T:
+    def __getitems__(self, index: list[int], /) -> T:
         """
         Get multiple items.
         """
