@@ -72,11 +72,11 @@ def test_just_linear(
     input_shape_space: rldata.Unbounded, output_space: rldata.Unbounded, consider_linear
 ):
     module = emit_one(input_shape_space, output_space)
-    assert isinstance(module, nn.Linear)
+    assert isinstance(module, nn.Linear | nn.Sequential)
     _check_linear(
         module,
-        in_features=input_shape_space.shape[-1],
-        out_features=output_space.shape[-1],
+        in_features=input_shape_space.shape,
+        out_features=output_space.shape,
     )
 
 
@@ -94,9 +94,9 @@ def test_mlp_emitter(
     assert output.shape == (13, 3, 4, 7)
 
 
-def _check_linear(linear: nn.Linear, in_features: int, out_features: int):
-    assert isinstance(linear, nn.Linear)
+def _check_linear(linear: nn.Module, in_features: torch.Size, out_features: torch.Size):
+    assert isinstance(linear, nn.Linear | nn.Sequential)
 
-    # The modern way to check subsets.
-    assert linear.in_features == in_features
-    assert linear.out_features == out_features
+    in_tensor = torch.randn(101, *in_features)
+
+    assert linear(in_tensor).shape == (101, *out_features)

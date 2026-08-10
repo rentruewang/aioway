@@ -40,7 +40,7 @@ def linear_shape(observ: rldata.TensorSpec, action: rldata.TensorSpec) -> nn.Mod
 
     # Map back.
     if action.ndim != 1:
-        return nn.Unflatten(-1, action.shape)
+        return module.append(nn.Unflatten(-1, action.shape))
 
     return module
 
@@ -93,7 +93,7 @@ class MlpEmitter(_MlpEmitter):
         if not isinstance(action, rldata.Unbounded):
             return NotImplemented
 
-        sizes = [observ[-1], *self.hidden_sizes, action[-1]]
+        sizes = [observ.shape[-1], *self.hidden_sizes, action.shape[-1]]
 
         modules: list[nn.Module] = []
         activ = activation_module(self.activation)
