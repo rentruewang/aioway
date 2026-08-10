@@ -8,7 +8,7 @@ from collections import abc as cabc
 
 import tensordict as td
 import torch
-from torch.utils import data
+from torch.utils import data as dutils
 
 from aioway._utils import HasLen
 
@@ -22,7 +22,7 @@ __all__ = ["LoaderOpt", "LoaderExec", "TensorLoaderExec", "TdictLoaderExec"]
 @dcls.dataclass(frozen=True)
 class LoaderOpt:
     """
-    The optoins for `data.DataLoader` on `Frame` in `FrameStream`.
+    The optoins for `dutils.DataLoader` on `Frame` in `FrameStream`.
     """
 
     batch_size: int = 1
@@ -34,7 +34,7 @@ class LoaderOpt:
     shuffle: bool = False
     "To shuffle or not."
 
-    sampler: data.Sampler[int] | None = None
+    sampler: dutils.Sampler[int] | None = None
     "How to sample in case when want to shuffle."
 
 
@@ -46,7 +46,7 @@ class LoaderExec[T = typing.Any](Exec[T]):
 
     _: dcls.KW_ONLY
 
-    dset: data.Dataset[T]
+    dset: dutils.Dataset[T]
     """
     The data loader that would be iterated over.
     """
@@ -75,8 +75,8 @@ class LoaderExec[T = typing.Any](Exec[T]):
     def iterate(self) -> cabc.Generator[T]:
         yield from self._dataloader()
 
-    def _dataloader(self) -> data.DataLoader[T]:
-        return data.DataLoader(self.dset, **dcls.asdict(self.opts))
+    def _dataloader(self) -> dutils.DataLoader[T]:
+        return dutils.DataLoader(self.dset, **dcls.asdict(self.opts))
 
 
 @node_dcls
@@ -93,5 +93,7 @@ class TdictLoaderExec(LoaderExec[td.TensorDict], TdictExec):
     """
 
     @typing.override
-    def _dataloader(self) -> data.DataLoader[td.TensorDict]:
-        return data.DataLoader(self.dset, collate_fn=td.stack, **dcls.asdict(self.opts))
+    def _dataloader(self) -> dutils.DataLoader[td.TensorDict]:
+        return dutils.DataLoader(
+            self.dset, collate_fn=td.stack, **dcls.asdict(self.opts)
+        )

@@ -5,7 +5,7 @@ import typing
 import pytest
 import torch
 from torch import nn
-from torch.utils import data
+from torch.utils import data as dutils
 from torchrl import data as rldata
 
 from aioway._specs import unbounded_box_spec
@@ -43,11 +43,11 @@ def input_dataset(input_attr_space: rldata.Unbounded):
 
 @pytest.fixture
 def input_loader(input_dataset: TensorStream):
-    return data.DataLoader(input_dataset)
+    return dutils.DataLoader(input_dataset)
 
 
 @pytest.fixture
-def target_loader(input_loader: data.DataLoader):
+def target_loader(input_loader: dutils.DataLoader):
     return input_loader
 
 
