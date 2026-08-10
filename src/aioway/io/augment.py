@@ -5,7 +5,7 @@ from collections import abc as cabc
 
 from torch.utils import data as dutils
 
-from aioway.io import Stream
+from .dsets import Stream
 
 __all__ = ["AugStream"]
 
