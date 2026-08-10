@@ -14,8 +14,8 @@ __all__ = ["unbounded_box_spec", "scalar_box_spec", "array_box_spec"]
 
 
 def unbounded_box_spec(
-    *,
     shape: ShapeLike,
+    *,
     dtype: DTypeLike | None = None,
     device: DeviceLike | None = None,
 ) -> rldata.Unbounded:

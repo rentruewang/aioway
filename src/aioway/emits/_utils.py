@@ -4,26 +4,35 @@ import typing
 
 from torch import nn
 
-__all__ = ["Activation", "activation_module"]
+__all__ = ["Activation", "activation_module", "activation_class"]
 
 type Activation = typing.Literal[
     None, "relu", "relu6", "celu", "gelu", "sigmoid", "tanh"
 ]
 
 
-def activation_module(activation: Activation) -> nn.Module:
+def activation_class(activation: Activation) -> type[nn.Module]:
     match activation:
         case None:
             return NotImplemented
         case "relu":
-            return nn.ReLU()
+            return nn.ReLU
         case "relu6":
-            return nn.ReLU6()
+            return nn.ReLU6
         case "celu":
-            return nn.CELU()
+            return nn.CELU
         case "gelu":
-            return nn.GELU()
+            return nn.GELU
         case "sigmoid":
-            return nn.Sigmoid()
+            return nn.Sigmoid
         case "tanh":
-            return nn.Tanh()
+            return nn.Tanh
+
+
+def activation_module(activation: Activation) -> nn.Module:
+    klass = activation_class(activation)
+
+    if klass is NotImplemented:
+        return NotImplemented
+
+    return klass()

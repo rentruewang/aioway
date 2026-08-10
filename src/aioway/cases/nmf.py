@@ -2,78 +2,18 @@
 
 "The module for NMF."
 
-import typing
 from collections import abc as cabc
 
-import tensordict as td
 import torch
 from torch import nn, optim
+from torchrl import data as rldata
 
-from aioway._torch import Attr, Schema
-from aioway.emits import emitter_function
-from aioway.errors import re_raise_func
-from aioway.spaces import BoxSpace, Space, TdictSpace, TensorSpace, space_dcls
+from aioway.emits import Emitter, emitter_dcls
 
-__all__ = ["NMFSpace", "PairSpace", "NMFTrainerModule", "train_nmf"]
+__all__ = ["NmfTrainerModule", "NmfEmitter"]
 
 
-@typing.final
-@space_dcls
-class NMFSpace(TensorSpace):
-    """
-    NMF is 1 space duplicated, or 2 spaces of the same type.
-    """
-
-    hidden: int
-    "The hidden latent size."
-
-    num_rows: int
-    "The number of rows to constrain."
-
-    num_cols: int
-    "The number of cols to constrain."
-
-    @typing.override
-    @re_raise_func(AssertionError, ValueError)
-    def _check_attr(self, attr: Attr) -> None:
-        # Batch, m, n
-        assert attr.ndim == 3
-
-        assert attr.shape[1] == self.num_rows
-        assert attr.shape[2] == self.num_cols
-
-    @re_raise_func(AssertionError, ValueError)
-    def _check_data(self, data: torch.Tensor) -> None:
-        assert torch.all(data >= 0).item()
-
-    @typing.override
-    def _sample_n(self, n: int) -> torch.Tensor:
-        rows = self.num_rows or 3
-        cols = self.num_rows or 5
-        sample = torch.rand(n, rows, cols)
-        return sample
-
-
-class PairSpace(TdictSpace):
-    """
-    A pair of space (later, should adapt to use the one loss function uses).
-    """
-
-    input: TensorSpace
-    "Input space of the pair."
-
-    target: TensorSpace
-    "Target space of the pair."
-
-    def _check_attrs(self, attrs: Schema) -> None:
-        assert len(attrs) == 2
-        assert attrs.keys() == {"input", "target"}
-
-    def _check_data(self, data: td.TensorDict) -> None:
-        pass
-
-
-class NMFTrainerModule(nn.Module):
+class NmfTrainerModule(nn.Module):
     def __init__(
         self,
         left: nn.Parameter,
@@ -112,21 +52,34 @@ class NMFTrainerModule(nn.Module):
         self.optim.step()
 
 
-@emitter_function
-def train_nmf(observ: Space, action: Space) -> nn.Module:
-    if not isinstance(observ, NMFSpace):
-        return NotImplemented
+@emitter_dcls
+class NmfEmitter(Emitter):
 
-    if not (isinstance(action, BoxSpace) and action.ndim == 0):
-        return NotImplemented
+    hidden: int
+    "The hidden latent size."
 
-    hidden = observ.hidden
-    rows = observ.num_rows
-    cols = observ.num_cols
+    num_rows: int
+    "The number of rows to constrain."
 
-    left = nn.Parameter(torch.empty(hidden, rows))
-    right = nn.Parameter(torch.empty(hidden, cols))
-    loss = nn.MSELoss()
-    optim_type = optim.Adam
+    num_cols: int
+    "The number of cols to constrain."
 
-    return NMFTrainerModule(left, right, loss, optim_type)
+    def __call__(
+        self, observ: rldata.TensorSpec, action: rldata.TensorSpec
+    ) -> nn.Module:
+        if not isinstance(observ, rldata.Bounded):
+            return NotImplemented
+
+        if not (isinstance(action, rldata.UnboundedContinuous) and action.ndim == 0):
+            return NotImplemented
+
+        hidden = self.hidden
+        rows = self.num_rows
+        cols = self.num_cols
+
+        left = nn.Parameter(torch.empty(hidden, rows))
+        right = nn.Parameter(torch.empty(hidden, cols))
+        loss = nn.MSELoss()
+        optim_type = optim.Adam
+
+        return NmfTrainerModule(left, right, loss, optim_type)

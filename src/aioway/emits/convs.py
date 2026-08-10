@@ -5,10 +5,11 @@
 import functools
 
 from torch import nn
+from torchrl import data as rldata
 
+from aioway._specs import unbounded_box_spec
 from aioway._torch import Shape
 from aioway._utils import is_list_of
-from aioway.spaces import FloatImageSpace, ShapeSpace, Space
 
 from ._utils import Activation, activation_module
 from .emitters import Emitter, emitter_dcls
@@ -40,11 +41,13 @@ class ImageRegressorEmitter(Emitter):
     def __len__(self) -> int:
         return self._size
 
-    def __call__(self, observ: Space, action: Space) -> nn.Sequential:
-        if not isinstance(observ, FloatImageSpace):
+    def __call__(
+        self, observ: rldata.TensorSpec, action: rldata.TensorSpec
+    ) -> nn.Sequential:
+        if not isinstance(observ, rldata.BoundedContinuous):
             return NotImplemented
 
-        if not isinstance(action, ShapeSpace):
+        if not isinstance(action, rldata.Unbounded):
             return NotImplemented
 
         activation = activation_module(self.activation)
@@ -71,7 +74,10 @@ class ImageRegressorEmitter(Emitter):
         sim_in = observ.sample()
         sim_out = seq(sim_in)
 
-        linear = linear_shape(ShapeSpace(Shape.parse(sim_out.shape)), action)
+        # Emits a linear final layer, that uses our `linear_shape` logic.
+        linear = linear_shape(
+            unbounded_box_spec(shape=Shape.parse(sim_out.shape)), action
+        )
 
         seq.append(linear)
 

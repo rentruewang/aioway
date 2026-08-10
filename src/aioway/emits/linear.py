@@ -2,49 +2,47 @@
 
 
 from torch import nn
+from torchrl import data as rldata
+from torchrl import modules as rlmods
 
-from aioway.spaces import AttrSpace, ShapeSpace, Space
-
-from ._utils import Activation, activation_module
+from ._utils import Activation, activation_class, activation_module
 from .compound import BuilderNode, BuiltModule, CompoundBuilder
 from .emitters import Emitter, emitter_dcls, emitter_function
 
-__all__ = ["linear_shape", "linear_from_attr", "MlpEmitter", "MlpCompoundEmitter"]
+__all__ = ["linear_shape", "MlpEmitter", "TorchRlMlpEmitter", "MlpCompoundEmitter"]
 
 
 @emitter_function
-def linear_shape(observ: Space, action: Space) -> nn.Linear:
+def linear_shape(observ: rldata.TensorSpec, action: rldata.TensorSpec) -> nn.Module:
     """
     `Linear` module from `ShapeSpace`s.
     """
 
-    if not isinstance(observ, ShapeSpace):
+    if not isinstance(observ, rldata.Unbounded):
         return NotImplemented
 
-    if not isinstance(action, ShapeSpace):
+    if not isinstance(action, rldata.Unbounded):
         return NotImplemented
 
-    return nn.Linear(in_features=observ[-1], out_features=action[-1])
+    # The simple case where the `ndim` are all 1.
+    if observ.ndim == action.ndim == 1:
+        return nn.Linear(in_features=observ.shape[-1], out_features=action.shape[-1])
 
+    module = nn.Sequential()
 
-@emitter_function
-def linear_from_attr(observ: Space, action: Space) -> nn.Module:
-    """
-    `Linear` module from `AttrShape`s.
-    """
+    # Flatten if it's not already.
+    if observ.ndim != 1:
+        module.append(nn.Flatten())
 
-    if not isinstance(observ, AttrSpace):
-        return NotImplemented
+    module.append(
+        nn.Linear(in_features=observ.shape.numel(), out_features=action.shape.numel())
+    )
 
-    if not isinstance(action, AttrSpace):
-        return NotImplemented
+    # Map back.
+    if action.ndim != 1:
+        return nn.Unflatten(-1, action.shape)
 
-    if (observ_shape := observ.shape) is None:
-        return NotImplemented
-    if (act_shape := action.shape) is None:
-        return NotImplemented
-
-    return nn.Linear(in_features=observ_shape[-1], out_features=act_shape[-1])
+    return module
 
 
 @emitter_dcls
@@ -65,16 +63,34 @@ class _MlpEmitter(Emitter):
 
 
 @emitter_dcls
+class TorchRlMlpEmitter(_MlpEmitter):
+    "Emits a `torchrl.modules.MLP`."
+
+    def __call__(
+        self, observ: rldata.TensorSpec, action: rldata.TensorSpec
+    ) -> nn.Module:
+
+        return rlmods.MLP(
+            in_features=observ.shape[-1],
+            out_features=action.shape[-1],
+            num_cells=self.hidden_sizes,
+            activation_class=activation_class(self.activation),
+        )
+
+
+@emitter_dcls
 class MlpEmitter(_MlpEmitter):
     """
     Emits a `nn.Sequential` module.
     """
 
-    def __call__(self, observ: Space, action: Space) -> nn.Sequential:
-        if not isinstance(observ, ShapeSpace):
+    def __call__(
+        self, observ: rldata.TensorSpec, action: rldata.TensorSpec
+    ) -> nn.Sequential:
+        if not isinstance(observ, rldata.Unbounded):
             return NotImplemented
 
-        if not isinstance(action, ShapeSpace):
+        if not isinstance(action, rldata.Unbounded):
             return NotImplemented
 
         sizes = [observ[-1], *self.hidden_sizes, action[-1]]
@@ -101,14 +117,16 @@ class MlpCompoundEmitter(_MlpEmitter):
     Emits a simple MLP with hidden sizes and activation.
     """
 
-    def __call__(self, observ: Space, action: Space) -> BuiltModule:
-        if not isinstance(observ, ShapeSpace):
+    def __call__(
+        self, observ: rldata.TensorSpec, action: rldata.TensorSpec
+    ) -> BuiltModule:
+        if not isinstance(observ, rldata.Unbounded):
             return NotImplemented
 
-        if not isinstance(action, ShapeSpace):
+        if not isinstance(action, rldata.Unbounded):
             return NotImplemented
 
-        sizes = [observ[-1], *self.hidden_sizes, action[-1]]
+        sizes = [observ.shape[-1], *self.hidden_sizes, action.shape[-1]]
 
         builder = CompoundBuilder()
 

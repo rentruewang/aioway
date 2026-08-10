@@ -7,9 +7,9 @@ import typing
 from collections import abc as cabc
 
 from torch import nn
+from torchrl import data as rldata
 
 from aioway._utils import AnySet
-from aioway.spaces import Space
 
 __all__ = [
     "EmitterLike",
@@ -26,7 +26,7 @@ _EMITTERS: AnySet[Emitter] = AnySet()
 "The emitters that are considered."
 
 
-def emit_one(observ: Space, action: Space, /) -> nn.Module:
+def emit_one(observ: rldata.TensorSpec, action: rldata.TensorSpec, /) -> nn.Module:
     """
     A convenient wrapper to only emit the first target found.
     """
@@ -34,7 +34,9 @@ def emit_one(observ: Space, action: Space, /) -> nn.Module:
     return next(emit(observ, action))
 
 
-def emit(observ: Space, action: Space, /) -> cabc.Generator[nn.Module]:
+def emit(
+    observ: rldata.TensorSpec, action: rldata.TensorSpec, /
+) -> cabc.Generator[nn.Module]:
     """
     Emit some candidates based on the given spaces.
     """
@@ -59,7 +61,9 @@ class EmitterLike(typing.Protocol):
     """
 
     @abc.abstractmethod
-    def __call__(self, observ: Space, action: Space, /) -> nn.Module:
+    def __call__(
+        self, observ: rldata.TensorSpec, action: rldata.TensorSpec, /
+    ) -> nn.Module:
         raise NotImplementedError
 
 
@@ -105,7 +109,9 @@ class FuncEmitter(Emitter):
     The function to wrap.
     """
 
-    def __call__(self, observ: Space, action: Space, /) -> nn.Module:
+    def __call__(
+        self, observ: rldata.TensorSpec, action: rldata.TensorSpec, /
+    ) -> nn.Module:
         return self.function(observ, action)
 
 

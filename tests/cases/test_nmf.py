@@ -4,7 +4,7 @@ import pytest
 import torch
 from torch import nn
 
-from aioway.cases import NMFSpace, NMFTrainerModule, train_nmf
+from aioway.cases import NMFSpace, NmfTrainerModule, train_nmf
 from aioway.emits import emit_one
 from aioway.spaces import BoxSpace
 
@@ -22,4 +22,4 @@ def test_emit_nmf(nmf):
     )
 
     assert isinstance(out, nn.Module)
-    assert isinstance(out, NMFTrainerModule)
+    assert isinstance(out, NmfTrainerModule)
