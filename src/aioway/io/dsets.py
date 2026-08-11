@@ -9,7 +9,6 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 from torch.utils import data as dutils
-from torchrl import data as rldata
 
 from aioway.relalg import LoaderExec, LoaderOpt, TdictLoaderExec, TensorLoaderExec
 
@@ -55,9 +54,6 @@ class Dset[T](dutils.Dataset[T]):
 
     def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> LoaderExec:
         return LoaderExec(dset=self, opts=opts)
-
-    def __space__(self) -> rldata.TensorSpec:
-        return NotImplemented
 
     def _setup(self) -> None:
         """
