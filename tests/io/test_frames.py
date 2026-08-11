@@ -6,7 +6,6 @@ import tensordict as td
 from numpy import random
 
 from aioway.io import TdictFrame, TensorDictFrame
-from aioway.relalg import LoaderOpt
 from tests.mock import chunk_ok
 
 
@@ -31,11 +30,6 @@ def frame(
     request: pytest.FixtureRequest, device: str, batch_size: int, data_size: int
 ) -> TdictFrame:
     return request.param(device=device, batch_size=batch_size, data_size=data_size)
-
-
-@pytest.fixture
-def table_stream(frame: TdictFrame, batch_size: int):
-    return frame(opts=LoaderOpt(batch_size=batch_size))
 
 
 def test_table_not_empty(frame: TdictFrame):

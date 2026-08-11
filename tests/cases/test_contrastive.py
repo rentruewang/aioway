@@ -7,12 +7,12 @@ from torch import nn, optim
 from aioway._specs import unbounded_box_spec
 from aioway._torch import Shape
 from aioway.cases import ContrastiveLoss, ContrastiveLossEmitter
-from aioway.emits import emit_one, linear_shape
+from aioway.emits import emit_one, linear_regression
 
 
 @pytest.fixture
 def contrastive():
-    with ContrastiveLossEmitter(linear_shape).consider():
+    with ContrastiveLossEmitter(linear_regression).consider():
         yield
 
 
