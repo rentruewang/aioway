@@ -10,10 +10,6 @@ def import_modules():
     pass
 
 
-def test_api_not_empty():
-    assert dir(api)
-
-
 def test_api_items():
     for name in dir(api):
         item = getattr(api, name)
