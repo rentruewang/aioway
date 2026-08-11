@@ -9,7 +9,6 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 from torch.utils import data as dutils
-from torchrl import data as rldata
 
 __all__ = [
     "Dset",
@@ -31,9 +30,6 @@ class Dset[T](dutils.Dataset[T]):
     def __post_init__(self) -> None:
         self._setup()
         self._register()
-
-    def __space__(self) -> rldata.TensorSpec:
-        return NotImplemented
 
     def _setup(self) -> None:
         """

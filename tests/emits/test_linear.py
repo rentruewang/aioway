@@ -15,7 +15,7 @@ from aioway.emits import (
     MlpEmitter,
     emit,
     emit_one,
-    linear_shape,
+    linear_regression,
 )
 from aioway.io import TensorStream
 
@@ -53,7 +53,7 @@ def target_loader(input_loader: dutils.DataLoader):
 
 @pytest.fixture
 def consider_linear():
-    with linear_shape.consider():
+    with linear_regression.consider():
         yield
 
 
