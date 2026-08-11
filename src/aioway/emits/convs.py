@@ -14,7 +14,7 @@ from aioway.emits import sample_from_spec
 
 from ._utils import Activation, activation_module
 from .emitters import Emitter, emitter_dcls
-from .linear import linear_shape
+from .linear import linear_regression
 
 __all__ = ["ImageRegressorEmitter"]
 
@@ -76,7 +76,7 @@ class ImageRegressorEmitter(Emitter):
         sim_out = seq(sim_in)
 
         # Emits a linear final layer, that uses our `linear_shape` logic.
-        linear = linear_shape(
+        linear = linear_regression(
             unbounded_box_spec(shape=Shape.parse(sim_out.shape[1:])), action
         )
 

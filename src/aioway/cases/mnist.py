@@ -9,6 +9,7 @@ from torch.utils import data as dutils
 from torchrl import data as rldata
 from torchvision import datasets
 
+from aioway.emits import emit_one
 from aioway.io import Frame
 from aioway.trainers import VectorPair
 
@@ -17,7 +18,7 @@ __all__ = ["mnist", "train_test_split"]
 
 class MnistFrame(Frame):
     def __init__(self) -> None:
-        self._mnist = datasets.MNIST(pathlib.Path.home())
+        self._mnist = datasets.MNIST(pathlib.Path.home(), download=True)
 
     def __len__(self) -> int:
         return len(self._mnist)
@@ -37,7 +38,7 @@ class MnistFrame(Frame):
 
     @property
     def action_spec(self) -> rldata.Bounded:
-        return rldata.Bounded(low=0, high=9, dtype=torch.long)
+        return rldata.Bounded(low=0, high=9, shape=torch.Size([]), dtype=torch.long)
 
 
 def mnist() -> MnistFrame:
@@ -61,6 +62,8 @@ def main(batch_size: int):
     train_loader = dutils.DataLoader(train_dset, batch_size=batch_size)
     test_loader = dutils.DataLoader(test_dset, batch_size=batch_size)
 
-    # trainer = SupervisedTrainer(
-    #     nn.MSELoss(),
-    # )
+    module = emit_one(dset.observ_spec, dset.action_spec)
+
+
+if __name__ == "__main__":
+    main(64)

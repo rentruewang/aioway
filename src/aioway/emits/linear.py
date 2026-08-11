@@ -9,11 +9,13 @@ from ._utils import Activation, activation_class, activation_module
 from .compound import BuilderNode, BuiltModule, CompoundBuilder
 from .emitters import Emitter, emitter_dcls, emitter_function
 
-__all__ = ["linear_shape", "MlpEmitter", "TorchRlMlpEmitter", "MlpCompoundEmitter"]
+__all__ = ["linear_regression", "MlpEmitter", "TorchRlMlpEmitter", "MlpCompoundEmitter"]
 
 
 @emitter_function
-def linear_shape(observ: rldata.TensorSpec, action: rldata.TensorSpec) -> nn.Module:
+def linear_regression(
+    observ: rldata.TensorSpec, action: rldata.TensorSpec
+) -> nn.Module:
     """
     `Linear` module from `ShapeSpace`s.
     """
