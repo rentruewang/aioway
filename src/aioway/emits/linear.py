@@ -2,28 +2,33 @@
 
 
 from torch import nn
-from torchrl import data as rldata
+from torchrl import data as tspec
 from torchrl import modules as rlmods
+from torchrl.data import tensor_specs as tspec
 
 from ._utils import Activation, activation_class, activation_module
 from .compound import BuilderNode, BuiltModule, CompoundBuilder
 from .emitters import Emitter, emitter_dcls, emitter_function
 
-__all__ = ["linear_regression", "MlpEmitter", "TorchRlMlpEmitter", "MlpCompoundEmitter"]
+__all__ = [
+    "linear_regression",
+    "ClfLogitHead",
+    "MlpEmitter",
+    "TorchRlMlpEmitter",
+    "MlpCompoundEmitter",
+]
 
 
 @emitter_function
-def linear_regression(
-    observ: rldata.TensorSpec, action: rldata.TensorSpec
-) -> nn.Module:
+def linear_regression(observ: tspec.TensorSpec, action: tspec.TensorSpec) -> nn.Module:
     """
     `Linear` module from `ShapeSpace`s.
     """
 
-    if not isinstance(observ, rldata.Unbounded):
+    if not isinstance(observ, tspec.Unbounded):
         return NotImplemented
 
-    if not isinstance(action, rldata.Unbounded):
+    if not isinstance(action, tspec.Unbounded):
         return NotImplemented
 
     # The simple case where the `ndim` are all 1.
@@ -48,6 +53,32 @@ def linear_regression(
 
 
 @emitter_dcls
+class ClfLogitHead(Emitter):
+    "Emits a classification head."
+
+    emitter: Emitter
+    "Emits a regression model."
+
+    def __call__(self, observ: tspec.TensorSpec, action: tspec.TensorSpec) -> nn.Module:
+
+        if not isinstance(observ, tspec.Unbounded):
+            return NotImplemented
+
+        if not isinstance(action, tspec.BoundedDiscrete) or action.ndim != 0:
+            return NotImplemented
+
+        action_count = int(action.high - action.low + 1)
+
+        module = nn.Sequential(
+            self.emitter(observ, observ),
+            nn.Flatten(),
+            nn.Linear(observ.shape.numel(), action_count),
+        )
+
+        return module
+
+
+@emitter_dcls
 class _MlpEmitter(Emitter):
     """
     Emits a `nn.Sequential` module.
@@ -68,9 +99,7 @@ class _MlpEmitter(Emitter):
 class TorchRlMlpEmitter(_MlpEmitter):
     "Emits a `torchrl.modules.MLP`."
 
-    def __call__(
-        self, observ: rldata.TensorSpec, action: rldata.TensorSpec
-    ) -> nn.Module:
+    def __call__(self, observ: tspec.TensorSpec, action: tspec.TensorSpec) -> nn.Module:
 
         return rlmods.MLP(
             in_features=observ.shape[-1],
@@ -87,12 +116,12 @@ class MlpEmitter(_MlpEmitter):
     """
 
     def __call__(
-        self, observ: rldata.TensorSpec, action: rldata.TensorSpec
+        self, observ: tspec.TensorSpec, action: tspec.TensorSpec
     ) -> nn.Sequential:
-        if not isinstance(observ, rldata.Unbounded):
+        if not isinstance(observ, tspec.Unbounded):
             return NotImplemented
 
-        if not isinstance(action, rldata.Unbounded):
+        if not isinstance(action, tspec.Unbounded):
             return NotImplemented
 
         sizes = [observ.shape[-1], *self.hidden_sizes, action.shape[-1]]
@@ -120,12 +149,12 @@ class MlpCompoundEmitter(_MlpEmitter):
     """
 
     def __call__(
-        self, observ: rldata.TensorSpec, action: rldata.TensorSpec
+        self, observ: tspec.TensorSpec, action: tspec.TensorSpec
     ) -> BuiltModule:
-        if not isinstance(observ, rldata.Unbounded):
+        if not isinstance(observ, tspec.Unbounded):
             return NotImplemented
 
-        if not isinstance(action, rldata.Unbounded):
+        if not isinstance(action, tspec.Unbounded):
             return NotImplemented
 
         sizes = [observ.shape[-1], *self.hidden_sizes, action.shape[-1]]

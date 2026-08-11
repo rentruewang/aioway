@@ -3,34 +3,32 @@
 import pathlib
 import typing
 
-import tensordict as td
 import torch
+from rich import progress
+from torch import nn, optim
 from torch.utils import data as dutils
 from torchrl import data as rldata
 from torchvision import datasets
+from torchvision import transforms as T
 
-from aioway.emits import emit_one
+from aioway.emits import ClfLogitHead, linear_regression
 from aioway.io import Frame
-from aioway.trainers import VectorPair
+from aioway.trainers import optimize_clip
 
 __all__ = ["mnist", "train_test_split"]
 
 
-class MnistFrame(Frame):
+class MnistFrame(dutils.Dataset):
     def __init__(self) -> None:
         self._mnist = datasets.MNIST(pathlib.Path.home(), download=True)
 
     def __len__(self) -> int:
         return len(self._mnist)
 
-    def __getitem__(self, index) -> VectorPair:
+    def __getitem__(self, index) -> tuple[torch.Tensor, torch.Tensor]:
         x, y = self._mnist[index]
-        x = x.flatten()
-        return VectorPair(x, y)
-
-    def __getitems__(self, index: list[int]) -> VectorPair:
-        pairs = [self[i] for i in index]
-        return td.stack(pairs, dim=0)
+        x = T.ToTensor()(x).flatten()
+        return x, y
 
     @property
     def observ_spec(self) -> rldata.Unbounded:
@@ -62,7 +60,20 @@ def main(batch_size: int):
     train_loader = dutils.DataLoader(train_dset, batch_size=batch_size)
     test_loader = dutils.DataLoader(test_dset, batch_size=batch_size)
 
-    module = emit_one(dset.observ_spec, dset.action_spec)
+    module = ClfLogitHead(linear_regression)(dset.observ_spec, dset.action_spec)
+    optimizer = optim.AdamW(module.parameters())
+    loss_func = nn.CrossEntropyLoss()
+
+    for x, y in progress.track(train_loader):
+        out = module(x)
+        loss = loss_func(out, y)
+        optimize_clip(optimizer, loss, module, 1)
+        print(loss)
+
+    for x, y in progress.track(test_loader):
+        out = module(x)
+        loss = loss_func(out, y)
+        print(loss)
 
 
 if __name__ == "__main__":
