@@ -5,13 +5,12 @@ import typing
 
 import tensordict as td
 import torch
-from torch import nn
 from torch.utils import data as dutils
 from torchrl import data as rldata
 from torchvision import datasets
 
 from aioway.io import Frame
-from aioway.trainers import SupervisedTrainer, VectorPair
+from aioway.trainers import VectorPair
 
 __all__ = ["mnist", "train_test_split"]
 
