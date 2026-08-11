@@ -4,18 +4,15 @@
 
 import dataclasses as dcls
 import typing
-from collections import abc as cabc
 
 import tensordict as td
-import torch
-
-from aioway.relalg import IndexibleExec, TensorExec, node_dcls
 
 from .dsets import TdictFrame
 
-__all__ = ["TensorDictFrame", "TensorListExec", "TdictListExec", "dset_dcls"]
+__all__ = ["TensorDictFrame", "dset_dcls"]
 
 
+@typing.dataclass_transform()
 def dset_dcls(cls):
     return dcls.dataclass(cls)
 
@@ -51,56 +48,3 @@ class TensorDictFrame(TdictFrame):
         ret = self.data[idx]
         assert isinstance(ret, td.TensorDict)
         return ret.auto_batch_size_()
-
-
-@node_dcls
-class TensorListExec(TensorExec):
-    "A `Exec` backed by a list of `torch.Tensor`."
-
-    sequence: cabc.Sequence[torch.Tensor]
-    "List of `torch.Tensor`s."
-
-    def __len__(self) -> int:
-        return self.size
-
-    def __getitem__(self, idx: int) -> torch.Tensor:
-        return self.sequence[idx]
-
-    @property
-    @typing.override
-    def size(self) -> int:
-        return len(self.sequence)
-
-    def sample(self):
-        return self.sequence[0]
-
-    def iterate(self):
-        for batch in self.sequence:
-            yield batch
-
-
-@node_dcls
-class TdictListExec(IndexibleExec):
-    "A `Stream` backed by a list of `TensorDict`."
-
-    sequence: cabc.Sequence[td.TensorDict]
-    "List of `td.TensorDict`s."
-
-    @typing.override
-    def __len__(self) -> int:
-        return self.size
-
-    @typing.override
-    def __getitem__(self, idx: int) -> td.TensorDict:
-        return self.sequence[idx]
-
-    @property
-    @typing.override
-    def size(self) -> int:
-        return len(self.sequence)
-
-    def sample(self):
-        return self.sequence[0]
-
-    def iterate(self) -> cabc.Iterator[td.TensorDict]:
-        yield from self.sequence

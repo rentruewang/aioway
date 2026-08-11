@@ -11,8 +11,6 @@ import torch
 from torch.utils import data as dutils
 from torchrl import data as rldata
 
-from aioway.relalg import LoaderExec, LoaderOpt, TdictLoaderExec, TensorLoaderExec
-
 __all__ = [
     "Dset",
     "Stream",
@@ -24,25 +22,6 @@ __all__ = [
 ]
 
 
-class _TensorAttrMixin(dutils.Dataset[torch.Tensor], metaclass=abc.ABCMeta):
-    """
-    A `torch.Tensor` `Dataset` should also provide `.attr`.
-    """
-
-    def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> TensorLoaderExec:
-        # Set batch size to the ones provided.
-        return TensorLoaderExec(dset=self, opts=opts)
-
-
-class _TdictAttrsMixin(dutils.Dataset[td.TensorDict], metaclass=abc.ABCMeta):
-    """
-    A `td.TensorDict` `Dataset` should also provide `.attr`.
-    """
-
-    def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> TdictLoaderExec:
-        return TdictLoaderExec(dset=self, opts=opts)
-
-
 class Dset[T](dutils.Dataset[T]):
     """
     The base class for I/O.
@@ -52,9 +31,6 @@ class Dset[T](dutils.Dataset[T]):
     def __post_init__(self) -> None:
         self._setup()
         self._register()
-
-    def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> LoaderExec:
-        return LoaderExec(dset=self, opts=opts)
 
     def __space__(self) -> rldata.TensorSpec:
         return NotImplemented
@@ -86,13 +62,13 @@ class Stream[T = typing.Any](Dset[T], dutils.IterableDataset[T], abc.ABC):
         raise NotImplementedError
 
 
-class TensorStream(_TensorAttrMixin, Stream[torch.Tensor], abc.ABC):
+class TensorStream(Stream[torch.Tensor], abc.ABC):
     """
     A `TensorStream` is a `Stream` of `torch.Tensor`s.
     """
 
 
-class TdictStream(_TdictAttrsMixin, Stream[td.TensorDict], abc.ABC):
+class TdictStream(Stream[td.TensorDict], abc.ABC):
     """
     A `TdictStream` is a `Stream` of `torch.Tensor`s.
     """
@@ -129,13 +105,13 @@ class Frame[T = typing.Any](Dset[T], dutils.Dataset[T], abc.ABC):
         raise NotImplementedError
 
 
-class TensorFrame(_TensorAttrMixin, Frame[torch.Tensor], abc.ABC):
+class TensorFrame(Frame[torch.Tensor], abc.ABC):
     """
     A `torch.Tensor` dataset that supports random access.
     """
 
 
-class TdictFrame(_TdictAttrsMixin, Frame[td.TensorDict], abc.ABC):
+class TdictFrame(Frame[td.TensorDict], abc.ABC):
     """
     A dataset of `td.TensorDict` that supports random access.
     """
