@@ -65,15 +65,19 @@ def main(batch_size: int):
     loss_func = nn.CrossEntropyLoss()
 
     for x, y in progress.track(train_loader):
-        out = module(x)
-        loss = loss_func(out, y)
+        loss = compute_loss(module, loss_func, x, y)
         optimize_clip(optimizer, loss, module, 1)
         print(loss)
 
     for x, y in progress.track(test_loader):
-        out = module(x)
-        loss = loss_func(out, y)
+        loss = compute_loss(module, loss_func, x, y)
         print(loss)
+
+
+def compute_loss(module, loss_func, x, y):
+    out = module(x)
+    loss = loss_func(out, y)
+    return loss
 
 
 if __name__ == "__main__":
