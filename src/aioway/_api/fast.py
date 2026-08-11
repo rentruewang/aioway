@@ -5,6 +5,8 @@ import typing
 if typing.TYPE_CHECKING:
     import fastapi
 
+__all__ = ["fastapi_app", "route_fastapi"]
+
 
 @functools.cache
 def fastapi_app() -> fastapi.FastAPI:
@@ -15,16 +17,6 @@ def fastapi_app() -> fastapi.FastAPI:
     import fastapi
 
     return fastapi.FastAPI()
-
-
-def enable_mcp() -> None:
-    "Enable MCP support for fastapi."
-
-    import fastapi_mcp
-
-    app = fastapi_app()
-
-    fastapi_mcp.FastApiMCP(app).mount_http()
 
 
 def route_fastapi(path, kind: typing.Literal["get", "post"]):

@@ -37,7 +37,6 @@ sklearn = [
 ]
 api = [
     "fastapi>=0.141.1",
-    "fastapi-mcp>=0.4.0",
 ]
 
 [build-system]
@@ -109,7 +108,6 @@ check_untyped_defs = true
 # Skipping analysis for some modules because they are not typed.
 [[tool.mypy.overrides]]
 module = [
-    "fastapi_mcp.*",
     "sklearn.*",
     "tensordict.*",
     "torchvision.*",
