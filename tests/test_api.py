@@ -3,11 +3,23 @@
 import pytest
 
 from aioway import api
+from aioway._api import route_fastapi
 
 
-@pytest.fixture(scope="module", autouse=True)
-def import_modules():
-    pass
+@pytest.fixture(autouse=True)
+def skip_if_no_fastapi():
+    try:
+        pass
+    except ImportError:
+        pytest.xfail()
+
+
+def test_register_fastapi():
+    @route_fastapi("hi", "get")
+    def hi():
+        return 1
+
+    assert hi() == 1
 
 
 def test_api_items():

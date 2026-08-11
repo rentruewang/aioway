@@ -35,6 +35,9 @@ faiss = [
 sklearn = [
     "scikit-learn>=1.9.0",
 ]
+api = [
+    "fastapi>=0.141.1",
+]
 
 [build-system]
 requires = ["setuptools", "wheel", "setuptools-scm"]
