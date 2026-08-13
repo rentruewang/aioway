@@ -22,6 +22,7 @@ dependencies = [
     "tokenizers>=0.22",
     "torchrl>=0.13",
     "gymnasium>=1",
+    "lightning>=2.6.5",
 ]
 
 [project.optional-dependencies]
