@@ -18,7 +18,7 @@ from aioway.trainers import optimize_clip
 __all__ = ["mnist", "train_test_split"]
 
 
-class MnistFrame(dutils.Dataset):
+class MnistDataset(dutils.Dataset):
     def __init__(self) -> None:
         self._mnist = datasets.MNIST(pathlib.Path.home(), download=True)
 
@@ -39,8 +39,8 @@ class MnistFrame(dutils.Dataset):
         return rldata.Bounded(low=0, high=9, shape=torch.Size([]), dtype=torch.long)
 
 
-def mnist() -> MnistFrame:
-    return MnistFrame()
+def mnist() -> MnistDataset:
+    return MnistDataset()
 
 
 @typing.no_type_check
