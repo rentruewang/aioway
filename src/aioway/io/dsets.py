@@ -5,7 +5,7 @@
 import abc
 import typing
 from collections import abc as cabc
-
+from torchrl import data as rldata
 import tensordict as td
 import torch
 from torch.utils import data as dutils
@@ -21,7 +21,7 @@ __all__ = [
 ]
 
 
-class Dset[T](dutils.Dataset[T]):
+class Dset[T](dutils.Dataset[T], abc.ABC):
     """
     The base class for I/O.
     """
@@ -29,22 +29,21 @@ class Dset[T](dutils.Dataset[T]):
     @typing.final
     def __post_init__(self) -> None:
         self._setup()
-        self._register()
 
     def _setup(self) -> None:
         """
         Subclass should overwrite this function to perform setup. Can raise errors.
         """
 
-    def _register(self) -> None:
-        """
-        Register the instance to a session.
-        """
+    @property
+    @abc.abstractmethod
+    def observ_spec(self) -> rldata.TensorSpec:
+        raise NotImplementedError
 
-        from .sess import DsetSession
-
-        if sess := DsetSession.current():
-            sess.push(self)
+    @property
+    @abc.abstractmethod
+    def action_spec(self) -> rldata.TensorSpec:
+        raise NotImplementedError
 
 
 class Stream[T = typing.Any](Dset[T], dutils.IterableDataset[T], abc.ABC):

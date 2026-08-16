@@ -1,12 +1,13 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import dataclasses as dcls
-import typing
+import typing, abc
 from collections import abc as cabc
 
 import lightning as L
 import torch
 from rich import progress
+from torchrl import data as rldata
 from torch import nn, optim
 from torch.utils import data as dutils
 
@@ -26,6 +27,18 @@ class PredLossPair(typing.NamedTuple):
 
     pred: torch.Tensor
     loss: torch.Tensor
+
+
+class ObservActionSpace(abc.ABC):
+    @property
+    @abc.abstractmethod
+    def observ_spec(self) -> rldata.TensorSpec:
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def action_spec(self) -> rldata.TensorSpec:
+        raise NotImplementedError
 
 
 @dcls.dataclass(frozen=True, kw_only=True)
