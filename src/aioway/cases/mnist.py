@@ -3,8 +3,8 @@
 import pathlib
 import typing
 
+import lightning as L
 import torch
-from rich import progress
 from torch import nn, optim
 from torch.utils import data as dutils
 from torchrl import data as rldata
@@ -13,7 +13,10 @@ from torchvision import transforms as T
 
 from aioway.emits import ClfLogitHead, linear_regression
 from aioway.io import Frame
-from aioway.trainers import static_infer_step, static_train_step
+from aioway.trainers import (
+    StaticTrainer,
+    TrainCfg,
+)
 
 __all__ = ["mnist", "train_test_split"]
 
@@ -53,24 +56,22 @@ def train_test_split[D: Frame](dataset: D, test_ratio: float) -> tuple[D, D]:
 
 
 def main(batch_size: int):
+    fabric = L.Fabric()
 
     dset = mnist()
     train_dset, test_dset = train_test_split(dset, 0.1)
-
-    train_loader = dutils.DataLoader(train_dset, batch_size=batch_size)
-    test_loader = dutils.DataLoader(test_dset, batch_size=batch_size)
 
     module = ClfLogitHead(linear_regression)(dset.observ_spec, dset.action_spec)
     optimizer = optim.AdamW(module.parameters())
     loss_func = nn.CrossEntropyLoss()
 
-    for x, y in progress.track(train_loader):
-        pred, loss = static_train_step(module, optimizer, loss_func, x, y)
-        print(loss)
+    cfg = TrainCfg(batch_size=64, fabric=fabric)
+    trainer = StaticTrainer(cfg, module, optimizer, loss_func)
 
-    for x, y in progress.track(test_loader):
-        _, loss = static_infer_step(module, loss_func, x, y)
-        print(loss)
+    for pred in trainer.train_epoch(train_dset):
+        print(pred.loss)
+    for pred in trainer.infer_epoch(test_dset):
+        print(pred.loss)
 
 
 if __name__ == "__main__":
