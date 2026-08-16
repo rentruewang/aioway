@@ -5,7 +5,7 @@ from torch import nn
 
 from aioway._specs import unbounded_box_spec
 from aioway.cases import NmfEmitter, NmfTrainerModule
-from aioway.emits import emit_one
+from aioway.nets import emit_one
 
 
 @pytest.fixture

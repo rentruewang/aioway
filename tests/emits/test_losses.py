@@ -5,7 +5,7 @@ from torch import nn
 from torchrl import data as rldata
 
 from aioway._specs import unbounded_box_spec
-from aioway.emits import (
+from aioway.nets import (
     LossTCls,
     PairLossModule,
     dispatch_mse_loss,

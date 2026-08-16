@@ -10,7 +10,7 @@ from torchrl import data as rldata
 from aioway._specs import unbounded_box_spec
 from aioway._torch import Shape
 from aioway._utils import is_list_of
-from aioway.emits import sample_from_spec
+from aioway.nets import sample_from_spec
 
 from ._utils import Activation, activation_module
 from .emitters import Emitter, emitter_dcls

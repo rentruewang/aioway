@@ -10,14 +10,14 @@ from torchrl import data as rldata
 
 from aioway._specs import unbounded_box_spec
 from aioway._torch import Shape
-from aioway.emits import (
+from aioway.io import TensorStream
+from aioway.nets import (
     MlpCompoundEmitter,
     MlpEmitter,
     emit,
     emit_one,
     linear_regression,
 )
-from aioway.io import TensorStream
 
 
 @pytest.fixture
