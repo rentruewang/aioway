@@ -13,7 +13,7 @@ from torchvision import transforms as T
 
 from aioway.emits import ClfLogitHead, linear_regression
 from aioway.io import Frame
-from aioway.trainers import optimize_clip
+from aioway.trainers import optimize_clip, static_infer
 
 __all__ = ["mnist", "train_test_split"]
 
@@ -65,19 +65,13 @@ def main(batch_size: int):
     loss_func = nn.CrossEntropyLoss()
 
     for x, y in progress.track(train_loader):
-        loss = compute_loss(module, loss_func, x, y)
+        _, loss = static_infer(module, loss_func, x, y)
         optimize_clip(optimizer, loss, module, 1)
         print(loss)
 
     for x, y in progress.track(test_loader):
-        loss = compute_loss(module, loss_func, x, y)
+        _, loss = static_infer(module, loss_func, x, y)
         print(loss)
-
-
-def compute_loss(module, loss_func, x, y):
-    out = module(x)
-    loss = loss_func(out, y)
-    return loss
 
 
 if __name__ == "__main__":

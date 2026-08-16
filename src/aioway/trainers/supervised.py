@@ -7,6 +7,7 @@ from collections import abc as cabc
 
 import tensordict as td
 import torch
+from rich import progress
 from torch import nn, optim
 from torch.nn import utils as nn_utils
 from torch.utils import data as dutils
@@ -19,7 +20,46 @@ __all__ = [
     "ComputeSlLoss",
     "optimize",
     "optimize_clip",
+    "static_train",
+    "static_infer",
 ]
+
+
+class LossFunc(typing.Protocol):
+    def __call__(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor: ...
+
+
+def clip_gradients(params: cabc.Iterator[nn.Parameter], max_grad: float) -> None:
+    if max_grad < 0:
+        raise ValueError(f"{max_grad=} should be positive.")
+
+    nn_utils.clip_grad_norm_(params, max_norm=max_grad)
+
+
+def static_train(
+    module: nn.Module,
+    optimizer: optim.Optimizer,
+    loss_func: LossFunc,
+    loader: dutils.DataLoader,
+):
+    "Train a module in a static (non interactive) manner."
+
+    for x, y in progress.track(loader):
+        pred, loss = static_infer(module, loss_func, x, y)
+
+        optimizer.zero_grad()
+        loss.backward()
+        clip_gradients(module.parameters(), 1)
+        optimizer.step()
+        print(loss)
+
+
+def static_infer(
+    module: nn.Module, loss_func: LossFunc, x: torch.Tensor, y: torch.Tensor
+) -> tuple[torch.Tensor, torch.Tensor]:
+    pred = module(x)
+    loss = loss_func(pred, y)
+    return pred, loss
 
 
 class VectorPair(td.TensorClass):
@@ -143,4 +183,4 @@ def optimize_clip(
 
     with optimize(opt, loss):
         if max_grad_norm is not None:
-            nn_utils.clip_grad_norm_(module.parameters(), max_norm=max_grad_norm)
+            clip_gradients(module.parameters(), max_grad_norm)
