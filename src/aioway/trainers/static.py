@@ -1,15 +1,16 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import abc
 import dataclasses as dcls
-import typing, abc
+import typing
 from collections import abc as cabc
 
 import lightning as L
 import torch
 from rich import progress
-from torchrl import data as rldata
 from torch import nn, optim
 from torch.utils import data as dutils
+from torchrl import data as rldata
 
 __all__ = ["LossFunc", "PredLossPair", "StaticTrainer", "TrainCfg"]
 

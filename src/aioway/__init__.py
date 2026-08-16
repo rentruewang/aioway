@@ -12,7 +12,6 @@ from . import (
     _utils,
     api,
     errors,
-    io,
     modes,
     nets,
     trainers,

@@ -11,7 +11,6 @@ from torchrl import data as rldata
 from torchvision import datasets
 from torchvision import transforms as T
 
-from aioway.io import Frame
 from aioway.nets import ClfLogitHead, linear_regression
 from aioway.trainers import (
     StaticTrainer,
@@ -47,7 +46,7 @@ def mnist() -> MnistDataset:
 
 
 @typing.no_type_check
-def train_test_split[D: Frame](dataset: D, test_ratio: float) -> tuple[D, D]:
+def train_test_split[D: dutils.Dataset](dataset: D, test_ratio: float) -> tuple[D, D]:
     assert 0 <= test_ratio <= 1
 
     test_samples = round(len(dataset) * test_ratio)
