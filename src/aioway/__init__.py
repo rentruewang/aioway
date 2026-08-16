@@ -11,9 +11,9 @@ from . import (
     _torch,
     _utils,
     api,
-    emits,
     errors,
     io,
     modes,
+    nets,
     trainers,
 )

@@ -3,7 +3,7 @@
 import pytest
 from torch import nn
 
-from aioway.emits import PairLossModule
+from aioway.nets import PairLossModule
 
 
 def _loss_modules():

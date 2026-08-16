@@ -6,8 +6,8 @@ from torchrl import data as rldata
 
 from aioway._specs import float_image_spec, unbounded_box_spec
 from aioway._torch import Shape
-from aioway.emits import emit_one, sample_from_spec, set_batch_size
-from aioway.emits.convs import ImageRegressorEmitter
+from aioway.nets import emit_one, sample_from_spec, set_batch_size
+from aioway.nets.convs import ImageRegressorEmitter
 
 
 @pytest.fixture
