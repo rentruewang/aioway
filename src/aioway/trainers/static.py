@@ -2,17 +2,14 @@
 
 import typing
 from collections import abc as cabc
-
+from torch.utils import data as dutils
 import torch
 from torch import nn, optim
+import lightning as L
 from torch.nn import utils as nn_utils
+import dataclasses as dcls
 
-__all__ = [
-    "LossFunc",
-    "PredLossPair",
-    "static_train_step",
-    "static_infer_step",
-]
+__all__ = ["LossFunc", "PredLossPair", "StaticTrainer", "TrainCfg"]
 
 
 class LossFunc(typing.Protocol):
@@ -30,36 +27,69 @@ class PredLossPair(typing.NamedTuple):
     loss: torch.Tensor
 
 
-def clip_gradients(params: cabc.Iterator[nn.Parameter], max_grad: float) -> None:
-    if max_grad < 0:
-        raise ValueError(f"{max_grad=} should be positive.")
+@dcls.dataclass(frozen=True)
+class TrainCfg:
+    """
+    The config that differs each run by run.
+    """
 
-    nn_utils.clip_grad_norm_(params, max_norm=max_grad)
+    batch_size: int
+    "The batch size to use in training."
 
+    max_grad_norm: float = 1
+    "The maximum gradient norm. Defaults to 1"
 
-def static_train_step(
-    module: nn.Module,
-    optimizer: optim.Optimizer,
-    loss_func: LossFunc,
-    x: torch.Tensor,
-    y: torch.Tensor,
-) -> PredLossPair:
-    "Train a module in a static (non interactive) manner."
-
-    inferred = static_infer_step(module, loss_func, x, y)
-
-    optimizer.zero_grad()
-    inferred.loss.backward()
-
-    clip_gradients(module.parameters(), 1)
-
-    optimizer.step()
-    return inferred
+    def __post_init__(self) -> None:
+        if self.max_grad_norm < 0:
+            raise ValueError(f"{self.max_grad_norm=} should be positive.")
 
 
-def static_infer_step(
-    module: nn.Module, loss_func: LossFunc, x: torch.Tensor, y: torch.Tensor
-) -> PredLossPair:
-    pred = module(x)
-    loss = loss_func(pred, y)
-    return PredLossPair(pred, loss)
+@dcls.dataclass(frozen=True)
+class StaticTrainer:
+    """
+    The trainer for typical training workflow.
+    """
+
+    module: nn.Module
+    "The module to train."
+
+    loss_func: LossFunc
+    "The loss function to compute the losses."
+
+    optimizer: optim.Optimizer
+    "The optimizer to use."
+
+    fabric: L.Fabric
+    "The fabric instance."
+
+    def train_epoch(
+        self, cfg: TrainCfg, train_dataset: dutils.Dataset
+    ) -> cabc.Generator[None]:
+        for x, y in dutils.DataLoader(train_dataset, batch_size=cfg.batch_size):
+            self.train_step(cfg, x, y)
+            yield
+
+    def train_step(
+        self, cfg: TrainCfg, x: torch.Tensor, y: torch.Tensor
+    ) -> PredLossPair:
+        "Train a module in a static (non interactive) manner."
+
+        inferred = self.infer_step(x, y)
+
+        self.optimizer.zero_grad()
+        inferred.loss.backward()
+
+        self.clip_gradients(cfg)
+
+        self.optimizer.step()
+        return inferred
+
+    def infer_step(self, x: torch.Tensor, y: torch.Tensor) -> PredLossPair:
+        pred = self.module(x)
+        loss = self.loss_func(pred, y)
+        return PredLossPair(pred, loss)
+
+    def clip_gradients(self, cfg: TrainCfg) -> None:
+        self.fabric.clip_gradients(
+            self.module, self.optimizer, max_norm=cfg.max_grad_norm
+        )
