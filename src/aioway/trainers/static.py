@@ -54,7 +54,6 @@ def static_train_step(
     clip_gradients(module.parameters(), 1)
 
     optimizer.step()
-
     return inferred
 
 
