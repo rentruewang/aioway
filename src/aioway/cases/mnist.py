@@ -3,8 +3,8 @@
 import pathlib
 import typing
 
+import lightning as L
 import torch
-from rich import progress
 from torch import nn, optim
 from torch.utils import data as dutils
 from torchrl import data as rldata
@@ -13,12 +13,15 @@ from torchvision import transforms as T
 
 from aioway.emits import ClfLogitHead, linear_regression
 from aioway.io import Frame
-from aioway.trainers import optimize_clip
+from aioway.trainers import (
+    StaticTrainer,
+    TrainCfg,
+)
 
 __all__ = ["mnist", "train_test_split"]
 
 
-class MnistFrame(dutils.Dataset):
+class MnistDataset(dutils.Dataset):
     def __init__(self) -> None:
         self._mnist = datasets.MNIST(pathlib.Path.home(), download=True)
 
@@ -39,8 +42,8 @@ class MnistFrame(dutils.Dataset):
         return rldata.Bounded(low=0, high=9, shape=torch.Size([]), dtype=torch.long)
 
 
-def mnist() -> MnistFrame:
-    return MnistFrame()
+def mnist() -> MnistDataset:
+    return MnistDataset()
 
 
 @typing.no_type_check
@@ -53,31 +56,22 @@ def train_test_split[D: Frame](dataset: D, test_ratio: float) -> tuple[D, D]:
 
 
 def main(batch_size: int):
+    fabric = L.Fabric()
 
     dset = mnist()
     train_dset, test_dset = train_test_split(dset, 0.1)
-
-    train_loader = dutils.DataLoader(train_dset, batch_size=batch_size)
-    test_loader = dutils.DataLoader(test_dset, batch_size=batch_size)
 
     module = ClfLogitHead(linear_regression)(dset.observ_spec, dset.action_spec)
     optimizer = optim.AdamW(module.parameters())
     loss_func = nn.CrossEntropyLoss()
 
-    for x, y in progress.track(train_loader):
-        loss = compute_loss(module, loss_func, x, y)
-        optimize_clip(optimizer, loss, module, 1)
-        print(loss)
+    cfg = TrainCfg(batch_size=64, fabric=fabric)
+    trainer = StaticTrainer(cfg, module, optimizer, loss_func)
 
-    for x, y in progress.track(test_loader):
-        loss = compute_loss(module, loss_func, x, y)
-        print(loss)
-
-
-def compute_loss(module, loss_func, x, y):
-    out = module(x)
-    loss = loss_func(out, y)
-    return loss
+    for pred in trainer.train_epoch(train_dset):
+        print(pred.loss)
+    for pred in trainer.infer_epoch(test_dset):
+        print(pred.loss)
 
 
 if __name__ == "__main__":
