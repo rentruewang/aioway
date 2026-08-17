@@ -118,10 +118,9 @@ class StaticTrainer:
 
         self.optimizer.zero_grad()
         self.fabric.backward(inferred.loss)
-
         self.clip_gradients()
-
         self.optimizer.step()
+
         return inferred
 
     def infer_step(self, x: torch.Tensor, y: torch.Tensor) -> PredLossPair:
