@@ -4,6 +4,7 @@
 
 import abc
 import typing
+from collections import abc as cabc
 
 import tensordict as td
 from torchrl import data as rldata
@@ -37,7 +38,7 @@ class ComposedDset(CompositeDset):
         )
 
     @property
-    def dsets(self) -> dict[str, Dset]:
+    def dsets(self) -> cabc.Mapping[str, Dset]:
         return self._dsets
 
 
@@ -45,7 +46,7 @@ class IdxComposedDset(ComposedDset, IdxDset):
     if typing.TYPE_CHECKING:
 
         @property
-        def dsets(self) -> dict[str, IdxDset]: ...
+        def dsets(self) -> cabc.Mapping[str, IdxDset]: ...
 
     def __init__(self, **dsets: IdxDset) -> None:
 
