@@ -11,6 +11,7 @@ from . import (
     _torch,
     _utils,
     api,
+    dsets,
     errors,
     modes,
     nets,
