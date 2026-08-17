@@ -62,6 +62,9 @@ class TrainCfg:
     max_grad_norm: float = 1
     "The maximum gradient norm. Defaults to 1."
 
+    progress_bar: bool = True
+    "Whether or not to use a progress bar."
+
     def __post_init__(self) -> None:
         if self.max_grad_norm < 0:
             raise ValueError(f"{self.max_grad_norm=} should be positive.")
@@ -74,6 +77,29 @@ class TrainCfg:
             collate_fn=dataset.__collate_fn__,
         )
         return typing.cast(dutils.DataLoader, self.fabric.setup_dataloaders(loader))
+
+
+class TerminateTraining(StopIteration):
+    """
+    Signal to stop the current training loop.
+    """
+
+    value: PredLossPair
+    "The value should still be a prediction and loss pair."
+
+
+class TrainingContext(typing.Protocol):
+    def __call__(self, trainer: StaticTrainer, state: LoopState):
+        pass
+
+
+@dcls.dataclass(frozen=True)
+class LoopState:
+    batch_idx: int
+    "The batch index of the current batch."
+
+    total_size: int | None = None
+    "The total size. For stream this would be `None`."
 
 
 class StaticTrainer:
@@ -98,15 +124,20 @@ class StaticTrainer:
         self._loss_func = loss_func
 
     def train_epoch(self, dataset: InputTargetLikeDset) -> cabc.Generator[PredLossPair]:
-        loader = self.cfg.make_data_loader(dataset)
-        for pair in progress.track(loader):
+        for pair in self._data_loader(dataset):
             x, y = pair.input, pair.target
-            inferred = self.train_step(x, y)
-            yield inferred
+
+            try:
+                inferred = self.train_step(x, y)
+            except TerminateTraining as tt:
+                yield tt.value
+                return
+            else:
+                yield inferred
 
     def infer_epoch(self, dataset: InputTargetLikeDset) -> cabc.Generator[PredLossPair]:
-        loader = self.cfg.make_data_loader(dataset)
-        for pair in progress.track(loader):
+
+        for pair in self._data_loader(dataset):
             x, y = pair.input, pair.target
             inferred = self.infer_step(x, y)
             yield inferred
@@ -117,7 +148,7 @@ class StaticTrainer:
         inferred = self.infer_step(x, y)
 
         self.optimizer.zero_grad()
-        self.fabric.backward(inferred.loss)
+        self.backward(inferred.loss)
         self.clip_gradients()
         self.optimizer.step()
 
@@ -127,6 +158,9 @@ class StaticTrainer:
         pred = self.module(x)
         loss = self.loss_func(pred, y)
         return PredLossPair(pred, loss)
+
+    def backward(self, loss: torch.Tensor) -> None:
+        self.fabric.backward(loss)
 
     def clip_gradients(self) -> None:
         self.fabric.clip_gradients(
@@ -158,3 +192,11 @@ class StaticTrainer:
     def optimizer(self) -> optim.Optimizer:
         "The optimizer to use."
         return self._optimizer
+
+    def _data_loader(self, dataset: InputTargetLikeDset):
+        loader: cabc.Iterable = self.cfg.make_data_loader(dataset)
+
+        if self.cfg.progress_bar:
+            loader = progress.track(loader)
+
+        yield from loader
