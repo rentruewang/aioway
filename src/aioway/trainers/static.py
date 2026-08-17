@@ -79,6 +79,29 @@ class TrainCfg:
         return typing.cast(dutils.DataLoader, self.fabric.setup_dataloaders(loader))
 
 
+class TerminateTraining(StopIteration):
+    """
+    Signal to stop the current training loop.
+    """
+
+    value: PredLossPair
+    "The value should still be a prediction and loss pair."
+
+
+class TrainingContext(typing.Protocol):
+    def __call__(self, trainer: StaticTrainer, state: LoopState):
+        pass
+
+
+@dcls.dataclass(frozen=True)
+class LoopState:
+    batch_idx: int
+    "The batch index of the current batch."
+
+    total_size: int | None = None
+    "The total size. For stream this would be `None`."
+
+
 class StaticTrainer:
     """
     The trainer for typical training workflow.
@@ -103,8 +126,14 @@ class StaticTrainer:
     def train_epoch(self, dataset: InputTargetLikeDset) -> cabc.Generator[PredLossPair]:
         for pair in self._data_loader(dataset):
             x, y = pair.input, pair.target
-            inferred = self.train_step(x, y)
-            yield inferred
+
+            try:
+                inferred = self.train_step(x, y)
+            except TerminateTraining as tt:
+                yield tt.value
+                return
+            else:
+                yield inferred
 
     def infer_epoch(self, dataset: InputTargetLikeDset) -> cabc.Generator[PredLossPair]:
 
