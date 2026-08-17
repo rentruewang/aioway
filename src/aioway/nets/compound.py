@@ -8,13 +8,7 @@ from collections import abc as cabc
 
 from torch import nn
 
-from aioway._utils import (
-    AnyDict,
-    Sign,
-    decomp_flatten,
-    decomp_replace,
-    render_fcall,
-)
+from aioway._utils import AnyDict, Sign, decomp_flatten, decomp_replace, render_fcall
 
 __all__ = ["CompoundBuilder", "BuilderNode", "BuiltModule"]
 

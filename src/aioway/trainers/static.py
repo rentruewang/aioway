@@ -117,7 +117,7 @@ class StaticTrainer:
         inferred = self.infer_step(x, y)
 
         self.optimizer.zero_grad()
-        self.fabric.backward(inferred.loss)
+        self.backward(inferred.loss)
         self.clip_gradients()
         self.optimizer.step()
 
@@ -127,6 +127,9 @@ class StaticTrainer:
         pred = self.module(x)
         loss = self.loss_func(pred, y)
         return PredLossPair(pred, loss)
+
+    def backward(self, loss: torch.Tensor) -> None:
+        self.fabric.backward(loss)
 
     def clip_gradients(self) -> None:
         self.fabric.clip_gradients(
