@@ -62,6 +62,9 @@ class TrainCfg:
     max_grad_norm: float = 1
     "The maximum gradient norm. Defaults to 1."
 
+    progress_bar: bool = True
+    "Whether or not to use a progress bar."
+
     def __post_init__(self) -> None:
         if self.max_grad_norm < 0:
             raise ValueError(f"{self.max_grad_norm=} should be positive.")
@@ -98,15 +101,14 @@ class StaticTrainer:
         self._loss_func = loss_func
 
     def train_epoch(self, dataset: InputTargetLikeDset) -> cabc.Generator[PredLossPair]:
-        loader = self.cfg.make_data_loader(dataset)
-        for pair in progress.track(loader):
+        for pair in self._data_loader(dataset):
             x, y = pair.input, pair.target
             inferred = self.train_step(x, y)
             yield inferred
 
     def infer_epoch(self, dataset: InputTargetLikeDset) -> cabc.Generator[PredLossPair]:
-        loader = self.cfg.make_data_loader(dataset)
-        for pair in progress.track(loader):
+
+        for pair in self._data_loader(dataset):
             x, y = pair.input, pair.target
             inferred = self.infer_step(x, y)
             yield inferred
@@ -161,3 +163,11 @@ class StaticTrainer:
     def optimizer(self) -> optim.Optimizer:
         "The optimizer to use."
         return self._optimizer
+
+    def _data_loader(self, dataset: InputTargetLikeDset):
+        loader: cabc.Iterable = self.cfg.make_data_loader(dataset)
+
+        if self.cfg.progress_bar:
+            loader = progress.track(loader)
+
+        yield from loader
