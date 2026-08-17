@@ -7,6 +7,7 @@ from collections import abc as cabc
 from torch.utils import data as dutils
 
 from aioway._utils import IntArray
+from torchrl import data as rldata
 
 __all__ = ["Dset", "IdxDset", "IterDset"]
 
@@ -20,6 +21,16 @@ class Dset[T](abc.ABC):
 
     @abc.abstractmethod
     def __dataset__(self) -> dutils.Dataset[T]:
+        """
+        The dataset that this `Dset` converts to.
+        """
+
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def __spec__(self) -> rldata.TensorSpec:
+        "The spec constraint for the data."
+
         raise NotImplementedError
 
 
@@ -85,7 +96,7 @@ class IterDset[T](Dset[T], abc.ABC):
         raise NotImplementedError
 
 
-class _IterDataset(dutils.Dataset):
+class _IterDataset(dutils.IterableDataset):
     def __init__(self, dset: IterDset) -> None:
         super().__init__()
 
