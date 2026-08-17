@@ -4,6 +4,7 @@ import pathlib
 import typing
 
 import lightning as L
+import tensordict as td
 import torch
 from torch import nn, optim
 from torch.utils import data as dutils
@@ -14,7 +15,6 @@ from torchvision import transforms as T
 from aioway.dsets import DatasetIdxDset, Dset, InputTarget, InputTargetLikeDset
 from aioway.nets import ClfLogitHead, linear_regression
 from aioway.trainers import StaticTrainer, TrainCfg
-import tensordict as td
 
 __all__ = ["mnist", "train_test_split"]
 
@@ -80,7 +80,7 @@ def main(batch_size: int):
     optimizer = optim.AdamW(module.parameters())
     loss_func = nn.CrossEntropyLoss()
 
-    cfg = TrainCfg(batch_size=64, fabric=fabric)
+    cfg = TrainCfg(batch_size=batch_size, fabric=fabric)
     trainer = StaticTrainer(cfg, module, optimizer, loss_func)
 
     for pred in trainer.train_epoch(train_dset):
@@ -90,4 +90,4 @@ def main(batch_size: int):
 
 
 if __name__ == "__main__":
-    main(64)
+    main(1024)

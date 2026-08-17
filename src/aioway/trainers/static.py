@@ -12,7 +12,7 @@ from torch import nn, optim
 from torch.utils import data as dutils
 from torchrl import data as rldata
 
-from aioway.dsets import InputTargetLikeDset, Dset
+from aioway.dsets import Dset, InputTargetLikeDset
 
 __all__ = ["LossFunc", "PredLossPair", "StaticTrainer", "TrainCfg"]
 

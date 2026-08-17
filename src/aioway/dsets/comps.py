@@ -102,21 +102,24 @@ class InputTargetLikeDset(IdxDset, abc.ABC):
 
 class InputTargetDset(InputTargetLikeDset):
     def __init__(self, input: IdxDset, target: IdxDset):
-        super().__init__(input=input, target=target)
+        self._input = input
+        self._target = target
 
     def __getitem__(self, idx):
-        return InputTarget(**super().__getitem__(idx))
+        return InputTarget(input=self.input[idx], target=self.target[idx])
 
     def __getitems__(self, idx):
-        return InputTarget(**super().__getitems__(idx))
+        return InputTarget(
+            input=self.input.__getitems__(idx), target=self.target.__getitems__(idx)
+        )
 
     @property
     def input(self) -> IdxDset:
-        return self.dsets["input"]
+        return self._input
 
     @property
     def target(self) -> IdxDset:
-        return self.dsets["target"]
+        return self._target
 
     @property
     def input_spec(self) -> rldata.TensorSpec:
