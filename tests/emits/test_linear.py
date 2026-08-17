@@ -10,7 +10,6 @@ from torchrl import data as rldata
 
 from aioway._specs import unbounded_box_spec
 from aioway._torch import Shape
-from aioway.io import TensorStream
 from aioway.nets import (
     MlpCompoundEmitter,
     MlpEmitter,
@@ -32,7 +31,7 @@ def output_space():
 
 @pytest.fixture
 def input_dataset(input_attr_space: rldata.Unbounded):
-    class FakeInputDset(TensorStream):
+    class FakeInputDset(dutils.IterableDataset):
         @typing.override
         def __iter__(self):
             # Not really using this, so we can afford to make a fake one.
@@ -42,7 +41,7 @@ def input_dataset(input_attr_space: rldata.Unbounded):
 
 
 @pytest.fixture
-def input_loader(input_dataset: TensorStream):
+def input_loader(input_dataset: dutils.Dataset):
     return dutils.DataLoader(input_dataset)
 
 

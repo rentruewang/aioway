@@ -1,5 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import abc
 import dataclasses as dcls
 import typing
 from collections import abc as cabc
@@ -9,6 +10,9 @@ import torch
 from rich import progress
 from torch import nn, optim
 from torch.utils import data as dutils
+from torchrl import data as rldata
+
+from aioway.dsets import Dset, InputTargetLikeDset
 
 __all__ = ["LossFunc", "PredLossPair", "StaticTrainer", "TrainCfg"]
 
@@ -26,6 +30,18 @@ class PredLossPair(typing.NamedTuple):
 
     pred: torch.Tensor
     loss: torch.Tensor
+
+
+class ObservActionSpace(abc.ABC):
+    @property
+    @abc.abstractmethod
+    def observ_spec(self) -> rldata.TensorSpec:
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def action_spec(self) -> rldata.TensorSpec:
+        raise NotImplementedError
 
 
 @dcls.dataclass(frozen=True, kw_only=True)
@@ -50,11 +66,12 @@ class TrainCfg:
         if self.max_grad_norm < 0:
             raise ValueError(f"{self.max_grad_norm=} should be positive.")
 
-    def make_data_loader(self, dataset: dutils.Dataset) -> dutils.DataLoader:
+    def make_data_loader(self, dataset: Dset) -> dutils.DataLoader:
         loader = dutils.DataLoader(
-            dataset,
+            dataset.__dataset__(),
             batch_size=self.batch_size,
             shuffle=self.shuffle,
+            collate_fn=dataset.__collate_fn__,
         )
         return typing.cast(dutils.DataLoader, self.fabric.setup_dataloaders(loader))
 
@@ -80,15 +97,17 @@ class StaticTrainer:
 
         self._loss_func = loss_func
 
-    def train_epoch(self, dataset: dutils.Dataset) -> cabc.Generator[PredLossPair]:
+    def train_epoch(self, dataset: InputTargetLikeDset) -> cabc.Generator[PredLossPair]:
         loader = self.cfg.make_data_loader(dataset)
-        for x, y in progress.track(loader):
+        for pair in progress.track(loader):
+            x, y = pair.input, pair.target
             inferred = self.train_step(x, y)
             yield inferred
 
-    def infer_epoch(self, dataset: dutils.Dataset) -> cabc.Generator[PredLossPair]:
+    def infer_epoch(self, dataset: InputTargetLikeDset) -> cabc.Generator[PredLossPair]:
         loader = self.cfg.make_data_loader(dataset)
-        for x, y in progress.track(loader):
+        for pair in progress.track(loader):
+            x, y = pair.input, pair.target
             inferred = self.infer_step(x, y)
             yield inferred
 
