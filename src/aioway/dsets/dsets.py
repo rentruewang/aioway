@@ -77,6 +77,9 @@ class _IdxDataset(dutils.Dataset):
     def __getitems__(self, index):
         return self.dset.__getitems__(index)
 
+    def __spec__(self) -> rldata.TensorSpec:
+        return self.dset.__spec__()
+
     @property
     def dset(self) -> IdxDset:
         return self._dset
@@ -110,6 +113,9 @@ class _IterDataset(dutils.IterableDataset):
 
     def __iter__(self):
         yield from self.dset
+
+    def __spec__(self) -> rldata.TensorSpec:
+        return self.dset.__spec__()
 
     @property
     def dset(self) -> IterDset:
