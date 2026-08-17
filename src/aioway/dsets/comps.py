@@ -7,11 +7,19 @@ import typing
 from collections import abc as cabc
 
 import tensordict as td
+import torch
 from torchrl import data as rldata
 
 from .dsets import Dset, IdxDset
 
-__all__ = ["CompositeDset", "ComposedDset", "IdxComposedDset", "InputTargetDset"]
+__all__ = [
+    "CompositeDset",
+    "ComposedDset",
+    "IdxComposedDset",
+    "InputTarget",
+    "InputTargetLikeDset",
+    "InputTargetDset",
+]
 
 
 class CompositeDset(Dset, abc.ABC):
@@ -19,10 +27,12 @@ class CompositeDset(Dset, abc.ABC):
     A `Dset` that the data should be composites.
     """
 
-    @typing.override
-    @abc.abstractmethod
-    def __spec__(self) -> rldata.Composite:
-        raise NotImplementedError
+    if typing.TYPE_CHECKING:
+
+        @typing.override
+        @abc.abstractmethod
+        def __spec__(self) -> rldata.Composite:
+            raise NotImplementedError
 
 
 class ComposedDset(CompositeDset):
@@ -67,9 +77,38 @@ class IdxComposedDset(ComposedDset, IdxDset):
         return td.TensorDict({k: d.__getitems__(idx) for k, d in self.dsets.items()})
 
 
-class InputTargetDset(IdxComposedDset):
+class InputTarget(td.TensorClass):
+    input: td.TensorDictBase | torch.Tensor
+    "The input field."
+
+    target: td.TensorDictBase | torch.Tensor
+    "The target field."
+
+
+class InputTargetLikeDset(IdxDset, abc.ABC):
+    @property
+    @abc.abstractmethod
+    def input_spec(self) -> rldata.TensorSpec:
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def target_spec(self) -> rldata.TensorSpec:
+        raise NotImplementedError
+
+    def __spec__(self) -> rldata.Composite:
+        return rldata.Composite(input=self.input_spec, target=self.target_spec)
+
+
+class InputTargetDset(InputTargetLikeDset):
     def __init__(self, input: IdxDset, target: IdxDset):
         super().__init__(input=input, target=target)
+
+    def __getitem__(self, idx):
+        return InputTarget(**super().__getitem__(idx))
+
+    def __getitems__(self, idx):
+        return InputTarget(**super().__getitems__(idx))
 
     @property
     def input(self) -> IdxDset:

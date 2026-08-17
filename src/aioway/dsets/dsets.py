@@ -4,12 +4,13 @@ import abc
 import typing
 from collections import abc as cabc
 
+import numpy as np
 from torch.utils import data as dutils
 from torchrl import data as rldata
 
 from aioway._utils import IntArray
 
-__all__ = ["Dset", "IdxDset", "IterDset"]
+__all__ = ["Dset", "IdxDset", "IterDset", "DatasetIdxDset"]
 
 
 class Dset[T](abc.ABC):
@@ -33,6 +34,15 @@ class Dset[T](abc.ABC):
 
         raise NotImplementedError
 
+    @property
+    def __collate_fn__(self) -> cabc.Callable[..., typing.Any] | None:
+        """
+        Overwrite this function if `__getitems__` gives an output
+        that cannot be handled by default collate.
+        """
+
+        return None
+
 
 class IdxDset[T](Dset[T], abc.ABC):
     """
@@ -51,9 +61,48 @@ class IdxDset[T](Dset[T], abc.ABC):
     def __getitems__(self, index: IntArray, /):
         raise NotImplementedError
 
-    @typing.final
-    def __dataset__(self) -> _IdxDataset:
+    @typing.override
+    def __dataset__(self):
         return _IdxDataset(self)
+
+
+class DatasetIdxDset[T](IdxDset[T]):
+    """
+    Adaptor from `dutils.Dataset` to `IdxDset`.
+    """
+
+    def __init__(
+        self, dataset: dutils.Dataset[T], spec: rldata.TensorSpec, collate_fn=None
+    ) -> None:
+        self._dataset = dataset
+        self._spec = spec
+        self._colalte_fn = collate_fn
+
+    @typing.no_type_check
+    def __len__(self) -> int:
+        return len(self._dataset)
+
+    @typing.no_type_check
+    def __getitem__(self, idx):
+        return self._dataset[idx]
+
+    @typing.no_type_check
+    def __getitems__(self, idx):
+        return self._dataset.__getitems__(idx)
+
+    def __dataset__(self):
+        return self
+
+    def __spec__(self) -> rldata.TensorSpec:
+        return self._spec
+
+    @property
+    def __collate_fn__(self):
+        return self._colalte_fn
+
+    @property
+    def dataset(self) -> dutils.Dataset[T]:
+        return self._dataset
 
 
 class _IdxDataset(dutils.Dataset):
@@ -75,7 +124,7 @@ class _IdxDataset(dutils.Dataset):
         return self.dset[index]
 
     def __getitems__(self, index):
-        return self.dset.__getitems__(index)
+        return self.dset.__getitems__(np.asarray(index))
 
     def __spec__(self) -> rldata.TensorSpec:
         return self.dset.__spec__()
@@ -97,6 +146,10 @@ class IterDset[T](Dset[T], abc.ABC):
         """
 
         raise NotImplementedError
+
+    @typing.override
+    def __dataset__(self):
+        return _IterDataset(self)
 
 
 class _IterDataset(dutils.IterableDataset):
