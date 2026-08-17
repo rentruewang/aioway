@@ -5,9 +5,9 @@ import typing
 from collections import abc as cabc
 
 from torch.utils import data as dutils
+from torchrl import data as rldata
 
 from aioway._utils import IntArray
-from torchrl import data as rldata
 
 __all__ = ["Dset", "IdxDset", "IterDset"]
 
