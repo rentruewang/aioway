@@ -11,7 +11,7 @@ from torchrl import data as rldata
 
 from .dsets import Dset, IdxDset
 
-__all__ = ["CompositeDset", "ComposedDset", "IdxComposedDset"]
+__all__ = ["CompositeDset", "ComposedDset", "IdxComposedDset", "InputTargetDset"]
 
 
 class CompositeDset(Dset, abc.ABC):
@@ -65,3 +65,24 @@ class IdxComposedDset(ComposedDset, IdxDset):
 
     def __getitems__(self, idx):
         return td.TensorDict({k: d.__getitems__(idx) for k, d in self.dsets.items()})
+
+
+class InputTargetDset(IdxComposedDset):
+    def __init__(self, input: IdxDset, target: IdxDset):
+        super().__init__(input=input, target=target)
+
+    @property
+    def input(self) -> IdxDset:
+        return self.dsets["input"]
+
+    @property
+    def target(self) -> IdxDset:
+        return self.dsets["target"]
+
+    @property
+    def input_spec(self) -> rldata.TensorSpec:
+        return self.input.__spec__()
+
+    @property
+    def target_spec(self) -> rldata.TensorSpec:
+        return self.target.__spec__()
