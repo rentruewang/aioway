@@ -1,11 +1,11 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 "Route the spaces to losses."
-from argparse import Action
 
-from torchrl.data import tensor_specs as tspecs
-from torch import nn
 from collections import abc as cabc
+
+from torch import nn
+from torchrl.data import tensor_specs as tspecs
 
 
 def route_loss(
