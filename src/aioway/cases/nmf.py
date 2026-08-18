@@ -6,7 +6,7 @@ from collections import abc as cabc
 
 import torch
 from torch import nn, optim
-from torchrl import data as rldata
+from torchrl.data import tensor_specs as tspecs
 
 from aioway.nets import Emitter, emitter_dcls
 
@@ -59,12 +59,12 @@ class NmfEmitter(Emitter):
     "The hidden latent size."
 
     def __call__(
-        self, observ: rldata.TensorSpec, action: rldata.TensorSpec
+        self, observ: tspecs.TensorSpec, action: tspecs.TensorSpec
     ) -> nn.Module:
-        if not (isinstance(observ, rldata.Unbounded) and observ.ndim == 2):
+        if not (isinstance(observ, tspecs.Unbounded) and observ.ndim == 2):
             return NotImplemented
 
-        if not (isinstance(action, rldata.UnboundedContinuous) and action.ndim == 0):
+        if not (isinstance(action, tspecs.UnboundedContinuous) and action.ndim == 0):
             return NotImplemented
 
         hidden = self.hidden

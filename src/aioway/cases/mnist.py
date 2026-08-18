@@ -8,7 +8,7 @@ import tensordict as td
 import torch
 from torch import nn, optim
 from torch.utils import data as dutils
-from torchrl import data as rldata
+from torchrl.data import tensor_specs as tspecs
 from torchvision import datasets
 from torchvision import transforms as T
 
@@ -36,12 +36,12 @@ class MnistDataset(InputTargetLikeDset):
         return td.stack([self[i] for i in idx])
 
     @property
-    def input_spec(self) -> rldata.Unbounded:
-        return rldata.Unbounded(shape=torch.Size([784]))
+    def input_spec(self) -> tspecs.Unbounded:
+        return tspecs.Unbounded(shape=torch.Size([784]))
 
     @property
-    def target_spec(self) -> rldata.Bounded:
-        return rldata.Bounded(low=0, high=9, shape=torch.Size([]), dtype=torch.long)
+    def target_spec(self) -> tspecs.Bounded:
+        return tspecs.Bounded(low=0, high=9, shape=torch.Size([]), dtype=torch.long)
 
     @property
     def __collate_fn__(self):

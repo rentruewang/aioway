@@ -7,7 +7,7 @@ from collections import abc as cabc
 import torch
 from torch import nn, optim
 from torch.nn import functional as F
-from torchrl import data as rldata
+from torchrl.data import tensor_specs as tspecs
 
 from aioway.nets import Emitter, emitter_dcls
 
@@ -54,7 +54,7 @@ class ContrastiveLossEmitter(Emitter):
     "The default emitter when it's time to emit."
 
     def __call__(
-        self, observ: rldata.TensorSpec, action: rldata.TensorSpec, /
+        self, observ: tspecs.TensorSpec, action: tspecs.TensorSpec, /
     ) -> nn.Module:
         # In batch negative is a reconstruction error.
         if observ != action:

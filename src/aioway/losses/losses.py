@@ -7,6 +7,8 @@ from collections import abc as cabc
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
+__all__ = ["route_loss"]
+
 
 def route_loss(
     input: tspecs.TensorSpec, target: tspecs.TensorSpec

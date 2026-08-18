@@ -6,7 +6,7 @@ from collections import abc as cabc
 
 import numpy as np
 from torch.utils import data as dutils
-from torchrl import data as rldata
+from torchrl.data import tensor_specs as tspecs
 
 from aioway._utils import IntArray
 
@@ -29,7 +29,7 @@ class Dset[T](abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def __spec__(self) -> rldata.TensorSpec:
+    def __spec__(self) -> tspecs.TensorSpec:
         "The spec constraint for the data."
 
         raise NotImplementedError
@@ -72,7 +72,7 @@ class DatasetIdxDset[T](IdxDset[T]):
     """
 
     def __init__(
-        self, dataset: dutils.Dataset[T], spec: rldata.TensorSpec, collate_fn=None
+        self, dataset: dutils.Dataset[T], spec: tspecs.TensorSpec, collate_fn=None
     ) -> None:
         self._dataset = dataset
         self._spec = spec
@@ -93,7 +93,7 @@ class DatasetIdxDset[T](IdxDset[T]):
     def __dataset__(self):
         return self
 
-    def __spec__(self) -> rldata.TensorSpec:
+    def __spec__(self) -> tspecs.TensorSpec:
         return self._spec
 
     @property
@@ -126,7 +126,7 @@ class _IdxDataset(dutils.Dataset):
     def __getitems__(self, index):
         return self.dset.__getitems__(np.asarray(index))
 
-    def __spec__(self) -> rldata.TensorSpec:
+    def __spec__(self) -> tspecs.TensorSpec:
         return self.dset.__spec__()
 
     @property
@@ -167,7 +167,7 @@ class _IterDataset(dutils.IterableDataset):
     def __iter__(self):
         yield from self.dset
 
-    def __spec__(self) -> rldata.TensorSpec:
+    def __spec__(self) -> tspecs.TensorSpec:
         return self.dset.__spec__()
 
     @property

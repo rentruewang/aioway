@@ -8,7 +8,7 @@ from collections import abc as cabc
 
 import tensordict as td
 import torch
-from torchrl import data as rldata
+from torchrl.data import tensor_specs as tspecs
 
 from .dsets import Dset, IdxDset
 
@@ -31,7 +31,7 @@ class CompositeDset(Dset, abc.ABC):
 
         @typing.override
         @abc.abstractmethod
-        def __spec__(self) -> rldata.Composite:
+        def __spec__(self) -> tspecs.Composite:
             raise NotImplementedError
 
 
@@ -40,10 +40,10 @@ class ComposedDset(CompositeDset):
         self._dsets = dsets
 
     @typing.override
-    def __spec__(self) -> rldata.Composite:
+    def __spec__(self) -> tspecs.Composite:
         "The composed spec would be a composite."
 
-        return rldata.Composite(
+        return tspecs.Composite(
             {key: val.__spec__() for key, val in self.dsets.items()}
         )
 
@@ -88,16 +88,16 @@ class InputTarget(td.TensorClass):
 class InputTargetLikeDset(IdxDset, abc.ABC):
     @property
     @abc.abstractmethod
-    def input_spec(self) -> rldata.TensorSpec:
+    def input_spec(self) -> tspecs.TensorSpec:
         raise NotImplementedError
 
     @property
     @abc.abstractmethod
-    def target_spec(self) -> rldata.TensorSpec:
+    def target_spec(self) -> tspecs.TensorSpec:
         raise NotImplementedError
 
-    def __spec__(self) -> rldata.Composite:
-        return rldata.Composite(input=self.input_spec, target=self.target_spec)
+    def __spec__(self) -> tspecs.Composite:
+        return tspecs.Composite(input=self.input_spec, target=self.target_spec)
 
 
 class InputTargetDset(InputTargetLikeDset):
@@ -122,9 +122,9 @@ class InputTargetDset(InputTargetLikeDset):
         return self._target
 
     @property
-    def input_spec(self) -> rldata.TensorSpec:
+    def input_spec(self) -> tspecs.TensorSpec:
         return self.input.__spec__()
 
     @property
-    def target_spec(self) -> rldata.TensorSpec:
+    def target_spec(self) -> tspecs.TensorSpec:
         return self.target.__spec__()

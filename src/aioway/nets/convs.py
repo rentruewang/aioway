@@ -5,7 +5,7 @@
 import functools
 
 from torch import nn
-from torchrl import data as rldata
+from torchrl.data import tensor_specs as tspecs
 
 from aioway._specs import unbounded_box_spec
 from aioway._torch import Shape
@@ -43,12 +43,12 @@ class ImageRegressorEmitter(Emitter):
         return self._size
 
     def __call__(
-        self, observ: rldata.TensorSpec, action: rldata.TensorSpec
+        self, observ: tspecs.TensorSpec, action: tspecs.TensorSpec
     ) -> nn.Sequential:
-        if not isinstance(observ, rldata.BoundedContinuous):
+        if not isinstance(observ, tspecs.BoundedContinuous):
             return NotImplemented
 
-        if not isinstance(action, rldata.Unbounded):
+        if not isinstance(action, tspecs.Unbounded):
             return NotImplemented
 
         activation = activation_module(self.activation)

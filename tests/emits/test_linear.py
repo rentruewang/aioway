@@ -6,7 +6,7 @@ import pytest
 import torch
 from torch import nn
 from torch.utils import data as dutils
-from torchrl import data as rldata
+from torchrl.data import tensor_specs as tspecs
 
 from aioway._specs import unbounded_box_spec
 from aioway._torch import Shape
@@ -30,7 +30,7 @@ def output_space():
 
 
 @pytest.fixture
-def input_dataset(input_attr_space: rldata.Unbounded):
+def input_dataset(input_attr_space: tspecs.Unbounded):
     class FakeInputDset(dutils.IterableDataset):
         @typing.override
         def __iter__(self):
@@ -68,7 +68,7 @@ def consider_mlp(request: pytest.FixtureRequest):
 
 
 def test_just_linear(
-    input_shape_space: rldata.Unbounded, output_space: rldata.Unbounded, consider_linear
+    input_shape_space: tspecs.Unbounded, output_space: tspecs.Unbounded, consider_linear
 ):
     module = emit_one(input_shape_space, output_space)
     assert isinstance(module, nn.Linear | nn.Sequential)
@@ -80,8 +80,8 @@ def test_just_linear(
 
 
 def test_mlp_emitter(
-    input_shape_space: rldata.Unbounded,
-    output_space: rldata.Unbounded,
+    input_shape_space: tspecs.Unbounded,
+    output_space: tspecs.Unbounded,
     consider_mlp,
     fake_mode,
 ):

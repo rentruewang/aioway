@@ -5,9 +5,9 @@ from collections import abc as cabc
 
 from torch import nn, optim
 from torchrl import collectors as rlcol
-from torchrl import data as rldata
 from torchrl import envs as rlenv
 from torchrl import objectives as rlobj
+from torchrl.data import tensor_specs as tspecs
 
 __all__ = ["vec_env", "collector"]
 
@@ -44,7 +44,7 @@ def train_rl(
     loss_fn: rlobj.LossModule,
     optimizer: optim.Optimizer,
     collector: rlcol.Collector,
-    buffer: rldata.ReplayBuffer,
+    buffer: tspecs.ReplayBuffer,
     batch_size: int,
 ):
     for i, batch in enumerate(collector):
