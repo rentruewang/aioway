@@ -10,7 +10,7 @@ import tensordict as td
 import torch
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.spaces import Space
+from aioway.spaces import SpaceCompat
 
 from .dsets import Dset, IdxDset
 
@@ -33,7 +33,7 @@ class CompositeDset(Dset, abc.ABC):
 
         @typing.override
         @abc.abstractmethod
-        def __space__(self) -> Space:
+        def __space__(self) -> SpaceCompat:
             raise NotImplementedError
 
 
