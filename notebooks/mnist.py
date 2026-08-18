@@ -70,7 +70,7 @@ def train_test_split[D: Dset](dataset: D, test_ratio: float) -> tuple[D, D]:
     train_samples = len(dataset) - test_samples
 
     def wrap_dset(dset):
-        return DatasetIdxDset(dset, dataset.__spec__(), dataset.__collate_fn__)
+        return DatasetIdxDset(dset, dataset.__space__(), dataset.__collate_fn__)
 
     train_dset, test_dset = map(
         wrap_dset,

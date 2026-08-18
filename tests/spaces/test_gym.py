@@ -1,12 +1,11 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 
-from aioway.spaces.spaces import TensorSpecSpace
 import pytest
 import torch
-from torchrl.data import tensor_specs as tspecs
 
 from aioway.spaces import array_box_space
+from aioway.spaces.spaces import TensorSpecSpace
 
 
 @pytest.fixture
