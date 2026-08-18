@@ -12,7 +12,7 @@ from aioway._torch import Device, DeviceLike, DType, DTypeLike, Shape, ShapeLike
 
 from .spaces import TensorSpecSpace
 
-__all__ = ["unbounded_box_space", "scalar_box_spec", "array_box_spec"]
+__all__ = ["unbounded_box_space", "scalar_box_space", "array_box_space"]
 
 
 def unbounded_box_space(
@@ -43,7 +43,7 @@ def unbounded_box_space(
     )
 
 
-def scalar_box_spec(
+def scalar_box_space(
     low: float,
     high: float,
     *,
@@ -76,7 +76,7 @@ def scalar_box_spec(
     )
 
 
-def array_box_spec(
+def array_box_space(
     low: npt.ArrayLike,
     high: npt.ArrayLike,
     *,

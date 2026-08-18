@@ -9,7 +9,7 @@ from torchrl.data import tensor_specs as tspecs
 
 from aioway._torch import Shape
 from aioway._utils import is_list_of
-from aioway.nets import sample_from_spec
+from aioway.nets import sample_from_space
 from aioway.spaces import unbounded_box_space
 
 from ._utils import Activation, activation_module
@@ -72,7 +72,7 @@ class ImageRegressorEmitter(Emitter):
 
         seq = nn.Sequential(*modules, nn.Flatten())
 
-        sim_in = sample_from_spec(observ)
+        sim_in = sample_from_space(observ)
         sim_out = seq(sim_in)
 
         # Emits a linear final layer, that uses our `linear_shape` logic.

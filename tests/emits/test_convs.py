@@ -5,9 +5,9 @@ from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
 from aioway._torch import Shape
-from aioway.nets import emit_one, sample_from_spec, set_batch_size
+from aioway.nets import emit_one, sample_from_space, set_batch_size
 from aioway.nets.convs import ImageRegressorEmitter
-from aioway.spaces import float_image_spec, unbounded_box_space
+from aioway.spaces import float_image_space, unbounded_box_space
 
 
 @pytest.fixture
@@ -21,7 +21,7 @@ def image_emitter():
 
 @pytest.fixture
 def image_space():
-    return float_image_spec(3, 28, 28)
+    return float_image_space(3, 28, 28)
 
 
 @pytest.fixture(params=[3, 5, 1000])
@@ -44,5 +44,5 @@ def test_emit_image_regressor(
     assert isinstance(image_mod, nn.Module)
 
     with set_batch_size(7):
-        img = sample_from_spec(image_space)
+        img = sample_from_space(image_space)
     assert image_mod(img).shape == (7, feat_size)
