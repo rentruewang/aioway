@@ -8,7 +8,7 @@ from torch import nn
 from torch.utils import data as dutils
 from torchrl.data import tensor_specs as tspecs
 
-from aioway._specs import unbounded_box_spec
+from aioway.spaces import unbounded_box_spec
 from aioway._torch import Shape
 from aioway.nets import (
     MlpCompoundEmitter,

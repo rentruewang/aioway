@@ -7,7 +7,7 @@ import functools
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
-from aioway._specs import unbounded_box_spec
+from aioway.spaces import unbounded_box_spec
 from aioway._torch import Shape
 from aioway._utils import is_list_of
 from aioway.nets import sample_from_spec

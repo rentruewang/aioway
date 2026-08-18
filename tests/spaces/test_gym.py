@@ -5,7 +5,7 @@ import pytest
 import torch
 from torchrl.data import tensor_specs as tspecs
 
-from aioway._specs import array_box_spec
+from aioway.spaces import array_box_spec
 
 
 @pytest.fixture

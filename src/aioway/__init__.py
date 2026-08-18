@@ -6,7 +6,7 @@ from . import (
     _api,
     _costs,
     _sess,
-    _specs,
+    spaces,
     _thunks,
     _torch,
     _utils,

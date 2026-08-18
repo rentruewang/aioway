@@ -4,7 +4,7 @@ import typing
 
 import pytest
 
-from aioway._specs import unbounded_box_spec
+from aioway.spaces import unbounded_box_spec
 from aioway.nets import NormEmitter, NormType, emit_one, layer_norm_emitter
 
 

@@ -3,7 +3,7 @@
 import pytest
 from torch import nn
 
-from aioway._specs import unbounded_box_spec
+from aioway.spaces import unbounded_box_spec
 from aioway.nets import emit_one
 from aioway.trainers import NmfEmitter, NmfTrainer
 

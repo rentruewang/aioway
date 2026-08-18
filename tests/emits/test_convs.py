@@ -4,7 +4,7 @@ import pytest
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
-from aioway._specs import float_image_spec, unbounded_box_spec
+from aioway.spaces import float_image_spec, unbounded_box_spec
 from aioway._torch import Shape
 from aioway.nets import emit_one, sample_from_spec, set_batch_size
 from aioway.nets.convs import ImageRegressorEmitter
