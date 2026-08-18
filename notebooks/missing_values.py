@@ -1,13 +1,26 @@
-# Copyright (c) AIoWay Authors - All Rights Reserved
+# ---
+# jupyter:
+#   jupytext:
+#     formats: py:percent
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.19.5
+#   kernelspec:
+#     display_name: Python 3 (ipykernel)
+#     language: python
+#     name: python3
+# ---
 
+# %%
 import dataclasses as dcls
 import typing
 
 import pandas as pd
 
-__all__ = ["MissingValues"]
 
-
+# %%
 class SourceLabel(typing.NamedTuple):
     "The x, y labels. Supports being decomposed."
 
@@ -22,6 +35,7 @@ class TrainTest(typing.NamedTuple):
     test: SourceLabel
 
 
+# %%
 @dcls.dataclass(frozen=True)
 class MissingValues:
     "The utilities around missing values."
@@ -56,3 +70,4 @@ class MissingValues:
     @property
     def null_cols(self) -> pd.Series[bool]:
         return self.df.isnull().any(axis=1)
+

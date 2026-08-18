@@ -10,10 +10,10 @@ from torchrl.data import tensor_specs as tspecs
 
 from aioway.nets import Emitter, emitter_dcls
 
-__all__ = ["NmfTrainerModule", "NmfEmitter"]
+__all__ = ["NmfTrainer", "NmfEmitter"]
 
 
-class NmfTrainerModule(nn.Module):
+class NmfTrainer(nn.Module):
     def __init__(
         self,
         left: nn.Parameter,
@@ -75,4 +75,4 @@ class NmfEmitter(Emitter):
         loss = nn.MSELoss()
         optim_type = optim.Adam
 
-        return NmfTrainerModule(left, right, loss, optim_type)
+        return NmfTrainer(left, right, loss, optim_type)
