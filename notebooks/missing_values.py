@@ -70,4 +70,3 @@ class MissingValues:
     @property
     def null_cols(self) -> pd.Series[bool]:
         return self.df.isnull().any(axis=1)
-
