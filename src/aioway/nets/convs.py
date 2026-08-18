@@ -7,10 +7,10 @@ import functools
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.spaces import unbounded_box_spec
 from aioway._torch import Shape
 from aioway._utils import is_list_of
 from aioway.nets import sample_from_spec
+from aioway.spaces import unbounded_box_space
 
 from ._utils import Activation, activation_module
 from .emitters import Emitter, emitter_dcls
@@ -77,7 +77,7 @@ class ImageRegressorEmitter(Emitter):
 
         # Emits a linear final layer, that uses our `linear_shape` logic.
         linear = linear_regression(
-            unbounded_box_spec(shape=Shape.parse(sim_out.shape[1:])), action
+            unbounded_box_space(shape=Shape.parse(sim_out.shape[1:])), action
         )
 
         seq.append(linear)

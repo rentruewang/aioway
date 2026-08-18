@@ -4,7 +4,7 @@
 import torch
 from torchrl.data import tensor_specs as tspecs
 
-from .gym import scalar_box_spec, unbounded_box_spec
+from .gym import scalar_box_spec, unbounded_box_space
 
 __all__ = ["float_image_spec", "byte_image_spec", "long_image_spec"]
 
@@ -14,7 +14,7 @@ def float_image_spec(num_channels: int, width: int, height: int) -> tspecs.Bound
 
 
 def byte_image_spec(num_channels: int, width: int, height: int) -> tspecs.Unbounded:
-    return unbounded_box_spec(
+    return unbounded_box_space(
         shape=torch.Size([num_channels, width, height]), dtype=torch.int8
     )
 

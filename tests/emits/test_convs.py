@@ -4,10 +4,10 @@ import pytest
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.spaces import float_image_spec, unbounded_box_spec
 from aioway._torch import Shape
 from aioway.nets import emit_one, sample_from_spec, set_batch_size
 from aioway.nets.convs import ImageRegressorEmitter
+from aioway.spaces import float_image_spec, unbounded_box_space
 
 
 @pytest.fixture
@@ -31,7 +31,7 @@ def feat_size(request: pytest.FixtureRequest):
 
 @pytest.fixture
 def output_space(feat_size: int):
-    return unbounded_box_spec(Shape.parse(feat_size))
+    return unbounded_box_space(Shape.parse(feat_size))
 
 
 def test_emit_image_regressor(
