@@ -5,7 +5,7 @@
 import typing
 
 from torch import nn
-from torchrl import data as rldata
+from torchrl.data import tensor_specs as tspecs
 
 from .emitters import Emitter, emitter_dcls, emitter_function
 
@@ -20,12 +20,12 @@ class NormEmitter(Emitter):
     "The type of normalization layer."
 
     def __call__(
-        self, observ: rldata.TensorSpec, action: rldata.TensorSpec
+        self, observ: tspecs.TensorSpec, action: tspecs.TensorSpec
     ) -> nn.Module:
-        if not isinstance(observ, rldata.Unbounded):
+        if not isinstance(observ, tspecs.Unbounded):
             return NotImplemented
 
-        if not isinstance(action, rldata.Unbounded):
+        if not isinstance(action, tspecs.Unbounded):
             return NotImplemented
 
         if observ != action:
@@ -40,10 +40,10 @@ class NormEmitter(Emitter):
 
 @emitter_function
 def layer_norm_emitter(observ, action):
-    if not isinstance(observ, rldata.Unbounded):
+    if not isinstance(observ, tspecs.Unbounded):
         return NotImplemented
 
-    if not isinstance(action, rldata.Unbounded):
+    if not isinstance(action, tspecs.Unbounded):
         return NotImplemented
 
     if observ != action:

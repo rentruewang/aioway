@@ -10,7 +10,7 @@ import torch
 from rich import progress
 from torch import nn, optim
 from torch.utils import data as dutils
-from torchrl import data as rldata
+from torchrl.data import tensor_specs as tspecs
 
 from aioway.dsets import Dset, InputTargetLikeDset
 
@@ -35,12 +35,12 @@ class PredLossPair(typing.NamedTuple):
 class ObservActionSpace(abc.ABC):
     @property
     @abc.abstractmethod
-    def observ_spec(self) -> rldata.TensorSpec:
+    def observ_spec(self) -> tspecs.TensorSpec:
         raise NotImplementedError
 
     @property
     @abc.abstractmethod
-    def action_spec(self) -> rldata.TensorSpec:
+    def action_spec(self) -> tspecs.TensorSpec:
         raise NotImplementedError
 
 

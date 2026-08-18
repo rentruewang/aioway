@@ -6,20 +6,20 @@ import typing
 from collections import abc as cabc
 
 from torch import nn
-from torchrl import data as rldata
+from torchrl.data import tensor_specs as tspecs
 
 __all__ = ["register_cast", "cast_space", "Caster", "CastedModule", "CastedSpaceModule"]
 
-_CASTERS: dict[tuple[type[rldata.TensorSpec], type[rldata.TensorSpec]], Caster] = {}
-"The casters organized by `tuple[type[rldata.TensorSpec], type[rldata.TensorSpec]]`."
+_CASTERS: dict[tuple[type[tspecs.TensorSpec], type[tspecs.TensorSpec]], Caster] = {}
+"The casters organized by `tuple[type[tspecs.TensorSpec], type[tspecs.TensorSpec]]`."
 
 
 @dcls.dataclass(frozen=True)
 class CastedModule[
-    S: rldata.TensorSpec = rldata.TensorSpec, T: rldata.TensorSpec = rldata.TensorSpec
+    S: tspecs.TensorSpec = tspecs.TensorSpec, T: tspecs.TensorSpec = tspecs.TensorSpec
 ](nn.Module):
     """
-    `CastedModule` outputs the `rldata.TensorSpec`,
+    `CastedModule` outputs the `tspecs.TensorSpec`,
     and the corresponding `nn.Module` that would generate valid outputs.
     """
 
@@ -37,7 +37,7 @@ class CastedModule[
         return self.func(item)
 
 
-class CastedSpaceModule[S: rldata.TensorSpec = rldata.TensorSpec](typing.NamedTuple):
+class CastedSpaceModule[S: tspecs.TensorSpec = tspecs.TensorSpec](typing.NamedTuple):
     "The tuple with the output cast space and the module."
 
     space: S
@@ -48,11 +48,11 @@ class CastedSpaceModule[S: rldata.TensorSpec = rldata.TensorSpec](typing.NamedTu
 
 
 @typing.runtime_checkable
-class Caster[S: rldata.TensorSpec, T: rldata.TensorSpec](typing.Protocol):
+class Caster[S: tspecs.TensorSpec, T: tspecs.TensorSpec](typing.Protocol):
     """
     `Caster` defines a possible cast from input to output,
-    where the input is in the `input` `rldata.TensorSpec`,
-    and output is in the `output` `rldata.TensorSpec`.
+    where the input is in the `input` `tspecs.TensorSpec`,
+    and output is in the `output` `tspecs.TensorSpec`.
     """
 
     @abc.abstractmethod
@@ -62,9 +62,9 @@ class Caster[S: rldata.TensorSpec, T: rldata.TensorSpec](typing.Protocol):
 
 def register_cast(input_type, output_type):
     if not _is_tensor_spec_type(input_type):
-        raise TypeError(f"{input_type=} is not a `type[rldata.TensorSpec]`.")
+        raise TypeError(f"{input_type=} is not a `type[tspecs.TensorSpec]`.")
     if not _is_tensor_spec_type(output_type):
-        raise TypeError(f"{output_type=} is not a `type[rldata.TensorSpec]`.")
+        raise TypeError(f"{output_type=} is not a `type[tspecs.TensorSpec]`.")
 
     def decorator[C: Caster](cast: C) -> C:
         in_out_types = input_type, output_type
@@ -82,10 +82,10 @@ def register_cast(input_type, output_type):
 
 
 def cast_space(
-    space: rldata.TensorSpec, target_type: type[rldata.TensorSpec], /
+    space: tspecs.TensorSpec, target_type: type[tspecs.TensorSpec], /
 ) -> CastedModule:
     """
-    Cast `space`, a `rldata.TensorSpec` instance, to another space of type `target`.
+    Cast `space`, a `tspecs.TensorSpec` instance, to another space of type `target`.
 
     If the cast function is not found, `NotImplemented` is returned.
     """
@@ -96,5 +96,5 @@ def cast_space(
     return CastedModule(module, space, target_space)
 
 
-def _is_tensor_spec_type(obj) -> typing.TypeIs[type[rldata.TensorSpec]]:
-    return isinstance(obj, type) and issubclass(obj, rldata.TensorSpec)
+def _is_tensor_spec_type(obj) -> typing.TypeIs[type[tspecs.TensorSpec]]:
+    return isinstance(obj, type) and issubclass(obj, tspecs.TensorSpec)

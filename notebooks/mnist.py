@@ -1,5 +1,19 @@
-# Copyright (c) AIoWay Authors - All Rights Reserved
+# ---
+# jupyter:
+#   jupytext:
+#     formats: py:percent
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.19.5
+#   kernelspec:
+#     display_name: Python 3 (ipykernel)
+#     language: python
+#     name: python3
+# ---
 
+# %%
 import pathlib
 import typing
 
@@ -8,7 +22,7 @@ import tensordict as td
 import torch
 from torch import nn, optim
 from torch.utils import data as dutils
-from torchrl import data as rldata
+from torchrl.data import tensor_specs as tspecs
 from torchvision import datasets
 from torchvision import transforms as T
 
@@ -16,9 +30,8 @@ from aioway.dsets import DatasetIdxDset, Dset, InputTarget, InputTargetLikeDset
 from aioway.nets import ClfLogitHead, linear_regression
 from aioway.trainers import StaticTrainer, TrainCfg
 
-__all__ = ["mnist", "train_test_split"]
 
-
+# %%
 class MnistDataset(InputTargetLikeDset):
     def __init__(self) -> None:
         self._mnist = datasets.MNIST(pathlib.Path.home(), download=True)
@@ -36,22 +49,19 @@ class MnistDataset(InputTargetLikeDset):
         return td.stack([self[i] for i in idx])
 
     @property
-    def input_spec(self) -> rldata.Unbounded:
-        return rldata.Unbounded(shape=torch.Size([784]))
+    def input_spec(self) -> tspecs.Unbounded:
+        return tspecs.Unbounded(shape=torch.Size([784]))
 
     @property
-    def target_spec(self) -> rldata.Bounded:
-        return rldata.Bounded(low=0, high=9, shape=torch.Size([]), dtype=torch.long)
+    def target_spec(self) -> tspecs.Bounded:
+        return tspecs.Bounded(low=0, high=9, shape=torch.Size([]), dtype=torch.long)
 
     @property
     def __collate_fn__(self):
         return lambda x: x
 
 
-def mnist() -> MnistDataset:
-    return MnistDataset()
-
-
+# %%
 @typing.no_type_check
 def train_test_split[D: Dset](dataset: D, test_ratio: float) -> tuple[D, D]:
     assert 0 <= test_ratio <= 1
@@ -70,10 +80,11 @@ def train_test_split[D: Dset](dataset: D, test_ratio: float) -> tuple[D, D]:
     return train_dset, test_dset
 
 
+# %%
 def main(batch_size: int):
     fabric = L.Fabric()
 
-    dset = mnist()
+    dset = MnistDataset()
     train_dset, test_dset = train_test_split(dset, 0.1)
 
     module = ClfLogitHead(linear_regression)(dset.input_spec, dset.target_spec)
@@ -89,5 +100,5 @@ def main(batch_size: int):
         print(pred.loss)
 
 
-if __name__ == "__main__":
-    main(1024)
+# %%
+main(1024)
