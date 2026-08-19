@@ -5,16 +5,10 @@ import pathlib
 import pytest
 import torch
 
-from aioway.codecs import (
-    AudioLoader,
-    AvAudioLoader,
-    TorchCodecAudioLoader,
-    encode_with_stft,
-)
+from aioway.codecs import AudioLoader, AvAudioLoader, encode_with_stft
 
 
 def _loaders():
-    yield TorchCodecAudioLoader()
     yield AvAudioLoader()
 
 

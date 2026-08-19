@@ -8,10 +8,9 @@ from collections import abc as cabc
 
 import torch
 from torch import nn
-from torchrl.data import tensor_specs as tspecs
 
 from aioway._utils import AnySet
-from aioway.spaces import Space
+from aioway.tspecs import TSpec
 
 __all__ = [
     "EmitterLike",
@@ -22,7 +21,7 @@ __all__ = [
     "emit",
     "emitter_function",
     "emitters_in_scope",
-    "sample_from_space",
+    "sample_from_tspec",
     "set_batch_size",
 ]
 
@@ -46,13 +45,13 @@ def set_batch_size(*batch_size: int) -> cabc.Generator[None]:
         _batch_size = None
 
 
-def sample_from_space(spec: Space, /) -> typing.Any:
+def sample_from_tspec(spec: TSpec, /) -> typing.Any:
     "Sample from the `spec` with the batch size configured by `with_batch_size`."
     assert _batch_size
-    return spec.sample(*_batch_size)
+    return spec.sample(torch.Size(_batch_size))
 
 
-def emit_one(observ: Space, action: Space) -> nn.Module:
+def emit_one(observ: TSpec, action: TSpec) -> nn.Module:
     """
     A convenient wrapper to only emit the first target found.
     """
@@ -60,7 +59,7 @@ def emit_one(observ: Space, action: Space) -> nn.Module:
     return next(emit(observ, action))
 
 
-def emit(observ: Space, action: Space, /) -> cabc.Generator[nn.Module]:
+def emit(observ: TSpec, action: TSpec, /) -> cabc.Generator[nn.Module]:
     """
     Emit some candidates based on the given spaces.
     """
@@ -77,7 +76,7 @@ def emit(observ: Space, action: Space, /) -> cabc.Generator[nn.Module]:
 class EmitterLike(typing.Protocol):
     """
     The baseline function that `emit` uses to generate `nn.Module`s.
-    If the space is not supported, `NotImplemented` should be returned.
+    If the `TSpec` is not supported, `NotImplemented` should be returned.
 
     All the `BaseLine`s are registered, and iterated over during `Emitter` call.
 
@@ -85,7 +84,7 @@ class EmitterLike(typing.Protocol):
     """
 
     @abc.abstractmethod
-    def __call__(self, observ: Space, action: Space, /) -> nn.Module:
+    def __call__(self, observ: TSpec, action: TSpec, /) -> nn.Module:
         raise NotImplementedError
 
 
@@ -131,9 +130,7 @@ class FuncEmitter(Emitter):
     The function to wrap.
     """
 
-    def __call__(
-        self, observ: tspecs.TensorSpec, action: tspecs.TensorSpec, /
-    ) -> nn.Module:
+    def __call__(self, observ: TSpec, action: TSpec, /) -> nn.Module:
         return self.function(observ, action)
 
 

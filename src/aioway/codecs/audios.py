@@ -7,9 +7,9 @@ import typing
 
 import torch
 from torch.utils import data as dutils
-from torchcodec import decoders as dec
 
-from aioway._torch import Attr, current_fake_mode, torch_set_fake_mode_func
+from aioway.modes import is_fake_mode_on, torch_set_fake_mode_func
+from aioway.schemas import Attr
 
 from ._av import AudioStream
 from ._bases import TorchCompatible
@@ -134,7 +134,7 @@ class AvAudioLoader(AudioLoader):
         info = stream.info()
 
         # Create a fake tensor of float32 in fake mode.
-        if current_fake_mode():
+        if is_fake_mode_on():
             tensor = Attr.build(
                 shape=[info.num_channels, info.num_frames], dtype=torch.float32
             ).to_fake_tensor()
@@ -173,6 +173,8 @@ class TorchCodecAudioLoader(AudioLoader):
                 The sample rate in Hz.
                 If given, this should be equal to the sample rate in return value.
         """
+
+        from torchcodec import decoders as dec
 
         decoder = dec.AudioDecoder(str(fname), sample_rate=self.sample_rate)
         samples = decoder.get_all_samples()

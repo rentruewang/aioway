@@ -14,7 +14,7 @@ from torch.utils import data as dutils
 from torchrl.data import tensor_specs as tspecs
 
 from aioway.dsets import Dset, InputTarget, InputTargetLikeDset
-from aioway.spaces import Space, SpaceCompat
+from aioway.tspecs import TSpec, TSpecCompat
 
 __all__ = ["LossFunc", "PredLossPair", "StaticTrainer", "TrainCfg"]
 
@@ -37,12 +37,12 @@ class PredLossPair(typing.NamedTuple):
 class ObservActionSpace(abc.ABC):
     @property
     @abc.abstractmethod
-    def observ_space(self) -> tspecs.TensorSpec:
+    def observ_tspec(self) -> tspecs.TensorSpec:
         raise NotImplementedError
 
     @property
     @abc.abstractmethod
-    def action_space(self) -> tspecs.TensorSpec:
+    def action_tspec(self) -> tspecs.TensorSpec:
         raise NotImplementedError
 
 
@@ -114,7 +114,7 @@ class BatchIter[T: td.TensorClass | td.TensorDict = typing.Any](typing.Protocol)
 
         ...
 
-    def __space__(self) -> Space[T]:
+    def __tspec__(self) -> TSpec:
         """
         The space constraining the output of `__iter__`.
         """
@@ -125,12 +125,12 @@ class IterableBatchIter:
     "Wraps an iterable and space."
 
     iterable: cabc.Iterable
-    space: SpaceCompat
+    space: TSpecCompat
 
     def __iter__(self):
         yield from self.iterable
 
-    def __space__(self) -> SpaceCompat:
+    def __tspec__(self) -> TSpecCompat:
         return self.space
 
 
@@ -242,4 +242,4 @@ class StaticTrainer:
         if self.cfg.progress_bar:
             loader = progress.track(loader)
 
-        return IterableBatchIter(loader, dataset.__space__())
+        return IterableBatchIter(loader, dataset.__tspec__())

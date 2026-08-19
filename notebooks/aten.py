@@ -15,16 +15,16 @@
 # %%
 import torch
 
-from aioway._torch import *
 from aioway._utils import *
 from aioway.modes import *
+from aioway.schemas import *
 
 # %%
 dispatch_print = PrintTorchDisp()
 function_print = PrintTorchFunc()
 
 # %%
-with torch_fake_mode():
+with fake_mode():
     a = torch.randn(3, 4)
     b = torch.randn(3, 4)
 
@@ -59,7 +59,7 @@ with fake_fn(), dispatch_print():
     torch.cat([a, a, a], dim=-1)
 
 # %%
-with torch_fake_mode():
+with fake_mode():
     a = torch.randn(5).requires_grad_()
     b = torch.randn(5).requires_grad_()
 

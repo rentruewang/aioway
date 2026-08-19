@@ -3,8 +3,7 @@
 import pytest
 import torch
 
-from aioway._torch import current_fake_mode, torch_fake_mode
-from aioway.modes import fake_fn, track_fn
+from aioway.modes import fake_fn, fake_mode, is_fake_mode_on, track_fn
 
 
 @pytest.fixture
@@ -28,22 +27,22 @@ def d():
 
 
 def test_fake_mode(fake_mode):
-    assert current_fake_mode()
+    assert is_fake_mode_on()
 
 
 def test_real_mode(real_mode):
-    assert not current_fake_mode()
+    assert not is_fake_mode_on()
 
 
 @pytest.fixture
 def fake_a():
-    with torch_fake_mode():
+    with fake_mode():
         return torch.randn(3)
 
 
 @pytest.fixture
 def fake_b():
-    with torch_fake_mode():
+    with fake_mode():
         return torch.randn(5)
 
 

@@ -9,13 +9,10 @@ import typing
 
 import rich
 
-from aioway._torch import (
-    current_fake_mode,
-    replace_tensors_with_attr,
-    torch_fake_mode,
-)
 from aioway._utils import replace_tensors
+from aioway.schemas import replace_tensors_with_attr
 
+from .fake import fake_mode, is_fake_mode_on
 from .hists import HistTensorGraph
 from .modes import TorchDispMode, TorchDispThunk, TorchFuncMode, TorchFuncThunk
 
@@ -114,7 +111,7 @@ class CloneDispatchOp(TorchDispMode):
         result = thunk()
 
         # In fake mode, clone the tensor to prevent `FakeTensor` reuse. Should be cheap.
-        if current_fake_mode():
+        if is_fake_mode_on():
             result = replace_tensors(result, lambda tensor: tensor.clone())
 
         return result
@@ -191,5 +188,5 @@ def fake_fn():
     when fake mode is active.
     """
 
-    with torch_fake_mode(), track_fn() as hists:
+    with fake_mode(), track_fn() as hists:
         yield hists

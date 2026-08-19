@@ -4,6 +4,7 @@
 
 from .dags import *
 from .decomps import *
+from .hooks import *
 from .logging import *
 from .platforms import *
 from .profs import *

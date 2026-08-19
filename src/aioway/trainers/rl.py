@@ -3,6 +3,7 @@
 import contextlib as ctxl
 from collections import abc as cabc
 
+import torch
 from torch import nn, optim
 from torchrl import collectors as rlcol
 from torchrl import data as rldata
@@ -51,7 +52,7 @@ def train_rl(
         buffer.extend(batch)
 
         # Sample a batch.
-        sample = buffer.sample(batch_size)
+        sample = buffer.sample(torch.Size([batch_size]))
         loss = loss_fn(sample)
 
         # Standard PyTorch optimization step

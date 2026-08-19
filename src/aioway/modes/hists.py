@@ -11,9 +11,10 @@ from collections import abc as cabc
 import torch
 
 from aioway._thunks import Thunk
-from aioway._torch import Attr, is_leaf_has_grad, replace_tensors_with_attr
 from aioway._utils import TensorInput, find_nested_tensors, topo_sort
+from aioway.schemas import Attr, replace_tensors_with_attr
 
+from .aten import is_leaf_has_grad
 from .modes import ModeThunk
 
 LOGGER = logging.getLogger(__name__)

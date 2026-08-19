@@ -29,7 +29,7 @@ class Dset[T](abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def __space__(self) -> tspecs.TensorSpec:
+    def __tspec__(self) -> tspecs.TensorSpec:
         "The spec constraint for the data."
 
         raise NotImplementedError
@@ -93,7 +93,7 @@ class DatasetIdxDset[T](IdxDset[T]):
     def __dataset__(self):
         return self
 
-    def __space__(self) -> tspecs.TensorSpec:
+    def __tspec__(self) -> tspecs.TensorSpec:
         return self._spec
 
     @property
@@ -126,8 +126,8 @@ class _IdxDataset(dutils.Dataset):
     def __getitems__(self, index):
         return self.dset.__getitems__(np.asarray(index))
 
-    def __space__(self) -> tspecs.TensorSpec:
-        return self.dset.__space__()
+    def __tspec__(self) -> tspecs.TensorSpec:
+        return self.dset.__tspec__()
 
     @property
     def dset(self) -> IdxDset:
@@ -167,8 +167,8 @@ class _IterDataset(dutils.IterableDataset):
     def __iter__(self):
         yield from self.dset
 
-    def __space__(self) -> tspecs.TensorSpec:
-        return self.dset.__space__()
+    def __tspec__(self) -> tspecs.TensorSpec:
+        return self.dset.__tspec__()
 
     @property
     def dset(self) -> IterDset:

@@ -6,7 +6,6 @@ import os
 import pathlib
 import shutil
 import sys
-import typing
 from collections import abc as cabc
 
 import nox
@@ -24,17 +23,14 @@ PUBLIC = ROOT / "public"
 DOCS = ROOT / "docs"
 "The path for root documentations."
 
-INSTALL_TIMEOUT = "5m"
+INSTALL_TIMEOUT = "7m"
 "Allow 5 minutes for timeouts."
 
-INSTALL_RETIRES = 3
+INSTALL_RETRIES = 4
 "Allow 3 times for install timeouts."
 
 _session: nox.Session | None = None
 "The global session to simplfy code."
-
-_setup_is_done: bool = False
-"If the `setup_env` is called."
 
 
 @ctxl.contextmanager
@@ -229,29 +225,34 @@ def _install_coreutils() -> None:
     run("brew", "install", "coreutils")
 
 
-def _retry(function: cabc.Callable[[], None]):
+def _attempt_with_retry(function: cabc.Callable[[], None]):
     "Retry for a certain number of times."
 
-    # The exception that we will raise later.
-    ce: ncmd.CommandFailed = typing.cast(ncmd.CommandFailed, NotImplemented)
-
-    for retry in range(INSTALL_RETIRES):
+    for retry in range(INSTALL_RETRIES):
         try:
             function()
-        except ncmd.CommandFailed as ce:
-            print(f"Retry #{retry} failed.")
-            continue
-        else:
             return
-    else:
-        raise ce
+        except ncmd.CommandFailed:
+            print(f"Retry #{retry} failed.")
+
+            # Terminate if fail.
+            if retry == INSTALL_RETRIES - 1:
+                raise
+            else:
+                continue
+
+
+def _perform_install(
+    check_install: cabc.Callable[[], bool], installer: cabc.Callable[[], None]
+):
+    if check_install():
+        return
+    _attempt_with_retry(installer)
+    assert check_install()
 
 
 def _install_pdm() -> None:
-    if _pdm_is_installed():
-        return
-
-    _retry(_do_pdm_install)
+    _perform_install(_pdm_is_installed, _do_pdm_install)
 
 
 def _do_pdm_install():
@@ -259,10 +260,7 @@ def _do_pdm_install():
 
 
 def _install_ffmpeg() -> None:
-    if _ffmpeg_is_installed():
-        return
-
-    _retry(_do_ffmpeg_install)
+    _perform_install(_ffmpeg_is_installed, _do_ffmpeg_install)
 
 
 def _do_ffmpeg_install():
@@ -271,17 +269,32 @@ def _do_ffmpeg_install():
         case "darwin":
             run(*_timeout(), "brew", "install", "ffmpeg")
         case "linux":
-            flags = [
+            FFMPEG = "ffmpeg-master-latest-linux64-gpl-shared"
+            run(
+                *_timeout(),
+                "curl",
+                "-L",
+                "--fail",
+                "--retry",
+                "3",
+                f"https://github.com/BtbN/FFmpeg-Builds/releases/latest/download/{FFMPEG}.tar.xz",
                 "-o",
-                "Acquire::Languages=none",
-                "-o",
-                "Acquire::ForceIPv4=true",
-                "-o",
-                "Acquire::http::Pipeline-Depth=0",
-            ]
+                "/tmp/ffmpeg.tar.xz",
+            )
+            run("tar", "-xf", "/tmp/ffmpeg.tar.xz", "-C", "/tmp")
+            run(
+                "sudo",
+                "rsync",
+                "-av",
+                "--include=*/",
+                "--include=bin/***",
+                "--include=lib/***",
+                "--exclude=*",
+                f"/tmp/{FFMPEG}/",
+                "/usr/local/",
+            )
+            run("sudo", "ldconfig")
 
-            run("sudo", *_timeout(), "apt-get", "update", *flags)
-            run("sudo", *_timeout(), "apt-get", "install", "-y", "ffmpeg")
         case _:
             raise RuntimeError(f"Platform {sys.platform} is not supported yet.")
 

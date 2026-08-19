@@ -10,7 +10,7 @@ import tensordict as td
 import torch
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.spaces import SpaceCompat
+from aioway.tspecs import TSpecCompat
 
 from .dsets import Dset, IdxDset
 
@@ -33,7 +33,7 @@ class CompositeDset(Dset, abc.ABC):
 
         @typing.override
         @abc.abstractmethod
-        def __space__(self) -> SpaceCompat:
+        def __tspec__(self) -> TSpecCompat:
             raise NotImplementedError
 
 
@@ -42,11 +42,11 @@ class ComposedDset(CompositeDset):
         self._dsets = dsets
 
     @typing.override
-    def __space__(self) -> tspecs.Composite:
+    def __tspec__(self) -> tspecs.Composite:
         "The composed spec would be a composite."
 
         return tspecs.Composite(
-            {key: val.__space__() for key, val in self.dsets.items()}
+            {key: val.__tspec__() for key, val in self.dsets.items()}
         )
 
     @property
@@ -90,16 +90,16 @@ class InputTarget(td.TensorClass):
 class InputTargetLikeDset(IdxDset, abc.ABC):
     @property
     @abc.abstractmethod
-    def input_space(self) -> tspecs.TensorSpec:
+    def input_tspec(self) -> tspecs.TensorSpec:
         raise NotImplementedError
 
     @property
     @abc.abstractmethod
-    def target_space(self) -> tspecs.TensorSpec:
+    def target_tspec(self) -> tspecs.TensorSpec:
         raise NotImplementedError
 
-    def __space__(self) -> tspecs.Composite:
-        return tspecs.Composite(input=self.input_space, target=self.target_space)
+    def __tspec__(self) -> tspecs.Composite:
+        return tspecs.Composite(input=self.input_tspec, target=self.target_tspec)
 
 
 class InputTargetDset(InputTargetLikeDset):
@@ -124,9 +124,9 @@ class InputTargetDset(InputTargetLikeDset):
         return self._target
 
     @property
-    def input_space(self) -> tspecs.TensorSpec:
-        return self.input.__space__()
+    def input_tspec(self) -> tspecs.TensorSpec:
+        return self.input.__tspec__()
 
     @property
-    def target_space(self) -> tspecs.TensorSpec:
-        return self.target.__space__()
+    def target_tspec(self) -> tspecs.TensorSpec:
+        return self.target.__tspec__()

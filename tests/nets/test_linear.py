@@ -8,7 +8,6 @@ from torch import nn
 from torch.utils import data as dutils
 from torchrl.data import tensor_specs as tspecs
 
-from aioway._torch import Shape
 from aioway.nets import (
     MlpCompoundEmitter,
     MlpEmitter,
@@ -16,21 +15,22 @@ from aioway.nets import (
     emit_one,
     linear_regression,
 )
-from aioway.spaces import Space, TSpecSpace, unbounded_box_space
+from aioway.schemas import Shape
+from aioway.tspecs import TSpec, unbounded_box_tspec
 
 
 @pytest.fixture
-def input_shape_space():
-    return unbounded_box_space(Shape.parse(3, 4, 6))
+def input_shape_tspec():
+    return unbounded_box_tspec(Shape.parse(3, 4, 6))
 
 
 @pytest.fixture
-def output_space():
-    return unbounded_box_space(Shape.parse(3, 4, 7))
+def output_tspec():
+    return unbounded_box_tspec(Shape.parse(3, 4, 7))
 
 
 @pytest.fixture
-def input_dataset(input_attr_space: tspecs.Unbounded):
+def input_dataset(input_attr_tspec: tspecs.Unbounded):
     class FakeInputDset(dutils.IterableDataset):
         @typing.override
         def __iter__(self):
@@ -67,25 +67,22 @@ def consider_mlp(request: pytest.FixtureRequest):
         yield
 
 
-def test_just_linear(input_shape_space: Space, output_space: Space, consider_linear):
-    module = emit_one(input_shape_space, output_space)
+def test_just_linear(input_shape_tspec: TSpec, output_tspec: TSpec, consider_linear):
+    module = emit_one(input_shape_tspec, output_tspec)
     assert isinstance(module, nn.Linear | nn.Sequential)
     _check_linear(
         module,
-        in_features=input_shape_space.shape,
-        out_features=output_space.shape,
+        in_features=input_shape_tspec.shape,
+        out_features=output_tspec.shape,
     )
 
 
 def test_mlp_emitter(
-    input_shape_space: TSpecSpace,
-    output_space: TSpecSpace,
-    consider_mlp,
-    fake_mode,
+    input_shape_tspec: TSpec, output_tspec: TSpec, consider_mlp, fake_mode
 ):
     input = torch.randn(13, 3, 4, 6)
 
-    for module in emit(input_shape_space, output_space):
+    for module in emit(input_shape_tspec, output_tspec):
         output = module(input)
 
     assert output.shape == (13, 3, 4, 7)

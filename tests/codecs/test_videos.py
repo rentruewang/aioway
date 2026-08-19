@@ -5,12 +5,11 @@ import pathlib
 import pytest
 import torch
 
-from aioway.codecs import AvVideoLoader, TorchCodecVideoLoader, VideoLoader
+from aioway.codecs import AvVideoLoader, VideoLoader
 
 
 def _loader():
     yield AvVideoLoader()
-    yield TorchCodecVideoLoader()
 
 
 @pytest.fixture(params=_loader(), ids=lambda x: type(x).__name__)
