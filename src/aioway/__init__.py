@@ -14,5 +14,6 @@ from . import (
     errors,
     modes,
     nets,
+    schemas,
     trainers,
 )

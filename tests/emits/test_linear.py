@@ -8,7 +8,6 @@ from torch import nn
 from torch.utils import data as dutils
 from torchrl.data import tensor_specs as tspecs
 
-from aioway._schemas import Shape
 from aioway._tspecs import Space, TSpecSpace, unbounded_box_space
 from aioway.nets import (
     MlpCompoundEmitter,
@@ -17,6 +16,7 @@ from aioway.nets import (
     emit_one,
     linear_regression,
 )
+from aioway.schemas import Shape
 
 
 @pytest.fixture

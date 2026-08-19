@@ -19,7 +19,7 @@ import pickle
 import torch
 
 # %%
-from aioway._schemas import Attr
+from aioway.schemas import Attr
 
 # %%
 

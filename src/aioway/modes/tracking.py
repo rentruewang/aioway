@@ -9,8 +9,8 @@ import typing
 
 import rich
 
-from aioway._schemas import replace_tensors_with_attr
 from aioway._utils import replace_tensors
+from aioway.schemas import replace_tensors_with_attr
 
 from .fake import fake_mode, is_fake_mode_on
 from .hists import HistTensorGraph

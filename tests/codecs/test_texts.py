@@ -5,8 +5,8 @@ import pathlib
 import pytest
 import torch
 
-from aioway._schemas import DType
 from aioway.codecs import TokenizerLoader
+from aioway.schemas import DType
 
 
 def _tokenizers():

@@ -10,8 +10,8 @@ from PIL import Image as image
 from torchvision import io as vio
 from torchvision.transforms import v2 as tt
 
-from aioway._schemas import Attr, AttrLike
 from aioway.modes import is_fake_mode_on, torch_set_fake_mode_func
+from aioway.schemas import Attr, AttrLike
 
 from ._bases import TorchCompatible
 
