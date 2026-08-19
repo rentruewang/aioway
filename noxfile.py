@@ -5,11 +5,12 @@ import functools
 import os
 import pathlib
 import shutil
-import subprocess as sp
 import sys
+import typing
 from collections import abc as cabc
 
 import nox
+from nox import command as ncmd
 
 ROOT = pathlib.Path(__file__).parent
 "The project root."
@@ -22,6 +23,12 @@ PUBLIC = ROOT / "public"
 
 DOCS = ROOT / "docs"
 "The path for root documentations."
+
+INSTALL_TIMEOUT = "5m"
+"Allow 5 minutes for timeouts."
+
+INSTALL_RETIRES = 3
+"Allow 3 times for install timeouts."
 
 _session: nox.Session | None = None
 "The global session to simplfy code."
@@ -71,6 +78,10 @@ def setup():
     "Check if `nox` can be run (side effect will cleanup github)."
 
     _github_cleanup()
+
+    # Enable the use of `timeouts`.
+    _install_coreutils()
+
     _install_ffmpeg()
     _install_pdm()
 
@@ -208,21 +219,57 @@ def _log_storage_usage() -> None:
     run("df", "-h")
 
 
+def _install_coreutils() -> None:
+    if _timeout_is_installed():
+        return
+
+    if sys.platform != "darwin":
+        return
+
+    run("brew", "install", "coreutils")
+
+
+def _retry(function: cabc.Callable[[], None]):
+    "Retry for a certain number of times."
+
+    # The exception that we will raise later.
+    ce: ncmd.CommandFailed = typing.cast(ncmd.CommandFailed, NotImplemented)
+
+    for retry in range(INSTALL_RETIRES):
+        try:
+            function()
+        except ncmd.CommandFailed as ce:
+            print(f"Retry #{retry} failed.")
+            continue
+        else:
+            return
+    else:
+        raise ce
+
+
 def _install_pdm() -> None:
     if _pdm_is_installed():
         return
 
-    run("pipx", "install", "pdm")
+    _retry(_do_pdm_install)
+
+
+def _do_pdm_install():
+    run(*_timeout(), "pipx", "install", "pdm")
 
 
 def _install_ffmpeg() -> None:
     if _ffmpeg_is_installed():
         return
 
+    _retry(_do_ffmpeg_install)
+
+
+def _do_ffmpeg_install():
     # Install since it's not installed yet.
     match sys.platform:
         case "darwin":
-            run("brew", "install", "ffmpeg")
+            run(*_timeout(), "brew", "install", "ffmpeg")
         case "linux":
             flags = [
                 "-o",
@@ -233,8 +280,8 @@ def _install_ffmpeg() -> None:
                 "Acquire::http::Pipeline-Depth=0",
             ]
 
-            run("sudo", "apt-get", "update", *flags)
-            run("sudo", "apt-get", "install", "-y", "ffmpeg")
+            run("sudo", *_timeout(), "apt-get", "update", *flags)
+            run("sudo", *_timeout(), "apt-get", "install", "-y", "ffmpeg")
         case _:
             raise RuntimeError(f"Platform {sys.platform} is not supported yet.")
 
@@ -290,20 +337,37 @@ def _running_in_github() -> bool:
 
 @checking_if("ffmpeg is installed")
 def _ffmpeg_is_installed():
-    try:
-        result = sp.run(["ffmpeg", "-version"], stdout=sp.PIPE, stderr=sp.PIPE)
-        return result.returncode == 0
-    except FileNotFoundError:
-        return False
+    return _run_success("ffmpeg", "-version")
+
+
+@checking_if("timeout is installed")
+def _timeout_is_installed():
+    return _run_success("timeout", "--version")
 
 
 @checking_if("pdm is installed")
 def _pdm_is_installed():
+    return _run_success("pdm", "--version")
+
+
+def _get_env():
+    env = os.environ.copy()
+
+    for key, val in _current_session().env.items():
+        if val is None:
+            continue
+        env[key] = val
+
+    return env
+
+
+def _run_success(*cmd):
     try:
-        result = sp.run(["pdm", "--version"], stdout=sp.PIPE, stderr=sp.PIPE)
-        return result.returncode == 0
-    except FileNotFoundError:
+        run(*cmd)
+    except ncmd.CommandFailed:
         return False
+    else:
+        return True
 
 
 @ctxl.contextmanager
@@ -317,3 +381,7 @@ def chdir(to: os.PathLike) -> cabc.Generator[os.PathLike]:
         yield to
     finally:
         os.chdir(before)
+
+
+def _timeout() -> tuple[str, ...]:
+    return "timeout", INSTALL_TIMEOUT
