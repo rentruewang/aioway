@@ -10,9 +10,9 @@ import typing
 import rich
 
 from aioway._schemas import replace_tensors_with_attr
-from aioway._torch import fake_mode, is_fake_mode_on
 from aioway._utils import replace_tensors
 
+from .fake import fake_mode, is_fake_mode_on
 from .hists import HistTensorGraph
 from .modes import TorchDispMode, TorchDispThunk, TorchFuncMode, TorchFuncThunk
 

@@ -16,7 +16,6 @@
 import torch
 
 from aioway._schemas import *
-from aioway._torch import *
 from aioway._utils import *
 from aioway.modes import *
 
