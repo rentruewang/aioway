@@ -242,11 +242,17 @@ def _reattempt_install(function: cabc.Callable[[], None]):
                 continue
 
 
-def _install_pdm() -> None:
-    if _pdm_is_installed():
+def _perform_install(
+    check_install: cabc.Callable[[], bool], installer: cabc.Callable[[], None]
+):
+    if check_install():
         return
+    _reattempt_install(installer)
+    assert check_install()
 
-    _reattempt_install(_do_pdm_install)
+
+def _install_pdm() -> None:
+    _perform_install(_pdm_is_installed, _do_pdm_install)
 
 
 def _do_pdm_install():
@@ -254,10 +260,7 @@ def _do_pdm_install():
 
 
 def _install_ffmpeg() -> None:
-    if _ffmpeg_is_installed():
-        return
-
-    _reattempt_install(_do_ffmpeg_install)
+    _perform_install(_ffmpeg_is_installed, _do_ffmpeg_install)
 
 
 def _do_ffmpeg_install():
