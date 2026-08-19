@@ -1,12 +1,12 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import typing
 import contextlib as ctxl
 import functools
 import os
 import pathlib
 import shutil
 import sys
+import typing
 from collections import abc as cabc
 
 import nox
