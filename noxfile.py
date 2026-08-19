@@ -23,10 +23,10 @@ PUBLIC = ROOT / "public"
 DOCS = ROOT / "docs"
 "The path for root documentations."
 
-INSTALL_TIMEOUT = "5m"
+INSTALL_TIMEOUT = "7m"
 "Allow 5 minutes for timeouts."
 
-INSTALL_RETRIES = 3
+INSTALL_RETRIES = 4
 "Allow 3 times for install timeouts."
 
 _session: nox.Session | None = None
