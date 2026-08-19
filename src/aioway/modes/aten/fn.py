@@ -6,9 +6,8 @@ import dataclasses as dcls
 import logging
 import typing
 
-from aioway._torch import is_aten_op
-
 from .aten import Aten, find_aten
+from .guards import is_aten_op
 
 if typing.TYPE_CHECKING:
     from aioway.modes import TorchDispThunk

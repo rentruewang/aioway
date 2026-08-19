@@ -12,9 +12,9 @@ import torch
 
 from aioway._schemas import Attr, replace_tensors_with_attr
 from aioway._thunks import Thunk
-from aioway._torch import is_leaf_has_grad
 from aioway._utils import TensorInput, find_nested_tensors, topo_sort
 
+from .aten import is_leaf_has_grad
 from .modes import ModeThunk
 
 LOGGER = logging.getLogger(__name__)
