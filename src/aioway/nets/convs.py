@@ -48,10 +48,10 @@ class ImageRegressorEmitter(Emitter):
         if not isinstance(action, TSpecSpace):
             return NotImplemented
 
-        if not isinstance(observ, tspecs.BoundedContinuous):
+        if not observ.cast_spec_type(tspecs.BoundedContinuous):
             return NotImplemented
 
-        if not isinstance(action, tspecs.Unbounded):
+        if not action.cast_spec_type(tspecs.Unbounded):
             return NotImplemented
 
         activation = activation_module(self.activation)

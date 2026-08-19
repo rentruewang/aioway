@@ -27,10 +27,10 @@ class NormEmitter(Emitter):
         if not isinstance(action, TSpecSpace):
             return NotImplemented
 
-        if not isinstance(observ.spec, tspecs.Unbounded):
+        if not observ.cast_spec_type(tspecs.Unbounded):
             return NotImplemented
 
-        if not isinstance(action.spec, tspecs.Unbounded):
+        if not action.cast_spec_type(tspecs.Unbounded):
             return NotImplemented
 
         if observ != action:
@@ -50,10 +50,10 @@ def layer_norm_emitter(observ, action):
     if not isinstance(action, TSpecSpace):
         return NotImplemented
 
-    if not isinstance(observ.spec, tspecs.Unbounded):
+    if not observ.cast_spec_type(tspecs.Unbounded):
         return NotImplemented
 
-    if not isinstance(action.spec, tspecs.Unbounded):
+    if not action.cast_spec_type(tspecs.Unbounded):
         return NotImplemented
 
     if observ != action:
