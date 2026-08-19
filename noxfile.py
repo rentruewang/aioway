@@ -1,5 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import typing
 import contextlib as ctxl
 import functools
 import os
@@ -231,14 +232,17 @@ def _install_coreutils() -> None:
 def _retry(function: cabc.Callable[[], None]):
     "Retry for a certain number of times."
 
+    # The exception that we will raise later.
+    ce: ncmd.CommandFailed = typing.cast(ncmd.CommandFailed, NotImplemented)
+
     for retry in range(INSTALL_RETIRES):
         try:
             function()
-        except ncmd.CommandFailed:
+        except ncmd.CommandFailed as ce:
             print(f"Retry #{retry} failed.")
             continue
-        else:
-            raise ncmd.CommandFailed
+    else:
+        raise ce
 
 
 def _install_pdm() -> None:
