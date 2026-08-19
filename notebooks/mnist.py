@@ -25,10 +25,10 @@ from torchrl.data import tensor_specs as tspecs
 from torchvision import datasets
 from torchvision import transforms as T
 
-from aioway._tspecs import as_space
 from aioway.dsets import DatasetIdxDset, Dset, InputTarget, InputTargetLikeDset
 from aioway.nets import ClfLogitHead, linear_regression
 from aioway.trainers import StaticTrainer, TrainCfg
+from aioway.tspecs import as_space
 
 
 # %%

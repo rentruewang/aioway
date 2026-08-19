@@ -7,7 +7,6 @@ from . import (
     _costs,
     _sess,
     _thunks,
-    _tspecs,
     _utils,
     api,
     dsets,
@@ -16,4 +15,5 @@ from . import (
     nets,
     schemas,
     trainers,
+    tspecs,
 )

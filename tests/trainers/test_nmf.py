@@ -3,9 +3,9 @@
 import pytest
 from torch import nn
 
-from aioway._tspecs import unbounded_box_space
 from aioway.nets import emit_one
 from aioway.trainers import NmfEmitter, NmfTrainer
+from aioway.tspecs import unbounded_box_space
 
 
 @pytest.fixture

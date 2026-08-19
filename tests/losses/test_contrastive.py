@@ -4,10 +4,10 @@ import pytest
 import torch
 from torch import nn, optim
 
-from aioway._tspecs import unbounded_box_space
 from aioway.losses import ContrastiveLoss, ContrastiveLossEmitter
 from aioway.nets import emit_one, linear_regression
 from aioway.schemas import Shape
+from aioway.tspecs import unbounded_box_space
 
 
 @pytest.fixture

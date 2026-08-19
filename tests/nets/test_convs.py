@@ -3,10 +3,10 @@
 import pytest
 from torch import nn
 
-from aioway._tspecs import Space, float_image_space, unbounded_box_space
 from aioway.nets import emit_one, sample_from_space, set_batch_size
 from aioway.nets.convs import ImageRegressorEmitter
 from aioway.schemas import Shape
+from aioway.tspecs import Space, float_image_space, unbounded_box_space
 
 
 @pytest.fixture

@@ -7,10 +7,10 @@ import functools
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
-from aioway._tspecs import Space, TSpecSpace, unbounded_box_space
 from aioway._utils import is_list_of
 from aioway.nets import sample_from_space
 from aioway.schemas import Shape
+from aioway.tspecs import Space, TSpecSpace, unbounded_box_space
 
 from ._utils import Activation, activation_module
 from .emitters import Emitter, emitter_dcls

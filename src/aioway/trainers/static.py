@@ -13,8 +13,8 @@ from torch import nn, optim
 from torch.utils import data as dutils
 from torchrl.data import tensor_specs as tspecs
 
-from aioway._tspecs import Space, SpaceCompat
 from aioway.dsets import Dset, InputTarget, InputTargetLikeDset
+from aioway.tspecs import Space, SpaceCompat
 
 __all__ = ["LossFunc", "PredLossPair", "StaticTrainer", "TrainCfg"]
 

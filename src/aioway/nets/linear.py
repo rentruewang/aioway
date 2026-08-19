@@ -6,7 +6,7 @@ from torchrl import data as tspec
 from torchrl import modules as rlmods
 from torchrl.data import tensor_specs as tspec
 
-from aioway._tspecs import Space, TSpecSpace
+from aioway.tspecs import Space, TSpecSpace
 
 from ._utils import Activation, activation_class, activation_module
 from .compound import BuilderNode, BuiltModule, CompoundBuilder
