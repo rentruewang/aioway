@@ -241,6 +241,8 @@ def _retry(function: cabc.Callable[[], None]):
         except ncmd.CommandFailed as ce:
             print(f"Retry #{retry} failed.")
             continue
+        else:
+            return
     else:
         raise ce
 
