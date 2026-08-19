@@ -67,7 +67,7 @@ class Schema(collections.UserDict[str, Attr]):
         return result
 
     def to_fake_tdict(self) -> td.TensorDict:
-        from ..fake import fake_mode
+        from aioway._torch import fake_mode
 
         with fake_mode():
             return td.TensorDict(

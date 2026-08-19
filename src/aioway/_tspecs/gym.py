@@ -8,7 +8,7 @@ import torch
 from numpy import typing as npt
 from torchrl.data import tensor_specs as tspecs
 
-from aioway._torch import Device, DeviceLike, DType, DTypeLike, Shape, ShapeLike
+from aioway._schemas import Device, DeviceLike, DType, DTypeLike, Shape, ShapeLike
 
 from .spaces import TSpecSpace
 

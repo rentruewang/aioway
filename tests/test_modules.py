@@ -7,12 +7,7 @@ import torch
 from torch import nn
 
 from aioway._modules import rebuild_module
-from aioway._torch import (
-    fake_mode,
-    is_fake_tensor,
-    is_real_tensor,
-    real_mode,
-)
+from aioway._torch import fake_mode, is_fake_tensor, is_real_tensor, real_mode
 
 
 @pytest.fixture

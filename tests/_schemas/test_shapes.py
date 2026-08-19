@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from aioway._torch import Shape
+from aioway._schemas import Shape
 
 
 def _shapes():

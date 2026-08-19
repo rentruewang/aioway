@@ -8,7 +8,8 @@ import typing
 import torch
 from torchcodec import decoders as dec
 
-from aioway._torch import Attr, is_fake_mode_on, torch_set_fake_mode_func
+from aioway._schemas import Attr
+from aioway._torch import is_fake_mode_on, torch_set_fake_mode_func
 from aioway._utils import num_threads
 
 from ._av import VideoStream
