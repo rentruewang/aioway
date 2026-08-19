@@ -10,7 +10,14 @@ from torchrl.data import tensor_specs as tspecs
 
 from .tspecs import TSpec, TSpecCompat
 
-__all__ = ["register_cast", "cast_tspec", "Caster", "CastedModule", "CastedSpaceModule"]
+__all__ = [
+    "register_cast",
+    "cast_tspec",
+    "Caster",
+    "CastedModule",
+    "CastedSpaceModule",
+    "is_tspec_type",
+]
 
 _CASTERS: dict[tuple[type[TSpec], type[TSpec]], Caster] = {}
 "The casters organized by `tuple[type[TSpec], type[TSpec]]`."
@@ -61,9 +68,9 @@ class Caster[S: TSpec, T: TSpec](typing.Protocol):
 
 
 def register_cast(input_type, output_type):
-    if not _is_tspec_type(input_type):
+    if not is_tspec_type(input_type):
         raise TypeError(f"{input_type=} is not a `type[TSpec]`.")
-    if not _is_tspec_type(output_type):
+    if not is_tspec_type(output_type):
         raise TypeError(f"{output_type=} is not a `type[TSpec]`.")
 
     def decorator[C: Caster](cast: C) -> C:
@@ -94,7 +101,7 @@ def cast_tspec(tspec: TSpec, target_type: type[TSpec], /) -> CastedModule:
     return CastedModule(module, tspec, target_tspec)
 
 
-def _is_tspec_type(cls) -> typing.TypeIs[type[TSpec]]:
+def is_tspec_type(cls) -> typing.TypeIs[type[TSpec]]:
     if not isinstance(cls, type):
         return False
 
@@ -111,5 +118,6 @@ def _recursive_bases(klass: type, visited: set[type]):
     if klass in visited:
         return
 
+    visited.add(klass)
     for base in klass.__bases__:
         _recursive_bases(base, visited)
