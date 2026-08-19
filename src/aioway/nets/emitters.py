@@ -11,6 +11,7 @@ from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
 from aioway._utils import AnySet
+from aioway.spaces import Space
 
 __all__ = [
     "EmitterLike",
@@ -21,7 +22,7 @@ __all__ = [
     "emit",
     "emitter_function",
     "emitters_in_scope",
-    "sample_from_spec",
+    "sample_from_space",
     "set_batch_size",
 ]
 
@@ -45,13 +46,13 @@ def set_batch_size(*batch_size: int) -> cabc.Generator[None]:
         _batch_size = None
 
 
-def sample_from_spec(spec: tspecs.TensorSpec, /) -> typing.Any:
+def sample_from_space(spec: Space, /) -> typing.Any:
     "Sample from the `spec` with the batch size configured by `with_batch_size`."
     assert _batch_size
-    return spec.sample(_batch_size)
+    return spec.sample(*_batch_size)
 
 
-def emit_one(observ: tspecs.TensorSpec, action: tspecs.TensorSpec) -> nn.Module:
+def emit_one(observ: Space, action: Space) -> nn.Module:
     """
     A convenient wrapper to only emit the first target found.
     """
@@ -59,9 +60,7 @@ def emit_one(observ: tspecs.TensorSpec, action: tspecs.TensorSpec) -> nn.Module:
     return next(emit(observ, action))
 
 
-def emit(
-    observ: tspecs.TensorSpec, action: tspecs.TensorSpec, /
-) -> cabc.Generator[nn.Module]:
+def emit(observ: Space, action: Space, /) -> cabc.Generator[nn.Module]:
     """
     Emit some candidates based on the given spaces.
     """
@@ -86,9 +85,7 @@ class EmitterLike(typing.Protocol):
     """
 
     @abc.abstractmethod
-    def __call__(
-        self, observ: tspecs.TensorSpec, action: tspecs.TensorSpec, /
-    ) -> nn.Module:
+    def __call__(self, observ: Space, action: Space, /) -> nn.Module:
         raise NotImplementedError
 
 

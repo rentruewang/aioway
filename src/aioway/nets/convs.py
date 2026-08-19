@@ -7,10 +7,10 @@ import functools
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
-from aioway._specs import unbounded_box_spec
 from aioway._torch import Shape
 from aioway._utils import is_list_of
-from aioway.nets import sample_from_spec
+from aioway.nets import sample_from_space
+from aioway.spaces import Space, TSpecSpace, unbounded_box_space
 
 from ._utils import Activation, activation_module
 from .emitters import Emitter, emitter_dcls
@@ -42,13 +42,16 @@ class ImageRegressorEmitter(Emitter):
     def __len__(self) -> int:
         return self._size
 
-    def __call__(
-        self, observ: tspecs.TensorSpec, action: tspecs.TensorSpec
-    ) -> nn.Sequential:
-        if not isinstance(observ, tspecs.BoundedContinuous):
+    def __call__(self, observ: Space, action: Space) -> nn.Sequential:
+        if not isinstance(observ, TSpecSpace):
+            return NotImplemented
+        if not isinstance(action, TSpecSpace):
             return NotImplemented
 
-        if not isinstance(action, tspecs.Unbounded):
+        if not observ.cast_spec(tspecs.BoundedContinuous):
+            return NotImplemented
+
+        if not action.cast_spec(tspecs.Unbounded):
             return NotImplemented
 
         activation = activation_module(self.activation)
@@ -72,12 +75,12 @@ class ImageRegressorEmitter(Emitter):
 
         seq = nn.Sequential(*modules, nn.Flatten())
 
-        sim_in = sample_from_spec(observ)
+        sim_in = sample_from_space(observ)
         sim_out = seq(sim_in)
 
         # Emits a linear final layer, that uses our `linear_shape` logic.
         linear = linear_regression(
-            unbounded_box_spec(shape=Shape.parse(sim_out.shape[1:])), action
+            unbounded_box_space(shape=Shape.parse(sim_out.shape[1:])), action
         )
 
         seq.append(linear)

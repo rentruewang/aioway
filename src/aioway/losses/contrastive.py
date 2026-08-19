@@ -7,9 +7,9 @@ from collections import abc as cabc
 import torch
 from torch import nn, optim
 from torch.nn import functional as F
-from torchrl.data import tensor_specs as tspecs
 
 from aioway.nets import Emitter, emitter_dcls
+from aioway.spaces import Space, TSpecSpace
 
 __all__ = ["ContrastiveLoss", "ContrastiveLossEmitter"]
 
@@ -53,14 +53,17 @@ class ContrastiveLossEmitter(Emitter):
     emitter: Emitter
     "The default emitter when it's time to emit."
 
-    def __call__(
-        self, observ: tspecs.TensorSpec, action: tspecs.TensorSpec, /
-    ) -> nn.Module:
+    def __call__(self, observ: Space, action: Space, /) -> nn.Module:
+        if not isinstance(observ, TSpecSpace):
+            return NotImplemented
+        if not isinstance(action, TSpecSpace):
+            return NotImplemented
+
         # In batch negative is a reconstruction error.
         if observ != action:
             return NotImplemented
 
         emission = self.emitter(observ, action)
 
-        assert isinstance(emission, nn.Module)
+        assert isinstance(emission, nn.Module), type(emission)
         return ContrastiveLoss(emission, nn.MSELoss(), optim.Adam)

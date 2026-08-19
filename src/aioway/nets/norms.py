@@ -7,6 +7,8 @@ import typing
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
+from aioway.spaces import Space, TSpecSpace
+
 from .emitters import Emitter, emitter_dcls, emitter_function
 
 __all__ = ["NormEmitter", "NormType", "layer_norm_emitter"]
@@ -19,13 +21,16 @@ class NormEmitter(Emitter):
     norm_type: NormType
     "The type of normalization layer."
 
-    def __call__(
-        self, observ: tspecs.TensorSpec, action: tspecs.TensorSpec
-    ) -> nn.Module:
-        if not isinstance(observ, tspecs.Unbounded):
+    def __call__(self, observ: Space, action: Space) -> nn.Module:
+        if not isinstance(observ, TSpecSpace):
+            return NotImplemented
+        if not isinstance(action, TSpecSpace):
             return NotImplemented
 
-        if not isinstance(action, tspecs.Unbounded):
+        if not observ.cast_spec(tspecs.Unbounded):
+            return NotImplemented
+
+        if not action.cast_spec(tspecs.Unbounded):
             return NotImplemented
 
         if observ != action:
@@ -40,10 +45,15 @@ class NormEmitter(Emitter):
 
 @emitter_function
 def layer_norm_emitter(observ, action):
-    if not isinstance(observ, tspecs.Unbounded):
+    if not isinstance(observ, TSpecSpace):
+        return NotImplemented
+    if not isinstance(action, TSpecSpace):
         return NotImplemented
 
-    if not isinstance(action, tspecs.Unbounded):
+    if not observ.cast_spec(tspecs.Unbounded):
+        return NotImplemented
+
+    if not action.cast_spec(tspecs.Unbounded):
         return NotImplemented
 
     if observ != action:

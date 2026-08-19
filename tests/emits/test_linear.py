@@ -8,7 +8,6 @@ from torch import nn
 from torch.utils import data as dutils
 from torchrl.data import tensor_specs as tspecs
 
-from aioway._specs import unbounded_box_spec
 from aioway._torch import Shape
 from aioway.nets import (
     MlpCompoundEmitter,
@@ -17,16 +16,17 @@ from aioway.nets import (
     emit_one,
     linear_regression,
 )
+from aioway.spaces import Space, TSpecSpace, unbounded_box_space
 
 
 @pytest.fixture
 def input_shape_space():
-    return unbounded_box_spec(Shape.parse(3, 4, 6))
+    return unbounded_box_space(Shape.parse(3, 4, 6))
 
 
 @pytest.fixture
 def output_space():
-    return unbounded_box_spec(Shape.parse(3, 4, 7))
+    return unbounded_box_space(Shape.parse(3, 4, 7))
 
 
 @pytest.fixture
@@ -67,9 +67,7 @@ def consider_mlp(request: pytest.FixtureRequest):
         yield
 
 
-def test_just_linear(
-    input_shape_space: tspecs.Unbounded, output_space: tspecs.Unbounded, consider_linear
-):
+def test_just_linear(input_shape_space: Space, output_space: Space, consider_linear):
     module = emit_one(input_shape_space, output_space)
     assert isinstance(module, nn.Linear | nn.Sequential)
     _check_linear(
@@ -80,8 +78,8 @@ def test_just_linear(
 
 
 def test_mlp_emitter(
-    input_shape_space: tspecs.Unbounded,
-    output_space: tspecs.Unbounded,
+    input_shape_space: TSpecSpace,
+    output_space: TSpecSpace,
     consider_mlp,
     fake_mode,
 ):

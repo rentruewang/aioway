@@ -6,6 +6,8 @@ from torchrl import data as tspec
 from torchrl import modules as rlmods
 from torchrl.data import tensor_specs as tspec
 
+from aioway.spaces import Space, TSpecSpace
+
 from ._utils import Activation, activation_class, activation_module
 from .compound import BuilderNode, BuiltModule, CompoundBuilder
 from .emitters import Emitter, emitter_dcls, emitter_function
@@ -20,15 +22,19 @@ __all__ = [
 
 
 @emitter_function
-def linear_regression(observ: tspec.TensorSpec, action: tspec.TensorSpec) -> nn.Module:
+def linear_regression(observ: Space, action: Space) -> nn.Module:
     """
     `Linear` module from `ShapeSpace`s.
     """
-
-    if not isinstance(observ, tspec.Unbounded):
+    if not isinstance(observ, TSpecSpace):
+        return NotImplemented
+    if not isinstance(action, TSpecSpace):
         return NotImplemented
 
-    if not isinstance(action, tspec.Unbounded):
+    if not observ.cast_spec(tspec.Unbounded):
+        return NotImplemented
+
+    if not action.cast_spec(tspec.Unbounded):
         return NotImplemented
 
     # The simple case where the `ndim` are all 1.
@@ -59,15 +65,19 @@ class ClfLogitHead(Emitter):
     emitter: Emitter
     "Emits a regression model."
 
-    def __call__(self, observ: tspec.TensorSpec, action: tspec.TensorSpec) -> nn.Module:
-
-        if not isinstance(observ, tspec.Unbounded):
+    def __call__(self, observ: Space, action: Space) -> nn.Module:
+        if not isinstance(observ, TSpecSpace):
+            return NotImplemented
+        if not isinstance(action, TSpecSpace):
             return NotImplemented
 
-        if not isinstance(action, tspec.BoundedDiscrete) or action.ndim != 0:
+        if not observ.cast_spec(tspec.Unbounded):
             return NotImplemented
 
-        action_count = int(action.high - action.low + 1)
+        if not action.cast_spec(tspec.BoundedDiscrete) or action.ndim != 0:
+            return NotImplemented
+
+        action_count = int(action.spec.high - action.spec.low + 1)
 
         module = nn.Sequential(
             self.emitter(observ, observ),
@@ -99,7 +109,11 @@ class _MlpEmitter(Emitter):
 class TorchRlMlpEmitter(_MlpEmitter):
     "Emits a `torchrl.modules.MLP`."
 
-    def __call__(self, observ: tspec.TensorSpec, action: tspec.TensorSpec) -> nn.Module:
+    def __call__(self, observ: Space, action: Space) -> nn.Module:
+        if not isinstance(observ, TSpecSpace):
+            return NotImplemented
+        if not isinstance(action, TSpecSpace):
+            return NotImplemented
 
         return rlmods.MLP(
             in_features=observ.shape[-1],
@@ -115,13 +129,16 @@ class MlpEmitter(_MlpEmitter):
     Emits a `nn.Sequential` module.
     """
 
-    def __call__(
-        self, observ: tspec.TensorSpec, action: tspec.TensorSpec
-    ) -> nn.Sequential:
-        if not isinstance(observ, tspec.Unbounded):
+    def __call__(self, observ: Space, action: Space) -> nn.Sequential:
+        if not isinstance(observ, TSpecSpace):
+            return NotImplemented
+        if not isinstance(action, TSpecSpace):
             return NotImplemented
 
-        if not isinstance(action, tspec.Unbounded):
+        if not observ.cast_spec(tspec.Unbounded):
+            return NotImplemented
+
+        if not action.cast_spec(tspec.Unbounded):
             return NotImplemented
 
         sizes = [observ.shape[-1], *self.hidden_sizes, action.shape[-1]]
@@ -148,13 +165,16 @@ class MlpCompoundEmitter(_MlpEmitter):
     Emits a simple MLP with hidden sizes and activation.
     """
 
-    def __call__(
-        self, observ: tspec.TensorSpec, action: tspec.TensorSpec
-    ) -> BuiltModule:
-        if not isinstance(observ, tspec.Unbounded):
+    def __call__(self, observ: Space, action: Space) -> BuiltModule:
+        if not isinstance(observ, TSpecSpace):
+            return NotImplemented
+        if not isinstance(action, TSpecSpace):
             return NotImplemented
 
-        if not isinstance(action, tspec.Unbounded):
+        if not observ.cast_spec(tspec.Unbounded):
+            return NotImplemented
+
+        if not action.cast_spec(tspec.Unbounded):
             return NotImplemented
 
         sizes = [observ.shape[-1], *self.hidden_sizes, action.shape[-1]]

@@ -13,7 +13,6 @@
 #     name: python3
 # ---
 
-# %%
 import pathlib
 import typing
 
@@ -28,6 +27,7 @@ from torchvision import transforms as T
 
 from aioway.dsets import DatasetIdxDset, Dset, InputTarget, InputTargetLikeDset
 from aioway.nets import ClfLogitHead, linear_regression
+from aioway.spaces import as_space
 from aioway.trainers import StaticTrainer, TrainCfg
 
 
@@ -49,11 +49,11 @@ class MnistDataset(InputTargetLikeDset):
         return td.stack([self[i] for i in idx])
 
     @property
-    def input_spec(self) -> tspecs.Unbounded:
+    def input_space(self) -> tspecs.Unbounded:
         return tspecs.Unbounded(shape=torch.Size([784]))
 
     @property
-    def target_spec(self) -> tspecs.Bounded:
+    def target_space(self) -> tspecs.Bounded:
         return tspecs.Bounded(low=0, high=9, shape=torch.Size([]), dtype=torch.long)
 
     @property
@@ -70,7 +70,7 @@ def train_test_split[D: Dset](dataset: D, test_ratio: float) -> tuple[D, D]:
     train_samples = len(dataset) - test_samples
 
     def wrap_dset(dset):
-        return DatasetIdxDset(dset, dataset.__spec__(), dataset.__collate_fn__)
+        return DatasetIdxDset(dset, dataset.__space__(), dataset.__collate_fn__)
 
     train_dset, test_dset = map(
         wrap_dset,
@@ -87,7 +87,9 @@ def main(batch_size: int):
     dset = MnistDataset()
     train_dset, test_dset = train_test_split(dset, 0.1)
 
-    module = ClfLogitHead(linear_regression)(dset.input_spec, dset.target_spec)
+    module = ClfLogitHead(linear_regression)(
+        as_space(dset.input_space), as_space(dset.target_space)
+    )
     optimizer = optim.AdamW(module.parameters())
     loss_func = nn.CrossEntropyLoss()
 
