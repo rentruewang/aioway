@@ -10,7 +10,7 @@ from torchrl.data import tensor_specs as tspecs
 
 from aioway.schemas import Device, DeviceLike, DType, DTypeLike, Shape, ShapeLike
 
-from .spaces import TSpecSpace
+from .tspecs import TSpecSpace
 
 __all__ = ["unbounded_box_space", "scalar_box_space", "array_box_space"]
 
