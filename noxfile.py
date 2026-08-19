@@ -290,18 +290,45 @@ def _running_in_github() -> bool:
 
 @checking_if("ffmpeg is installed")
 def _ffmpeg_is_installed():
-    try:
-        result = sp.run(["ffmpeg", "-version"], stdout=sp.PIPE, stderr=sp.PIPE)
-        return result.returncode == 0
-    except FileNotFoundError:
-        return False
+    return _run_success("ffmpeg", "-version")
 
 
 @checking_if("pdm is installed")
 def _pdm_is_installed():
+    return _run_success("pdm", "--version")
+
+
+def _get_env():
+    env = os.environ.copy()
+
+    for key, val in _current_session().env.items():
+        if val is None:
+            continue
+        env[key] = val
+
+    return env
+
+
+def sp_run(*cmd, timeout: float | None = None) -> sp.CompletedProcess[str]:
+
+    result = sp.run(
+        cmd,
+        stdout=sp.PIPE,
+        stderr=sp.STDOUT,
+        timeout=timeout,
+        text=True,
+        env=_get_env(),
+    )
+
+    if stdout := result.stdout.strip():
+        print(stdout, file=sys.stderr)
+
+    return result
+
+
+def _run_success(*cmd):
     try:
-        result = sp.run(["pdm", "--version"], stdout=sp.PIPE, stderr=sp.PIPE)
-        return result.returncode == 0
+        return sp_run(*cmd).returncode == 0
     except FileNotFoundError:
         return False
 
