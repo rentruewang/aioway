@@ -6,7 +6,6 @@ import pathlib
 import typing
 
 import torch
-from torchcodec import decoders as dec
 
 from aioway._utils import num_threads
 from aioway.modes import is_fake_mode_on, torch_set_fake_mode_func
@@ -87,6 +86,8 @@ class TorchCodecVideoLoader(VideoLoader):
     @torch_set_fake_mode_func(False)
     def load_video(self, fname: str | pathlib.Path, /) -> torch.Tensor:
         "Read and decode videos from path."
+
+        from torchcodec import decoders as dec
 
         decoder = dec.VideoDecoder(str(fname), num_ffmpeg_threads=self.threads)
         samples = decoder[:]
