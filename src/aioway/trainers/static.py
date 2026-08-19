@@ -114,7 +114,7 @@ class BatchIter[T: td.TensorClass | td.TensorDict = typing.Any](typing.Protocol)
 
         ...
 
-    def __tspec__(self) -> TSpec[T]:
+    def __tspec__(self) -> TSpec:
         """
         The space constraining the output of `__iter__`.
         """

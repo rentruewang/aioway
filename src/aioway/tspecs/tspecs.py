@@ -8,7 +8,7 @@ import typing
 import tensordict as td
 import torch
 
-__all__ = ["TSpec", "TSpecLike", "TSpecCompat"]
+__all__ = ["TSpec", "TSpecLike", "TSpecCompat", "as_tspec"]
 
 
 type TSpecLike = TSpec | TSpecCompat

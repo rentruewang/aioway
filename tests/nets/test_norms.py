@@ -2,7 +2,7 @@
 
 import typing
 
-import pytest
+import pytest, torch
 
 from aioway.nets import NormEmitter, NormType, emit_one, layer_norm_emitter
 from aioway.tspecs import unbounded_box_space
@@ -43,13 +43,13 @@ def spec(ndim, num_features):
 
 def test_batch_inst_norm(batch_inst_norm_emitter, spec):
     mod = emit_one(spec, spec)
-    input = spec.sample(13)
+    input = spec.sample(torch.Size([13]))
     output = mod(input)
     assert output.shape == input.shape
 
 
 def test_layer_norm(layer_norm, spec):
     mod = emit_one(spec, spec)
-    input = spec.sample(13)
+    input = spec.sample(torch.Size([13]))
     output = mod(input)
     assert output.shape == input.shape
