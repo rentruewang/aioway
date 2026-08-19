@@ -6,7 +6,6 @@ import os
 import pathlib
 import shutil
 import sys
-import typing
 from collections import abc as cabc
 
 import nox
@@ -27,14 +26,11 @@ DOCS = ROOT / "docs"
 INSTALL_TIMEOUT = "5m"
 "Allow 5 minutes for timeouts."
 
-INSTALL_RETIRES = 3
+INSTALL_RETRIES = 3
 "Allow 3 times for install timeouts."
 
 _session: nox.Session | None = None
 "The global session to simplfy code."
-
-_setup_is_done: bool = False
-"If the `setup_env` is called."
 
 
 @ctxl.contextmanager
@@ -229,29 +225,28 @@ def _install_coreutils() -> None:
     run("brew", "install", "coreutils")
 
 
-def _retry(function: cabc.Callable[[], None]):
+def _reattempt_install(function: cabc.Callable[[], None]):
     "Retry for a certain number of times."
 
-    # The exception that we will raise later.
-    ce: ncmd.CommandFailed = typing.cast(ncmd.CommandFailed, NotImplemented)
-
-    for retry in range(INSTALL_RETIRES):
+    for retry in range(INSTALL_RETRIES):
         try:
             function()
-        except ncmd.CommandFailed as ce:
-            print(f"Retry #{retry} failed.")
-            continue
-        else:
             return
-    else:
-        raise ce
+        except ncmd.CommandFailed:
+            print(f"Retry #{retry} failed.")
+
+            # Terminate if fail.
+            if retry == INSTALL_RETRIES - 1:
+                raise
+            else:
+                continue
 
 
 def _install_pdm() -> None:
     if _pdm_is_installed():
         return
 
-    _retry(_do_pdm_install)
+    _reattempt_install(_do_pdm_install)
 
 
 def _do_pdm_install():
@@ -262,7 +257,7 @@ def _install_ffmpeg() -> None:
     if _ffmpeg_is_installed():
         return
 
-    _retry(_do_ffmpeg_install)
+    _reattempt_install(_do_ffmpeg_install)
 
 
 def _do_ffmpeg_install():
