@@ -114,7 +114,7 @@ class BatchIter[T: td.TensorClass | td.TensorDict = typing.Any](typing.Protocol)
 
         ...
 
-    def __space__(self) -> Space[T]:
+    def __tspec__(self) -> Space[T]:
         """
         The space constraining the output of `__iter__`.
         """
@@ -130,7 +130,7 @@ class IterableBatchIter:
     def __iter__(self):
         yield from self.iterable
 
-    def __space__(self) -> SpaceCompat:
+    def __tspec__(self) -> SpaceCompat:
         return self.space
 
 
@@ -242,4 +242,4 @@ class StaticTrainer:
         if self.cfg.progress_bar:
             loader = progress.track(loader)
 
-        return IterableBatchIter(loader, dataset.__space__())
+        return IterableBatchIter(loader, dataset.__tspec__())

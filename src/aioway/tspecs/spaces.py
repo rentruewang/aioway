@@ -20,13 +20,13 @@ Types compatible with `Space`.
 @typing.runtime_checkable
 class SpaceLike(typing.Protocol):
     """
-    The objects that can be casted to `Space` defines a `__space__` method.
+    The objects that can be casted to `Space` defines a `__tspec__` method.
 
     For convenience, allows a `TensorSpec` to be returned,
     will automatically be wrapped in an `TSpecSpace`.
     """
 
-    def __space__(self) -> Space | tspecs.TensorSpec: ...
+    def __tspec__(self) -> Space | tspecs.TensorSpec: ...
 
 
 @dcls.dataclass(frozen=True)
@@ -60,7 +60,7 @@ def as_space(space: SpaceCompat, /) -> Space:
 
     1. `Space`. No conversion is made.
     2. `TensorSpec`. Would be wrapped in a `TensorSpecSpace`.
-    3. `SpaceLike`. Types that define `__space__` (convert to `Space` or `TensorSpec`).
+    3. `SpaceLike`. Types that define `__tspec__` (convert to `Space` or `TensorSpec`).
     """
 
     if isinstance(space, Space):
@@ -70,7 +70,7 @@ def as_space(space: SpaceCompat, /) -> Space:
         return TSpecSpace(space)
 
     if isinstance(space, SpaceLike):
-        return as_space(space.__space__())
+        return as_space(space.__tspec__())
 
     raise TypeError(f"Do not know how to handle {space=}.")
 

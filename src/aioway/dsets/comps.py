@@ -33,7 +33,7 @@ class CompositeDset(Dset, abc.ABC):
 
         @typing.override
         @abc.abstractmethod
-        def __space__(self) -> SpaceCompat:
+        def __tspec__(self) -> SpaceCompat:
             raise NotImplementedError
 
 
@@ -42,11 +42,11 @@ class ComposedDset(CompositeDset):
         self._dsets = dsets
 
     @typing.override
-    def __space__(self) -> tspecs.Composite:
+    def __tspec__(self) -> tspecs.Composite:
         "The composed spec would be a composite."
 
         return tspecs.Composite(
-            {key: val.__space__() for key, val in self.dsets.items()}
+            {key: val.__tspec__() for key, val in self.dsets.items()}
         )
 
     @property
@@ -98,7 +98,7 @@ class InputTargetLikeDset(IdxDset, abc.ABC):
     def target_space(self) -> tspecs.TensorSpec:
         raise NotImplementedError
 
-    def __space__(self) -> tspecs.Composite:
+    def __tspec__(self) -> tspecs.Composite:
         return tspecs.Composite(input=self.input_space, target=self.target_space)
 
 
@@ -125,8 +125,8 @@ class InputTargetDset(InputTargetLikeDset):
 
     @property
     def input_space(self) -> tspecs.TensorSpec:
-        return self.input.__space__()
+        return self.input.__tspec__()
 
     @property
     def target_space(self) -> tspecs.TensorSpec:
-        return self.target.__space__()
+        return self.target.__tspec__()
