@@ -1,9 +1,9 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import torch
 import contextlib as ctxl
 from collections import abc as cabc
 
+import torch
 from torch import nn, optim
 from torchrl import collectors as rlcol
 from torchrl import data as rldata

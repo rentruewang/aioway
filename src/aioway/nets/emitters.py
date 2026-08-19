@@ -76,7 +76,7 @@ def emit(observ: TSpec, action: TSpec, /) -> cabc.Generator[nn.Module]:
 class EmitterLike(typing.Protocol):
     """
     The baseline function that `emit` uses to generate `nn.Module`s.
-    If the space is not supported, `NotImplemented` should be returned.
+    If the `TSpec` is not supported, `NotImplemented` should be returned.
 
     All the `BaseLine`s are registered, and iterated over during `Emitter` call.
 

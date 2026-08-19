@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"The `Space` interface."
+"The `TSpec` interface."
 
 import abc
 import typing
@@ -13,7 +13,7 @@ __all__ = ["TSpec", "TSpecLike", "TSpecCompat", "as_tspec"]
 
 type TSpecLike = TSpec | TSpecCompat
 """
-Types compatible with `Space`.
+Types compatible with `TSpec`.
 """
 
 
@@ -77,9 +77,9 @@ class TSpecCompat(typing.Protocol):
 
 def as_tspec(spec: TSpecLike, /) -> TSpec:
     """
-    Convert an object into a `Space`. If attempts fail, a `TypeError` is raised.
+    Convert an object into a `TSpec`. If attempts fail, a `TypeError` is raised.
 
-    The argument `space` can either be one of the 3 types:
+    The argument `spec` can either be one of the 3 types:
 
     1. `TSpec`. No conversion is made (this includes `TensorSpec`).
     2. `TSpecLike`. Types that define `__tspec__` (convert to `TSpec`).
