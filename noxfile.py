@@ -266,17 +266,31 @@ def _do_ffmpeg_install():
         case "darwin":
             run(*_timeout(), "brew", "install", "ffmpeg")
         case "linux":
-            flags = [
+            run(
+                *_timeout(),
+                "curl",
+                "-L",
+                "--fail",
+                "--retry",
+                "3",
+                "https://github.com/BtbN/FFmpeg-Builds/releases/latest/download/ffmpeg-master-latest-linux64-gpl.tar.xz",
                 "-o",
-                "Acquire::Languages=none",
-                "-o",
-                "Acquire::ForceIPv4=true",
-                "-o",
-                "Acquire::http::Pipeline-Depth=0",
-            ]
+                "/tmp/ffmpeg.tar.xz",
+            )
+            run("tar", "-xf", "/tmp/ffmpeg.tar.xz", "-C", "/tmp")
+            run(
+                "sudo",
+                "install",
+                "/tmp/ffmpeg-master-latest-linux64-gpl/bin/ffmpeg",
+                "/usr/local/bin/ffmpeg",
+            )
+            run(
+                "sudo",
+                "install",
+                "/tmp/ffmpeg-master-latest-linux64-gpl/bin/ffprobe",
+                "/usr/local/bin/ffprobe",
+            )
 
-            run("sudo", *_timeout(), "apt-get", "update", *flags)
-            run("sudo", *_timeout(), "apt-get", "install", "-y", "ffmpeg")
         case _:
             raise RuntimeError(f"Platform {sys.platform} is not supported yet.")
 
