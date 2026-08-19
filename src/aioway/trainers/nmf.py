@@ -8,8 +8,8 @@ import torch
 from torch import nn, optim
 from torchrl.data import tensor_specs as tspecs
 
+from aioway._tspecs import Space, TSpecSpace
 from aioway.nets import Emitter, emitter_dcls
-from aioway.spaces import Space, TSpecSpace
 
 __all__ = ["NmfTrainer", "NmfEmitter"]
 

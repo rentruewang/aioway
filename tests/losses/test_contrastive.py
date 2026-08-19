@@ -5,9 +5,9 @@ import torch
 from torch import nn, optim
 
 from aioway._torch import Shape
+from aioway._tspecs import unbounded_box_space
 from aioway.losses import ContrastiveLoss, ContrastiveLossEmitter
 from aioway.nets import emit_one, linear_regression
-from aioway.spaces import unbounded_box_space
 
 
 @pytest.fixture

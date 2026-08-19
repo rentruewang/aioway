@@ -10,7 +10,7 @@ import tensordict as td
 import torch
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.spaces import SpaceCompat
+from aioway._tspecs import SpaceCompat
 
 from .dsets import Dset, IdxDset
 

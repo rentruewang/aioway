@@ -4,8 +4,8 @@
 import pytest
 import torch
 
-from aioway.spaces import array_box_space
-from aioway.spaces.spaces import TSpecSpace
+from aioway._tspecs import array_box_space
+from aioway._tspecs.spaces import TSpecSpace
 
 
 @pytest.fixture

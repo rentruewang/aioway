@@ -8,12 +8,12 @@ from . import (
     _sess,
     _thunks,
     _torch,
+    _tspecs,
     _utils,
     api,
     dsets,
     errors,
     modes,
     nets,
-    spaces,
     trainers,
 )

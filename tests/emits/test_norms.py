@@ -4,8 +4,8 @@ import typing
 
 import pytest
 
+from aioway._tspecs import unbounded_box_space
 from aioway.nets import NormEmitter, NormType, emit_one, layer_norm_emitter
-from aioway.spaces import unbounded_box_space
 
 
 @pytest.fixture(params=typing.get_args(NormType.__value__))

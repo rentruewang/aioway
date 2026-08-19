@@ -10,8 +10,8 @@ import torch
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
+from aioway._tspecs import Space
 from aioway._utils import AnySet
-from aioway.spaces import Space
 
 __all__ = [
     "EmitterLike",
