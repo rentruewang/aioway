@@ -9,7 +9,7 @@ from torch import nn, optim
 from torchrl.data import tensor_specs as tspecs
 
 from aioway.nets import Emitter, emitter_dcls
-from aioway.tspecs import Space, TSpecSpace
+from aioway.tspecs import TSpec
 
 __all__ = ["NmfTrainer", "NmfEmitter"]
 
@@ -59,18 +59,12 @@ class NmfEmitter(Emitter):
     hidden: int
     "The hidden latent size."
 
-    def __call__(self, observ: Space, action: Space) -> nn.Module:
-        if not isinstance(observ, TSpecSpace):
-            return NotImplemented
-        if not isinstance(action, TSpecSpace):
+    def __call__(self, observ: TSpec, action: TSpec) -> nn.Module:
+
+        if not (isinstance(observ, tspecs.Unbounded) and observ.ndim == 2):
             return NotImplemented
 
-        if not (isinstance(observ.spec, tspecs.Unbounded) and observ.ndim == 2):
-            return NotImplemented
-
-        if not (
-            isinstance(action.spec, tspecs.UnboundedContinuous) and action.ndim == 0
-        ):
+        if not (isinstance(action, tspecs.UnboundedContinuous) and action.ndim == 0):
             return NotImplemented
 
         hidden = self.hidden

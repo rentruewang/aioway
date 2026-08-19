@@ -10,8 +10,6 @@ from torchrl.data import tensor_specs as tspecs
 
 from aioway.schemas import Device, DeviceLike, DType, DTypeLike, Shape, ShapeLike
 
-from .tspecs import TSpecSpace
-
 __all__ = ["unbounded_box_space", "scalar_box_space", "array_box_space"]
 
 
@@ -20,7 +18,7 @@ def unbounded_box_space(
     *,
     dtype: DTypeLike | None = None,
     device: DeviceLike | None = None,
-) -> TSpecSpace[tspecs.Unbounded]:
+) -> tspecs.Unbounded:
     """
     A continuous box spec.
 
@@ -34,12 +32,10 @@ def unbounded_box_space(
         It would be continuous or discrete depending on the dtype.
     """
 
-    return TSpecSpace(
-        tspecs.Unbounded(
-            shape=_parse_shape(shape),
-            device=_exec_if_not_none(device, _parse_device),
-            dtype=_exec_if_not_none(dtype, _parse_dtype),
-        )
+    return tspecs.Unbounded(
+        shape=_parse_shape(shape),
+        device=_exec_if_not_none(device, _parse_device),
+        dtype=_exec_if_not_none(dtype, _parse_dtype),
     )
 
 
@@ -50,7 +46,7 @@ def scalar_box_space(
     shape: ShapeLike | None = None,
     dtype: DTypeLike | None = None,
     device: DeviceLike | None = None,
-) -> TSpecSpace[tspecs.Bounded]:
+) -> tspecs.Bounded:
     """
     A continuous tensor bounded elementwise by `low` and `high`. Scalar version.
 
@@ -65,14 +61,12 @@ def scalar_box_space(
         A `Bounded` spec.
     """
 
-    return TSpecSpace(
-        tspecs.Bounded(
-            low=low,
-            high=high,
-            shape=_exec_if_not_none(shape, _parse_shape),
-            device=_exec_if_not_none(device, _parse_device),
-            dtype=_exec_if_not_none(dtype, _parse_dtype),
-        )
+    return tspecs.Bounded(
+        low=low,
+        high=high,
+        shape=_exec_if_not_none(shape, _parse_shape),
+        device=_exec_if_not_none(device, _parse_device),
+        dtype=_exec_if_not_none(dtype, _parse_dtype),
     )
 
 
@@ -83,7 +77,7 @@ def array_box_space(
     shape: ShapeLike | None = None,
     dtype: DTypeLike | None = None,
     device: DeviceLike | None = None,
-) -> TSpecSpace[tspecs.Bounded]:
+) -> tspecs.Bounded:
     """
     A continuous tensor bounded elementwise by `low` and `high`.
     Here each element of the shape can have different bounds.
@@ -102,14 +96,12 @@ def array_box_space(
     low_tensor = torch.from_numpy(np.asarray(low))
     high_tensor = torch.from_numpy(np.asarray(high))
 
-    return TSpecSpace(
-        tspecs.Bounded(
-            low=low_tensor,
-            high=high_tensor,
-            device=_exec_if_not_none(device, _parse_device),
-            shape=_exec_if_not_none(shape, _parse_shape),
-            dtype=_exec_if_not_none(dtype, _parse_dtype),
-        )
+    return tspecs.Bounded(
+        low=low_tensor,
+        high=high_tensor,
+        device=_exec_if_not_none(device, _parse_device),
+        shape=_exec_if_not_none(shape, _parse_shape),
+        dtype=_exec_if_not_none(dtype, _parse_dtype),
     )
 
 

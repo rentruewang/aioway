@@ -3,125 +3,92 @@
 "The `Space` interface."
 
 import abc
-import dataclasses as dcls
 import typing
 
+import tensordict as td
 import torch
-from torchrl.data import tensor_specs as tspecs
 
-__all__ = ["Space", "SpaceLike", "SpaceCompat", "TSpecSpace", "as_space"]
+__all__ = ["TSpec", "TSpecLike", "TSpecCompat"]
 
-type SpaceCompat = Space | tspecs.TensorSpec | SpaceLike
+
+type TSpecLike = TSpec | TSpecCompat
 """
 Types compatible with `Space`.
 """
 
 
 @typing.runtime_checkable
-class SpaceLike(typing.Protocol):
+class TSpec(typing.Protocol):
     """
-    The objects that can be casted to `Space` defines a `__tspec__` method.
+    `TSpec` is essentially a protocol that mimicks `TensorSpec`,
+    but only contains the most important functionalities,
+    s.t. our custom implementation won't be too burdened.
 
-    For convenience, allows a `TensorSpec` to be returned,
-    will automatically be wrapped in an `TSpecSpace`.
-    """
-
-    def __tspec__(self) -> Space | tspecs.TensorSpec: ...
-
-
-@dcls.dataclass(frozen=True)
-class Space[T = typing.Any](abc.ABC):
-    """
-    `Space` acts as the types of data in `aioway`.
-
-    It also acts as a filter in compiling the modules.
+    Note:
+        The methods are marked as `abc.abstractmethod` and `raise NotImplementedError`,
+        despite this being a `Protocol`, because this is meant to be subclassed.
     """
 
     @abc.abstractmethod
-    def __contains__(self, obj: T, /) -> bool:
-        """
-        Check if the object is in the current `Space`.
-        """
+    def is_in(self, obj, /) -> bool:
+        raise NotImplementedError
 
+    def contains(self, obj, /) -> bool:
+        return self.is_in(obj)
+
+    def assert_is_in(self, obj, /) -> None:
+        assert self.is_in(obj)
+
+    @property
+    @abc.abstractmethod
+    def shape(self) -> torch.Size:
+        raise NotImplementedError
+
+    @property
+    def ndim(self) -> int:
+        return len(self.shape)
+
+    @property
+    @abc.abstractmethod
+    def device(self) -> torch.device:
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def dtype(self) -> torch.dtype:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def sample(self, *shape: int) -> T:
-        "Each shape supports sampling."
-
+    def rand(self, shape: torch.Size, /) -> torch.Tensor | td.TensorDictBase:
         raise NotImplementedError
 
+    def sample(self, shape: torch.Size, /) -> torch.Tensor | td.TensorDictBase:
+        return self.rand(shape)
 
-def as_space(space: SpaceCompat, /) -> Space:
+
+@typing.runtime_checkable
+class TSpecCompat(typing.Protocol):
+    """
+    The objects that can be casted to `TSpec` defines a `__tspec__` method.
+    """
+
+    def __tspec__(self) -> TSpec: ...
+
+
+def as_tspec(spec: TSpecLike, /) -> TSpec:
     """
     Convert an object into a `Space`. If attempts fail, a `TypeError` is raised.
 
     The argument `space` can either be one of the 3 types:
 
-    1. `Space`. No conversion is made.
-    2. `TensorSpec`. Would be wrapped in a `TensorSpecSpace`.
-    3. `SpaceLike`. Types that define `__tspec__` (convert to `Space` or `TensorSpec`).
+    1. `TSpec`. No conversion is made (this includes `TensorSpec`).
+    2. `TSpecLike`. Types that define `__tspec__` (convert to `TSpec`).
     """
 
-    if isinstance(space, Space):
-        return space
+    if isinstance(spec, TSpec):
+        return spec
 
-    if isinstance(space, tspecs.TensorSpec):
-        return TSpecSpace(space)
+    if isinstance(spec, TSpecCompat):
+        return as_tspec(spec.__tspec__())
 
-    if isinstance(space, SpaceLike):
-        return as_space(space.__tspec__())
-
-    raise TypeError(f"Do not know how to handle {space=}.")
-
-
-@typing.final
-@dcls.dataclass(frozen=True)
-class TSpecSpace[S: tspecs.TensorSpec = tspecs.TensorSpec](Space):
-    """
-    The `Space` that contains a `TensorSpec` from `torchrl`.
-
-    This class exists because we want to maximally leverage `TensorSpec`,
-    but having `Space | TensorSpec` is awkward because of 2 sets of APIs.
-    """
-
-    spec: S
-    """
-    The spec that the `Space` wraps.
-    """
-
-    @typing.override
-    def __contains__(self, obj, /) -> bool:
-        return self.spec.is_in(obj)
-
-    @typing.override
-    def sample(self, *shapes: int):
-        return self.spec.sample(torch.Size(shapes))
-
-    def cast_spec[T](self, spec_type: type[T], /) -> T | None:
-        """
-        Cast `self.spec` to the given `spec_type`.
-
-        If the type cast failed, return `None`. Else return the instance.
-        """
-
-        if isinstance(self.spec, spec_type):
-            return self.spec
-        else:
-            return None
-
-    @property
-    def ndim(self) -> int:
-        return self.spec.ndim
-
-    @property
-    def shape(self) -> torch.Size:
-        return self.spec.shape
-
-    @property
-    def device(self) -> torch.device | None:
-        return self.spec.device
-
-    @property
-    def dtype(self) -> torch.dtype:
-        return self.spec.dtype
+    raise TypeError(f"Do not know how to handle {spec=}.")

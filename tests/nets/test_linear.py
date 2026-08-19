@@ -16,7 +16,7 @@ from aioway.nets import (
     linear_regression,
 )
 from aioway.schemas import Shape
-from aioway.tspecs import Space, TSpecSpace, unbounded_box_space
+from aioway.tspecs import TSpec, unbounded_box_space
 
 
 @pytest.fixture
@@ -67,7 +67,7 @@ def consider_mlp(request: pytest.FixtureRequest):
         yield
 
 
-def test_just_linear(input_shape_space: Space, output_space: Space, consider_linear):
+def test_just_linear(input_shape_space: TSpec, output_space: TSpec, consider_linear):
     module = emit_one(input_shape_space, output_space)
     assert isinstance(module, nn.Linear | nn.Sequential)
     _check_linear(
@@ -78,10 +78,7 @@ def test_just_linear(input_shape_space: Space, output_space: Space, consider_lin
 
 
 def test_mlp_emitter(
-    input_shape_space: TSpecSpace,
-    output_space: TSpecSpace,
-    consider_mlp,
-    fake_mode,
+    input_shape_space: TSpec, output_space: TSpec, consider_mlp, fake_mode
 ):
     input = torch.randn(13, 3, 4, 6)
 

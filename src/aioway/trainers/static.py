@@ -14,7 +14,7 @@ from torch.utils import data as dutils
 from torchrl.data import tensor_specs as tspecs
 
 from aioway.dsets import Dset, InputTarget, InputTargetLikeDset
-from aioway.tspecs import Space, SpaceCompat
+from aioway.tspecs import TSpec, TSpecCompat
 
 __all__ = ["LossFunc", "PredLossPair", "StaticTrainer", "TrainCfg"]
 
@@ -114,7 +114,7 @@ class BatchIter[T: td.TensorClass | td.TensorDict = typing.Any](typing.Protocol)
 
         ...
 
-    def __tspec__(self) -> Space[T]:
+    def __tspec__(self) -> TSpec[T]:
         """
         The space constraining the output of `__iter__`.
         """
@@ -125,12 +125,12 @@ class IterableBatchIter:
     "Wraps an iterable and space."
 
     iterable: cabc.Iterable
-    space: SpaceCompat
+    space: TSpecCompat
 
     def __iter__(self):
         yield from self.iterable
 
-    def __tspec__(self) -> SpaceCompat:
+    def __tspec__(self) -> TSpecCompat:
         return self.space
 
 

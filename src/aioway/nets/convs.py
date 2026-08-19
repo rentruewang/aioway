@@ -10,7 +10,7 @@ from torchrl.data import tensor_specs as tspecs
 from aioway._utils import is_list_of
 from aioway.nets import sample_from_space
 from aioway.schemas import Shape
-from aioway.tspecs import Space, TSpecSpace, unbounded_box_space
+from aioway.tspecs import TSpec, unbounded_box_space
 
 from ._utils import Activation, activation_module
 from .emitters import Emitter, emitter_dcls
@@ -42,16 +42,11 @@ class ImageRegressorEmitter(Emitter):
     def __len__(self) -> int:
         return self._size
 
-    def __call__(self, observ: Space, action: Space) -> nn.Sequential:
-        if not isinstance(observ, TSpecSpace):
-            return NotImplemented
-        if not isinstance(action, TSpecSpace):
+    def __call__(self, observ: TSpec, action: TSpec) -> nn.Sequential:
+        if not isinstance(observ, tspecs.BoundedContinuous):
             return NotImplemented
 
-        if not observ.cast_spec(tspecs.BoundedContinuous):
-            return NotImplemented
-
-        if not action.cast_spec(tspecs.Unbounded):
+        if not isinstance(action, tspecs.Unbounded):
             return NotImplemented
 
         activation = activation_module(self.activation)

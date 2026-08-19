@@ -28,7 +28,7 @@ from torchvision import transforms as T
 from aioway.dsets import DatasetIdxDset, Dset, InputTarget, InputTargetLikeDset
 from aioway.nets import ClfLogitHead, linear_regression
 from aioway.trainers import StaticTrainer, TrainCfg
-from aioway.tspecs import as_space
+from aioway.tspecs import as_tspec
 
 
 # %%
@@ -88,7 +88,7 @@ def main(batch_size: int):
     train_dset, test_dset = train_test_split(dset, 0.1)
 
     module = ClfLogitHead(linear_regression)(
-        as_space(dset.input_space), as_space(dset.target_space)
+        as_tspec(dset.input_space), as_tspec(dset.target_space)
     )
     optimizer = optim.AdamW(module.parameters())
     loss_func = nn.CrossEntropyLoss()
