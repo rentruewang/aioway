@@ -5,11 +5,11 @@ import functools
 import os
 import pathlib
 import shutil
-import subprocess as sp
 import sys
 from collections import abc as cabc
 
 import nox
+from nox import command as ncmd
 
 ROOT = pathlib.Path(__file__).parent
 "The project root."
@@ -25,6 +25,9 @@ DOCS = ROOT / "docs"
 
 INSTALL_TIMEOUT = "5m"
 "Allow 5 minutes for timeouts."
+
+INSTALL_RETIRES = 3
+"Allow 3 times for install timeouts."
 
 _session: nox.Session | None = None
 "The global session to simplfy code."
@@ -225,10 +228,25 @@ def _install_coreutils() -> None:
     run("brew", "install", "coreutils")
 
 
+def _retry(function: cabc.Callable[[], None]):
+    for retry in range(INSTALL_RETIRES):
+        try:
+            function()
+        except ncmd.CommandFailed:
+            print(f"Retry #{retry} failed.")
+            continue
+        else:
+            raise ncmd.CommandFailed
+
+
 def _install_pdm() -> None:
     if _pdm_is_installed():
         return
 
+    _retry(_do_pdm_install)
+
+
+def _do_pdm_install():
     run(*_timeout(), "pipx", "install", "pdm")
 
 
@@ -236,6 +254,10 @@ def _install_ffmpeg() -> None:
     if _ffmpeg_is_installed():
         return
 
+    _retry(_do_ffmpeg_install)
+
+
+def _do_ffmpeg_install():
     # Install since it's not installed yet.
     match sys.platform:
         case "darwin":
@@ -331,28 +353,13 @@ def _get_env():
     return env
 
 
-def sp_run(*cmd, timeout: float | None = None) -> sp.CompletedProcess[str]:
-
-    result = sp.run(
-        cmd,
-        stdout=sp.PIPE,
-        stderr=sp.STDOUT,
-        timeout=timeout,
-        text=True,
-        env=_get_env(),
-    )
-
-    if stdout := result.stdout.strip():
-        print(stdout, file=sys.stderr)
-
-    return result
-
-
 def _run_success(*cmd):
     try:
-        return sp_run(*cmd).returncode == 0
-    except FileNotFoundError:
+        run(*cmd)
+    except ncmd.CommandFailed:
         return False
+    else:
+        return True
 
 
 @ctxl.contextmanager
