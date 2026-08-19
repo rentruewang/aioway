@@ -20,6 +20,9 @@ def _loaders():
 
 @pytest.fixture(params=_loaders(), ids=lambda l: type(l).__name__)
 def loader(request: pytest.FixtureRequest):
+    if isinstance(request.param, TorchCodecAudioLoader):
+        pytest.xfail("FFMPEG")
+
     return request.param
 
 
