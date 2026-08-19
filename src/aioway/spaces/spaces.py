@@ -9,7 +9,7 @@ import typing
 import torch
 from torchrl.data import tensor_specs as tspecs
 
-__all__ = ["Space", "SpaceLike", "SpaceCompat", "TSpecSpace"]
+__all__ = ["Space", "SpaceLike", "SpaceCompat", "TSpecSpace", "as_space"]
 
 type SpaceCompat = Space | tspecs.TensorSpec | SpaceLike
 """
