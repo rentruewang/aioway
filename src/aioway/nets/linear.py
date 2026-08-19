@@ -31,10 +31,10 @@ def linear_regression(observ: Space, action: Space) -> nn.Module:
     if not isinstance(action, TSpecSpace):
         return NotImplemented
 
-    if not observ.cast_spec_type(tspec.Unbounded):
+    if not observ.cast_spec(tspec.Unbounded):
         return NotImplemented
 
-    if not action.cast_spec_type(tspec.Unbounded):
+    if not action.cast_spec(tspec.Unbounded):
         return NotImplemented
 
     # The simple case where the `ndim` are all 1.
@@ -71,10 +71,10 @@ class ClfLogitHead(Emitter):
         if not isinstance(action, TSpecSpace):
             return NotImplemented
 
-        if not observ.cast_spec_type(tspec.Unbounded):
+        if not observ.cast_spec(tspec.Unbounded):
             return NotImplemented
 
-        if not action.cast_spec_type(tspec.BoundedDiscrete) or action.ndim != 0:
+        if not action.cast_spec(tspec.BoundedDiscrete) or action.ndim != 0:
             return NotImplemented
 
         action_count = int(action.spec.high - action.spec.low + 1)
@@ -135,10 +135,10 @@ class MlpEmitter(_MlpEmitter):
         if not isinstance(action, TSpecSpace):
             return NotImplemented
 
-        if not observ.cast_spec_type(tspec.Unbounded):
+        if not observ.cast_spec(tspec.Unbounded):
             return NotImplemented
 
-        if not action.cast_spec_type(tspec.Unbounded):
+        if not action.cast_spec(tspec.Unbounded):
             return NotImplemented
 
         sizes = [observ.shape[-1], *self.hidden_sizes, action.shape[-1]]
@@ -171,10 +171,10 @@ class MlpCompoundEmitter(_MlpEmitter):
         if not isinstance(action, TSpecSpace):
             return NotImplemented
 
-        if not observ.cast_spec_type(tspec.Unbounded):
+        if not observ.cast_spec(tspec.Unbounded):
             return NotImplemented
 
-        if not action.cast_spec_type(tspec.Unbounded):
+        if not action.cast_spec(tspec.Unbounded):
             return NotImplemented
 
         sizes = [observ.shape[-1], *self.hidden_sizes, action.shape[-1]]

@@ -98,7 +98,7 @@ class TSpecSpace[S: tspecs.TensorSpec = tspecs.TensorSpec](Space):
     def sample(self, *shapes: int):
         return self.spec.sample(torch.Size(shapes))
 
-    def cast_spec_type[T](self, spec_type: type[T], /) -> T | None:
+    def cast_spec[T](self, spec_type: type[T], /) -> T | None:
         """
         Cast `self.spec` to the given `spec_type`.
 
