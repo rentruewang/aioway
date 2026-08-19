@@ -12,15 +12,16 @@ import torch
 from torch._subclasses import fake_tensor as ft
 
 __all__ = [
-    "torch_fake_mode",
+    "fake_mode",
+    "real_mode",
     "torch_set_fake_mode",
     "torch_set_fake_mode_func",
     "is_fake_tensor",
     "is_real_tensor",
     "to_fake_tensor",
-    "to_fake_tensordict",
-    "current_fake_mode",
-    "torch_real_mode",
+    "to_fake_tdict",
+    "is_fake_mode_on",
+    "active_fake_mode",
 ]
 
 LOGGER = logging.getLogger(__name__)
@@ -38,12 +39,12 @@ def to_fake_tensor(tensor: torch.Tensor) -> ft.FakeTensor:
     if is_fake_tensor(tensor):
         return tensor
 
-    with torch_fake_mode() as mode:
+    with fake_mode() as mode:
         converter = mode.fake_tensor_converter
         return converter.from_real_tensor(mode, tensor)
 
 
-def to_fake_tensordict(tdict: td.TensorDict) -> td.TensorDict:
+def to_fake_tdict(tdict: td.TensorDict) -> td.TensorDict:
     result = td.TensorDict({key: to_fake_tensor(val) for key, val in tdict.items()})
     result.shape = tdict.shape
     return result
@@ -65,11 +66,17 @@ def is_fake_tensor(tensor: object) -> typing.TypeIs[ft.FakeTensor]:
     return isinstance(tensor, ft.FakeTensor)
 
 
-def current_fake_mode() -> ft.FakeTensorMode | None:
+def is_fake_mode_on() -> bool:
     """
-    Get the current fake mode, is available.
+    Check if we are running under a `fake_mode` context.
+    """
 
-    This can be used in an `if` or a `with`.
+    return active_fake_mode() is not None
+
+
+def active_fake_mode() -> ft.FakeTensorMode | None:
+    """
+    Get the fake mode if it is active, or `None` if no fake mode is active.
     """
 
     if _fake_mode_is_active:
@@ -79,7 +86,7 @@ def current_fake_mode() -> ft.FakeTensorMode | None:
 
 
 @ctxl.contextmanager
-def torch_fake_mode():
+def fake_mode():
     """
     Enable `torch`'s fake mode s.t. we can do symbolic processing easily.
 
@@ -91,7 +98,7 @@ def torch_fake_mode():
 
 
 @ctxl.contextmanager
-def torch_real_mode():
+def real_mode():
     """
     Disable `torch`'s fake mode temporarily.
 
@@ -109,9 +116,9 @@ def torch_set_fake_mode(yes: bool, /):
     """
 
     if yes:
-        return torch_fake_mode()
+        return fake_mode()
     else:
-        return torch_real_mode()
+        return real_mode()
 
 
 @ctxl.contextmanager

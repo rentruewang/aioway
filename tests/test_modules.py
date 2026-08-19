@@ -8,16 +8,16 @@ from torch import nn
 
 from aioway._modules import rebuild_module
 from aioway._torch import (
+    fake_mode,
     is_fake_tensor,
     is_real_tensor,
-    torch_fake_mode,
-    torch_real_mode,
+    real_mode,
 )
 
 
 @pytest.fixture
 def fake_module() -> nn.Module:
-    with torch_fake_mode():
+    with fake_mode():
         return _linear()
 
 
@@ -37,7 +37,7 @@ def test_module_is_fake(fake_module: nn.Module):
 def test_module_rebuild(fake_module: nn.Module):
     assert all(map(is_fake_tensor, _params_and_buffers(fake_module)))
 
-    with torch_real_mode():
+    with real_mode():
         module = rebuild_module(fake_module)
 
     assert all(map(is_real_tensor, _params_and_buffers(module)))

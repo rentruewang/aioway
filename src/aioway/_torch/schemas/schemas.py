@@ -66,10 +66,10 @@ class Schema(collections.UserDict[str, Attr]):
 
         return result
 
-    def to_fake_tensordict(self) -> td.TensorDict:
-        from ..fake import torch_fake_mode
+    def to_fake_tdict(self) -> td.TensorDict:
+        from ..fake import fake_mode
 
-        with torch_fake_mode():
+        with fake_mode():
             return td.TensorDict(
                 {key: attr.to_fake_tensor() for key, attr in self.items()}
             )

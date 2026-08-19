@@ -129,9 +129,9 @@ class Attr:
         Generate a random tensor. This should be used under fake mode.
         """
 
-        from ..fake import torch_fake_mode
+        from ..fake import fake_mode
 
-        with torch_fake_mode():
+        with fake_mode():
             return torch.zeros(
                 self.shape.torch(),
                 dtype=self.dtype.torch(),
