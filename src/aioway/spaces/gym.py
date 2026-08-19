@@ -10,7 +10,7 @@ from torchrl.data import tensor_specs as tspecs
 
 from aioway._torch import Device, DeviceLike, DType, DTypeLike, Shape, ShapeLike
 
-from .spaces import TensorSpecSpace
+from .spaces import TSpecSpace
 
 __all__ = ["unbounded_box_space", "scalar_box_space", "array_box_space"]
 
@@ -20,7 +20,7 @@ def unbounded_box_space(
     *,
     dtype: DTypeLike | None = None,
     device: DeviceLike | None = None,
-) -> TensorSpecSpace[tspecs.Unbounded]:
+) -> TSpecSpace[tspecs.Unbounded]:
     """
     A continuous box spec.
 
@@ -34,7 +34,7 @@ def unbounded_box_space(
         It would be continuous or discrete depending on the dtype.
     """
 
-    return TensorSpecSpace(
+    return TSpecSpace(
         tspecs.Unbounded(
             shape=_parse_shape(shape),
             device=_exec_if_not_none(device, _parse_device),
@@ -50,7 +50,7 @@ def scalar_box_space(
     shape: ShapeLike | None = None,
     dtype: DTypeLike | None = None,
     device: DeviceLike | None = None,
-) -> TensorSpecSpace[tspecs.Bounded]:
+) -> TSpecSpace[tspecs.Bounded]:
     """
     A continuous tensor bounded elementwise by `low` and `high`. Scalar version.
 
@@ -65,7 +65,7 @@ def scalar_box_space(
         A `Bounded` spec.
     """
 
-    return TensorSpecSpace(
+    return TSpecSpace(
         tspecs.Bounded(
             low=low,
             high=high,
@@ -83,7 +83,7 @@ def array_box_space(
     shape: ShapeLike | None = None,
     dtype: DTypeLike | None = None,
     device: DeviceLike | None = None,
-) -> TensorSpecSpace[tspecs.Bounded]:
+) -> TSpecSpace[tspecs.Bounded]:
     """
     A continuous tensor bounded elementwise by `low` and `high`.
     Here each element of the shape can have different bounds.
@@ -102,7 +102,7 @@ def array_box_space(
     low_tensor = torch.from_numpy(np.asarray(low))
     high_tensor = torch.from_numpy(np.asarray(high))
 
-    return TensorSpecSpace(
+    return TSpecSpace(
         tspecs.Bounded(
             low=low_tensor,
             high=high_tensor,

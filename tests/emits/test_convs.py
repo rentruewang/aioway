@@ -2,12 +2,11 @@
 
 import pytest
 from torch import nn
-from torchrl.data import tensor_specs as tspecs
 
 from aioway._torch import Shape
 from aioway.nets import emit_one, sample_from_space, set_batch_size
 from aioway.nets.convs import ImageRegressorEmitter
-from aioway.spaces import float_image_space, unbounded_box_space
+from aioway.spaces import Space, float_image_space, unbounded_box_space
 
 
 @pytest.fixture
@@ -36,8 +35,8 @@ def output_space(feat_size: int):
 
 def test_emit_image_regressor(
     image_emitter,
-    image_space: tspecs.TensorSpec,
-    output_space: tspecs.TensorSpec,
+    image_space: Space,
+    output_space: Space,
     feat_size: int,
 ):
     image_mod = emit_one(image_space, output_space)

@@ -9,7 +9,7 @@ import typing
 import torch
 from torchrl.data import tensor_specs as tspecs
 
-__all__ = ["Space", "SpaceLike", "SpaceCompat", "TensorSpecSpace"]
+__all__ = ["Space", "SpaceLike", "SpaceCompat", "TSpecSpace"]
 
 type SpaceCompat = Space | tspecs.TensorSpec | SpaceLike
 """
@@ -23,7 +23,7 @@ class SpaceLike(typing.Protocol):
     The objects that can be casted to `Space` defines a `__space__` method.
 
     For convenience, allows a `TensorSpec` to be returned,
-    will automatically be wrapped in an `TensorSpecSpace`.
+    will automatically be wrapped in an `TSpecSpace`.
     """
 
     def __space__(self) -> Space | tspecs.TensorSpec: ...
@@ -67,7 +67,7 @@ def as_space(space: SpaceCompat, /) -> Space:
         return space
 
     if isinstance(space, tspecs.TensorSpec):
-        return TensorSpecSpace(space)
+        return TSpecSpace(space)
 
     if isinstance(space, SpaceLike):
         return as_space(space.__space__())
@@ -77,9 +77,12 @@ def as_space(space: SpaceCompat, /) -> Space:
 
 @typing.final
 @dcls.dataclass(frozen=True)
-class TensorSpecSpace[S: tspecs.TensorSpec = tspecs.TensorSpec](Space):
+class TSpecSpace[S: tspecs.TensorSpec = tspecs.TensorSpec](Space):
     """
     The `Space` that contains a `TensorSpec` from `torchrl`.
+
+    This class exists because we want to maximally leverage `TensorSpec`,
+    but having `Space | TensorSpec` is awkward because of 2 sets of APIs.
     """
 
     spec: S
@@ -94,3 +97,19 @@ class TensorSpecSpace[S: tspecs.TensorSpec = tspecs.TensorSpec](Space):
     @typing.override
     def sample(self, *shapes: int):
         return self.spec.sample(torch.Size(shapes))
+
+    @property
+    def ndim(self) -> int:
+        return self.spec.ndim
+
+    @property
+    def shape(self) -> torch.Size:
+        return self.spec.shape
+
+    @property
+    def device(self) -> torch.device | None:
+        return self.spec.device
+
+    @property
+    def dtype(self) -> torch.dtype:
+        return self.spec.dtype
