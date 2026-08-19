@@ -6,13 +6,15 @@ import typing
 from collections import abc as cabc
 
 import lightning as L
+import tensordict as td
 import torch
 from rich import progress
 from torch import nn, optim
 from torch.utils import data as dutils
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.dsets import Dset, InputTargetLikeDset
+from aioway.dsets import Dset, InputTarget, InputTargetLikeDset
+from aioway.spaces import Space, SpaceCompat
 
 __all__ = ["LossFunc", "PredLossPair", "StaticTrainer", "TrainCfg"]
 
@@ -102,6 +104,36 @@ class LoopState:
     "The total size. For stream this would be `None`."
 
 
+class BatchIter[T: td.TensorClass | td.TensorDict = typing.Any](typing.Protocol):
+    """
+    The constraints that trainer uses to define what trainer handles.
+    """
+
+    def __iter__(self) -> cabc.Iterator[T]:
+        "Iterates and yield batches."
+
+        ...
+
+    def __space__(self) -> Space[T]:
+        """
+        The space constraining the output of `__iter__`.
+        """
+
+
+@dcls.dataclass(frozen=True)
+class IterableBatchIter:
+    "Wraps an iterable and space."
+
+    iterable: cabc.Iterable
+    space: SpaceCompat
+
+    def __iter__(self):
+        yield from self.iterable
+
+    def __space__(self) -> SpaceCompat:
+        return self.space
+
+
 class StaticTrainer:
     """
     The trainer for typical training workflow.
@@ -123,8 +155,14 @@ class StaticTrainer:
 
         self._loss_func = loss_func
 
-    def train_epoch(self, dataset: InputTargetLikeDset) -> cabc.Generator[PredLossPair]:
-        for pair in self._data_loader(dataset):
+    def train_dataset_epoch(
+        self, dataset: InputTargetLikeDset
+    ) -> cabc.Generator[PredLossPair]:
+        iterable = self._data_loader(dataset)
+        yield from self.train_epoch(iterable)
+
+    def train_epoch(self, batch_iter: BatchIter[InputTarget]):
+        for pair in batch_iter:
             x, y = pair.input, pair.target
 
             try:
@@ -135,9 +173,14 @@ class StaticTrainer:
             else:
                 yield inferred
 
-    def infer_epoch(self, dataset: InputTargetLikeDset) -> cabc.Generator[PredLossPair]:
+    def validate_dataset_epoch(
+        self, dataset: InputTargetLikeDset
+    ) -> cabc.Generator[PredLossPair]:
+        iterable = self._data_loader(dataset)
+        yield from self.validate_epoch(iterable)
 
-        for pair in self._data_loader(dataset):
+    def validate_epoch(self, batch_iter: BatchIter[InputTarget]):
+        for pair in batch_iter:
             x, y = pair.input, pair.target
             inferred = self.infer_step(x, y)
             yield inferred
@@ -199,4 +242,4 @@ class StaticTrainer:
         if self.cfg.progress_bar:
             loader = progress.track(loader)
 
-        yield from loader
+        return IterableBatchIter(loader, dataset.__space__())

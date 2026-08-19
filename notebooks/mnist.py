@@ -96,9 +96,9 @@ def main(batch_size: int):
     cfg = TrainCfg(batch_size=batch_size, fabric=fabric)
     trainer = StaticTrainer(cfg, module, optimizer, loss_func)
 
-    for pred in trainer.train_epoch(train_dset):
+    for pred in trainer.train_dataset_epoch(train_dset):
         print(pred.loss)
-    for pred in trainer.infer_epoch(test_dset):
+    for pred in trainer.validate_dataset_epoch(test_dset):
         print(pred.loss)
 
 
