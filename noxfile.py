@@ -225,7 +225,7 @@ def _install_coreutils() -> None:
     run("brew", "install", "coreutils")
 
 
-def _reattempt_install(function: cabc.Callable[[], None]):
+def _attempt_with_retry(function: cabc.Callable[[], None]):
     "Retry for a certain number of times."
 
     for retry in range(INSTALL_RETRIES):
@@ -247,7 +247,7 @@ def _perform_install(
 ):
     if check_install():
         return
-    _reattempt_install(installer)
+    _attempt_with_retry(installer)
     assert check_install()
 
 
