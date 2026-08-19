@@ -1,19 +1,20 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from aioway.spaces import Space, SpaceCompat
 import abc
 import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
 import lightning as L
+import tensordict as td
 import torch
 from rich import progress
 from torch import nn, optim
 from torch.utils import data as dutils
 from torchrl.data import tensor_specs as tspecs
-import tensordict as td
-from aioway.dsets import Dset, InputTargetLikeDset, InputTarget
+
+from aioway.dsets import Dset, InputTarget, InputTargetLikeDset
+from aioway.spaces import Space, SpaceCompat
 
 __all__ = ["LossFunc", "PredLossPair", "StaticTrainer", "TrainCfg"]
 
