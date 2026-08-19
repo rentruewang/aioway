@@ -8,7 +8,7 @@ from collections import abc as cabc
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
-__all__ = ["register_cast", "cast_space", "Caster", "CastedModule", "CastedSpaceModule"]
+__all__ = ["register_cast", "cast_tspec", "Caster", "CastedModule", "CastedSpaceModule"]
 
 _CASTERS: dict[tuple[type[tspecs.TensorSpec], type[tspecs.TensorSpec]], Caster] = {}
 "The casters organized by `tuple[type[tspecs.TensorSpec], type[tspecs.TensorSpec]]`."
@@ -26,10 +26,10 @@ class CastedModule[
     func: cabc.Callable[[typing.Any], typing.Any]
     "The corresponding encoder."
 
-    in_space: S
+    in_tspec: S
     "The space that is converted from."
 
-    out_space: T
+    out_tspec: T
     "The converted space."
 
     @typing.override
@@ -81,7 +81,7 @@ def register_cast(input_type, output_type):
     return decorator
 
 
-def cast_space(
+def cast_tspec(
     space: tspecs.TensorSpec, target_type: type[tspecs.TensorSpec], /
 ) -> CastedModule:
     """
@@ -92,8 +92,8 @@ def cast_space(
 
     input_type = type(space)
     cast = _CASTERS[input_type, target_type]
-    target_space, module = cast(space)
-    return CastedModule(module, space, target_space)
+    target_tspec, module = cast(space)
+    return CastedModule(module, space, target_tspec)
 
 
 def _is_tensor_spec_type(obj) -> typing.TypeIs[type[tspecs.TensorSpec]]:

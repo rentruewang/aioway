@@ -5,7 +5,7 @@ from torch import nn
 
 from aioway.nets import emit_one
 from aioway.trainers import NmfEmitter, NmfTrainer
-from aioway.tspecs import unbounded_box_space
+from aioway.tspecs import unbounded_box_tspec
 
 
 @pytest.fixture
@@ -15,7 +15,7 @@ def nmf():
 
 
 def test_emit_nmf(nmf):
-    out = emit_one(unbounded_box_space((3, 5)), unbounded_box_space(()))
+    out = emit_one(unbounded_box_tspec((3, 5)), unbounded_box_tspec(()))
 
     assert isinstance(out, nn.Module)
     assert isinstance(out, NmfTrainer)

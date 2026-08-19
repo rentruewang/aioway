@@ -3,12 +3,12 @@
 import pytest
 import torch
 
-from aioway.tspecs import TSpec, array_box_space
+from aioway.tspecs import TSpec, array_box_tspec
 
 
 @pytest.fixture
 def box():
-    return array_box_space(low=[0, 0], high=[1, 1], dtype=torch.float32)
+    return array_box_tspec(low=[0, 0], high=[1, 1], dtype=torch.float32)
 
 
 def test_box_valid(box: TSpec):

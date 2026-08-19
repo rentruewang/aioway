@@ -8,9 +8,9 @@ from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
 from aioway._utils import is_list_of
-from aioway.nets import sample_from_space
+from aioway.nets import sample_from_tspec
 from aioway.schemas import Shape
-from aioway.tspecs import TSpec, unbounded_box_space
+from aioway.tspecs import TSpec, unbounded_box_tspec
 
 from ._utils import Activation, activation_module
 from .emitters import Emitter, emitter_dcls
@@ -70,12 +70,12 @@ class ImageRegressorEmitter(Emitter):
 
         seq = nn.Sequential(*modules, nn.Flatten())
 
-        sim_in = sample_from_space(observ)
+        sim_in = sample_from_tspec(observ)
         sim_out = seq(sim_in)
 
         # Emits a linear final layer, that uses our `linear_shape` logic.
         linear = linear_regression(
-            unbounded_box_space(shape=Shape.parse(sim_out.shape[1:])), action
+            unbounded_box_tspec(shape=Shape.parse(sim_out.shape[1:])), action
         )
 
         seq.append(linear)

@@ -37,12 +37,12 @@ class PredLossPair(typing.NamedTuple):
 class ObservActionSpace(abc.ABC):
     @property
     @abc.abstractmethod
-    def observ_space(self) -> tspecs.TensorSpec:
+    def observ_tspec(self) -> tspecs.TensorSpec:
         raise NotImplementedError
 
     @property
     @abc.abstractmethod
-    def action_space(self) -> tspecs.TensorSpec:
+    def action_tspec(self) -> tspecs.TensorSpec:
         raise NotImplementedError
 
 

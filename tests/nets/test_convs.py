@@ -3,10 +3,10 @@
 import pytest
 from torch import nn
 
-from aioway.nets import emit_one, sample_from_space, set_batch_size
+from aioway.nets import emit_one, sample_from_tspec, set_batch_size
 from aioway.nets.convs import ImageRegressorEmitter
 from aioway.schemas import Shape
-from aioway.tspecs import TSpec, float_image_space, unbounded_box_space
+from aioway.tspecs import TSpec, float_image_tspec, unbounded_box_tspec
 
 
 @pytest.fixture
@@ -19,8 +19,8 @@ def image_emitter():
 
 
 @pytest.fixture
-def image_space():
-    return float_image_space(3, 28, 28)
+def image_tspec():
+    return float_image_tspec(3, 28, 28)
 
 
 @pytest.fixture(params=[3, 5, 1000])
@@ -29,19 +29,19 @@ def feat_size(request: pytest.FixtureRequest):
 
 
 @pytest.fixture
-def output_space(feat_size: int):
-    return unbounded_box_space(Shape.parse(feat_size))
+def output_tspec(feat_size: int):
+    return unbounded_box_tspec(Shape.parse(feat_size))
 
 
 def test_emit_image_regressor(
     image_emitter,
-    image_space: TSpec,
-    output_space: TSpec,
+    image_tspec: TSpec,
+    output_tspec: TSpec,
     feat_size: int,
 ):
-    image_mod = emit_one(image_space, output_space)
+    image_mod = emit_one(image_tspec, output_tspec)
     assert isinstance(image_mod, nn.Module)
 
     with set_batch_size(7):
-        img = sample_from_space(image_space)
+        img = sample_from_tspec(image_tspec)
     assert image_mod(img).shape == (7, feat_size)

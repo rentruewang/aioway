@@ -49,11 +49,11 @@ class MnistDataset(InputTargetLikeDset):
         return td.stack([self[i] for i in idx])
 
     @property
-    def input_space(self) -> tspecs.Unbounded:
+    def input_tspec(self) -> tspecs.Unbounded:
         return tspecs.Unbounded(shape=torch.Size([784]))
 
     @property
-    def target_space(self) -> tspecs.Bounded:
+    def target_tspec(self) -> tspecs.Bounded:
         return tspecs.Bounded(low=0, high=9, shape=torch.Size([]), dtype=torch.long)
 
     @property
@@ -88,7 +88,7 @@ def main(batch_size: int):
     train_dset, test_dset = train_test_split(dset, 0.1)
 
     module = ClfLogitHead(linear_regression)(
-        as_tspec(dset.input_space), as_tspec(dset.target_space)
+        as_tspec(dset.input_tspec), as_tspec(dset.target_tspec)
     )
     optimizer = optim.AdamW(module.parameters())
     loss_func = nn.CrossEntropyLoss()

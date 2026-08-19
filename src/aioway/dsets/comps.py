@@ -90,16 +90,16 @@ class InputTarget(td.TensorClass):
 class InputTargetLikeDset(IdxDset, abc.ABC):
     @property
     @abc.abstractmethod
-    def input_space(self) -> tspecs.TensorSpec:
+    def input_tspec(self) -> tspecs.TensorSpec:
         raise NotImplementedError
 
     @property
     @abc.abstractmethod
-    def target_space(self) -> tspecs.TensorSpec:
+    def target_tspec(self) -> tspecs.TensorSpec:
         raise NotImplementedError
 
     def __tspec__(self) -> tspecs.Composite:
-        return tspecs.Composite(input=self.input_space, target=self.target_space)
+        return tspecs.Composite(input=self.input_tspec, target=self.target_tspec)
 
 
 class InputTargetDset(InputTargetLikeDset):
@@ -124,9 +124,9 @@ class InputTargetDset(InputTargetLikeDset):
         return self._target
 
     @property
-    def input_space(self) -> tspecs.TensorSpec:
+    def input_tspec(self) -> tspecs.TensorSpec:
         return self.input.__tspec__()
 
     @property
-    def target_space(self) -> tspecs.TensorSpec:
+    def target_tspec(self) -> tspecs.TensorSpec:
         return self.target.__tspec__()

@@ -7,7 +7,7 @@ from torch import nn, optim
 from aioway.losses import ContrastiveLoss, ContrastiveLossEmitter
 from aioway.nets import emit_one, linear_regression
 from aioway.schemas import Shape
-from aioway.tspecs import unbounded_box_space
+from aioway.tspecs import unbounded_box_tspec
 
 
 @pytest.fixture
@@ -18,8 +18,8 @@ def contrastive():
 
 def test_emit_contrastive(contrastive):
     out = emit_one(
-        unbounded_box_space(Shape.parse([3, 5, 7])),
-        unbounded_box_space(Shape.parse([3, 5, 7])),
+        unbounded_box_tspec(Shape.parse([3, 5, 7])),
+        unbounded_box_tspec(Shape.parse([3, 5, 7])),
     )
 
     assert isinstance(out, nn.Module)

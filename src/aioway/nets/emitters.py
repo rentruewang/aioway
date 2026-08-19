@@ -21,7 +21,7 @@ __all__ = [
     "emit",
     "emitter_function",
     "emitters_in_scope",
-    "sample_from_space",
+    "sample_from_tspec",
     "set_batch_size",
 ]
 
@@ -45,7 +45,7 @@ def set_batch_size(*batch_size: int) -> cabc.Generator[None]:
         _batch_size = None
 
 
-def sample_from_space(spec: TSpec, /) -> typing.Any:
+def sample_from_tspec(spec: TSpec, /) -> typing.Any:
     "Sample from the `spec` with the batch size configured by `with_batch_size`."
     assert _batch_size
     return spec.sample(torch.Size(_batch_size))
