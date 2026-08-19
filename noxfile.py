@@ -229,6 +229,8 @@ def _install_coreutils() -> None:
 
 
 def _retry(function: cabc.Callable[[], None]):
+    "Retry for a certain number of times."
+
     for retry in range(INSTALL_RETIRES):
         try:
             function()
