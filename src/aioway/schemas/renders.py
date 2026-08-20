@@ -3,21 +3,11 @@
 import typing
 from collections import abc as cabc
 
-from aioway._utils import render_fcall, render_torch_func_name, replace_tensors
+from aioway._utils import render_fcall, render_torch_func_name
 
-from .attrs import Attr
+from .utils import replace_tensors_with_attr
 
-__all__ = [
-    "replace_tensors_with_attr",
-    "render_tensor_func_short",
-    "render_function_body_prefix",
-]
-
-
-@typing.no_type_check
-def replace_tensors_with_attr[T](obj: T) -> T:
-
-    return replace_tensors(obj, Attr.parse)
+__all__ = ["render_tensor_func_short", "render_function_body_prefix"]
 
 
 def render_tensor_func_short(func: str, args, kwargs) -> str:
