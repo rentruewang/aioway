@@ -8,7 +8,7 @@ from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
 from aioway._utils import is_list_of
-from aioway.nets import sample_from_tspec
+from aioway.emits import sample_from_tspec
 from aioway.schemas import Shape
 from aioway.tspecs import TSpec, unbounded_box_tspec
 
