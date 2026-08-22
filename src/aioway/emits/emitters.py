@@ -56,7 +56,7 @@ def emit_one(observ: TSpec, action: TSpec) -> nn.Module:
     A convenient wrapper to only emit the first target found.
     """
 
-    route_emitter = RouteEmitter(emitters_in_scope())
+    route_emitter = RouteEmitter.current_in_scope()
     return route_emitter(observ, action)
 
 
@@ -65,7 +65,7 @@ def emit(observ: TSpec, action: TSpec, /) -> cabc.Generator[nn.Module]:
     Emit some candidates based on the given spaces.
     """
 
-    route_emitter = RouteEmitter(emitters_in_scope())
+    route_emitter = RouteEmitter.current_in_scope()
     yield from route_emitter.candidates(observ, action)
 
 
@@ -147,6 +147,10 @@ class RouteEmitter(Emitter):
                 continue
 
             yield result
+
+    @classmethod
+    def current_in_scope(cls) -> typing.Self:
+        return cls(emitters_in_scope())
 
 
 @emitter_dcls
