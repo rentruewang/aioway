@@ -13,10 +13,10 @@ from aioway._utils import AnySet
 from aioway.tspecs import TSpec
 
 __all__ = [
+    "emitter_dcls",
     "EmitterLike",
     "Emitter",
-    "FuncEmitter",
-    "emitter_dcls",
+    "RouteEmitter",
     "emit_one",
     "emit",
     "emitter_function",
@@ -56,7 +56,8 @@ def emit_one(observ: TSpec, action: TSpec) -> nn.Module:
     A convenient wrapper to only emit the first target found.
     """
 
-    return next(emit(observ, action))
+    route_emitter = RouteEmitter.current_in_scope()
+    return route_emitter(observ, action)
 
 
 def emit(observ: TSpec, action: TSpec, /) -> cabc.Generator[nn.Module]:
@@ -64,13 +65,8 @@ def emit(observ: TSpec, action: TSpec, /) -> cabc.Generator[nn.Module]:
     Emit some candidates based on the given spaces.
     """
 
-    for emitter in emitters_in_scope():
-        result = emitter(observ, action)
-
-        if result is NotImplemented:
-            continue
-
-        yield result
+    route_emitter = RouteEmitter.current_in_scope()
+    yield from route_emitter.candidates(observ, action)
 
 
 class EmitterLike(typing.Protocol):
@@ -122,7 +118,43 @@ class Emitter(EmitterLike, abc.ABC):
 
 
 @emitter_dcls
-class FuncEmitter(Emitter):
+class RouteEmitter(Emitter):
+    """
+    The emitter that explicitly emits from a list of emitters.
+    """
+
+    emitters: cabc.Iterable[Emitter]
+    """
+    The emitters to choose to emit from.
+    """
+
+    def __call__(self, observ: TSpec, action: TSpec) -> nn.Module:
+        for module in self.candidates(observ, action):
+            return module
+
+        else:
+            raise ValueError(f"No candidate found for {observ=} and {action=}.")
+
+    def candidates(self, observ: TSpec, action: TSpec) -> cabc.Generator[nn.Module]:
+        """
+        Emit all possible candidates.
+        """
+
+        for emitter in self.emitters:
+            result = emitter(observ, action)
+
+            if result is NotImplemented:
+                continue
+
+            yield result
+
+    @classmethod
+    def current_in_scope(cls) -> typing.Self:
+        return cls(emitters_in_scope())
+
+
+@emitter_dcls
+class _FuncEmitter(Emitter):
     "The emitter function."
 
     function: EmitterLike
@@ -134,9 +166,9 @@ class FuncEmitter(Emitter):
         return self.function(observ, action)
 
 
-def emitter_function(emitter: EmitterLike) -> FuncEmitter:
+def emitter_function(emitter: EmitterLike) -> _FuncEmitter:
     "The decorator function to wrap a function as an `Emitter`."
-    return FuncEmitter(emitter)
+    return _FuncEmitter(emitter)
 
 
 def emitters_in_scope() -> AnySet[Emitter]:
