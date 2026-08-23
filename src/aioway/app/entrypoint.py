@@ -5,11 +5,13 @@ from collections import abc as cabc
 
 from torch import nn, optim
 
-from aioway.dsets import Dset
+from aioway.dsets import Dset, route_dset
 from aioway.emits import emit
 from aioway.losses import route_loss
 from aioway.trainers import StaticTrainer, TrainCfg
-from aioway.tspecs import TSpec
+from aioway.tspecs import TSpec, as_tspec
+
+from .server import serve
 
 __all__ = ["add_input", "add_output", "add_module", "add_trainer"]
 
@@ -31,6 +33,12 @@ def add_input(name: str, dset: Dset) -> None:
     _INPUT_DATASETS[name] = dset
 
 
+@serve("add_input")
+def add_input_by_name(name: str, path: str) -> None:
+    dset = route_dset(path)
+    add_input(name, dset)
+
+
 def add_output(name: str, spec: TSpec) -> None:
     """
     Add an output sink.
@@ -46,7 +54,7 @@ def add_module(input: str, output: str) -> cabc.Generator[nn.Module]:
     input_dataset = _INPUT_DATASETS[input]
     output_spec = _OUTPUT_SPECS[output]
 
-    yield from emit(input_dataset.__tspec__(), output_spec)
+    yield from emit(as_tspec(input_dataset.__tspec__()), output_spec)
 
 
 def add_trainer(

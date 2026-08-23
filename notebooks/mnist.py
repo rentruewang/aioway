@@ -13,52 +13,29 @@
 #     name: python3
 # ---
 
-import pathlib
 import typing
 
 import lightning as L
-import tensordict as td
 import torch
 from torch import nn, optim
 from torch.utils import data as dutils
 from torchrl.data import tensor_specs as tspecs
-from torchvision import datasets
-from torchvision import transforms as T
 
-from aioway.dsets import DatasetIdxDset, Dset, InputTarget, InputTargetLikeDset
+from aioway.dsets import DatasetIdxDset, Dset, InputTarget, MnistDataset
 from aioway.emits import ClfLogitHead, linear_regression
 from aioway.trainers import StaticTrainer, TrainCfg
 from aioway.tspecs import as_tspec
 
 
 # %%
-class MnistDataset(InputTargetLikeDset):
-    def __init__(self) -> None:
-        self._mnist = datasets.MNIST(pathlib.Path.home(), download=True)
-
-    def __len__(self) -> int:
-        return len(self._mnist)
-
+class MnistFlat(MnistDataset):
     def __getitem__(self, idx) -> InputTarget:
-        x, y = self._mnist[idx]
-        x = T.ToTensor()(x).flatten()
-        return InputTarget(x, y)
-
-    @typing.no_type_check
-    def __getitems__(self, idx):
-        return td.stack([self[i] for i in idx])
+        item = super().__getitem__(idx)
+        return InputTarget(input=item.input.flatten(), target=item.target)
 
     @property
     def input_tspec(self) -> tspecs.Unbounded:
         return tspecs.Unbounded(shape=torch.Size([784]))
-
-    @property
-    def target_tspec(self) -> tspecs.Bounded:
-        return tspecs.Bounded(low=0, high=9, shape=torch.Size([]), dtype=torch.long)
-
-    @property
-    def __collate_fn__(self):
-        return lambda x: x
 
 
 # %%
@@ -70,7 +47,7 @@ def train_test_split[D: Dset](dataset: D, test_ratio: float) -> tuple[D, D]:
     train_samples = len(dataset) - test_samples
 
     def wrap_dset(dset):
-        return DatasetIdxDset(dset, dataset.__tspec__(), dataset.__collate_fn__)
+        return DatasetIdxDset(dset, dataset.__tspec__(), dataset.collate_fn)
 
     train_dset, test_dset = map(
         wrap_dset,
@@ -84,7 +61,7 @@ def train_test_split[D: Dset](dataset: D, test_ratio: float) -> tuple[D, D]:
 def main(batch_size: int):
     fabric = L.Fabric()
 
-    dset = MnistDataset()
+    dset = MnistFlat()
     train_dset, test_dset = train_test_split(dset, 0.1)
 
     module = ClfLogitHead(linear_regression)(

@@ -6,9 +6,9 @@ from collections import abc as cabc
 
 import numpy as np
 from torch.utils import data as dutils
-from torchrl.data import tensor_specs as tspecs
 
 from aioway._utils import IntArray
+from aioway.tspecs import TSpecLike
 
 __all__ = ["Dset", "IdxDset", "IterDset", "DatasetIdxDset"]
 
@@ -21,27 +21,27 @@ class Dset[T](abc.ABC):
     """
 
     @abc.abstractmethod
-    def to_dataset(self) -> dutils.Dataset[T]:
-        """
-        The dataset that this `Dset` converts to.
-        """
-
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def __tspec__(self) -> tspecs.TensorSpec:
+    def __tspec__(self) -> TSpecLike:
         "The spec constraint for the data."
 
         raise NotImplementedError
 
     @property
-    def __collate_fn__(self) -> cabc.Callable[..., typing.Any] | None:
+    def collate_fn(self) -> cabc.Callable[..., typing.Any] | None:
         """
         Overwrite this function if `__getitems__` gives an output
         that cannot be handled by default collate.
         """
 
         return None
+
+    @abc.abstractmethod
+    def to_dataset(self) -> dutils.Dataset[T]:
+        """
+        The dataset that this `Dset` converts to.
+        """
+
+        raise NotImplementedError
 
 
 class IdxDset[T](Dset[T], abc.ABC):
@@ -72,7 +72,7 @@ class DatasetIdxDset[T](IdxDset[T]):
     """
 
     def __init__(
-        self, dataset: dutils.Dataset[T], spec: tspecs.TensorSpec, collate_fn=None
+        self, dataset: dutils.Dataset[T], spec: TSpecLike, collate_fn=None
     ) -> None:
         self._dataset = dataset
         self._spec = spec
@@ -93,11 +93,11 @@ class DatasetIdxDset[T](IdxDset[T]):
     def to_dataset(self):
         return self
 
-    def __tspec__(self) -> tspecs.TensorSpec:
+    def __tspec__(self) -> TSpecLike:
         return self._spec
 
     @property
-    def __collate_fn__(self):
+    def collate_fn(self):
         return self._colalte_fn
 
     @property
@@ -126,7 +126,7 @@ class _IdxDataset(dutils.Dataset):
     def __getitems__(self, index):
         return self.dset.__getitems__(np.asarray(index))
 
-    def __tspec__(self) -> tspecs.TensorSpec:
+    def __tspec__(self) -> TSpecLike:
         return self.dset.__tspec__()
 
     @property
@@ -167,7 +167,7 @@ class _IterDataset(dutils.IterableDataset):
     def __iter__(self):
         yield from self.dset
 
-    def __tspec__(self) -> tspecs.TensorSpec:
+    def __tspec__(self) -> TSpecLike:
         return self.dset.__tspec__()
 
     @property

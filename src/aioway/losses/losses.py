@@ -7,15 +7,18 @@ from collections import abc as cabc
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.tspecs import TSpec
+from aioway.tspecs import TSpecLike, as_tspec
 
 __all__ = ["route_loss"]
 
 
-def route_loss(input: TSpec, target: TSpec) -> cabc.Generator[nn.Module]:
+def route_loss(input: TSpecLike, target: TSpecLike) -> cabc.Generator[nn.Module]:
     """
     This is the API that mimicks `emit` for networks, but for losses.
     """
+
+    input = as_tspec(input)
+    target = as_tspec(target)
 
     if is_categorical(input, target):
         yield nn.CrossEntropyLoss()

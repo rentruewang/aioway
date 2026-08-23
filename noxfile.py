@@ -29,6 +29,9 @@ INSTALL_TIMEOUT = "7m"
 INSTALL_RETRIES = 4
 "Allow 3 times for install timeouts."
 
+_pdm_is_setup: bool = False
+"Only set up once."
+
 _session: nox.Session | None = None
 "The global session to simplfy code."
 
@@ -85,7 +88,7 @@ def setup():
 @nox_cmd
 def install():
     "Perform installation in the environment."
-    pdm_update_deps("install")
+    pdm_update_deps()
 
 
 @nox_cmd
@@ -306,7 +309,7 @@ def pdm_build():
 
 def pdm_publish():
     # Use install + git reset for maximum flexibility.
-    pdm_update_deps("install")
+    pdm_update_deps()
 
     # Remove all uncommitted changes s.t. it doesn't mess with builds.
     if _running_in_github():
@@ -320,12 +323,18 @@ def pdm_run(*args: str):
     run("pdm", "run", *args)
 
 
-def pdm_update_deps(command: str = "sync") -> None:
+def pdm_update_deps() -> None:
+    global _pdm_is_setup
+
     # Don't repeatedly reinstall locally.
     if not _running_in_github():
         return
 
-    run("pdm", command, "-G:all")
+    if _pdm_is_setup:
+        return
+
+    run("pdm", "install", "-G:all")
+    _pdm_is_setup = True
 
 
 def checking_if(condition: str):

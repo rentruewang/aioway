@@ -22,7 +22,7 @@ dependencies = [
     "tokenizers>=0.22",
     "torchrl>=0.13",
     "gymnasium>=1",
-    "lightning>=2.6.5",
+    "lightning>=2",
 ]
 
 [project.optional-dependencies]
@@ -31,13 +31,14 @@ networkx = [
     "matplotlib>=3",
 ]
 faiss = [
-    "faiss-cpu>=1.14.2",
+    "faiss-cpu>=1",
 ]
 sklearn = [
-    "scikit-learn>=1.9.0",
+    "scikit-learn>=1",
 ]
 api = [
-    "fastapi>=0.141.1",
+    "fastapi>=0.141",
+    "fastmcp>=3",
 ]
 
 [build-system]
