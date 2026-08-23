@@ -320,7 +320,7 @@ def pdm_run(*args: str):
     run("pdm", "run", *args)
 
 
-def pdm_update_deps(command: str = "sync") -> None:
+def pdm_update_deps(command: str = "install") -> None:
     # Don't repeatedly reinstall locally.
     if not _running_in_github():
         return
