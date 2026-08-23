@@ -9,7 +9,7 @@ from aioway.dsets import Dset
 from aioway.emits import emit
 from aioway.losses import route_loss
 from aioway.trainers import StaticTrainer, TrainCfg
-from aioway.tspecs import TSpec
+from aioway.tspecs import TSpec, as_tspec
 
 __all__ = ["add_input", "add_output", "add_module", "add_trainer"]
 
@@ -46,7 +46,7 @@ def add_module(input: str, output: str) -> cabc.Generator[nn.Module]:
     input_dataset = _INPUT_DATASETS[input]
     output_spec = _OUTPUT_SPECS[output]
 
-    yield from emit(input_dataset.__tspec__(), output_spec)
+    yield from emit(as_tspec(input_dataset.__tspec__()), output_spec)
 
 
 def add_trainer(
