@@ -28,6 +28,7 @@ __all__ = [
     "LogTorchDis",
     "TrackTorchDispHist",
     "TrackTorchFuncHist",
+    "RouteAtenThunkMode",
 ]
 
 LOGGER = logging.getLogger(__name__)
@@ -123,14 +124,10 @@ class CloneDispOp(TorchDispMode):
         return result
 
 
-@dcls.dataclass
-class TrackTorchDispHist(TorchDispMode):
-    "Track torch dispatch history."
-
-    history: HistTensorGraph[TorchDispThunk | AtenThunk] = dcls.field(
-        default_factory=HistTensorGraph
-    )
-    "The history used for tracking."
+class RouteAtenThunkMode(TorchDispMode):
+    """
+    Route `torch.aten` calls to `AtenThunk` for some `aioway` specific functionalities.
+    """
 
     def run(self, thunk: TorchDispThunk) -> object:
         from aioway.modes import AtenThunk
@@ -145,9 +142,21 @@ class TrackTorchDispHist(TorchDispMode):
             fn = thunk
 
         assert isinstance(fn, TorchDispThunk | AtenThunk), type(fn)
+        return fn()
 
+
+@dcls.dataclass
+class TrackTorchDispHist(TorchDispMode):
+    "Track torch dispatch history."
+
+    history: HistTensorGraph[TorchDispThunk | AtenThunk] = dcls.field(
+        default_factory=HistTensorGraph
+    )
+    "The history used for tracking."
+
+    def run(self, thunk: TorchDispThunk) -> object:
         # Here, `AtenThunk` would do its magic and overwrite functions.
-        return self.history.execute(fn)
+        return self.history.execute(thunk)
 
 
 @dcls.dataclass
@@ -182,8 +191,9 @@ def track_fn():
 
     dis = TrackTorchDispHist()
     func = TrackTorchFuncHist()
+    aten = RouteAtenThunkMode()
 
-    with func(), dis():
+    with func(), dis(), aten():
         yield HistoryCollection(function=func.history, dispatch=dis.history)
 
 
