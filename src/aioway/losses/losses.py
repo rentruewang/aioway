@@ -7,12 +7,12 @@ from collections import abc as cabc
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
+from aioway.tspecs import TSpec
+
 __all__ = ["route_loss"]
 
 
-def route_loss(
-    input: tspecs.TensorSpec, target: tspecs.TensorSpec
-) -> cabc.Generator[nn.Module]:
+def route_loss(input: TSpec, target: TSpec) -> cabc.Generator[nn.Module]:
     """
     This is the API that mimicks `emit` for networks, but for losses.
     """
