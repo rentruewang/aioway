@@ -30,6 +30,8 @@ __all__ = [
     "TorchDispThunk",
     "functions",
     "dispatches",
+    "PureTorchDispMode",
+    "PureTorchFuncMode",
 ]
 
 LOGGER = logging.getLogger(__name__)
@@ -200,6 +202,15 @@ class Mode[T: ModeThunk = ModeThunk, V = object](abc.ABC):
         """
         The actual context passed to `torch`.
         These are specific modes that honor the `on` switch (hence private function).
+        """
+
+        raise NotImplementedError
+
+    @classmethod
+    @abc.abstractmethod
+    def function(cls, func: PureTorchFunc[T], /) -> Mode[T, V]:
+        """
+        Adapt a pure function into the mode.
         """
 
         raise NotImplementedError
@@ -380,6 +391,11 @@ class TorchFuncMode(Mode[TorchFuncThunk], abc.ABC):
     def _torch_mode(self) -> _TorchFuncModeCtx:
         return _TorchFuncModeCtx(self)
 
+    @classmethod
+    @typing.override
+    def function(cls, func: PureTorchFunc[TorchFuncThunk]) -> PureTorchFuncMode:
+        return PureTorchFuncMode(func)
+
 
 @dcls.dataclass
 class TorchDispMode(Mode[TorchDispThunk], abc.ABC):
@@ -395,3 +411,46 @@ class TorchDispMode(Mode[TorchDispThunk], abc.ABC):
     @typing.override
     def _torch_mode(self) -> _TorchDispModeCtx:
         return _TorchDispModeCtx(self)
+
+    @classmethod
+    @typing.override
+    def function(cls, func: PureTorchFunc[TorchDispThunk]) -> PureTorchDispMode:
+        return PureTorchDispMode(func)
+
+
+class PureTorchFunc[T: ModeThunk](typing.Protocol):
+    """
+    A function that is basically `TorchFuncMode.run` or `TorchDispMode.run`, but pure.
+    """
+
+    def __call__(self, thunk: T) -> object: ...
+
+
+@dcls.dataclass
+class PureTorchFuncMode(TorchFuncMode):
+    """
+    The adaptor to convert `PureTorchFunc[TorchFuncThunk]` to `TorchFuncMode`.
+    """
+
+    pure_func: PureTorchFunc[TorchFuncThunk]
+
+    def __repr__(self) -> str:
+        return repr(self.pure_func)
+
+    def run(self, thunk: TorchFuncThunk) -> object:
+        return self.pure_func(thunk)
+
+
+@dcls.dataclass
+class PureTorchDispMode(TorchDispMode):
+    """
+    The adaptor to convert `PureTorchFunc[TorchDispThunk]` to `TorchDispMode`.
+    """
+
+    pure_func: PureTorchFunc[TorchDispThunk]
+
+    def __repr__(self) -> str:
+        return repr(self.pure_func)
+
+    def run(self, thunk: TorchDispThunk) -> object:
+        return self.pure_func(thunk)
