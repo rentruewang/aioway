@@ -28,7 +28,7 @@ __all__ = [
     "LogTorchDis",
     "TrackTorchDispHist",
     "TrackTorchFuncHist",
-    "RouteAtenThunkMode",
+    "route_aten_thunk",
 ]
 
 LOGGER = logging.getLogger(__name__)
@@ -124,31 +124,31 @@ class CloneDispOp(TorchDispMode):
         return result
 
 
-class RouteAtenThunkMode(TorchDispMode):
+@TorchDispMode.function
+def route_aten_thunk(thunk: TorchDispThunk) -> object:
     """
     Route `torch.aten` calls to `AtenThunk` for some `aioway` specific functionalities.
     """
 
-    def run(self, thunk: TorchDispThunk) -> object:
-        from aioway.modes import AtenThunk
+    from aioway.modes import AtenThunk
 
-        fn: AtenThunk | TorchDispThunk
+    fn: AtenThunk | TorchDispThunk
 
-        if (found := AtenThunk.from_thunk(thunk)) is not None:
-            fn = found
+    if (found := AtenThunk.from_thunk(thunk)) is not None:
+        fn = found
 
-        # Cannot find corresponding operator, set it to the input `thunk`.
-        else:
-            fn = thunk
+    # Cannot find corresponding operator, set it to the input `thunk`.
+    else:
+        fn = thunk
 
-        assert isinstance(fn, TorchDispThunk | AtenThunk), type(fn)
+    assert isinstance(fn, TorchDispThunk | AtenThunk), type(fn)
 
-        # Here, `AtenThunk` would do its magic and overwrite functions.
-        try:
-            return fn()
-        except Exception as e:
-            LOGGER.error("%r raises an error.", fn)
-            raise RuntimeError(f"{fn!r}") from e
+    # Here, `AtenThunk` would do its magic and overwrite functions.
+    try:
+        return fn()
+    except Exception as e:
+        LOGGER.error("%r raises an error.", fn)
+        raise RuntimeError(f"{fn!r}") from e
 
 
 @dcls.dataclass
@@ -196,9 +196,8 @@ def track_fn():
 
     dis = TrackTorchDispHist()
     func = TrackTorchFuncHist()
-    aten = RouteAtenThunkMode()
 
-    with func.activate(), dis.activate(), aten.activate():
+    with func.activate(), dis.activate(), route_aten_thunk.activate():
         yield HistoryCollection(function=func.history, dispatch=dis.history)
 
 
