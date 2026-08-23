@@ -143,11 +143,12 @@ class RouteAtenThunkMode(TorchDispMode):
 
         assert isinstance(fn, TorchDispThunk | AtenThunk), type(fn)
 
+        # Here, `AtenThunk` would do its magic and overwrite functions.
         try:
             return fn()
-        except Exception:
-            LOGGER.error("%r raises an error.", self)
-            raise
+        except Exception as e:
+            LOGGER.error("%r raises an error.", fn)
+            raise RuntimeError(f"{fn!r}") from e
 
 
 @dcls.dataclass
@@ -160,7 +161,6 @@ class TrackTorchDispHist(TorchDispMode):
     "The history used for tracking."
 
     def run(self, thunk: TorchDispThunk) -> object:
-        # Here, `AtenThunk` would do its magic and overwrite functions.
         return self.history.execute(thunk)
 
 
