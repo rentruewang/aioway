@@ -145,6 +145,8 @@ class ModeCtx[T: ModeThunk](abc.ABC):
 class Mode[T: ModeThunk = ModeThunk, V = object](abc.ABC):
     """
     `Mode` is a mixin class that gives the subclasses a toggle.
+
+    Calls `.activate()` to enter the scope.
     """
 
     STACK: typing.ClassVar[ModeStack]
@@ -154,8 +156,6 @@ class Mode[T: ModeThunk = ModeThunk, V = object](abc.ABC):
     """
     The actual context passed to `torch`.
     These are specific modes that honor the `on` switch (hence private function).
-
-    Since enter and 
     """
 
     _: dcls.KW_ONLY

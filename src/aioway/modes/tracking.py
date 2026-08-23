@@ -142,7 +142,12 @@ class RouteAtenThunkMode(TorchDispMode):
             fn = thunk
 
         assert isinstance(fn, TorchDispThunk | AtenThunk), type(fn)
-        return fn()
+
+        try:
+            return fn()
+        except Exception:
+            LOGGER.error("%r raises an error.", self)
+            raise
 
 
 @dcls.dataclass
