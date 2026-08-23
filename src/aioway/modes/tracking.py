@@ -26,8 +26,8 @@ __all__ = [
     "PrintTorchDisp",
     "LogTorchFunc",
     "LogTorchDis",
-    "RouteTorchDisp",
-    "RouteTorchFunc",
+    "TrackTorchDispHist",
+    "TrackTorchFuncHist",
 ]
 
 LOGGER = logging.getLogger(__name__)
@@ -105,7 +105,13 @@ class LogTorchDis(TorchDispMode):
         return result
 
 
-class CloneDispatchOp(TorchDispMode):
+class CloneDispOp(TorchDispMode):
+    """
+    Automatically call `.clone()` on all tensors in the torch dispatch mode.
+
+    This is useful to force a new `id` s.t. the tracking won't fail.
+    """
+
     @typing.override
     def run(self, thunk: TorchDispThunk, /) -> object:
         result = thunk()
@@ -118,8 +124,8 @@ class CloneDispatchOp(TorchDispMode):
 
 
 @dcls.dataclass
-class RouteTorchDisp(TorchDispMode):
-    "The router at the torch dispatch level."
+class TrackTorchDispHist(TorchDispMode):
+    "Track torch dispatch history."
 
     history: HistTensorGraph[TorchDispThunk | AtenThunk] = dcls.field(
         default_factory=HistTensorGraph
@@ -145,7 +151,7 @@ class RouteTorchDisp(TorchDispMode):
 
 
 @dcls.dataclass
-class RouteTorchFunc(TorchFuncMode):
+class TrackTorchFuncHist(TorchFuncMode):
     """
     Saves the intermediate graph into a `FnHistory` object.
     """
@@ -174,8 +180,8 @@ def track_fn():
     Track all calls into the torch dispatch mode as `TorchIrThunk`.
     """
 
-    dis = RouteTorchDisp()
-    func = RouteTorchFunc()
+    dis = TrackTorchDispHist()
+    func = TrackTorchFuncHist()
 
     with func(), dis():
         yield HistoryCollection(function=func.history, dispatch=dis.history)
