@@ -93,7 +93,7 @@ class ModeThunk[**P = ..., T = typing.Any]:
 
 
 class ModeCtx[T: ModeThunk](abc.ABC):
-    "The adaptor for torch contexts."
+    "The adaptor for torch contexts (acts like a torch mode to the type checker)."
 
     if typing.TYPE_CHECKING:
 
@@ -172,7 +172,7 @@ class Mode[T: ModeThunk = ModeThunk, V = object](abc.ABC):
         which is much less elegant than `ctxl.contextmanager` (I know it's necessary).
         """
 
-        with self.STACK.hold(self), self._TORCH_MODE(self):
+        with self.STACK.hold(self), self._torch_mode():
             yield self
 
     @abc.abstractmethod
@@ -194,6 +194,15 @@ class Mode[T: ModeThunk = ModeThunk, V = object](abc.ABC):
             yield
         finally:
             self.on = before
+
+    @abc.abstractmethod
+    def _torch_mode(self) -> ModeCtx:
+        """
+        The actual context passed to `torch`.
+        These are specific modes that honor the `on` switch (hence private function).
+        """
+
+        raise NotImplementedError
 
 
 class ModeStack[T: Mode[typing.Any, typing.Any]](Stack[T]):
@@ -366,7 +375,10 @@ class TorchFuncMode(Mode[TorchFuncThunk], abc.ABC):
     """
 
     STACK: typing.ClassVar = functions()
-    _TORCH_MODE: typing.ClassVar = _TorchFuncModeCtx
+
+    @typing.override
+    def _torch_mode(self) -> _TorchFuncModeCtx:
+        return _TorchFuncModeCtx(self)
 
 
 @dcls.dataclass
@@ -379,4 +391,7 @@ class TorchDispMode(Mode[TorchDispThunk], abc.ABC):
     """
 
     STACK: typing.ClassVar = dispatches()
-    _TORCH_MODE: typing.ClassVar = _TorchDispModeCtx
+
+    @typing.override
+    def _torch_mode(self) -> _TorchDispModeCtx:
+        return _TorchDispModeCtx(self)
