@@ -73,7 +73,7 @@ class TrainCfg:
 
     def make_data_loader(self, dataset: Dset) -> dutils.DataLoader:
         loader = dutils.DataLoader(
-            dataset.__dataset__(),
+            dataset.to_dataset(),
             batch_size=self.batch_size,
             shuffle=self.shuffle,
             collate_fn=dataset.__collate_fn__,

@@ -21,7 +21,7 @@ class Dset[T](abc.ABC):
     """
 
     @abc.abstractmethod
-    def __dataset__(self) -> dutils.Dataset[T]:
+    def to_dataset(self) -> dutils.Dataset[T]:
         """
         The dataset that this `Dset` converts to.
         """
@@ -62,7 +62,7 @@ class IdxDset[T](Dset[T], abc.ABC):
         raise NotImplementedError
 
     @typing.override
-    def __dataset__(self):
+    def to_dataset(self):
         return _IdxDataset(self)
 
 
@@ -90,7 +90,7 @@ class DatasetIdxDset[T](IdxDset[T]):
     def __getitems__(self, idx):
         return self._dataset.__getitems__(idx)
 
-    def __dataset__(self):
+    def to_dataset(self):
         return self
 
     def __tspec__(self) -> tspecs.TensorSpec:
@@ -148,7 +148,7 @@ class IterDset[T](Dset[T], abc.ABC):
         raise NotImplementedError
 
     @typing.override
-    def __dataset__(self):
+    def to_dataset(self):
         return _IterDataset(self)
 
 
