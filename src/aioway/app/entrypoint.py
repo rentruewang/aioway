@@ -11,6 +11,8 @@ from aioway.losses import route_loss
 from aioway.trainers import StaticTrainer, TrainCfg
 from aioway.tspecs import TSpec, as_tspec
 
+from .server import serve
+
 __all__ = ["add_input", "add_output", "add_module", "add_trainer"]
 
 _INPUT_DATASETS: dict[str, Dset] = {}
@@ -31,6 +33,7 @@ def add_input(name: str, dset: Dset) -> None:
     _INPUT_DATASETS[name] = dset
 
 
+@serve("add_input")
 def add_input_by_name(name: str, path: str) -> None:
     dset = route_dset(path)
     add_input(name, dset)
