@@ -193,7 +193,7 @@ def track_fn():
     func = TrackTorchFuncHist()
     aten = RouteAtenThunkMode()
 
-    with func(), dis(), aten():
+    with func.activate(), dis.activate(), aten.activate():
         yield HistoryCollection(function=func.history, dispatch=dis.history)
 
 

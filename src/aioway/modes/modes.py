@@ -164,7 +164,7 @@ class Mode[T: ModeThunk = ModeThunk, V = object](abc.ABC):
     "The toggle to control whether or not to run the current mode."
 
     @ctxl.contextmanager
-    def __call__(self) -> cabc.Generator[typing.Self]:
+    def activate(self) -> cabc.Generator[typing.Self]:
         """
         The context manager that can be entered, and will be constrained by `self.on`.
 
