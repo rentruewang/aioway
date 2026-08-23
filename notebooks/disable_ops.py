@@ -23,7 +23,7 @@ a = torch.randn(3, 4)
 b = torch.randn(1, 1)
 
 # %%
-with PrintTorchDisp()(), PrintTorchFunc()():
+with PrintTorchDisp().activate(), PrintTorchFunc().activate():
     c = a + b
 
 # %% [markdown]
@@ -33,7 +33,7 @@ with PrintTorchDisp()(), PrintTorchFunc()():
 c
 
 # %%
-with PrintTorchDisp()(), PrintTorchFunc()(), mode_off():
+with PrintTorchDisp().activate(), PrintTorchFunc().activate(), mode_off():
     c = a + b
 
 # %% [markdown]
@@ -42,7 +42,7 @@ with PrintTorchDisp()(), PrintTorchFunc()(), mode_off():
 # This is the same to how it works with torch's dispatch mode and function mode.
 
 # %%
-with PrintTorchDisp()(), mode_off(), PrintTorchFunc()():
+with PrintTorchDisp().activate(), mode_off(), PrintTorchFunc().activate():
     c = a + b
 
 # %% [markdown]

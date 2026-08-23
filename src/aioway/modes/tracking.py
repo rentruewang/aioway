@@ -26,8 +26,9 @@ __all__ = [
     "PrintTorchDisp",
     "LogTorchFunc",
     "LogTorchDis",
-    "RouteTorchDisp",
-    "RouteTorchFunc",
+    "TrackTorchDispHist",
+    "TrackTorchFuncHist",
+    "RouteAtenThunkMode",
 ]
 
 LOGGER = logging.getLogger(__name__)
@@ -105,7 +106,13 @@ class LogTorchDis(TorchDispMode):
         return result
 
 
-class CloneDispatchOp(TorchDispMode):
+class CloneDispOp(TorchDispMode):
+    """
+    Automatically call `.clone()` on all tensors in the torch dispatch mode.
+
+    This is useful to force a new `id` s.t. the tracking won't fail.
+    """
+
     @typing.override
     def run(self, thunk: TorchDispThunk, /) -> object:
         result = thunk()
@@ -117,14 +124,10 @@ class CloneDispatchOp(TorchDispMode):
         return result
 
 
-@dcls.dataclass
-class RouteTorchDisp(TorchDispMode):
-    "The router at the torch dispatch level."
-
-    history: HistTensorGraph[TorchDispThunk | AtenThunk] = dcls.field(
-        default_factory=HistTensorGraph
-    )
-    "The history used for tracking."
+class RouteAtenThunkMode(TorchDispMode):
+    """
+    Route `torch.aten` calls to `AtenThunk` for some `aioway` specific functionalities.
+    """
 
     def run(self, thunk: TorchDispThunk) -> object:
         from aioway.modes import AtenThunk
@@ -141,11 +144,28 @@ class RouteTorchDisp(TorchDispMode):
         assert isinstance(fn, TorchDispThunk | AtenThunk), type(fn)
 
         # Here, `AtenThunk` would do its magic and overwrite functions.
-        return self.history.execute(fn)
+        try:
+            return fn()
+        except Exception as e:
+            LOGGER.error("%r raises an error.", fn)
+            raise RuntimeError(f"{fn!r}") from e
 
 
 @dcls.dataclass
-class RouteTorchFunc(TorchFuncMode):
+class TrackTorchDispHist(TorchDispMode):
+    "Track torch dispatch history."
+
+    history: HistTensorGraph[TorchDispThunk | AtenThunk] = dcls.field(
+        default_factory=HistTensorGraph
+    )
+    "The history used for tracking."
+
+    def run(self, thunk: TorchDispThunk) -> object:
+        return self.history.execute(thunk)
+
+
+@dcls.dataclass
+class TrackTorchFuncHist(TorchFuncMode):
     """
     Saves the intermediate graph into a `FnHistory` object.
     """
@@ -174,10 +194,11 @@ def track_fn():
     Track all calls into the torch dispatch mode as `TorchIrThunk`.
     """
 
-    dis = RouteTorchDisp()
-    func = RouteTorchFunc()
+    dis = TrackTorchDispHist()
+    func = TrackTorchFuncHist()
+    aten = RouteAtenThunkMode()
 
-    with func(), dis():
+    with func.activate(), dis.activate(), aten.activate():
         yield HistoryCollection(function=func.history, dispatch=dis.history)
 
 

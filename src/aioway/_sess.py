@@ -50,7 +50,7 @@ class Session[T](abc.ABC):
 
     @typing.final
     @ctxl.contextmanager
-    def __call__(self) -> cabc.Generator[T]:
+    def enter(self) -> cabc.Generator[T]:
         with self.__set_active_flag(), self._set_parent_active(), self.do() as t:
             yield t
 
