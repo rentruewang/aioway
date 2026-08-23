@@ -11,7 +11,7 @@ from aioway.losses import route_loss
 from aioway.trainers import StaticTrainer, TrainCfg
 from aioway.tspecs import TSpec
 
-__all__ = ["add_input", "add_output", "add_module"]
+__all__ = ["add_input", "add_output", "add_module", "add_trainer"]
 
 _INPUT_DATASETS: dict[str, Dset] = {}
 "The input datasets."
