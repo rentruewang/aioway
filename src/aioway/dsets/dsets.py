@@ -21,27 +21,27 @@ class Dset[T](abc.ABC):
     """
 
     @abc.abstractmethod
-    def to_dataset(self) -> dutils.Dataset[T]:
-        """
-        The dataset that this `Dset` converts to.
-        """
-
-        raise NotImplementedError
-
-    @abc.abstractmethod
     def __tspec__(self) -> tspecs.TensorSpec:
         "The spec constraint for the data."
 
         raise NotImplementedError
 
     @property
-    def __collate_fn__(self) -> cabc.Callable[..., typing.Any] | None:
+    def collate_fn(self) -> cabc.Callable[..., typing.Any] | None:
         """
         Overwrite this function if `__getitems__` gives an output
         that cannot be handled by default collate.
         """
 
         return None
+
+    @abc.abstractmethod
+    def to_dataset(self) -> dutils.Dataset[T]:
+        """
+        The dataset that this `Dset` converts to.
+        """
+
+        raise NotImplementedError
 
 
 class IdxDset[T](Dset[T], abc.ABC):
@@ -97,7 +97,7 @@ class DatasetIdxDset[T](IdxDset[T]):
         return self._spec
 
     @property
-    def __collate_fn__(self):
+    def collate_fn(self):
         return self._colalte_fn
 
     @property

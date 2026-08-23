@@ -57,7 +57,7 @@ class MnistDataset(InputTargetLikeDset):
         return tspecs.Bounded(low=0, high=9, shape=torch.Size([]), dtype=torch.long)
 
     @property
-    def __collate_fn__(self):
+    def collate_fn(self):
         return lambda x: x
 
 
@@ -70,7 +70,7 @@ def train_test_split[D: Dset](dataset: D, test_ratio: float) -> tuple[D, D]:
     train_samples = len(dataset) - test_samples
 
     def wrap_dset(dset):
-        return DatasetIdxDset(dset, dataset.__tspec__(), dataset.__collate_fn__)
+        return DatasetIdxDset(dset, dataset.__tspec__(), dataset.collate_fn)
 
     train_dset, test_dset = map(
         wrap_dset,

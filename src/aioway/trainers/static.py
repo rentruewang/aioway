@@ -76,7 +76,7 @@ class TrainCfg:
             dataset.to_dataset(),
             batch_size=self.batch_size,
             shuffle=self.shuffle,
-            collate_fn=dataset.__collate_fn__,
+            collate_fn=dataset.collate_fn,
         )
         return typing.cast(dutils.DataLoader, self.fabric.setup_dataloaders(loader))
 
