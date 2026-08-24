@@ -8,7 +8,7 @@ import typing
 import tensordict as td
 import torch
 
-__all__ = ["TSpec", "TSpecLike", "TSpecCompat", "as_tspec"]
+__all__ = ["TSpec", "TSpecLike", "TSpecCompat", "as_tspec", "is_tspec_like"]
 
 
 type TSpecLike = TSpec | TSpecCompat
@@ -73,6 +73,19 @@ class TSpecCompat(typing.Protocol):
     """
 
     def __tspec__(self) -> TSpec: ...
+
+
+def is_tspec_like(spec: typing.Any, /) -> typing.TypeIs[TSpecLike]:
+    """
+    Check if item is like a `TSpec`.
+    """
+
+    try:
+        _ = as_tspec(spec)
+    except TypeError:
+        return False
+    else:
+        return True
 
 
 def as_tspec(spec: TSpecLike, /) -> TSpec:
