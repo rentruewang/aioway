@@ -16,22 +16,9 @@ from torchrl.data import tensor_specs as tspecs
 from aioway.dsets import Dset, InputTarget, InputTargetLikeDset
 from aioway.tspecs import TSpec, TSpecCompat
 
-__all__ = ["LossFunc", "PredLossPair", "StaticTrainer", "TrainCfg"]
+from .steps import LossFunc, PredLossPair, TrainStep, ValidateStep
 
-
-class LossFunc(typing.Protocol):
-    """
-    A loss function should have the format (input, target) -> loss.
-    """
-
-    def __call__(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor: ...
-
-
-class PredLossPair(typing.NamedTuple):
-    "The prediction and loss pair."
-
-    pred: torch.Tensor
-    loss: torch.Tensor
+__all__ = ["StaticTrainer", "TrainCfg"]
 
 
 class ObservActionSpace(abc.ABC):
@@ -148,7 +135,7 @@ class StaticTrainer:
     ):
         self._cfg = cfg
 
-        self._module, self._optimizer = self.fabric.setup(module, optimizer)
+        self._module, self._optimizer = self.cfg.fabric.setup(module, optimizer)
 
         assert isinstance(self._module, nn.Module)
         assert isinstance(self._optimizer, optim.Optimizer)
@@ -188,33 +175,17 @@ class StaticTrainer:
     def train_step(self, x: torch.Tensor, y: torch.Tensor) -> PredLossPair:
         "Train a module in a static (non interactive) manner."
 
-        inferred = self.infer_step(x, y)
-
-        self.optimizer.zero_grad()
-        self.backward(inferred.loss)
-        self.clip_gradients()
-        self.optimizer.step()
-
-        return inferred
-
-    def infer_step(self, x: torch.Tensor, y: torch.Tensor) -> PredLossPair:
-        pred = self.module(x)
-        loss = self.loss_func(pred, y)
-        return PredLossPair(pred, loss)
-
-    def backward(self, loss: torch.Tensor) -> None:
-        self.fabric.backward(loss)
-
-    def clip_gradients(self) -> None:
-        self.fabric.clip_gradients(
-            self.module,
+        stepper = TrainStep(
+            ValidateStep(self.module, self.loss_func, x, y),
             self.optimizer,
+            self.cfg.fabric,
             max_norm=self.cfg.max_grad_norm,
         )
+        return stepper()
 
-    @property
-    def fabric(self) -> L.Fabric:
-        return self.cfg.fabric
+    def infer_step(self, x: torch.Tensor, y: torch.Tensor) -> PredLossPair:
+        validator = ValidateStep(self.module, self.loss_func, x, y)
+        return validator()
 
     @property
     def cfg(self) -> TrainCfg:

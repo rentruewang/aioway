@@ -3,3 +3,4 @@
 from .nmf import *
 from .rl import *
 from .static import *
+from .steps import *
