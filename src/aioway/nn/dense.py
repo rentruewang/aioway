@@ -2,7 +2,6 @@
 
 from torch import nn
 
-from .hop import NnLayerHop
 from .modules import NnInit, nn_init_dcls
 
 __all__ = ["Identity", "Linear", "Bilinear"]
@@ -15,7 +14,6 @@ class Identity(NnInit):
     """
 
     NN = nn.Identity
-    HOP = NnLayerHop
 
 
 @nn_init_dcls
@@ -25,7 +23,6 @@ class Linear(NnInit):
     """
 
     NN = nn.Linear
-    HOP = NnLayerHop
 
     in_features: int
     "The size of each input sample, must be > 0."
@@ -51,7 +48,6 @@ class Bilinear(NnInit):
     """
 
     NN = nn.Bilinear
-    HOP = NnLayerHop
 
     in1_features: int
     "The size of each first input sample, must be > 0."
