@@ -3,19 +3,18 @@
 import pytest
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.tspecs import TSpec, is_tspec_type
+from aioway.tspecs import is_tspec_like
 
 
-def _tspec_types():
-    yield TSpec
-    yield tspecs.Unbounded
-    yield tspecs.Bounded
-    yield tspecs.BoundedContinuous
-    yield tspecs.BoundedDiscrete
+def _tspecs():
+    yield tspecs.Unbounded(3)
+    yield tspecs.Bounded(4, 5, 6)
+    yield tspecs.BoundedContinuous(5, 6, 7)
+    yield tspecs.BoundedDiscrete(6, 7, 8)
 
 
-@pytest.fixture(params=_tspec_types())
-def tspec_type(request):
+@pytest.fixture(params=_tspecs())
+def tspec(request):
     return request.param
 
 
@@ -23,19 +22,19 @@ class _C:
     pass
 
 
-def _not_tspec_types():
-    yield object
-    yield _C
+def _not_tspec():
+    yield object()
+    yield _C()
 
 
-@pytest.fixture(params=_not_tspec_types())
-def not_tspec_type(request):
+@pytest.fixture(params=_not_tspec())
+def not_tspec(request):
     return request.param
 
 
-def test_tspec_type(tspec_type):
-    assert is_tspec_type(tspec_type)
+def test_tspec_type(tspec):
+    assert is_tspec_like(tspec)
 
 
-def test_not_tspec_type(not_tspec_type):
-    assert not is_tspec_type(not_tspec_type)
+def test_not_tspec_type(not_tspec):
+    assert not is_tspec_like(not_tspec)
