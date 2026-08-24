@@ -1,13 +1,23 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import abc
 import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
 from .tspecs import TSpec
 
-__all__ = ["TSpecCast"]
+__all__ = [
+    "TSpecInfer",
+    "TSpecInferLike",
+    "TSpecInferCompat",
+    "MonoTSpecInfer",
+    "PolyTSpecInfer",
+]
+
+type TSpecInferLike = TSpecInfer | TSpecInferCompat
+"""
+Types compatible with `TSpecInfer`.
+"""
 
 
 @typing.runtime_checkable
@@ -18,7 +28,6 @@ class TSpecInfer(typing.Protocol):
     It's the type of callables that consumes a torch object and outputs another one.
     """
 
-    @abc.abstractmethod
     def __call__(self, tspec: TSpec, /) -> TSpec: ...
 
 
@@ -48,6 +57,7 @@ class MonoTSpecInfer(TSpecInfer):
 
 
 @typing.final
+@dcls.dataclass(frozen=True)
 class PolyTSpecInfer(TSpecInfer):
     "The `TSpecInfer` that handles multiple types."
 
