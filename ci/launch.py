@@ -1,6 +1,8 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import argparse
+import os
+import pty
 import subprocess
 import textwrap
 
@@ -32,14 +34,20 @@ if __name__ == "__main__":
 
     print(box(" ".join(command)))
 
-    p = subprocess.Popen(command, stdout=subprocess.PIPE, text=True)
-    assert p.stdout is not None
+    master, slave = pty.openpty()
 
-    for line in p.stdout:
-        if not line:
-            continue
+    p = subprocess.Popen(
+        command,
+        stdin=subprocess.DEVNULL,
+        stdout=slave,
+        stderr=slave,
+        close_fds=True,
+    )
 
-        print(textwrap.indent(line, args.indent).rstrip())
-    print()
+    os.close(slave)
+
+    with os.fdopen(master, "r", encoding="utf-8", errors="replace") as output:
+        for line in output:
+            print(textwrap.indent(line.rstrip(), args.indent))
 
     raise SystemExit(p.wait())

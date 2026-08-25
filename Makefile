@@ -2,7 +2,7 @@
 
 LAUNCH := python3 ci/launch.py bash
 OS := $(shell uname -s)
-PYTEST_ARGS := 
+PYTEST_FLAGS := 
 PYTHON_VERSION :=
 CHECK :=
 CHECK_FLAG := $(if $(CHECK),--check,)
@@ -38,7 +38,7 @@ sync:
 	@$(LAUNCH) ci/pdm.sh sync "-G:all"
 
 pytest:
-	@$(LAUNCH) ci/pdm.sh run pytest $(PYTEST_ARGS)
+	@$(LAUNCH) ci/pdm.sh run pytest $(PYTEST_FLAGS)
 
 autoflake:
 	@$(LAUNCH) ci/pdm.sh run autoflake . $(CHECK_FLAG)
