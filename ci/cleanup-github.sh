@@ -1,6 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 # Terminate if not in github.
+echo "GITHUB_ACTIONS=$GITHUB_ACTIONS"
 [ "$GITHUB_ACTIONS" = "true" ] || exit 0
 
 echo "Removing files we did not ask for..."
