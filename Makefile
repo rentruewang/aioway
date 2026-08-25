@@ -13,7 +13,7 @@ CHECK_FLAG := $(if $(CHECK),--check,)
 setup: cleanup deps
 
 cleanup:
-	@$(LAUNCH) ci/cleanup-github.sh
+	@sudo $(LAUNCH) ci/cleanup-github.sh
 
 deps:
 	@echo "Installing dependencies for $(OS)"
