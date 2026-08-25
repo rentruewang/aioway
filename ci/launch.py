@@ -1,8 +1,8 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import textwrap
 import argparse
 import subprocess
+import textwrap
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--indent", type=str, default="> ")
