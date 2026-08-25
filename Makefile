@@ -1,6 +1,8 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-LAUNCH := python3 ci/launch.py bash
+LAUNCHER := python3 ci/launch.py bash
+LAUNCH := $(if $(LAUNCHER),$(LAUNCHER),bash)
+
 OS := $(shell uname -s)
 PYTEST_FLAGS := 
 PYTHON_VERSION :=
