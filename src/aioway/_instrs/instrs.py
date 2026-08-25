@@ -6,8 +6,7 @@ from collections import abc as cabc
 
 from torch import nn
 
-
-from aioway.tspecs import TSpec, TSpecInfer
+from aioway.tspecs import TSpecInfer
 
 __all__ = ["Instr"]
 
@@ -43,12 +42,11 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def module(self) -> nn.Module:
+    def emit(self) -> nn.Module:
         """
         Build the module represented by this current `Instr`.
         This function is responsible for recursively construct sub-modules as well,
         that are emitted by the `Instr` represented by children.
-
 
         This transparently leverages the `fake_mode`, if we are running under it,
         then the `nn.Module` would be trivial to construct. In some cases,
@@ -61,6 +59,15 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
     def children(self) -> cabc.Iterable[Instr]:
         """
         Get the children of this current class.
+        """
+
+        raise NotImplementedError
+
+    @classmethod
+    @abc.abstractmethod
+    def lift(cls, module: nn.Module, /) -> typing.Self:
+        """
+        Converting from a concrete `nn.Module` into an `Instr`.
         """
 
         raise NotImplementedError
