@@ -12,10 +12,9 @@ args, command = parser.parse_known_args()
 
 def box(text: str):
     text = "> " + text
-    assert "\n" not in text
 
     top_bottom = "+-" + "-" * len(text) + "-+"
-    middle = "| " + text + " |"
+    middle = "\n".join("| " + line + " |" for line in text.splitlines())
     return top_bottom + "\n" + middle + "\n" + top_bottom
 
 
