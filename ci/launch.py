@@ -5,13 +5,11 @@ import subprocess
 import textwrap
 
 INDENT = "    | "
-parser = argparse.ArgumentParser()
-parser.add_argument("--indent", type=str, default=INDENT)
-args, command = parser.parse_known_args()
+COMMAND = "$ "
 
 
 def box(text: str):
-    text = "> " + text
+    text = COMMAND + text
     lines = text.splitlines()
     max_len = max(len(l) for l in lines)
 
@@ -27,15 +25,21 @@ def box(text: str):
     return "\n".join(string_builder)
 
 
-print(box(" ".join(command)))
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--indent", type=str, default=INDENT)
+    args, command = parser.parse_known_args()
 
-p = subprocess.Popen(command, stdout=subprocess.PIPE, text=True)
-assert p.stdout is not None
+    print(box(" ".join(command)))
 
-for line in p.stdout:
-    if not line:
-        continue
+    p = subprocess.Popen(command, stdout=subprocess.PIPE, text=True)
+    assert p.stdout is not None
 
-    print(textwrap.indent(line, args.indent).rstrip())
+    for line in p.stdout:
+        if not line:
+            continue
 
-raise SystemExit(p.wait())
+        print(textwrap.indent(line, args.indent).rstrip())
+    print()
+
+    raise SystemExit(p.wait())
