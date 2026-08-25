@@ -8,7 +8,7 @@ PYTEST_FLAGS :=
 PYTHON_VERSION :=
 CHECK :=
 CHECK_FLAG := $(if $(CHECK),--check,)
-SUDO := sudo --preserve-env=GITHUB_ACTIONS
+SUDO := sudo -E
 
 
 setup: cleanup deps
