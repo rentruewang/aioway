@@ -3,8 +3,12 @@
 LAUNCH := python3 ci/launch.py bash
 OS := $(shell uname -s)
 PYTEST_ARGS := 
+PYTHON_VERSION :=
 
-setup: cleanup deps
+setup: venv cleanup deps
+
+venv:
+	@$(LAUNCH) ci/pdm.sh venv create $(PYTHON_VERSION)
 
 
 cleanup:
@@ -41,4 +45,4 @@ sphinx:
 	@$(LAUNCH) ci/pdm.sh run make -C docs html
 
 docs: sphinx
-	$(LAUNCH) ci/docs.sh
+	@$(LAUNCH) ci/docs.sh

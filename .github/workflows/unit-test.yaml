@@ -4,6 +4,10 @@ jobs:
   unit-test:
     name: 🧪 Unit Testing
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.14"]
+
     steps:
       - name: 🔔 Check out
         uses: actions/checkout@v3
@@ -12,25 +16,29 @@ jobs:
 
       - name: ⬇️ Python PDM
         uses: pdm-project/setup-pdm@v4
-
-      - name: 💣 Prepare
-        run: pip install nox[pbs] && nox -rs setup
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: true
 
       - name: 🧪 Test with pytest
-        run: nox -rs test
+        run: make pytest
 
   build:
     name: 👷 Build
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.14"]
+
     steps:
       - name: 🔔 Check out
         uses: actions/checkout@v3
 
       - name: ⬇️ Python PDM
         uses: pdm-project/setup-pdm@v4
-
-      - name: 💣 Prepare
-        run: pip install nox[pbs] && nox -rs setup
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: true
 
       - name: 👷‍♂️ Build
-        run: nox -rs build
+        run: make build
