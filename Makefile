@@ -14,7 +14,7 @@ deps:
 	@echo "Installing dependencies for $(OS)"
 
 ifeq ($(OS),Linux)
-	@$(LAUNCH) ci/install-linux.sh
+	@sudo $(LAUNCH) ci/install-linux.sh
 else ifeq ($(OS),Darwin)
 	@$(LAUNCH) ci/install-mac.sh
 else
