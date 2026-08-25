@@ -12,10 +12,19 @@ args, command = parser.parse_known_args()
 
 def box(text: str):
     text = "> " + text
+    lines = text.splitlines()
+    max_len = max(len(l) for l in lines)
 
-    top_bottom = "+-" + "-" * len(text) + "-+"
-    middle = "\n".join("| " + line + " |" for line in text.splitlines())
-    return top_bottom + "\n" + middle + "\n" + top_bottom
+    top_bottom = "+-" + "-" * max_len + "-+"
+
+    string_builder: list[str] = []
+    string_builder.append(top_bottom)
+
+    for l in lines:
+        string_builder.append("| " + l + " " * (max_len - len(l)) + " |")
+
+    string_builder.append(top_bottom)
+    return "\n".join(string_builder)
 
 
 print(box(" ".join(command)))
