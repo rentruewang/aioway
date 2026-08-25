@@ -20,11 +20,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: true
 
-      - name: 🚜 Prepare
-        run: make setup install
 
       - name: 🧪 Test with pytest
-        run: make pytest
+        run: make setup install pytest
 
   build:
     name: 👷 Build
@@ -43,8 +41,5 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: true
 
-      - name: 🚜 Prepare
-        run: make setup install
-
       - name: 👷‍♂️ Build
-        run: make build
+        run: make setup install build
