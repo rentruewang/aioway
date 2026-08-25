@@ -26,6 +26,5 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: true
 
-
       - name: 📦 Release
         run: make setup install publish
