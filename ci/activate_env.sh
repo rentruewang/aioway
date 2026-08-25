@@ -1,1 +1,0 @@
-eval $(pdm venv activate $@)

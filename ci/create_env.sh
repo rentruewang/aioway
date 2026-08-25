@@ -1,1 +1,0 @@
-pdm venv create $@
