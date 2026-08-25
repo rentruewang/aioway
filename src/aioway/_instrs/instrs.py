@@ -25,6 +25,11 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
     `Instr` should be able to be decomposed.
     """
 
+    NN: type[nn.Module]
+    """
+    The `nn.Module` type that this `Instr` handles.
+    """
+
     @abc.abstractmethod
     def __tspec_infer__(self) -> TSpecInfer:
         """
@@ -64,10 +69,17 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
         raise NotImplementedError
 
     @classmethod
-    @abc.abstractmethod
     def lift(cls, module: nn.Module, /) -> typing.Self:
         """
         Converting from a concrete `nn.Module` into an `Instr`.
         """
 
+        if not isinstance(module, cls.NN):
+            raise TypeError(f"{cls} only handles {cls.NN}, but {type(module)=}.")
+
+        return cls._lift(module)
+
+    @classmethod
+    @abc.abstractmethod
+    def _lift(cls, module: nn.Module) -> typing.Self:
         raise NotImplementedError
