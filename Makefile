@@ -4,6 +4,9 @@ LAUNCH := python3 ci/launch.py bash
 OS := $(shell uname -s)
 PYTEST_ARGS := 
 PYTHON_VERSION :=
+CHECK :=
+CHECK_FLAG := $(if $(CHECK),--check,)
+
 
 setup: cleanup deps
 
@@ -36,6 +39,19 @@ sync:
 
 pytest:
 	@$(LAUNCH) ci/pdm.sh run pytest $(PYTEST_ARGS)
+
+autoflake:
+	@$(LAUNCH) ci/pdm.sh run autoflake . $(CHECK_FLAG)
+
+black:
+	@$(LAUNCH) ci/pdm.sh run black . $(CHECK_FLAG)
+
+isort:
+	@$(LAUNCH) ci/pdm.sh run isort . $(CHECK_FLAG)
+
+mypy:
+	@$(LAUNCH) ci/pdm.sh run mypy --install-types --non-interactive src
+
 
 sphinx:
 	@$(LAUNCH) ci/pdm.sh run make -C docs html
