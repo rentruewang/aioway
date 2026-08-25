@@ -8,18 +8,19 @@ PYTEST_FLAGS :=
 PYTHON_VERSION :=
 CHECK :=
 CHECK_FLAG := $(if $(CHECK),--check,)
+SUDO := sudo --preserve-env=GITHUB_ACTIONS
 
 
 setup: cleanup deps
 
 cleanup:
-	@sudo $(LAUNCH) ci/cleanup-github.sh
+	@$(SUDO) $(LAUNCH) ci/cleanup-github.sh
 
 deps:
 	@echo "Installing dependencies for $(OS)"
 
 ifeq ($(OS),Linux)
-	@sudo $(LAUNCH) ci/install-linux.sh
+	@$(SUDO) $(LAUNCH) ci/install-linux.sh
 else ifeq ($(OS),Darwin)
 	@$(LAUNCH) ci/install-mac.sh
 else
