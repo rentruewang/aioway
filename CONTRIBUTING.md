@@ -33,33 +33,37 @@ Then activate with
 eval $(pdm venv activate)
 ```
 
+or simpler, if you want to use our makefile:
+
+```bash
+make setup install
+```
+
 To run testing, do:
 
 ```bash
-nox -s test
+make pytest
 ```
 
 To format the codebase, run:
 
 ```bash
-nox -s format
+make autoflake isort black
 ```
 
 To just check the formatting (no modification), run:
 
 ```bash
-nox -s format_check
+make autoflake isort black CHECK=1
 ```
 
 To run type checking with `mypy`, run:
 
 ```bash
-nox -s type
+make mypy
 ```
 
-`format`, `type`, `test` are checked in github actions, and they are required for merging.
-
-Run `nox -l` for all options defined in the project.
+These make commands are executed in github actions, see `.github/workflows` for details.
 
 ## Recommended development style
 
