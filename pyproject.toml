@@ -63,7 +63,6 @@ tests = [
     "pytest-xdist>=3",
     "pytest-timeout>=2",
     "pytest-testmon>=2",
-    "pytest-sugar>=1",
     "coverage>=7",
     "gitpython>=3.1",
 ]
@@ -81,7 +80,6 @@ build = [
     "pip>=26",
     "setuptools>=81",
     "setuptools-scm>=9",
-    "nox[pbs]>=2026",
 ]
 docs = [
     "sphinx>=9.1.0",

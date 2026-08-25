@@ -5,7 +5,7 @@
 groups = ["default", "api", "build", "debugging", "docs", "faiss", "networkx", "pre-commit", "sklearn", "tests"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.1"
-content_hash = "sha256:a576e11ad6af5bcfca0a308041aacf06e00ea3c091bc02367c7367f1ac086926"
+content_hash = "sha256:5bf90d56fd05f47140c98db0ceb785ff8fa5cc387925c1969c8f9f47934f99ba"
 
 [[metadata.targets]]
 requires_python = ">=3.14,<3.15"
@@ -164,7 +164,7 @@ name = "anyio"
 version = "4.14.2"
 requires_python = ">=3.10"
 summary = "High-level concurrency and networking framework on top of asyncio or Trio"
-groups = ["default", "api", "build", "debugging"]
+groups = ["default", "api", "debugging"]
 dependencies = [
     "exceptiongroup>=1.0.2; python_version < \"3.11\"",
     "idna>=2.8",
@@ -185,17 +185,6 @@ marker = "platform_system == \"Darwin\""
 files = [
     {file = "appnope-1.0.0-py3-none-any.whl", hash = "sha256:6fe0c04218aab65c54c4ff81638cdbf848d89f5653b74d68638a137f200dd16e"},
     {file = "appnope-1.0.0.tar.gz", hash = "sha256:685db59cb6043c3c2e528adc0b3bce3a5f8d09bcf7492c6ea650d1b7421f3c49"},
-]
-
-[[package]]
-name = "argcomplete"
-version = "3.7.2"
-requires_python = ">=3.10"
-summary = "Bash tab completion for argparse"
-groups = ["build"]
-files = [
-    {file = "argcomplete-3.7.2-py3-none-any.whl", hash = "sha256:6029205678bdd9c1c728a155f5f9ecf5812393f969eef58807641a2bc2aa5b19"},
-    {file = "argcomplete-3.7.2.tar.gz", hash = "sha256:aad8b69a0b9969edb62db0d1752354c0d50717b10e0cbb00e2a958381b9fc6b9"},
 ]
 
 [[package]]
@@ -340,7 +329,7 @@ name = "attrs"
 version = "26.1.0"
 requires_python = ">=3.9"
 summary = "Classes Without Boilerplate"
-groups = ["default", "api", "build", "debugging"]
+groups = ["default", "api", "debugging"]
 files = [
     {file = "attrs-26.1.0-py3-none-any.whl", hash = "sha256:c647aa4a12dfbad9333ca4e71fe62ddc36f4e63b2d260a37a8b83d2f043ac309"},
     {file = "attrs-26.1.0.tar.gz", hash = "sha256:d03ceb89cb322a8fd706d4fb91940737b6642aa36998fe130a9bc96c985eff32"},
@@ -555,7 +544,7 @@ name = "certifi"
 version = "2026.7.22"
 requires_python = ">=3.7"
 summary = "Python package for providing Mozilla's CA Bundle."
-groups = ["default", "api", "build", "debugging", "docs"]
+groups = ["default", "api", "debugging", "docs"]
 files = [
     {file = "certifi-2026.7.22-py3-none-any.whl", hash = "sha256:62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775"},
     {file = "certifi-2026.7.22.tar.gz", hash = "sha256:741e2c3b351ddf169a738da9f2c048608ff7f2c5cc02f1ebc6b118bb090d5d55"},
@@ -709,20 +698,6 @@ marker = "os_name == \"nt\" or sys_platform == \"win32\" or platform_system == \
 files = [
     {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
     {file = "colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44"},
-]
-
-[[package]]
-name = "colorlog"
-version = "6.12.0"
-requires_python = ">=3.6"
-summary = "Add colours to the output of Python's logging module."
-groups = ["build"]
-dependencies = [
-    "colorama; sys_platform == \"win32\"",
-]
-files = [
-    {file = "colorlog-6.12.0-py3-none-any.whl", hash = "sha256:30d392604e9110045a2c2aeefc27d7a017abbab63f3a8aee594eac0801df784e"},
-    {file = "colorlog-6.12.0.tar.gz", hash = "sha256:2a7924c1dadf18b22a0eb8b06d1c7b01d5341707ec1641eb6fcc4fde0c3e8e5f"},
 ]
 
 [[package]]
@@ -931,13 +906,13 @@ files = [
 
 [[package]]
 name = "cuda-pathfinder"
-version = "1.6.1"
+version = "1.7.0"
 requires_python = ">=3.10"
 summary = "Pathfinder for CUDA components"
 groups = ["default"]
 marker = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
 files = [
-    {file = "cuda_pathfinder-1.6.1-py3-none-any.whl", hash = "sha256:cc8ec4cb0881fa5bcbf96b6dd75d50e55352b74dd33d4f3d884e192e7c2b6ef8"},
+    {file = "cuda_pathfinder-1.7.0-py3-none-any.whl", hash = "sha256:e9d67e950f3d5992b854dfd25917c3719d0c21d3057b11abe86ba6feec526138"},
 ]
 
 [[package]]
@@ -997,25 +972,10 @@ files = [
 ]
 
 [[package]]
-name = "dependency-groups"
-version = "1.3.2"
-requires_python = ">=3.9"
-summary = "A tool for resolving PEP 735 Dependency Group data"
-groups = ["build"]
-dependencies = [
-    "packaging",
-    "tomli; python_version < \"3.11\"",
-]
-files = [
-    {file = "dependency_groups-1.3.2-py3-none-any.whl", hash = "sha256:8c337f7b92445823b0d0ea507f611390c58dcd2112be00aebcd738a2ca7a1c64"},
-    {file = "dependency_groups-1.3.2.tar.gz", hash = "sha256:c81831f43828dbc3987ee247eb198241a0152b8e7ceab10977cc3808eb388ac7"},
-]
-
-[[package]]
 name = "distlib"
 version = "0.4.3"
 summary = "Distribution utilities"
-groups = ["build", "pre-commit"]
+groups = ["pre-commit"]
 files = [
     {file = "distlib-0.4.3-py2.py3-none-any.whl", hash = "sha256:4b0ce306c966eb73bc3a7b6abad017c556dadd92c44701562cd528ac7fde4d5b"},
     {file = "distlib-0.4.3.tar.gz", hash = "sha256:f152097224a0ae24be5a0f6bae1b9359af82133bce63f98a95f86cae1aede9ed"},
@@ -1242,13 +1202,13 @@ files = [
 
 [[package]]
 name = "filelock"
-version = "3.32.3"
+version = "3.32.4"
 requires_python = ">=3.10"
 summary = "A platform independent file lock."
-groups = ["default", "build", "pre-commit"]
+groups = ["default", "pre-commit"]
 files = [
-    {file = "filelock-3.32.3-py3-none-any.whl", hash = "sha256:7f0ca4bcc0e181c60dbbd8aa9ab5b120ebb99e4e064e83636340056f833a1f09"},
-    {file = "filelock-3.32.3.tar.gz", hash = "sha256:0ffa185a3540854c95caa7fa76b76cb219d907415e2c5dc9af25fd970563487f"},
+    {file = "filelock-3.32.4-py3-none-any.whl", hash = "sha256:22e58ca3b1ae3b98993b762d7338367ae64fe50252bf78d59da3bfebcdf1cedd"},
+    {file = "filelock-3.32.4.tar.gz", hash = "sha256:2bde2e4cf732e0153406d8a7bc80620ecf5e621fe0d25e41143c4e3b4733ff30"},
 ]
 
 [[package]]
@@ -1442,7 +1402,7 @@ name = "h11"
 version = "0.16.0"
 requires_python = ">=3.8"
 summary = "A pure-Python, bring-your-own-I/O implementation of HTTP/1.1"
-groups = ["default", "api", "build", "debugging"]
+groups = ["default", "api", "debugging"]
 files = [
     {file = "h11-0.16.0-py3-none-any.whl", hash = "sha256:63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86"},
     {file = "h11-0.16.0.tar.gz", hash = "sha256:4e35b956cf45792e4caa5885e69fba00bdbc6ffafbfa020300e549b208ee5ff1"},
@@ -1495,7 +1455,7 @@ name = "httpcore"
 version = "1.0.9"
 requires_python = ">=3.8"
 summary = "A minimal low-level HTTP client."
-groups = ["default", "api", "build", "debugging"]
+groups = ["default", "api", "debugging"]
 dependencies = [
     "certifi",
     "h11>=0.16",
@@ -1510,7 +1470,7 @@ name = "httpx"
 version = "0.28.1"
 requires_python = ">=3.8"
 summary = "The next generation HTTP client."
-groups = ["default", "api", "build", "debugging"]
+groups = ["default", "api", "debugging"]
 dependencies = [
     "anyio",
     "certifi",
@@ -1556,17 +1516,6 @@ files = [
 ]
 
 [[package]]
-name = "humanize"
-version = "4.16.0"
-requires_python = ">=3.10"
-summary = "Python humanize utilities"
-groups = ["build"]
-files = [
-    {file = "humanize-4.16.0-py3-none-any.whl", hash = "sha256:353eb2f34c09d098b2880eee8bef21832eae6d174f48c5762fff7e5fcb74d01d"},
-    {file = "humanize-4.16.0.tar.gz", hash = "sha256:7dc2244a2f84a4bfb1d36c37bac80cd78e35cdc5c119206d87b018e1445f3a3f"},
-]
-
-[[package]]
 name = "identify"
 version = "2.6.19"
 requires_python = ">=3.10"
@@ -1582,7 +1531,7 @@ name = "idna"
 version = "3.19"
 requires_python = ">=3.9"
 summary = "Internationalized Domain Names in Applications (IDNA)"
-groups = ["default", "api", "build", "debugging", "docs"]
+groups = ["default", "api", "debugging", "docs"]
 files = [
     {file = "idna-3.19-py3-none-any.whl", hash = "sha256:815e7be7a7806d54abb586dc943addc79e8b2ee16915059658cbeff4b1b43bf4"},
     {file = "idna-3.19.tar.gz", hash = "sha256:5e0811a4383b21dc5838069f801c4fb62113b7447663d2530d2bd6e77b49bf15"},
@@ -1590,13 +1539,13 @@ files = [
 
 [[package]]
 name = "imagesize"
-version = "2.0.0"
-requires_python = "<3.15,>=3.10"
+version = "2.0.1"
+requires_python = ">=3.10"
 summary = "Get image size from headers (BMP/PNG/JPEG/JPEG2000/GIF/TIFF/SVG/Netpbm/WebP/AVIF/HEIC/HEIF)"
 groups = ["docs"]
 files = [
-    {file = "imagesize-2.0.0-py2.py3-none-any.whl", hash = "sha256:5667c5bbb57ab3f1fa4bc366f4fbc971db3d5ed011fd2715fd8001f782718d96"},
-    {file = "imagesize-2.0.0.tar.gz", hash = "sha256:8e8358c4a05c304f1fccf7ff96f036e7243a189e9e42e90851993c558cfe9ee3"},
+    {file = "imagesize-2.0.1-py3-none-any.whl", hash = "sha256:ea0c9a0384df69ed86a943a15cde37d0360b82491b3910dc2215e202e62b5b02"},
+    {file = "imagesize-2.0.1.tar.gz", hash = "sha256:b2ba6a4dea487a7ebcd53248d3476aca449d30db12a2dde5e0c5ca9624fd77e5"},
 ]
 
 [[package]]
@@ -2452,7 +2401,7 @@ files = [
 
 [[package]]
 name = "mcp"
-version = "1.29.0"
+version = "1.29.1"
 requires_python = ">=3.10"
 summary = "Model Context Protocol SDK"
 groups = ["api"]
@@ -2476,8 +2425,8 @@ dependencies = [
     "uvicorn>=0.31.1; sys_platform != \"emscripten\"",
 ]
 files = [
-    {file = "mcp-1.29.0-py3-none-any.whl", hash = "sha256:f5a075bb611f23d6f4d080c6a1699fa62772eebc562ba9e66b306ddde1c755f7"},
-    {file = "mcp-1.29.0.tar.gz", hash = "sha256:52d01f334de1868cc3bb2d6604931126a67631f99a6c5d3b82ba47290315ec36"},
+    {file = "mcp-1.29.1-py3-none-any.whl", hash = "sha256:b6310eeb59153300c4ab8b9aec4c52f4819a2d6a8e429eb43d908bed7c783648"},
+    {file = "mcp-1.29.1.tar.gz", hash = "sha256:1967ba4c315f7a375146209949f45950d18b0efd2f913d7cf3400bc723ee5f04"},
 ]
 
 [[package]]
@@ -2818,46 +2767,6 @@ dependencies = [
 files = [
     {file = "notebook_shim-0.2.4-py3-none-any.whl", hash = "sha256:411a5be4e9dc882a074ccbcae671eda64cceb068767e9a3419096986560e1cef"},
     {file = "notebook_shim-0.2.4.tar.gz", hash = "sha256:b4b2cfa1b65d98307ca24361f5b30fe785b53c3fd07b7a47e89acb5e6ac638cb"},
-]
-
-[[package]]
-name = "nox"
-version = "2026.8.17"
-requires_python = ">=3.10"
-summary = "Flexible test automation."
-groups = ["build"]
-dependencies = [
-    "argcomplete<4,>=1.9.4",
-    "attrs>=24.1",
-    "colorlog<7,>=6.6",
-    "dependency-groups>=1.1",
-    "humanize>=4",
-    "packaging>=22",
-    "platformdirs>=2",
-    "python-discovery>=1",
-    "tomli>=1.1; python_version < \"3.11\"",
-    "virtualenv>=20.15; python_version < \"3.15\"",
-    "virtualenv>=21; python_version >= \"3.15\"",
-]
-files = [
-    {file = "nox-2026.8.17-py3-none-any.whl", hash = "sha256:a96a5286007cbc0d1eb1930e85738668f6722adba1ffaa48287296a96963086e"},
-    {file = "nox-2026.8.17.tar.gz", hash = "sha256:8d9c69c9b996a59db1eb2c6968deaebc2edbc55317d205981bbc4a37351d3f2e"},
-]
-
-[[package]]
-name = "nox"
-version = "2026.8.17"
-extras = ["pbs"]
-requires_python = ">=3.10"
-summary = "Flexible test automation."
-groups = ["build"]
-dependencies = [
-    "nox==2026.8.17",
-    "pbs-installer[all]>=2025.1.6",
-]
-files = [
-    {file = "nox-2026.8.17-py3-none-any.whl", hash = "sha256:a96a5286007cbc0d1eb1930e85738668f6722adba1ffaa48287296a96963086e"},
-    {file = "nox-2026.8.17.tar.gz", hash = "sha256:8d9c69c9b996a59db1eb2c6968deaebc2edbc55317d205981bbc4a37351d3f2e"},
 ]
 
 [[package]]
@@ -3213,50 +3122,6 @@ files = [
 ]
 
 [[package]]
-name = "pbs-installer"
-version = "2026.8.14"
-requires_python = ">=3.9"
-summary = "Installer for Python Build Standalone"
-groups = ["build"]
-files = [
-    {file = "pbs_installer-2026.8.14-py3-none-any.whl", hash = "sha256:7f177e1ff0c3b09a0d57c6ac2d3de4f0cd504af732e7607f334a04e5a9e01473"},
-    {file = "pbs_installer-2026.8.14.tar.gz", hash = "sha256:e611fe862a3e3b72e6bf17f92d4bb78868e2e203fa7d7579b8d4bfc8d89be7a8"},
-]
-
-[[package]]
-name = "pbs-installer"
-version = "2026.8.14"
-extras = ["all"]
-requires_python = ">=3.9"
-summary = "Installer for Python Build Standalone"
-groups = ["build"]
-dependencies = [
-    "pbs-installer==2026.8.14",
-    "pbs-installer[download,install]",
-]
-files = [
-    {file = "pbs_installer-2026.8.14-py3-none-any.whl", hash = "sha256:7f177e1ff0c3b09a0d57c6ac2d3de4f0cd504af732e7607f334a04e5a9e01473"},
-    {file = "pbs_installer-2026.8.14.tar.gz", hash = "sha256:e611fe862a3e3b72e6bf17f92d4bb78868e2e203fa7d7579b8d4bfc8d89be7a8"},
-]
-
-[[package]]
-name = "pbs-installer"
-version = "2026.8.14"
-extras = ["download", "install"]
-requires_python = ">=3.9"
-summary = "Installer for Python Build Standalone"
-groups = ["build"]
-dependencies = [
-    "backports-zstd>=1.0.0; python_version < \"3.14\"",
-    "httpx<1,>=0.27.0",
-    "pbs-installer==2026.8.14",
-]
-files = [
-    {file = "pbs_installer-2026.8.14-py3-none-any.whl", hash = "sha256:7f177e1ff0c3b09a0d57c6ac2d3de4f0cd504af732e7607f334a04e5a9e01473"},
-    {file = "pbs_installer-2026.8.14.tar.gz", hash = "sha256:e611fe862a3e3b72e6bf17f92d4bb78868e2e203fa7d7579b8d4bfc8d89be7a8"},
-]
-
-[[package]]
 name = "pexpect"
 version = "4.9.0"
 summary = "Pexpect allows easy control of interactive console applications."
@@ -3314,13 +3179,13 @@ files = [
 
 [[package]]
 name = "platformdirs"
-version = "4.11.3"
+version = "4.11.4"
 requires_python = ">=3.10"
 summary = "A small Python package for determining appropriate platform-specific dirs, e.g. a `user data dir`."
-groups = ["api", "build", "debugging", "pre-commit"]
+groups = ["api", "debugging", "pre-commit"]
 files = [
-    {file = "platformdirs-4.11.3-py3-none-any.whl", hash = "sha256:5ed065d443751de711da036041a7a214122efc4a4de393b3f4137ba5576540e7"},
-    {file = "platformdirs-4.11.3.tar.gz", hash = "sha256:66a73d38a849810252df809a3d8bcbda8e26f6c189920e7535ad608a48dbb5ab"},
+    {file = "platformdirs-4.11.4-py3-none-any.whl", hash = "sha256:e34ff91a24bcddc6d939b878bdf3f5c437c9c46fe9e212b1bf455fdf1ee57586"},
+    {file = "platformdirs-4.11.4.tar.gz", hash = "sha256:f3373be828247211d0febabea97e238c3dfde8a60b3c90c32756fb52cb21556d"},
 ]
 
 [[package]]
@@ -3766,20 +3631,6 @@ files = [
 ]
 
 [[package]]
-name = "pytest-sugar"
-version = "1.1.1"
-summary = "pytest-sugar is a plugin for pytest that changes the default look and feel of pytest (e.g. progressbar, show tests that fail instantly)."
-groups = ["tests"]
-dependencies = [
-    "pytest>=6.2.0",
-    "termcolor>=2.1.0",
-]
-files = [
-    {file = "pytest-sugar-1.1.1.tar.gz", hash = "sha256:73b8b65163ebf10f9f671efab9eed3d56f20d2ca68bda83fa64740a92c08f65d"},
-    {file = "pytest_sugar-1.1.1-py3-none-any.whl", hash = "sha256:2f8319b907548d5b9d03a171515c1d43d2e38e32bd8182a1781eb20b43344cc8"},
-]
-
-[[package]]
 name = "pytest-testmon"
 version = "2.2.0"
 requires_python = ">=3.10"
@@ -3839,16 +3690,16 @@ files = [
 
 [[package]]
 name = "python-discovery"
-version = "1.5.2"
+version = "1.5.3"
 requires_python = ">=3.8"
 summary = "Python interpreter discovery"
-groups = ["build", "pre-commit"]
+groups = ["pre-commit"]
 dependencies = [
     "filelock>=3.15.4",
 ]
 files = [
-    {file = "python_discovery-1.5.2-py3-none-any.whl", hash = "sha256:3e338c2d0f15dfaeea57493f4c2c6caebe0e998ea815c30ae8bf8ee21f1112d3"},
-    {file = "python_discovery-1.5.2.tar.gz", hash = "sha256:45fd4f20a4e3f9b7bf2e0817870bc8e3b320a19658da177af800768c82dbf354"},
+    {file = "python_discovery-1.5.3-py3-none-any.whl", hash = "sha256:8305296358f1aa2ed302a25b84be7df84fef8ca47c7dce2da63cb7325333044e"},
+    {file = "python_discovery-1.5.3.tar.gz", hash = "sha256:e500eb24025fb7c4876c1fdcfbafd9028a10c71b661aee38cb6fb0de594518c1"},
 ]
 
 [[package]]
@@ -4629,17 +4480,6 @@ files = [
 ]
 
 [[package]]
-name = "termcolor"
-version = "3.3.0"
-requires_python = ">=3.10"
-summary = "ANSI color formatting for output in terminal"
-groups = ["tests"]
-files = [
-    {file = "termcolor-3.3.0-py3-none-any.whl", hash = "sha256:cf642efadaf0a8ebbbf4bc7a31cec2f9b5f21a9f726f4ccbb08192c9c26f43a5"},
-    {file = "termcolor-3.3.0.tar.gz", hash = "sha256:348871ca648ec6a9a983a13ab626c0acce02f515b9e1983332b17af7979521c5"},
-]
-
-[[package]]
 name = "terminado"
 version = "0.18.1"
 requires_python = ">=3.8"
@@ -5030,10 +4870,10 @@ files = [
 
 [[package]]
 name = "virtualenv"
-version = "21.7.4"
+version = "21.7.5"
 requires_python = ">=3.9"
 summary = "Virtual Python Environment builder"
-groups = ["build", "pre-commit"]
+groups = ["pre-commit"]
 dependencies = [
     "distlib<1,>=0.3.7",
     "filelock<4,>=3.24.2; python_version >= \"3.10\"",
@@ -5043,8 +4883,8 @@ dependencies = [
     "typing-extensions>=4.13.2; python_version < \"3.11\"",
 ]
 files = [
-    {file = "virtualenv-21.7.4-py3-none-any.whl", hash = "sha256:376ec93cd6aab3044fa395d7db226db38043b7b5748948044b2a87168525e843"},
-    {file = "virtualenv-21.7.4.tar.gz", hash = "sha256:c9d960c95fa458171e58222a5ccab7465298e4b6559977865e627c4719f1e825"},
+    {file = "virtualenv-21.7.5-py3-none-any.whl", hash = "sha256:e36ca889510ab6cb0b1dca93c59e5431dd4422a3c88f487358d470c90af8c07a"},
+    {file = "virtualenv-21.7.5.tar.gz", hash = "sha256:a73c4246fba3c8901ff9717399f466e00eeca5a3834981f1a6ebb4f1e94de2f8"},
 ]
 
 [[package]]
