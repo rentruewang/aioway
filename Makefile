@@ -5,11 +5,7 @@ OS := $(shell uname -s)
 PYTEST_ARGS := 
 PYTHON_VERSION :=
 
-setup: venv cleanup deps
-
-venv:
-	@$(LAUNCH) ci/pdm.sh venv create $(PYTHON_VERSION)
-
+setup: cleanup deps
 
 cleanup:
 	@$(LAUNCH) ci/cleanup-github.sh
