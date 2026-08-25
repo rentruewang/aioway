@@ -38,7 +38,7 @@ pytest:
 	@$(LAUNCH) ci/pdm.sh run pytest $(PYTEST_ARGS)
 
 sphinx:
-	make -C docs html
+	@$(LAUNCH) ci/pdm.sh run make -C docs html
 
 docs: sphinx
 	$(LAUNCH) ci/docs.sh
