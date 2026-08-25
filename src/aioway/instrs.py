@@ -1,6 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import abc
+import inspect
 import typing
 from collections import abc as cabc
 
@@ -9,6 +10,12 @@ from torch import nn
 from aioway.tspecs import TSpecInfer
 
 __all__ = ["Instr"]
+
+_NN_INSTR_REGISTRY: dict[type[nn.Module], type[Instr]] = {}
+"The registry for `Instr`."
+
+_NOT_CONCRETE_INSTR = nn.Module
+"The marker that `Instr` is not a concrete class."
 
 
 class Instr[I = typing.Any, O = typing.Any](abc.ABC):
@@ -25,10 +32,27 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
     `Instr` should be able to be decomposed.
     """
 
-    NN: type[nn.Module]
+    NN: type[nn.Module] = _NOT_CONCRETE_INSTR
     """
     The `nn.Module` type that this `Instr` handles.
     """
+
+    def __init_subclass__(cls) -> None:
+        # Do nothing for non concrete `cls`.
+        if _not_concrete_instr_cls(cls):
+            return
+
+        if inspect.isabstract(cls):
+            raise RuntimeError(f"{cls} defines {cls.NN=}, but it's an abstract class.")
+
+        if cls.NN in _NN_INSTR_REGISTRY:
+            used_by = _NN_INSTR_REGISTRY[cls.NN]
+            raise KeyError(
+                f"{cls.NN} already used by {used_by}. "
+                f"But {cls} attempts to use the same key."
+            )
+
+        _NN_INSTR_REGISTRY[cls.NN] = cls
 
     @abc.abstractmethod
     def __tspec_infer__(self) -> TSpecInfer:
@@ -47,7 +71,7 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def emit(self) -> nn.Module:
+    def module(self) -> nn.Module:
         """
         Build the module represented by this current `Instr`.
         This function is responsible for recursively construct sub-modules as well,
@@ -83,3 +107,7 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
     @abc.abstractmethod
     def _lift(cls, module: nn.Module) -> typing.Self:
         raise NotImplementedError
+
+
+def _not_concrete_instr_cls(cls: type[Instr]) -> bool:
+    return cls.NN is _NOT_CONCRETE_INSTR
