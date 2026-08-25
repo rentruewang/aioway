@@ -1,147 +1,175 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"The interface for the `io` package."
-
 import abc
-import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-import tensordict as td
-import torch
-from torch.utils import data
+import numpy as np
+from torch.utils import data as dutils
 
-from aioway.hop import LoaderHop, LoaderOpt, TdictLoaderHop, TensorLoaderHop
+from aioway._utils import IntArray
+from aioway.tspecs import TSpecLike
 
-__all__ = [
-    "Dset",
-    "Stream",
-    "Frame",
-    "dset_dcls",
-    "TensorStream",
-    "TdictStream",
-    "TensorFrame",
-    "TdictFrame",
-]
+__all__ = ["Dset", "IdxDset", "IterDset", "DatasetIdxDset"]
 
 
-@typing.dataclass_transform(frozen_default=True)
-def dset_dcls(cls):
-    return dcls.dataclass(frozen=True)(cls)
-
-
-class _TensorAttrMixin(data.Dataset[torch.Tensor], metaclass=abc.ABCMeta):
+class Dset[T](abc.ABC):
     """
-    A `torch.Tensor` `Dataset` should also provide `.attr`.
-    """
+    A `Dset` supports conversion to `dutils.Dataset`.
 
-    def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> TensorLoaderHop:
-        # Set batch size to the ones provided.
-        return TensorLoaderHop(dset=self, opts=opts)
-
-
-class _TdictAttrsMixin(data.Dataset[td.TensorDict], metaclass=abc.ABCMeta):
-    """
-    A `td.TensorDict` `Dataset` should also provide `.attr`.
-    """
-
-    def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> TdictLoaderHop:
-        return TdictLoaderHop(dset=self, opts=opts)
-
-
-@dset_dcls
-class Dset[T](data.Dataset[T]):
-    """
-    The base class for I/O.
-    """
-
-    @typing.final
-    def __post_init__(self) -> None:
-        self._setup()
-        self._register()
-
-    def __call__(self, opts: LoaderOpt = LoaderOpt(), /) -> LoaderHop:
-        return LoaderHop(dset=self, opts=opts)
-
-    def _setup(self) -> None:
-        """
-        Subclass should overwrite this function to perform setup. Can raise errors.
-        """
-
-    def _register(self) -> None:
-        """
-        Register the instance to a session.
-        """
-
-        from .sess import DsetSession
-
-        if sess := DsetSession.current():
-            sess.push(self)
-
-
-@dset_dcls
-class Stream[T = typing.Any](Dset[T], data.IterableDataset[T], abc.ABC):
-    """
-    `Stream` represents a set of sequential data stored somewhere.
-    Each item is a single row of data.
+    It does not provide any additional functionality, but improves the API usage.
     """
 
     @abc.abstractmethod
-    def __iter__(self) -> cabc.Iterator[T]:
+    def __tspec__(self) -> TSpecLike:
+        "The spec constraint for the data."
+
+        raise NotImplementedError
+
+    @property
+    def collate_fn(self) -> cabc.Callable[..., typing.Any] | None:
+        """
+        Overwrite this function if `__getitems__` gives an output
+        that cannot be handled by default collate.
+        """
+
+        return None
+
+    @abc.abstractmethod
+    def to_dataset(self) -> dutils.Dataset[T]:
+        """
+        The dataset that this `Dset` converts to.
+        """
+
         raise NotImplementedError
 
 
-class TensorStream(_TensorAttrMixin, Stream[torch.Tensor], abc.ABC):
+class IdxDset[T](Dset[T], abc.ABC):
     """
-    A `TensorStream` is a `Stream` of `torch.Tensor`s.
-    """
-
-
-class TdictStream(_TdictAttrsMixin, Stream[td.TensorDict], abc.ABC):
-    """
-    A `TdictStream` is a `Stream` of `torch.Tensor`s.
-    """
-
-
-@dset_dcls
-class Frame[T = typing.Any](Dset[T], data.Dataset[T], abc.ABC):
-    """
-    `Frame` is a `Stream` that supports random access.
-    Each item retrieved from `Frame` is a single row of data.
+    This is the type of `Dset` that is indexed.
     """
 
     @abc.abstractmethod
     def __len__(self) -> int:
-        """
-        Get the number of items (rows) in the current dataframe.
-        """
-
         raise NotImplementedError
 
     @abc.abstractmethod
-    def __getitem__(self, idx: int) -> T:
-        """
-        Get 1 item.
-        """
-
+    def __getitem__(self, index: int, /):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def __getitems__(self, idx: list[int], /) -> T:
+    def __getitems__(self, index: IntArray, /):
+        raise NotImplementedError
+
+    @typing.override
+    def to_dataset(self):
+        return _IdxDataset(self)
+
+
+class DatasetIdxDset[T](IdxDset[T]):
+    """
+    Adaptor from `dutils.Dataset` to `IdxDset`.
+    """
+
+    def __init__(
+        self, dataset: dutils.Dataset[T], spec: TSpecLike, collate_fn=None
+    ) -> None:
+        self._dataset = dataset
+        self._spec = spec
+        self._colalte_fn = collate_fn
+
+    @typing.no_type_check
+    def __len__(self) -> int:
+        return len(self._dataset)
+
+    @typing.no_type_check
+    def __getitem__(self, idx):
+        return self._dataset[idx]
+
+    @typing.no_type_check
+    def __getitems__(self, idx):
+        return self._dataset.__getitems__(idx)
+
+    def to_dataset(self):
+        return self
+
+    def __tspec__(self) -> TSpecLike:
+        return self._spec
+
+    @property
+    def collate_fn(self):
+        return self._colalte_fn
+
+    @property
+    def dataset(self) -> dutils.Dataset[T]:
+        return self._dataset
+
+
+class _IdxDataset(dutils.Dataset):
+    def __init__(self, dset: IdxDset) -> None:
+        super().__init__()
+
+        if not isinstance(dset, IdxDset):
+            raise TypeError(f"{type(dset)=} should be `IdxDset`.")
+
+        self._dset = dset
+
+    def __repr__(self) -> str:
+        return f"IdxDataset({self.dset!r})"
+
+    def __len__(self) -> int:
+        return len(self.dset)
+
+    def __getitem__(self, index):
+        return self.dset[index]
+
+    def __getitems__(self, index):
+        return self.dset.__getitems__(np.asarray(index))
+
+    def __tspec__(self) -> TSpecLike:
+        return self.dset.__tspec__()
+
+    @property
+    def dset(self) -> IdxDset:
+        return self._dset
+
+
+class IterDset[T](Dset[T], abc.ABC):
+    """
+    This is the iterator version of `Dset`.
+    """
+
+    @abc.abstractmethod
+    def __iter__(self) -> cabc.Iterator[T]:
         """
-        Get multiple items.
+        The method that yields the data in a sequential manner.
         """
 
         raise NotImplementedError
 
-
-class TensorFrame(_TensorAttrMixin, Frame[torch.Tensor], abc.ABC):
-    """
-    A `torch.Tensor` dataset that supports random access.
-    """
+    @typing.override
+    def to_dataset(self):
+        return _IterDataset(self)
 
 
-class TdictFrame(_TdictAttrsMixin, Frame[td.TensorDict], abc.ABC):
-    """
-    A dataset of `td.TensorDict` that supports random access.
-    """
+class _IterDataset(dutils.IterableDataset):
+    def __init__(self, dset: IterDset) -> None:
+        super().__init__()
+
+        if not isinstance(dset, IterDset):
+            raise TypeError(f"{type(dset)=} should be `IterDset`.")
+
+        self._dset = dset
+
+    def __repr__(self) -> str:
+        return f"IterDataset({self.dset!r})"
+
+    def __iter__(self):
+        yield from self.dset
+
+    def __tspec__(self) -> TSpecLike:
+        return self.dset.__tspec__()
+
+    @property
+    def dset(self) -> IterDset:
+        return self._dset

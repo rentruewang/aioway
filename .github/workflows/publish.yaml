@@ -12,16 +12,19 @@ jobs:
     permissions:
       contents: read
       id-token: write # IMPORTANT: this permission is mandatory for trusted publishing
+    strategy:
+      matrix:
+        python-version: ["3.14"]
 
     steps:
       - name: 🔔 Check out
         uses: actions/checkout@v3
 
-      - name: 💣 Prepare
-        run: pip install nox[pbs] && nox -rs setup
-
       - name: ⬇️ Python PDM
         uses: pdm-project/setup-pdm@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: true
 
       - name: 📦 Release
-        run: nox -rs publish
+        run: make setup install publish

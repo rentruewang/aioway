@@ -1,0 +1,96 @@
+# Copyright (c) AIoWay Authors - All Rights Reserved
+
+import typing
+
+import pytest
+import torch
+from torch import nn
+from torch.utils import data as dutils
+from torchrl.data import tensor_specs as tspecs
+
+from aioway.emits import (
+    MlpCompoundEmitter,
+    MlpEmitter,
+    emit,
+    emit_one,
+    linear_regression,
+)
+from aioway.schemas import Shape
+from aioway.tspecs import TSpec, unbounded_box_tspec
+
+
+@pytest.fixture
+def input_shape_tspec():
+    return unbounded_box_tspec(Shape.parse(3, 4, 6))
+
+
+@pytest.fixture
+def output_tspec():
+    return unbounded_box_tspec(Shape.parse(3, 4, 7))
+
+
+@pytest.fixture
+def input_dataset(input_attr_tspec: tspecs.Unbounded):
+    class FakeInputDset(dutils.IterableDataset):
+        @typing.override
+        def __iter__(self):
+            # Not really using this, so we can afford to make a fake one.
+            raise NotImplementedError
+
+    return FakeInputDset()
+
+
+@pytest.fixture
+def input_loader(input_dataset: dutils.Dataset):
+    return dutils.DataLoader(input_dataset)
+
+
+@pytest.fixture
+def target_loader(input_loader: dutils.DataLoader):
+    return input_loader
+
+
+@pytest.fixture
+def consider_linear():
+    with linear_regression.consider():
+        yield
+
+
+def _mlp_emitters():
+    yield MlpCompoundEmitter([100, 100])
+    yield MlpEmitter([100, 100])
+
+
+@pytest.fixture(params=_mlp_emitters())
+def consider_mlp(request: pytest.FixtureRequest):
+    with request.param.consider():
+        yield
+
+
+def test_just_linear(input_shape_tspec: TSpec, output_tspec: TSpec, consider_linear):
+    module = emit_one(input_shape_tspec, output_tspec)
+    assert isinstance(module, nn.Linear | nn.Sequential)
+    _check_linear(
+        module,
+        in_features=input_shape_tspec.shape,
+        out_features=output_tspec.shape,
+    )
+
+
+def test_mlp_emitter(
+    input_shape_tspec: TSpec, output_tspec: TSpec, consider_mlp, fake_mode
+):
+    input = torch.randn(13, 3, 4, 6)
+
+    for module in emit(input_shape_tspec, output_tspec):
+        output = module(input)
+
+    assert output.shape == (13, 3, 4, 7)
+
+
+def _check_linear(linear: nn.Module, in_features: torch.Size, out_features: torch.Size):
+    assert isinstance(linear, nn.Linear | nn.Sequential)
+
+    in_tensor = torch.randn(101, *in_features)
+
+    assert linear(in_tensor).shape == (101, *out_features)

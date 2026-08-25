@@ -20,6 +20,9 @@ dependencies = [
     "av>=17",
     "transformers>=5",
     "tokenizers>=0.22",
+    "torchrl>=0.13",
+    "gymnasium>=1",
+    "lightning>=2",
 ]
 
 [project.optional-dependencies]
@@ -28,7 +31,14 @@ networkx = [
     "matplotlib>=3",
 ]
 faiss = [
-    "faiss-cpu>=1.14.2",
+    "faiss-cpu>=1",
+]
+sklearn = [
+    "scikit-learn>=1",
+]
+api = [
+    "fastapi>=0.141",
+    "fastmcp>=3",
 ]
 
 [build-system]
@@ -53,7 +63,6 @@ tests = [
     "pytest-xdist>=3",
     "pytest-timeout>=2",
     "pytest-testmon>=2",
-    "pytest-sugar>=1",
     "coverage>=7",
     "gitpython>=3.1",
 ]
@@ -71,7 +80,11 @@ build = [
     "pip>=26",
     "setuptools>=81",
     "setuptools-scm>=9",
-    "nox[pbs]>=2026",
+]
+docs = [
+    "sphinx>=9.1.0",
+    "furo>=2025.12.19",
+    "myst-parser>=5.1.0",
 ]
 
 [tool.autoflake]
@@ -95,9 +108,11 @@ check_untyped_defs = true
 # Skipping analysis for some modules because they are not typed.
 [[tool.mypy.overrides]]
 module = [
+    "sklearn.*",
     "tensordict.*",
     "torchvision.*",
     "torchcodec.*",
+    "torchrl.*",
 ]
 ignore_missing_imports = true
 
@@ -115,3 +130,7 @@ filterwarnings = [
 testpaths = [
     "tests",
 ]
+
+[tool.coverage.run]
+parallel = true
+concurrency = ["multiprocessing"]

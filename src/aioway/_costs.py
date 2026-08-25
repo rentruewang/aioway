@@ -8,8 +8,8 @@ import operator
 import typing
 from collections import abc as cabc
 
+from aioway._sess import Session
 from aioway._utils import Stack
-from aioway.sess import Session
 
 __all__ = ["Cost", "CostSession"]
 
@@ -34,11 +34,11 @@ class Cost:
         return self.__elemwise(other, operator.sub)
 
     def __elemwise(
-        self, other: Cost, ufunc: cabc.Callable[[int, int], int]
+        self, other: Cost, func: cabc.Callable[[int, int], int]
     ) -> typing.Self:
         return type(self)(
-            time=ufunc(self.time, other.time),
-            memory=ufunc(self.memory, other.memory),
+            time=func(self.time, other.time),
+            memory=func(self.memory, other.memory),
         )
 
     def commit(self) -> None:

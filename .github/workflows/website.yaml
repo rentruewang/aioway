@@ -1,0 +1,44 @@
+name: Docs
+on: [push]
+
+jobs:
+  docs:
+    name: 📚 Docs
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.14"]
+
+    steps:
+      - name: 🔔 Check out
+        uses: actions/checkout@v3
+
+      - name: ⬇️ Python PDM
+        uses: pdm-project/setup-pdm@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: true
+
+      - name: 📚 Build docs
+        run: make setup install docs
+
+      - name: 📦 Upload site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public/
+
+  publish:
+    name: 🚀 Publish
+    runs-on: ubuntu-latest
+    needs: docs
+    if: github.ref_name == github.event.repository.default_branch
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 🚀 Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

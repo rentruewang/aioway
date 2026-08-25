@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+from .comps import *
+from .discovery import *
 from .dsets import *
-from .indices import *
-from .sess import *
-from .volatile import *
+from .mnist import *

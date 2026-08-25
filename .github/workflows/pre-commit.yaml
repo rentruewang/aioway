@@ -4,31 +4,39 @@ jobs:
   format:
     name: 📑 Formatting
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.14"]
+
     steps:
       - name: 🔔 Check out
         uses: actions/checkout@v3
 
-      - name: 💣 Prepare
-        run: pip install nox[pbs] && nox -rs setup
-
       - name: ⬇️ Python PDM
         uses: pdm-project/setup-pdm@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: true
 
-      - name: 🏃 Formatting
-        run: nox -rs format_check
+      - name: 🪄 Formatting
+        run: make setup install autoflake isort black CHECK=1
 
   type:
     name: 👨‍⚕️ Type Checking
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.14"]
+
     steps:
       - name: 🔔 Check out
         uses: actions/checkout@v3
 
-      - name: 💣 Prepare
-        run: pip install nox[pbs] && nox -rs setup
-
       - name: ⬇️ Python PDM
         uses: pdm-project/setup-pdm@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: true
 
-      - name: 🏃 Type checking
-        run: nox -rs type
+      - name: ⌨️ Type checking
+        run: make setup install mypy

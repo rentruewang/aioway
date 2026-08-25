@@ -65,7 +65,7 @@ def replace_tensors(
     Caused by `.device` / `.shape` / `.dtype` calls, which is used in `replace_tensors`.
     """
 
-    from aioway.fake import mode_off
+    from aioway.modes import mode_off
 
     def maybe_replace(item):
         if not isinstance(item, torch.Tensor):
@@ -90,7 +90,7 @@ def decomp_replace(
     obj,
     replace: cabc.Callable[..., object],
     memo: AnyDict[typing.Any, typing.Any] | None = None,
-) -> object:
+) -> typing.Any:
     """
     Decompose and replace. When this is called, `replace(obj)` is directly invoked.
     If it returns `NotImplemented`, then decomposing would continue.
