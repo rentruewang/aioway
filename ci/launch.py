@@ -10,7 +10,11 @@ INDENT = "    | "
 COMMAND = "$ "
 
 
-def box(text: str):
+def panel(text: str) -> str:
+    """
+    Use a box to surround the (maybe multline) text.
+    """
+
     text = COMMAND + text
     lines = text.splitlines()
     max_len = max(len(l) for l in lines)
@@ -32,8 +36,9 @@ if __name__ == "__main__":
     parser.add_argument("--indent", type=str, default=INDENT)
     args, command = parser.parse_known_args()
 
-    print(box(" ".join(command)))
+    print(panel(" ".join(command)))
 
+    # Using PTY to force color.
     master, slave = pty.openpty()
 
     p = subprocess.Popen(
@@ -46,8 +51,10 @@ if __name__ == "__main__":
 
     os.close(slave)
 
-    with os.fdopen(master, "r", encoding="utf-8", errors="replace") as output:
-        for line in output:
+    with os.fdopen(master, "r", encoding="utf-8", errors="replace") as out:
+        # Render line by line.
+        for line in out:
             print(textwrap.indent(line.rstrip(), args.indent))
+    print()
 
     raise SystemExit(p.wait())
