@@ -5,7 +5,7 @@
 groups = ["default", "api", "build", "debugging", "docs", "faiss", "networkx", "pre-commit", "sklearn", "tests"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.1"
-content_hash = "sha256:5bf90d56fd05f47140c98db0ceb785ff8fa5cc387925c1969c8f9f47934f99ba"
+content_hash = "sha256:dabec2df740387ebe615a51e152e77ceca5562048503ac866a2a0b5535aefea2"
 
 [[metadata.targets]]
 requires_python = ">=3.14,<3.15"
@@ -4594,18 +4594,6 @@ files = [
 ]
 
 [[package]]
-name = "torchcodec"
-version = "0.10.0"
-requires_python = ">=3.10"
-summary = "A video decoder for PyTorch"
-groups = ["default"]
-files = [
-    {file = "torchcodec-0.10.0-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:bb882c12ca07dcf6d82833db67e6b565693a4bccfeab6696697620e43e465556"},
-    {file = "torchcodec-0.10.0-cp314-cp314-manylinux_2_28_x86_64.whl", hash = "sha256:bec2b938ad4b294bd71d0b0ab4976037c740be0c80be79e67803ebed4eff270e"},
-    {file = "torchcodec-0.10.0-cp314-cp314-win_amd64.whl", hash = "sha256:4734eb82146516049e1070152eb3013d7b9689159ef35db7c0894d130d4e335d"},
-]
-
-[[package]]
 name = "torchmetrics"
 version = "1.9.0"
 requires_python = ">=3.10"
@@ -4797,7 +4785,7 @@ version = "2026.3"
 requires_python = ">=2"
 summary = "Provider of IANA time zone data"
 groups = ["default", "debugging"]
-marker = "sys_platform == \"win32\" or sys_platform == \"emscripten\" or python_version >= \"3.9\""
+marker = "sys_platform == \"emscripten\" or sys_platform == \"win32\" or python_version >= \"3.9\""
 files = [
     {file = "tzdata-2026.3-py2.py3-none-any.whl", hash = "sha256:dc096730c87af6cab1b171c9d532be840741ff5d459015e7f6947bd7d7e54931"},
     {file = "tzdata-2026.3.tar.gz", hash = "sha256:4a1518b8993086a7982523e071643f3c0e5f213e75b21318e78bcabfff9d1415"},

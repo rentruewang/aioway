@@ -11,10 +11,9 @@ dynamic = ["version"]
 dependencies = [
     "numpy>=2",
     "pandas>=3",
-    "torch==2.10.*",
+    "torch>=2",
     "tensordict>=0.11",
     "torchvision>=0.25",
-    "torchcodec==0.10.*",
     "rich>=14",
     "pillow>=12",
     "av>=17",
