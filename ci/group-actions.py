@@ -22,7 +22,7 @@ def launch_proc_and_print(command: list[str], stage: str):
     env = {**os.environ, **term_size_env()}
 
     with group_by_stage(stage=stage):
-        subprocess.run(command, env=env, stdout=sys.stdout)
+        subprocess.run(command, env=env, stdout=sys.stdout, stderr=sys.stdout)
 
 
 def term_size_env() -> dict[str, str]:
