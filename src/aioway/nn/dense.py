@@ -2,13 +2,13 @@
 
 from torch import nn
 
-from .modules import NnInit, nn_init_dcls
+from .modules import NnInstr, nn_init_dcls
 
 __all__ = ["Identity", "Linear", "Bilinear"]
 
 
 @nn_init_dcls
-class Identity(NnInit):
+class Identity(NnInstr):
     """
     A placeholder identity operator that is argument-insensitive.
     """
@@ -17,7 +17,7 @@ class Identity(NnInit):
 
 
 @nn_init_dcls
-class Linear(NnInit):
+class Linear(NnInstr):
     """
     Apply the transformation A @ x + b.
     """
@@ -42,7 +42,7 @@ class Linear(NnInit):
 
 
 @nn_init_dcls
-class Bilinear(NnInit):
+class Bilinear(NnInstr):
     """
     Apply the transformation x1 @ A @ x2 + b.
     """

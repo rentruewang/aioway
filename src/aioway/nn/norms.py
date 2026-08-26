@@ -4,7 +4,7 @@ import typing
 
 from torch import nn
 
-from .modules import NnInit, nn_init_dcls
+from .modules import NnInstr, nn_init_dcls
 
 __all__ = [
     "BatchNorm1d",
@@ -17,7 +17,7 @@ __all__ = [
 
 
 @nn_init_dcls
-class _BaseNorm(NnInit):
+class _BaseNorm(NnInstr):
     "Base normalization layer for shared code of batch norm and instance norm."
 
     NN: typing.ClassVar[type[nn.Module]] = NotImplemented

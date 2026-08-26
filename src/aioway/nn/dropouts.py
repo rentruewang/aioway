@@ -4,13 +4,13 @@ import typing
 
 from torch import nn
 
-from .modules import NnInit, nn_init_dcls
+from .modules import NnInstr, nn_init_dcls
 
 __all__ = ["Dropout", "Dropout1d", "Dropout2d", "Dropout3d"]
 
 
 @nn_init_dcls
-class _BaseDropout(NnInit):
+class _BaseDropout(NnInstr):
     NN: typing.ClassVar[type[nn.Module]] = NotImplemented
 
     p: float = 0.5

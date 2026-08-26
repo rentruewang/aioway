@@ -4,7 +4,7 @@ import typing
 
 from torch import nn
 
-from .modules import NnInit, nn_init_dcls
+from .modules import NnInstr, nn_init_dcls
 
 __all__ = [
     "BaseLoss",
@@ -23,7 +23,7 @@ _REDUCTION = frozenset(["none", "mean", "sum"])
 
 
 @nn_init_dcls
-class BaseLoss(NnInit):
+class BaseLoss(NnInstr):
     """
     Creates a criterion that measures the mean absolute error (MAE)
     between each element in the input x and target y

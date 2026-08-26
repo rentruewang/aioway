@@ -10,22 +10,22 @@ from torch import nn
 
 from aioway._utils import dcls_asdict, render_fcall
 
-__all__ = ["NnInit", "nn_init_dcls", "find_nn_init", "build_nn_hop"]
+__all__ = ["NnInstr", "nn_init_dcls", "find_nn_init", "build_nn_hop"]
 
-_NN_INITS: dict[cabc.Callable[..., nn.Module], type[NnInit]] = {}
+_NN_INITS: dict[cabc.Callable[..., nn.Module], type[NnInstr]] = {}
 
 
 @typing.dataclass_transform()
 @typing.no_type_check
 def nn_init_dcls(cls):
-    "Decorator of dataclass for `NnInit`."
+    "Decorator of dataclass for `NnInstr`."
     return dcls.dataclass(repr=False)(cls)
 
 
 @nn_init_dcls
-class NnInit(abc.ABC):
+class NnInstr(abc.ABC):
     """
-    `NnInit` records the signature of an `nn.Module` initialization, and creates it.
+    `NnInstr` records the signature of an `nn.Module` initialization, and creates it.
 
     It provides metadata as to what `nn.Module` arguments are valid or not.
     """

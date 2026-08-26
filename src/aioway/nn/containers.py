@@ -4,13 +4,13 @@ import typing
 
 from torch import nn
 
-from .modules import NnInit, nn_init_dcls
+from .modules import NnInstr, nn_init_dcls
 
 __all__ = ["Sequential"]
 
 
 @nn_init_dcls
-class Sequential(NnInit):
+class Sequential(NnInstr):
     """
     The wrapper for `nn.Sequential`.
 
