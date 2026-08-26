@@ -10,11 +10,11 @@ import sys
 
 @ctxl.contextmanager
 def group_by_stage(stage: str):
-    print(f"::group::{stage}")
+    print(f"::group::{stage}", flush=True)
     try:
         yield
     finally:
-        print(f"::endgroup::")
+        print(f"::endgroup::", flush=True)
 
 
 def launch_proc_and_print(command: list[str], stage: str):
