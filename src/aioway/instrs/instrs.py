@@ -1,5 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+"The `Instr` interface."
+
 import abc
 import inspect
 import typing
