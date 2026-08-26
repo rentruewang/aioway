@@ -2,17 +2,16 @@
 
 import abc
 import dataclasses as dcls
-import inspect
 import typing
-from collections import abc as cabc
 
 from torch import nn
 
 from aioway._utils import dcls_asdict, render_fcall
+from aioway.tspecs import TSpecInfer
+
+from .instrs import Instr
 
 __all__ = ["NnInstr", "nn_instr_dcls"]
-
-_NN_INITS: dict[cabc.Callable[..., nn.Module], type[NnInstr]] = {}
 
 
 @typing.dataclass_transform()
@@ -23,28 +22,30 @@ def nn_instr_dcls(cls):
 
 
 @nn_instr_dcls
-class NnInstr(abc.ABC):
+class NnInstr(Instr, abc.ABC):
     """
     `NnInstr` records the signature of an `nn.Module` initialization, and creates it.
 
     It provides metadata as to what `nn.Module` arguments are valid or not.
     """
 
-    NN: typing.ClassVar[type[nn.Module]] = NotImplemented
-
-    def __init_subclass__(cls) -> None:
-        # Abstract in terms of `ClassVar`.
-        if cls.NN is NotImplemented:
-            return
-
-        if inspect.isabstract(cls):
-            return
-
-        _NN_INITS[cls.NN] = cls
-
     @typing.override
     def __repr__(self) -> str:
         return render_fcall("nn_init::" + type(self).__qualname__, **dcls_asdict(self))
 
-    def __call__(self) -> nn.Module:
+    @typing.override
+    def __tspec_infer__(self) -> TSpecInfer:
+        raise NotImplementedError
+
+    @typing.override
+    def module(self) -> nn.Module:
         return self.NN(**dcls_asdict(self))
+
+    @typing.override
+    def children(self):
+        return ()
+
+    @classmethod
+    @typing.override
+    def _lift(cls, module: nn.Module) -> typing.Self:
+        raise NotImplementedError

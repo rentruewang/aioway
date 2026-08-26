@@ -4,15 +4,13 @@ import typing
 
 from torch import nn
 
-from .modules import NnInstr, nn_instr_dcls
+from ..nn import NnInstr, nn_instr_dcls
 
 __all__ = ["Embedding"]
 
 
 @nn_instr_dcls
 class _BaseEmbedding(NnInstr):
-    NN: typing.ClassVar[type[nn.Module]] = NotImplemented
-
     num_embeddings: int
     "The size of the dictionary of embeddings."
 

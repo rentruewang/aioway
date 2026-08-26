@@ -2,7 +2,7 @@
 
 from torch import nn
 
-from .modules import NnInstr, nn_instr_dcls
+from ..nn import NnInstr, nn_instr_dcls
 
 __all__ = ["Identity", "Linear", "Bilinear"]
 

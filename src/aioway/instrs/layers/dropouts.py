@@ -4,15 +4,13 @@ import typing
 
 from torch import nn
 
-from .modules import NnInstr, nn_instr_dcls
+from ..nn import NnInstr, nn_instr_dcls
 
 __all__ = ["Dropout", "Dropout1d", "Dropout2d", "Dropout3d"]
 
 
 @nn_instr_dcls
 class _BaseDropout(NnInstr):
-    NN: typing.ClassVar[type[nn.Module]] = NotImplemented
-
     p: float = 0.5
     "Probability of an element to be zeroed. Default: 0.5."
 

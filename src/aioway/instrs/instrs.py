@@ -34,7 +34,7 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
     `Instr` should be able to be decomposed.
     """
 
-    NN: type[nn.Module] = _NOT_CONCRETE_INSTR
+    NN: typing.ClassVar[type[nn.Module]] = _NOT_CONCRETE_INSTR
     """
     The `nn.Module` type that this `Instr` handles.
     """

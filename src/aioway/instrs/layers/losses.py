@@ -4,7 +4,7 @@ import typing
 
 from torch import nn
 
-from .modules import NnInstr, nn_instr_dcls
+from ..nn import NnInstr, nn_instr_dcls
 
 __all__ = [
     "BaseLoss",
@@ -28,8 +28,6 @@ class BaseLoss(NnInstr):
     Creates a criterion that measures the mean absolute error (MAE)
     between each element in the input x and target y
     """
-
-    NN: typing.ClassVar[type[nn.Module]] = NotImplemented
 
 
 @nn_instr_dcls

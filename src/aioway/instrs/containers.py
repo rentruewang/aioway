@@ -4,7 +4,7 @@ import typing
 
 from torch import nn
 
-from .modules import NnInstr, nn_instr_dcls
+from .nn import NnInstr, nn_instr_dcls
 
 __all__ = ["Sequential"]
 
@@ -31,7 +31,7 @@ class Sequential(NnInstr):
         self.modules = args
 
     @typing.override
-    def __call__(self) -> nn.Module:
+    def module(self) -> nn.Module:
         # Create `nn.Sequential` instance with `NnInitFn` is the best way
         # to ensure that the modes are invoked properly.
         return self.NN(*self.modules)
