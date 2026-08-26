@@ -1,6 +1,8 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import argparse
+import os
+import shutil
 import subprocess
 import textwrap
 
@@ -29,21 +31,39 @@ def box(text: str) -> str:
     return "\n".join(string_builder)
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--indent", type=str, default=INDENT)
-    args, command = parser.parse_known_args()
+def launch_proc_and_print(command: list[str], indent: str) -> int:
+    # Set columns to current terminal size - indent.
+    env = {**os.environ, **term_size_env(indent)}
 
-    print(box(" ".join(command)))
-
-    p = subprocess.Popen(command, stdout=subprocess.PIPE, text=True)
+    p = subprocess.Popen(command, stdout=subprocess.PIPE, text=True, env=env)
     assert p.stdout is not None
 
     for line in p.stdout:
         if not line:
             continue
 
-        print(textwrap.indent(line, args.indent).rstrip())
+        print(textwrap.indent(line, indent).rstrip())
     print()
+    return p.wait()
 
-    raise SystemExit(p.wait())
+
+def term_size_env(indent: str) -> dict[str, str]:
+    try:
+        terminal_size = shutil.get_terminal_size()
+    except IOError:
+        return {}
+
+    env = {}
+    env["COLUMNS"] = str(terminal_size.columns - len(indent))
+    env["LINES"] = str(terminal_size.lines)
+    return env
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--indent", type=str, default=INDENT)
+    args, command = parser.parse_known_args()
+
+    print(box(" ".join(command)))
+    exit_code = launch_proc_and_print(command, args.indent)
+    raise SystemExit(exit_code)
