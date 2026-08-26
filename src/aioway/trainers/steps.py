@@ -118,6 +118,10 @@ class TrainStep(Step[PredLossPair]):
 
 
 class IncSkLearn(typing.Protocol):
+    """
+    The API that incremental scikit-learn classes all look like.
+    """
+
     def partial_fit(self, x: FloatArray, /): ...
 
     def transform(self, x: FloatArray, /): ...
