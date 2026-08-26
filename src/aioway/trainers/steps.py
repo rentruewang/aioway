@@ -11,8 +11,9 @@ import torch
 from torch import nn, optim
 
 from aioway._thunks import Thunk
+from aioway._utils import FloatArray
 
-__all__ = ["Step", "ValidateStep", "TrainStep"]
+__all__ = ["Step", "ValidateStep", "TrainStep", "IncSkLearnStep"]
 
 
 class Step[T](Thunk[T], abc.ABC):
@@ -114,3 +115,21 @@ class TrainStep(Step[PredLossPair]):
         "The module to train."
 
         return self.validate.module
+
+
+class IncSkLearn(typing.Protocol):
+    def partial_fit(self, x: FloatArray, /): ...
+
+    def transform(self, x: FloatArray, /): ...
+
+
+class IncSkLearnStep(Step[FloatArray]):
+    algo: IncSkLearn
+    "The algorithm that supports partial fitting."
+
+    data: FloatArray
+    "The data used in fitting."
+
+    def __call__(self) -> FloatArray:
+        self.algo.partial_fit(self.data)
+        return self.algo.transform(self.data)
