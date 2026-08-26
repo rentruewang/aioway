@@ -32,8 +32,7 @@ def box(text: str) -> str:
 
 def launch_proc_and_print(command: list[str], indent: str) -> int:
     # Set columns to current terminal size - indent.
-    env = os.environ.copy()
-    env.update(_update_term_size(indent))
+    env = {**os.environ, **term_size_env(indent)}
 
     p = subprocess.Popen(command, stdout=subprocess.PIPE, text=True, env=env)
     assert p.stdout is not None
@@ -47,7 +46,7 @@ def launch_proc_and_print(command: list[str], indent: str) -> int:
     return p.wait()
 
 
-def _update_term_size(indent: str) -> dict[str, str]:
+def term_size_env(indent: str) -> dict[str, str]:
     try:
         terminal_size = os.get_terminal_size()
     except IOError:
