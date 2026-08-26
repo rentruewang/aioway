@@ -4,7 +4,7 @@ import typing
 
 from torch import nn
 
-from .modules import NnInstr, nn_init_dcls
+from .modules import NnInstr, nn_instr_dcls
 
 __all__ = [
     "BaseLoss",
@@ -22,7 +22,7 @@ __all__ = [
 _REDUCTION = frozenset(["none", "mean", "sum"])
 
 
-@nn_init_dcls
+@nn_instr_dcls
 class BaseLoss(NnInstr):
     """
     Creates a criterion that measures the mean absolute error (MAE)
@@ -32,7 +32,7 @@ class BaseLoss(NnInstr):
     NN: typing.ClassVar[type[nn.Module]] = NotImplemented
 
 
-@nn_init_dcls
+@nn_instr_dcls
 class L1Loss(BaseLoss):
     """
     Creates a criterion that measures the mean absolute error (MAE)
@@ -42,7 +42,7 @@ class L1Loss(BaseLoss):
     NN = nn.L1Loss
 
 
-@nn_init_dcls
+@nn_instr_dcls
 class MSELoss(BaseLoss):
     """
     Creates a criterion that measures the mean squared error (squared L2 norm)
@@ -52,7 +52,7 @@ class MSELoss(BaseLoss):
     NN = nn.MSELoss
 
 
-@nn_init_dcls
+@nn_instr_dcls
 class CrossEntropyLoss(BaseLoss):
     """
     This criterion computes the cross entropy loss between input logits and target.
@@ -61,7 +61,7 @@ class CrossEntropyLoss(BaseLoss):
     NN = nn.CrossEntropyLoss
 
 
-@nn_init_dcls
+@nn_instr_dcls
 class CTCLoss(BaseLoss):
     """
     The Connectionist Temporal Classification loss.
@@ -70,7 +70,7 @@ class CTCLoss(BaseLoss):
     NN = nn.CTCLoss
 
 
-@nn_init_dcls
+@nn_instr_dcls
 class NLLLoss(BaseLoss):
     """
     The negative log likelihood loss.
@@ -80,7 +80,7 @@ class NLLLoss(BaseLoss):
     NN = nn.NLLLoss
 
 
-@nn_init_dcls
+@nn_instr_dcls
 class KLDivLoss(BaseLoss):
     """
     The Kullback-Leibler divergence loss.
@@ -89,7 +89,7 @@ class KLDivLoss(BaseLoss):
     NN = nn.KLDivLoss
 
 
-@nn_init_dcls
+@nn_instr_dcls
 class BCELoss(BaseLoss):
     """
     Creates a criterion that measures the Binary Cross Entropy between the target and the input probabilities.
@@ -98,7 +98,7 @@ class BCELoss(BaseLoss):
     NN = nn.BCELoss
 
 
-@nn_init_dcls
+@nn_instr_dcls
 class BCEWithLogitsLoss(BaseLoss):
     """
     This loss combines a Sigmoid layer and the BCELoss in one single class.
@@ -110,7 +110,7 @@ class BCEWithLogitsLoss(BaseLoss):
     NN = nn.BCEWithLogitsLoss
 
 
-@nn_init_dcls
+@nn_instr_dcls
 class SmoothL1Loss(BaseLoss):
     """
     Creates a criterion that uses a squared term
