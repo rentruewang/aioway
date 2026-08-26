@@ -1,8 +1,8 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import shutil
 import argparse
 import os
+import shutil
 import subprocess
 import textwrap
 
