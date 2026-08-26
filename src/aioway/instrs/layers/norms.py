@@ -4,7 +4,7 @@ import typing
 
 from torch import nn
 
-from ..nn import NnInstr, nn_instr_dcls
+from ..nn import NnInstr, instr_dcls
 
 __all__ = [
     "BatchNorm1d",
@@ -16,7 +16,7 @@ __all__ = [
 ]
 
 
-@nn_instr_dcls
+@instr_dcls
 class _BaseNorm(NnInstr):
     "Base normalization layer for shared code of batch norm and instance norm."
 

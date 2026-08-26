@@ -11,17 +11,17 @@ from aioway.tspecs import TSpecInfer
 
 from .instrs import Instr
 
-__all__ = ["NnInstr", "nn_instr_dcls"]
+__all__ = ["NnInstr", "instr_dcls"]
 
 
 @typing.dataclass_transform()
 @typing.no_type_check
-def nn_instr_dcls(cls):
-    "Decorator of dataclass for `NnInstr`."
+def instr_dcls(cls):
+    "Decorator of dataclass for `Instr`."
     return dcls.dataclass(repr=False)(cls)
 
 
-@nn_instr_dcls
+@instr_dcls
 class NnInstr(Instr, abc.ABC):
     """
     `NnInstr` records the signature of an `nn.Module` initialization, and creates it.

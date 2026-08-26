@@ -1,15 +1,16 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+from aioway.instrs import Instr
 import typing
 
 from torch import nn
 
-from .nn import NnInstr, nn_instr_dcls
+from .nn import NnInstr, instr_dcls
 
 __all__ = ["Sequential"]
 
 
-@nn_instr_dcls
+@instr_dcls
 class Sequential(NnInstr):
     """
     The wrapper for `nn.Sequential`.
@@ -21,12 +22,12 @@ class Sequential(NnInstr):
 
     NN = nn.Sequential
 
-    modules: tuple[nn.Module, ...]
+    modules: tuple[Instr, ...]
     """
     A list of already initialized `nn.Module` objects.
     """
 
-    def __init__(self, *args: nn.Module):
+    def __init__(self, *args: Instr):
         super().__init__()
         self.modules = args
 
@@ -34,4 +35,9 @@ class Sequential(NnInstr):
     def module(self) -> nn.Module:
         # Create `nn.Sequential` instance with `NnInitFn` is the best way
         # to ensure that the modes are invoked properly.
-        return self.NN(*self.modules)
+        modules = [mo.module() for mo in self.modules]
+        return self.NN(*modules)
+
+    @typing.override
+    def children(self):
+        yield from self.modules
