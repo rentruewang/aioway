@@ -1,5 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import shutil
 import argparse
 import os
 import subprocess
@@ -48,7 +49,7 @@ def launch_proc_and_print(command: list[str], indent: str) -> int:
 
 def term_size_env(indent: str) -> dict[str, str]:
     try:
-        terminal_size = os.get_terminal_size()
+        terminal_size = shutil.get_terminal_size()
     except IOError:
         return {}
 
