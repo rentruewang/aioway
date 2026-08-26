@@ -1,6 +1,5 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-SH := python3 ci/launch.py bash
 
 OS := $(shell uname -s)
 PYTEST_FLAGS := 
@@ -9,54 +8,64 @@ CHECK :=
 CHECK_FLAG := $(if $(CHECK),--check,)
 SUDO := sudo -E
 
+# Running in GitHub Actions
+ifeq ($(GITHUB_ACTIONS),true)
+    SH := python3 ci/group-actions.py
+	CLEANUP := $(SUDO) $(SH) bash ci/cleanup-github.sh
+# Running locally
+else
+    SH := bash ci/echo-run.sh
+	CLEANUP :=
+endif
+
 
 setup: cleanup deps
 
 cleanup:
-	@$(SUDO) $(SH) ci/cleanup-github.sh
+	$(CLEANUP)
 
 deps:
 	@echo "Installing dependencies for $(OS)"
 
 ifeq ($(OS),Linux)
-	@$(SUDO) $(SH) ci/install-linux.sh
+	$(SUDO) $(SH) bash ci/install-linux.sh
 else ifeq ($(OS),Darwin)
-	@$(SH) ci/install-mac.sh
+	@$(SH) bash ci/install-mac.sh
 else
 	@echo "Unsupported OS: $(OS)"
 	@exit 1
 endif
 
 publish:
-	@$(SH) ci/pdm.sh publish
+	@$(SH) pdm publish
 
 build:
-	@$(SH) ci/pdm.sh build
+	@$(SH) pdm build
 
 install:
-	@$(SH) ci/pdm.sh install "-G:all"
+	@$(SH) pdm install "-G:all"
 
 sync:
-	@$(SH) ci/pdm.sh sync "-G:all"
+	@$(SH) pdm sync "-G:all"
 
 pytest:
-	@$(SH) ci/pdm.sh run pytest $(PYTEST_FLAGS)
+	@$(SH) pdm run pytest $(PYTEST_FLAGS)
 
 autoflake:
-	@$(SH) ci/pdm.sh run autoflake . $(CHECK_FLAG)
+	@$(SH) pdm run autoflake . $(CHECK_FLAG)
 
 black:
-	@$(SH) ci/pdm.sh run black . $(CHECK_FLAG)
+	@$(SH) pdm run black . $(CHECK_FLAG)
 
 isort:
-	@$(SH) ci/pdm.sh run isort . $(CHECK_FLAG)
+	@$(SH) pdm run isort . $(CHECK_FLAG)
 
 mypy:
-	@$(SH) ci/pdm.sh run mypy --install-types --non-interactive src
+	@$(SH) pdm run mypy --install-types --non-interactive src
 
 
 sphinx:
-	@$(SH) ci/pdm.sh run make -C docs html
+	@$(SH) pdm run make -C docs html
 
 docs: sphinx
-	@$(SH) ci/docs.sh
+	@$(SH) bash ci/docs.sh
