@@ -4,6 +4,5 @@ from .actives import *
 from .dense import *
 from .dropouts import *
 from .embs import *
-from .losses import *
 from .norms import *
 from .sliding import *

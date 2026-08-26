@@ -3,4 +3,5 @@
 from .compound import *
 from .emitters import *
 from .linear import *
+from .losses import *
 from .norms import *

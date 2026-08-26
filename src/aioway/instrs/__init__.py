@@ -5,4 +5,5 @@
 from .containers import *
 from .instrs import *
 from .layers import *
+from .losses import *
 from .nn import *

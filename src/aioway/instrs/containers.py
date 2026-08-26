@@ -1,10 +1,10 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from aioway.instrs import Instr
 import typing
 
 from torch import nn
 
+from .instrs import Instr
 from .nn import NnInstr, instr_dcls
 
 __all__ = ["Sequential"]

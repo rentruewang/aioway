@@ -1,10 +1,9 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import typing
 
 from torch import nn
 
-from .nn import NnInstr, instr_dcls
+from ..nn import NnInstr, instr_dcls
 
 __all__ = [
     "BaseLoss",
