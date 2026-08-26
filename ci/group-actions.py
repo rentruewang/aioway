@@ -1,11 +1,11 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import argparse
+import contextlib as ctxl
 import os
 import shutil
 import subprocess
-import contextlib as ctxl
-import textwrap
+import sys
 
 
 @ctxl.contextmanager
@@ -22,7 +22,7 @@ def launch_proc_and_print(command: list[str], stage: str):
     env = {**os.environ, **term_size_env()}
 
     with group_by_stage(stage=stage):
-        subprocess.run(command, env=env)
+        subprocess.run(command, env=env, stdout=sys.stdout)
 
 
 def term_size_env() -> dict[str, str]:
