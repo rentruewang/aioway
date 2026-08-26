@@ -1,7 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-BASH := python3 ci/launch.py bash
-SH := $(if $(BASH),$(BASH),bash)
+SH := python3 ci/launch.py bash
 
 OS := $(shell uname -s)
 PYTEST_FLAGS := 
