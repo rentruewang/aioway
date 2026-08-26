@@ -39,6 +39,5 @@ def term_size_env() -> dict[str, str]:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--stage", type=str)
     args, command = parser.parse_known_args()
     launch_proc_and_print(command, stage=" ".join(command))
