@@ -6,12 +6,14 @@ import abc
 import dataclasses as dcls
 import typing
 
-import lightning as L
 import torch
 from torch import nn, optim
 
 from aioway._thunks import Thunk
 from aioway._utils import FloatArray
+
+if typing.TYPE_CHECKING:
+    import lightning as L
 
 __all__ = ["Step", "ValidateStep", "TrainStep", "IncSkLearnStep"]
 

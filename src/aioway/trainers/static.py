@@ -5,7 +5,6 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-import lightning as L
 import tensordict as td
 import torch
 from rich import progress
@@ -17,6 +16,9 @@ from aioway.dsets import Dset, InputTarget, InputTargetLikeDset
 from aioway.tspecs import TSpec, TSpecCompat
 
 from .steps import LossFunc, PredLossPair, TrainStep, ValidateStep
+
+if typing.TYPE_CHECKING:
+    import lightning as L
 
 __all__ = ["StaticTrainer", "TrainCfg"]
 
