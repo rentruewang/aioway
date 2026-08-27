@@ -10,33 +10,40 @@ if typing.TYPE_CHECKING:
 
 __all__ = ["serve", "fastapi_app", "fastmcp_app"]
 
+_FUNCTIONS: dict[str, cabc.Callable] = {}
+
 
 @functools.cache
 def fastapi_app() -> fastapi.FastAPI:
     "The public fastapi factory. If importing failed, return `NotImplemented`."
     try:
-        return _fastapi_app()
+        app = _fastapi_app()
     except ImportError:
         return NotImplemented
+
+    for path, func in _FUNCTIONS.items():
+        app.get(path)(func)
+
+    return app
 
 
 @functools.cache
 def fastmcp_app() -> fastmcp.FastMCP:
     "The public fastmcp factory. If importing failed, return `NotImplemented`."
     try:
-        return _fastmcp_app()
+        app = _fastmcp_app()
     except ImportError:
         return NotImplemented
+
+    for path, func in _FUNCTIONS.items():
+        app.tool(path)(func)
+
+    return app
 
 
 def serve[T: cabc.Callable](path: str) -> cabc.Callable[[T], T]:
     def decorator(func: T) -> T:
-        if (mcp := fastmcp_app()) is not NotImplemented:
-            mcp.tool()(func)
-
-        if (api := fastapi_app()) is not NotImplemented:
-            api.get(path)(func)
-
+        _FUNCTIONS[path] = func
         return func
 
     return decorator
