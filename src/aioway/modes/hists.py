@@ -34,7 +34,7 @@ class TensorNode(TensorInput, Thunk, typing.Protocol):
 
 
 @dcls.dataclass(frozen=True)
-class FnResult[F]:
+class ThunkResult[F]:
     "The storage class per item for `FnHistory`."
 
     fn: F
@@ -60,7 +60,7 @@ class Hist[T: ModeThunk]:
     The history list stores past thunks in the order that we received.
     """
 
-    history: list[FnResult[T]] = dcls.field(default_factory=list)
+    history: list[ThunkResult[T]] = dcls.field(default_factory=list)
     """
     The `ModeThunk` that has been called, in order.
     """
@@ -71,10 +71,10 @@ class Hist[T: ModeThunk]:
     def __len__(self) -> int:
         return len(self.history)
 
-    def __getitem__(self, idx: int) -> FnResult[T]:
+    def __getitem__(self, idx: int) -> ThunkResult[T]:
         return self.history[idx]
 
-    def __iter__(self) -> cabc.Generator[FnResult[T]]:
+    def __iter__(self) -> cabc.Generator[ThunkResult[T]]:
         yield from self.history
 
     def __repr__(self) -> str:
@@ -92,7 +92,7 @@ class Hist[T: ModeThunk]:
 
     def _append(self, thunk: T, result: object | Exception, /) -> None:
         "Add a new entry in the `History`."
-        self.history.append(FnResult(thunk, result))
+        self.history.append(ThunkResult(thunk, result))
 
 
 @dcls.dataclass(frozen=True)
