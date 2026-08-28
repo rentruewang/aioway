@@ -30,8 +30,15 @@ class NnLayer(AiowayModule[torch.Tensor, torch.Tensor]):
         super().__init__()
         self.layer = layer
 
+    def __repr__(self) -> str:
+        return self.__repr
+
     def forward(self, tensor: torch.Tensor) -> torch.Tensor:
         return self.layer(tensor)
+
+    @functools.cached_property
+    def __repr(self) -> str:
+        return "nn_layer::" + repr(self.loss)
 
 
 class NnLoss(AiowayModule[InputTarget, torch.Tensor]):
@@ -78,15 +85,3 @@ class NnInstr(Instr, abc.ABC):
     @typing.override
     def _lift(cls, module: nn.Module) -> typing.Self:
         raise NotImplementedError
-
-
-@instr_dcls
-class BaseLossInstr(NnInstr):
-    """
-    Creates a criterion that measures the mean absolute error (MAE)
-    between each element in the input x and target y
-    """
-
-    @typing.override
-    def module(self) -> NnLoss:
-        return NnLoss(self.NN(**dcls_asdict(self)))

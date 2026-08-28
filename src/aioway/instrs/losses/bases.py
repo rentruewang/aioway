@@ -1,9 +1,10 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import typing
 
 from torch import nn
 
-from ..nn import BaseLossInstr, instr_dcls
+from ..nn import NnInstr, NnLoss, instr_dcls
 
 __all__ = [
     "BaseLossInstr",
@@ -19,6 +20,18 @@ __all__ = [
 ]
 
 _REDUCTION = frozenset(["none", "mean", "sum"])
+
+
+@instr_dcls
+class BaseLossInstr(NnInstr):
+    """
+    Creates a criterion that measures the mean absolute error (MAE)
+    between each element in the input x and target y
+    """
+
+    @typing.override
+    def module(self) -> NnLoss:
+        return NnLoss(self.NN(**dcls_asdict(self)))
 
 
 @instr_dcls
