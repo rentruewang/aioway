@@ -1,11 +1,13 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from aioway.instrs import LiftRule, Instr
-from aioway._utils import dcls_asdict
+import logging
 import typing
 
 from torch import nn
-import logging
+
+from aioway._utils import dcls_asdict
+from aioway.instrs import LiftRule
+
 from ..nn import NnInstr, NnLoss, instr_dcls
 
 __all__ = [

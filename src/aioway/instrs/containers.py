@@ -4,11 +4,9 @@ import typing
 
 from torch import nn
 
-from aioway.instrs import NnLayer
-
 from .instrs import Instr
 from .lifts import LiftRule, lift
-from .nn import NnInstr, instr_dcls
+from .nn import NnInstr, NnLayer, instr_dcls
 
 __all__ = ["Sequential"]
 

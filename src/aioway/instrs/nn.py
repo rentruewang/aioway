@@ -10,12 +10,11 @@ from torch import nn
 
 from aioway._utils import dcls_asdict, render_fcall
 from aioway.dsets import InputTarget
-from aioway.instrs import AiowayModule
 from aioway.tspecs import TSpecInfer
 
-from .instrs import Instr
+from .instrs import AiowayModule, Instr
 
-__all__ = ["NnInstr", "instr_dcls", "BaseLossInstr", "NnLayer", "NnLoss"]
+__all__ = ["NnInstr", "instr_dcls", "NnLayer", "NnLoss"]
 
 
 @typing.dataclass_transform()

@@ -4,12 +4,12 @@
 
 import dataclasses as dcls
 import typing
-from collections import abc as cabc
+
 from torch import nn
 
 from .instrs import Instr
 
-__all__ = ["lift", "LiftRule"]
+__all__ = ["lift", "LiftRule", "list_lift_rules"]
 
 _LIFT_RULES: dict[type[nn.Module], LiftRule] = {}
 """
