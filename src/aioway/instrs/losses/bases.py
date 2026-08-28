@@ -1,9 +1,11 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+from aioway.instrs import LiftRule, Instr
+from aioway._utils import dcls_asdict
 import typing
 
 from torch import nn
-
+import logging
 from ..nn import NnInstr, NnLoss, instr_dcls
 
 __all__ = [
@@ -19,6 +21,7 @@ __all__ = [
     "SmoothL1Loss",
 ]
 
+LOGGER = logging.getLogger(__name__)
 _REDUCTION = frozenset(["none", "mean", "sum"])
 
 
@@ -28,6 +31,10 @@ class BaseLossInstr(NnInstr):
     Creates a criterion that measures the mean absolute error (MAE)
     between each element in the input x and target y
     """
+
+    def __init_subclass__(cls) -> None:
+        lift = LiftRule(cls.NN, cls, lambda _: cls())
+        LOGGER.debug("Lifting rule for loss created: %s", lift)
 
     @typing.override
     def module(self) -> NnLoss:

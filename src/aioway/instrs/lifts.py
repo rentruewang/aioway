@@ -4,16 +4,16 @@
 
 import dataclasses as dcls
 import typing
-
+from collections import abc as cabc
 from torch import nn
 
 from .instrs import Instr
 
-__all__ = ["lift", "Lift"]
+__all__ = ["lift", "LiftRule"]
 
-_LIFTS: dict[type[nn.Module], Lift] = {}
+_LIFT_RULES: dict[type[nn.Module], LiftRule] = {}
 """
-The registry storing all the `Lift` that are instantiated, by `nn.Module` type.
+The registry storing all the `LiftRule`s that are instantiated, by `nn.Module` type.
 """
 
 
@@ -26,14 +26,27 @@ class LiftFuncDecor[M: nn.Module, I: Instr](typing.Protocol):
 
 
 def lift(module: nn.Module) -> Instr:
+    """
+    A function that converts the `nn.Module` given to `Instr`,
+    based on the rules registered in the global registry.
+    """
+
     module_type = type(module)
-    rule = _LIFTS[module_type]
+    rule = _LIFT_RULES[module_type]
     return rule(module)
+
+
+def list_lift_rules() -> list[LiftRule]:
+    """
+    List all the `LiftRule`s currently registered.
+    """
+
+    return list(_LIFT_RULES.values())
 
 
 @typing.final
 @dcls.dataclass(frozen=True)
-class Lift[M: nn.Module = typing.Any, I: Instr = typing.Any]:
+class LiftRule[M: nn.Module = typing.Any, I: Instr = typing.Any]:
     """
     The class that is responsible for parsing `nn.Module` into `Instr`.
     """
@@ -54,10 +67,10 @@ class Lift[M: nn.Module = typing.Any, I: Instr = typing.Any]:
     """
 
     def __post_init__(self) -> None:
-        if self.nn_type in _LIFTS:
+        if self.nn_type in _LIFT_RULES:
             raise KeyError(self.nn_type)
 
-        _LIFTS[self.nn_type] = self
+        _LIFT_RULES[self.nn_type] = self
 
     def __call__(self, module: nn.Module) -> Instr:
         if not isinstance(module, self.nn_type):
@@ -74,6 +87,6 @@ class Lift[M: nn.Module = typing.Any, I: Instr = typing.Any]:
         """
 
         def decorator(lift: LiftFunc, /) -> LiftFunc:
-            return Lift(nn_type=nn_type, instr_type=instr_type, lift=lift)
+            return LiftRule(nn_type=nn_type, instr_type=instr_type, lift=lift)
 
         return decorator

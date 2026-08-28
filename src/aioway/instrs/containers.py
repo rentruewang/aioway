@@ -7,7 +7,7 @@ from torch import nn
 from aioway.instrs import NnLayer
 
 from .instrs import Instr
-from .lifts import Lift, lift
+from .lifts import LiftRule, lift
 from .nn import NnInstr, instr_dcls
 
 __all__ = ["Sequential"]
@@ -46,7 +46,7 @@ class Sequential(NnInstr):
         yield from self.modules
 
 
-@Lift.register(nn.Sequential, Sequential)
+@LiftRule.register(nn.Sequential, Sequential)
 def lift_sequential(module: nn.Sequential) -> Sequential:
     instrs = [lift(module) for module in module.children()]
     return Sequential(*instrs)
