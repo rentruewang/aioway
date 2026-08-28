@@ -1,6 +1,11 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 
+from aioway._utils import dcls_asdict
+import typing
+import torch
+from aioway.dsets import InputTarget
+import functools
 from torch import nn
 
 from ..nn import NnInstr, instr_dcls
@@ -27,6 +32,26 @@ class BaseLoss(NnInstr):
     Creates a criterion that measures the mean absolute error (MAE)
     between each element in the input x and target y
     """
+
+    @typing.override
+    def module(self) -> NnLoss:
+        return NnLoss(self.NN(**dcls_asdict(self)))
+
+
+class NnLoss(nn.Module):
+    def __init__(self, loss: nn.Module) -> None:
+        super().__init__()
+        self.loss = loss
+
+    def __repr__(self) -> str:
+        return self.__repr
+
+    def forward(self, input_target: InputTarget) -> torch.Tensor:
+        return self.loss(input_target.input, input_target.target)
+
+    @functools.cached_property
+    def __repr(self) -> str:
+        return "nn_loss::" + repr(self.loss)
 
 
 @instr_dcls

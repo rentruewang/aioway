@@ -10,7 +10,7 @@ from torch import nn
 
 from aioway.tspecs import TSpecInfer
 
-__all__ = ["Instr"]
+__all__ = ["Instr", "AiowayModule"]
 
 _NN_INSTR_REGISTRY: dict[type[nn.Module], type[Instr]] = {}
 "The registry for `Instr`."
@@ -55,7 +55,7 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def module(self) -> nn.Module:
+    def module(self) -> AiowayModule:
         """
         Build the module represented by this current `Instr`.
         This function is responsible for recursively construct sub-modules as well,
@@ -90,4 +90,10 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
     @classmethod
     @abc.abstractmethod
     def _lift(cls, module: nn.Module) -> typing.Self:
+        raise NotImplementedError
+
+
+class AiowayModule(nn.Module, abc.ABC):
+    @abc.abstractmethod
+    def forward(self, input: typing.Any, /) -> typing.Any:
         raise NotImplementedError
