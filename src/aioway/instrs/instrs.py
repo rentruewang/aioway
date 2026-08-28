@@ -93,7 +93,8 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
         raise NotImplementedError
 
 
-class AiowayModule(nn.Module, abc.ABC):
+class AiowayModule[I = typing.Any, O = typing.Any](nn.Module, abc.ABC):
+
     @abc.abstractmethod
-    def forward(self, input: typing.Any, /) -> typing.Any:
+    def forward(self, input: I, /) -> O:
         raise NotImplementedError

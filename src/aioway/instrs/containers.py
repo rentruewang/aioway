@@ -4,6 +4,8 @@ import typing
 
 from torch import nn
 
+from aioway.instrs import NnLayer
+
 from .instrs import Instr
 from .lifts import Lift, lift
 from .nn import NnInstr, instr_dcls
@@ -33,11 +35,11 @@ class Sequential(NnInstr):
         self.modules = args
 
     @typing.override
-    def module(self) -> nn.Module:
+    def module(self) -> NnLayer:
         # Create `nn.Sequential` instance with `NnInitFn` is the best way
         # to ensure that the modes are invoked properly.
         modules = [mo.module() for mo in self.modules]
-        return self.NN(*modules)
+        return NnLayer(self.NN(*modules))
 
     @typing.override
     def children(self):
