@@ -3,6 +3,7 @@
 "The `Instr` interface."
 
 import abc
+import logging
 import typing
 from collections import abc as cabc
 
@@ -12,13 +13,15 @@ from aioway.tspecs import TSpecInfer
 
 __all__ = ["Instr", "AiowayModule"]
 
+LOGGER = logging.getLogger(__name__)
+
 _NN_INSTR_REGISTRY: dict[type[nn.Module], type[Instr]] = {}
 "The registry for `Instr`."
 
-_NOT_CONCRETE_INSTR = nn.Module
+_NOT_CONCRETE_INSTR_NN = nn.Module
 "The marker that `Instr` is not a concrete class."
 
-_INSTRS_BY_MODULE: dict[type[nn.Module], Instr] = {}
+_INSTRS_BY_MODULE: dict[type[nn.Module], type[Instr]] = {}
 """
 The registry storing all the `Instr`s corresponding to their `nn.Module` type.
 """
@@ -38,10 +41,19 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
     `Instr` should be able to be decomposed.
     """
 
-    NN: typing.ClassVar[type[nn.Module]] = _NOT_CONCRETE_INSTR
+    NN: typing.ClassVar[type[nn.Module]] = _NOT_CONCRETE_INSTR_NN
     """
     The `nn.Module` type that this `Instr` handles.
     """
+
+    def __init_subclass__(cls) -> None:
+        # Don't do anything if `cls.NN` is not updated.
+        if _nn_not_defined(cls.NN):
+            LOGGER.debug("%s is an abstract class.", cls)
+            return
+
+        LOGGER.debug("%s is registered into registry.", cls)
+        _INSTRS_BY_MODULE[cls.NN] = cls
 
     @abc.abstractmethod
     def __tspec_infer__(self) -> TSpecInfer:
@@ -94,7 +106,7 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def _lift(cls, module: nn.Module, /) -> typing.Self:
+    def _lift(cls, module: typing.Any, /) -> typing.Self:
         raise NotImplementedError
 
 
@@ -114,3 +126,7 @@ def lift(module: nn.Module) -> Instr:
     module_type = type(module)
     instr = _INSTRS_BY_MODULE[module_type]
     return instr.lift(module)
+
+
+def _nn_not_defined(cls: type[nn.Module]) -> bool:
+    return cls is _NOT_CONCRETE_INSTR_NN

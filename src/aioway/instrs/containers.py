@@ -4,8 +4,7 @@ import typing
 
 from torch import nn
 
-from .instrs import Instr
-from .lifts import LiftRule, lift
+from .instrs import Instr, lift
 from .nn import NnInstr, NnLayer, instr_dcls
 
 __all__ = ["Sequential"]
@@ -43,8 +42,8 @@ class Sequential(NnInstr):
     def children(self):
         yield from self.modules
 
-
-@LiftRule.register(nn.Sequential, Sequential)
-def lift_sequential(module: nn.Sequential) -> Sequential:
-    instrs = [lift(module) for module in module.children()]
-    return Sequential(*instrs)
+    @classmethod
+    @typing.override
+    def _lift(cls, module: nn.Sequential) -> typing.Self:
+        instrs = [lift(module) for module in module.children()]
+        return cls(*instrs)

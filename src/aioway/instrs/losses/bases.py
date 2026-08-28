@@ -5,9 +5,6 @@ import typing
 
 from torch import nn
 
-from aioway._utils import dcls_asdict
-from aioway.instrs import LiftRule
-
 from ..nn import NnInstr, NnLoss, instr_dcls
 
 __all__ = [
@@ -34,13 +31,14 @@ class BaseLossInstr(NnInstr):
     between each element in the input x and target y
     """
 
-    def __init_subclass__(cls) -> None:
-        lift = LiftRule(cls.NN, cls, lambda _: cls())
-        LOGGER.debug("Lifting rule for loss created: %s", lift)
-
     @typing.override
     def module(self) -> NnLoss:
-        return NnLoss(self.NN(**dcls_asdict(self)))
+        return NnLoss(self.NN())
+
+    @classmethod
+    @typing.override
+    def _lift(cls, module: nn.Module) -> typing.Self:
+        return cls()
 
 
 @instr_dcls
