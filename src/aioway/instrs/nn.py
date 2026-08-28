@@ -79,3 +79,8 @@ class NnInstr(Instr, abc.ABC):
     @typing.override
     def children(self):
         return ()
+
+    @classmethod
+    @typing.override
+    def _lift(cls, module):
+        raise NotImplementedError

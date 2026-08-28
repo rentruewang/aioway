@@ -18,6 +18,11 @@ _NN_INSTR_REGISTRY: dict[type[nn.Module], type[Instr]] = {}
 _NOT_CONCRETE_INSTR = nn.Module
 "The marker that `Instr` is not a concrete class."
 
+_INSTRS_BY_MODULE: dict[type[nn.Module], Instr] = {}
+"""
+The registry storing all the `Instr`s corresponding to their `nn.Module` type.
+"""
+
 
 class Instr[I = typing.Any, O = typing.Any](abc.ABC):
     """
@@ -76,9 +81,36 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
 
         raise NotImplementedError
 
+    @classmethod
+    def lift(cls, module: nn.Module, /) -> typing.Self:
+        """
+        Converting from a concrete `nn.Module` into an `Instr`.
+        """
+
+        if not isinstance(module, cls.NN):
+            raise TypeError(f"{cls} only handles {cls.NN}, but {type(module)=}.")
+
+        return cls._lift(module)
+
+    @classmethod
+    @abc.abstractmethod
+    def _lift(cls, module: nn.Module, /) -> typing.Self:
+        raise NotImplementedError
+
 
 class AiowayModule[I = typing.Any, O = typing.Any](nn.Module, abc.ABC):
 
     @abc.abstractmethod
     def forward(self, input: I, /) -> O:
         raise NotImplementedError
+
+
+def lift(module: nn.Module) -> Instr:
+    """
+    A function that converts the `nn.Module` given to `Instr`,
+    based on the rules registered in the global registry.
+    """
+
+    module_type = type(module)
+    instr = _INSTRS_BY_MODULE[module_type]
+    return instr.lift(module)
