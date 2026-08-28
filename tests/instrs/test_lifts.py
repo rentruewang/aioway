@@ -2,7 +2,8 @@
 
 
 import pytest
-from aioway.instrs import list_lift_rules, BaseLossInstr, Instr
+
+from aioway.instrs import BaseLossInstr, Instr, list_lift_rules
 
 
 @pytest.fixture(scope="module")
