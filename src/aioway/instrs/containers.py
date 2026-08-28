@@ -1,11 +1,11 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from .lifts import Lift, lift
 import typing
 
 from torch import nn
 
 from .instrs import Instr
+from .lifts import Lift, lift
 from .nn import NnInstr, instr_dcls
 
 __all__ = ["Sequential"]
