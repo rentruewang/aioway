@@ -3,7 +3,6 @@
 "The `Instr` interface."
 
 import abc
-import inspect
 import typing
 from collections import abc as cabc
 
@@ -38,23 +37,6 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
     """
     The `nn.Module` type that this `Instr` handles.
     """
-
-    def __init_subclass__(cls) -> None:
-        # Do nothing for non concrete `cls`.
-        if _not_concrete_instr_cls(cls):
-            return
-
-        if inspect.isabstract(cls):
-            raise RuntimeError(f"{cls} defines {cls.NN=}, but it's an abstract class.")
-
-        if cls.NN in _NN_INSTR_REGISTRY:
-            used_by = _NN_INSTR_REGISTRY[cls.NN]
-            raise KeyError(
-                f"{cls.NN} already used by {used_by}. "
-                f"But {cls} attempts to use the same key."
-            )
-
-        _NN_INSTR_REGISTRY[cls.NN] = cls
 
     @abc.abstractmethod
     def __tspec_infer__(self) -> TSpecInfer:
@@ -109,7 +91,3 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
     @abc.abstractmethod
     def _lift(cls, module: nn.Module) -> typing.Self:
         raise NotImplementedError
-
-
-def _not_concrete_instr_cls(cls: type[Instr]) -> bool:
-    return cls.NN is _NOT_CONCRETE_INSTR
