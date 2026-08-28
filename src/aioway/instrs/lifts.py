@@ -31,7 +31,7 @@ class Lift[M: nn.Module = nn.Module, I: Instr = Instr]:
     The source `nn.Module` type.
     """
 
-    instr: type[I]
+    instr_type: type[I]
     """
     The target `Instr` type.
     """
@@ -48,7 +48,13 @@ class Lift[M: nn.Module = nn.Module, I: Instr = Instr]:
         raise NotImplementedError
 
     @classmethod
-    def register(cls, nn_type: type[nn.Module], instr: type[Instr]) -> LiftFuncDecor:
+    def register(
+        cls, nn_type: type[nn.Module], instr_type: type[Instr]
+    ) -> LiftFuncDecor:
+        """
+        Register a function that maps from `nn_type` to `instr_type`.
+        """
+
         def decorator(lift: LiftFunc, /) -> LiftFunc:
             raise NotImplementedError
 
