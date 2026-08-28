@@ -9,7 +9,12 @@ from torch import nn
 
 from .instrs import Instr
 
-__all__ = ["Lift"]
+__all__ = ["lift", "Lift"]
+
+_LIFTS: dict[type[nn.Module], Lift] = {}
+"""
+The registry storing all the `Lift` that are instantiated, by `nn.Module` type.
+"""
 
 
 class LiftFunc[M: nn.Module, I: Instr](typing.Protocol):
@@ -20,8 +25,15 @@ class LiftFuncDecor[M: nn.Module, I: Instr](typing.Protocol):
     def __call__(self, func: LiftFunc[M, I], /) -> LiftFunc[M, I]: ...
 
 
+def lift(module: nn.Module) -> Instr:
+    module_type = type(module)
+    rule = _LIFTS[module_type]
+    return rule(module)
+
+
+@typing.final
 @dcls.dataclass(frozen=True)
-class Lift[M: nn.Module = nn.Module, I: Instr = Instr]:
+class Lift[M: nn.Module = typing.Any, I: Instr = typing.Any]:
     """
     The class that is responsible for parsing `nn.Module` into `Instr`.
     """
@@ -40,6 +52,12 @@ class Lift[M: nn.Module = nn.Module, I: Instr = Instr]:
     """
     The function that will convert `nn.Module` into `Instr`.
     """
+
+    def __post_init__(self) -> None:
+        if self.nn_type in _LIFTS:
+            raise KeyError(self.nn_type)
+
+        _LIFTS[self.nn_type] = self
 
     def __call__(self, module: nn.Module) -> Instr:
         if not isinstance(module, self.nn_type):

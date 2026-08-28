@@ -1,5 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+from .lifts import Lift, lift
 import typing
 
 from torch import nn
@@ -41,3 +42,9 @@ class Sequential(NnInstr):
     @typing.override
     def children(self):
         yield from self.modules
+
+
+@Lift.register(nn.Sequential, Sequential)
+def lift_sequential(module: nn.Sequential) -> Sequential:
+    instrs = [lift(module) for module in module.children()]
+    return Sequential(*instrs)
