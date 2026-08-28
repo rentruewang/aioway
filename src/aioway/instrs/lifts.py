@@ -56,6 +56,6 @@ class Lift[M: nn.Module = nn.Module, I: Instr = Instr]:
         """
 
         def decorator(lift: LiftFunc, /) -> LiftFunc:
-            raise NotImplementedError
+            return Lift(nn_type=nn_type, instr_type=instr_type, lift=lift)
 
         return decorator
