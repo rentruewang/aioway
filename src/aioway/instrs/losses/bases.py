@@ -1,12 +1,12 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import abc
+import dataclasses as dcls
 import logging
 import typing
 
 import torch
 from torch import nn
-import dataclasses as dcls
 from torchrl.data import tensor_specs as tspecs
 
 from aioway.dsets import InputTarget
@@ -39,10 +39,6 @@ class BaseLossInstr(NnInstr, abc.ABC):
     Creates a criterion that measures the mean absolute error (MAE)
     between each element in the input x and target y
     """
-
-    @typing.override
-    def __tspec_infer__(self) -> TSpecInfer:
-        raise NotImplementedError
 
     @typing.override
     def module(self) -> NnLoss:
@@ -83,6 +79,9 @@ class CrossEntropyLoss(BaseLossInstr):
 
     NN = nn.CrossEntropyLoss
 
+    def __tspec_infer__(self):
+        return CrossEntropyInfer()
+
 
 @instr_dcls
 class NLLLoss(BaseLossInstr):
@@ -93,6 +92,9 @@ class NLLLoss(BaseLossInstr):
 
     NN = nn.NLLLoss
 
+    def __tspec_infer__(self):
+        return NllInfer()
+
 
 @instr_dcls
 class KLDivLoss(BaseLossInstr):
@@ -101,6 +103,9 @@ class KLDivLoss(BaseLossInstr):
     """
 
     NN = nn.KLDivLoss
+
+    def __tspec_infer__(self):
+        return KlDivInfer()
 
 
 @instr_dcls
@@ -164,7 +169,37 @@ class SymTSpecInfer(LossTSpecInfer):
     def _check(self, tspec: tspecs.Composite) -> bool:
         input = tspec["input"]
         target = tspec["target"]
-        return _has_same_shape(tspec) and _is_unbounded(input) and _is_unbounded(target)
+        return _same_shape(tspec) and _is_unbounded(input) and _is_unbounded(target)
+
+
+class KlDivInfer(LossTSpecInfer):
+    def _check(self, tspec: tspecs.Composite) -> bool:
+        return (
+            True
+            and _same_shape(tspec)
+            and _is_neg_bounded(tspec["input"])
+            and _is_prob(tspec["target"])
+        )
+
+
+class NllInfer(LossTSpecInfer):
+    def _check(self, tspec: tspecs.Composite) -> bool:
+        return (
+            True
+            and _same_shape(tspec)
+            and _is_neg_bounded(tspec["input"])
+            and _is_categorical(tspec["target"])
+        )
+
+
+class CrossEntropyInfer(LossTSpecInfer):
+    def _check(self, tspec: tspecs.Composite) -> bool:
+        return (
+            True
+            and _same_shape(tspec)
+            and _is_unbounded(tspec["input"])
+            and _is_categorical(tspec["target"])
+        )
 
 
 @dcls.dataclass
@@ -172,45 +207,40 @@ class BceTSpecInfer(LossTSpecInfer):
     logits: bool
 
     def _check(self, tspec: tspecs.Composite) -> bool:
-        check_input = self._check_input_logits if self.logits else self._check_input
+        check_input = _is_unbounded if self.logits else _is_prob
 
         return (
             True
-            and _has_same_shape(tspec)
-            and check_input(tspec)
-            and self._check_target(tspec)
+            and _same_shape(tspec)
+            and check_input(tspec["input"])
+            and _is_boolean(tspec["target"])
         )
 
-    def _check_input_logits(self, tspec: tspecs.Composite) -> bool:
-        if not isinstance(input := tspec["input"], tspecs.Unbounded):
-            return False
 
-        return True
-
-    def _check_input(self, tspec: tspecs.Composite) -> bool:
-        if not isinstance(input := tspec["input"], tspecs.Bounded):
-            return False
-
-        # In the range 0-1.
-        if input.low != 0 or input.high != 1:
-            return False
-
-    def _check_target(self, tspec: tspecs.Composite) -> bool:
-        if not isinstance(target := tspec["target"], tspecs.Categorical):
-            return False
-        # Only 0, 1 in the target values.
-        if target.n != 2:
-            return False
-
-        return True
-
-
-def _has_same_shape(tspec: tspecs.Composite) -> bool:
+def _same_shape(tspec: tspecs.Composite) -> bool:
     return tspec["input"].shape == tspec["target"].shape
+
+
+def _is_neg_bounded(tspec: tspecs.TensorSpec) -> bool:
+    # It's negative input (log of prob).
+    return isinstance(tspec, tspecs.Bounded) and tspec.high == 0
+
+
+def _is_categorical(tspec: tspecs.TensorSpec) -> typing.TypeIs[tspecs.Categorical]:
+    return isinstance(tspec, tspecs.Categorical)
+
+
+def _is_prob(tspec: tspecs.TensorSpec) -> bool:
+    # Target is probability. Should also sum to 1 but now this should suffice.
+    return isinstance(tspec, tspecs.Bounded) and tspec.low == 0 and tspec.high == 1
 
 
 def _is_unbounded(tspec: tspecs.TensorSpec) -> typing.TypeIs[tspecs.Unbounded]:
     return isinstance(tspec, tspecs.Unbounded)
+
+
+def _is_boolean(tspec: tspecs.TensorSpec) -> bool:
+    return isinstance(tspec, tspecs.Categorical) and tspec.n == 2
 
 
 def _is_input_target(tspec) -> typing.TypeIs[tspecs.Composite]:
