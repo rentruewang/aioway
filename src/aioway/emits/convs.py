@@ -35,6 +35,7 @@ class ImageRegressorEmitter(Emitter):
     "The stride sizes."
 
     activation: Activation = "relu"
+    "The non linear activation to use."
 
     def _validate(self) -> None:
         _ = self._size
