@@ -2,7 +2,13 @@
 
 import dataclasses as dcls
 
+import torch
+from torchrl.data import tensor_specs as tspecs
+
+from aioway.modes import fake_mode
 from aioway.tspecs import TSpecInfer, TSpecLike
+
+from .instrs import Instr
 
 __all__ = ["identity_infer", "UnboundedInfer"]
 
