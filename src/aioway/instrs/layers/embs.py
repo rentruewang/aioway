@@ -3,6 +3,7 @@
 
 from torch import nn
 
+from ..infers import UnboundedInfer
 from ..nn import NnInstr, instr_dcls
 
 __all__ = ["Embedding"]
@@ -22,6 +23,9 @@ class _BaseEmbedding(NnInstr):
 
         if self.embedding_dim <= 0:
             raise ValueError(f"{self.embedding_dim=} <= 0.")
+
+    def __tspec_infer__(self):
+        return UnboundedInfer(self)
 
 
 @instr_dcls

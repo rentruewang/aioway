@@ -1,7 +1,12 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import typing
+
 from torch import nn
 
+from aioway.tspecs import TSpecInfer
+
+from ..infers import UnboundedInfer, identity_infer
 from ..nn import NnInstr, instr_dcls
 
 __all__ = ["Identity", "Linear", "Bilinear"]
@@ -14,6 +19,11 @@ class Identity(NnInstr):
     """
 
     NN = nn.Identity
+
+    @typing.override
+    def __tspec_infer__(self) -> TSpecInfer:
+        "Identity `TSpec` function."
+        return identity_infer
 
 
 @instr_dcls
@@ -39,6 +49,10 @@ class Linear(NnInstr):
 
         if self.out_features <= 0:
             raise ValueError(f"{self.out_features=} <= 0.")
+
+    @typing.override
+    def __tspec_infer__(self):
+        return UnboundedInfer(self)
 
 
 @instr_dcls
@@ -70,3 +84,7 @@ class Bilinear(NnInstr):
 
         if self.out_features <= 0:
             raise ValueError(f"{self.out_features=} <= 0.")
+
+    @typing.override
+    def __tspec_infer__(self):
+        return UnboundedInfer(self)

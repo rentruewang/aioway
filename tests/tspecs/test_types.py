@@ -3,7 +3,7 @@
 import pytest
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.tspecs import is_tspec_like
+from aioway.tspecs import TSpec, is_tspec_like
 
 
 def _tspecs():
@@ -30,6 +30,14 @@ def _not_tspec():
 @pytest.fixture(params=_not_tspec())
 def not_tspec(request):
     return request.param
+
+
+def test_tspec_protocol(tspec: tspecs.TensorSpec):
+    """
+    Test if the `TSpec` protocol captures the types given directly by `torchrl`.
+    """
+
+    assert isinstance(tspec, TSpec)
 
 
 def test_tspec_type(tspec):

@@ -7,11 +7,12 @@ import typing
 
 import tensordict as td
 import torch
+from torchrl.data import tensor_specs as tspecs
 
 __all__ = ["TSpec", "TSpecLike", "TSpecCompat", "as_tspec", "is_tspec_like"]
 
 
-type TSpecLike = TSpec | TSpecCompat
+type TSpecLike = TSpec | tspecs.TensorSpec | TSpecCompat
 """
 Types compatible with `TSpec`.
 """
@@ -97,6 +98,11 @@ def as_tspec(spec: TSpecLike, /) -> TSpec:
     1. `TSpec`. No conversion is made (this includes `TensorSpec`).
     2. `TSpecLike`. Types that define `__tspec__` (convert to `TSpec`).
     """
+
+    # Single out `TensorSpec` type because it is common and it's cheaper this way,
+    # even if the `isinstance(spec, TSpec)` would catch it.
+    if isinstance(spec, tspecs.TensorSpec):
+        return spec
 
     if isinstance(spec, TSpec):
         return spec

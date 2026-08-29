@@ -1,5 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+"The base class for `NnInfer`, bring `nn.Module` by `torch` into `Instr`."
+
 import abc
 import dataclasses as dcls
 import functools
@@ -10,7 +12,6 @@ from torch import nn
 
 from aioway._utils import dcls_asdict, render_fcall
 from aioway.dsets import InputTarget
-from aioway.tspecs import TSpecInfer
 
 from .instrs import AiowayModule, Instr
 
@@ -67,10 +68,6 @@ class NnInstr(Instr, abc.ABC):
     @typing.override
     def __repr__(self) -> str:
         return render_fcall("nn_init::" + type(self).__qualname__, **dcls_asdict(self))
-
-    @typing.override
-    def __tspec_infer__(self) -> TSpecInfer:
-        raise NotImplementedError
 
     @typing.override
     def module(self) -> AiowayModule:

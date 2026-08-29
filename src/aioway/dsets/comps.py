@@ -10,7 +10,7 @@ import tensordict as td
 import torch
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.tspecs import TSpecCompat
+from aioway.tspecs import TSpecLike
 
 from .dsets import Dset, IdxDset
 
@@ -33,7 +33,7 @@ class CompositeDset(Dset, abc.ABC):
 
         @typing.override
         @abc.abstractmethod
-        def __tspec__(self) -> TSpecCompat:
+        def __tspec__(self) -> TSpecLike:
             raise NotImplementedError
 
 

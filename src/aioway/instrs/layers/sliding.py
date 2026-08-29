@@ -9,6 +9,7 @@ from torch import nn
 
 from aioway._utils import is_tuple_of
 
+from ..infers import UnboundedInfer
 from ..nn import NnInstr, instr_dcls
 
 __all__ = [
@@ -28,7 +29,7 @@ _PADDING = frozenset(["zeros", "reflect", "replicate", "circular"])
 
 
 @instr_dcls
-class _BaseAvgSliding(abc.ABC):
+class _BaseAvgSliding(NnInstr, abc.ABC):
     NDIM: typing.ClassVar[int]
 
     _: dcls.KW_ONLY
@@ -47,6 +48,9 @@ class _BaseAvgSliding(abc.ABC):
         _ = _cast_ndim_int(self.NDIM, self.kernel_size)
         _ = _cast_ndim_int(self.NDIM, self.stride)
         _ = _cast_ndim_int(self.NDIM, self.padding)
+
+    def __tspec_infer__(self):
+        return UnboundedInfer(self)
 
 
 @instr_dcls
