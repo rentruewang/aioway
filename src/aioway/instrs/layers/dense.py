@@ -6,7 +6,7 @@ from torch import nn
 
 from aioway.tspecs import TSpecInfer
 
-from ..nn import NnInstr, instr_dcls, UnboundedInfer
+from ..nn import NnInstr, UnboundedInfer, instr_dcls
 
 __all__ = ["Identity", "Linear", "Bilinear"]
 

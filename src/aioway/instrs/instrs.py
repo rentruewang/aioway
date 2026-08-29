@@ -53,10 +53,10 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
             LOGGER.debug("%s is an abstract class.", cls)
             return
 
-        # if inspect.isabstract(cls):
-        #     raise RuntimeError(
-        #         f"{cls=} is abstract, but it should not be when {cls.NN=}."
-        #     )
+        if inspect.isabstract(cls):
+            raise RuntimeError(
+                f"{cls=} is abstract, but it should not be when {cls.NN=}."
+            )
 
         LOGGER.debug("%s is registered into registry.", cls)
         _INSTRS_BY_MODULE[cls.NN] = cls
