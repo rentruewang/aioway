@@ -6,7 +6,8 @@ from torch import nn
 
 from aioway.tspecs import TSpecInfer
 
-from ..nn import NnInstr, UnboundedInfer, instr_dcls
+from ..infers import UnboundedInfer, identity_infer
+from ..nn import NnInstr, instr_dcls
 
 __all__ = ["Identity", "Linear", "Bilinear"]
 
@@ -22,7 +23,7 @@ class Identity(NnInstr):
     @typing.override
     def __tspec_infer__(self) -> TSpecInfer:
         "Identity `TSpec` function."
-        return lambda t: t
+        return identity_infer
 
 
 @instr_dcls

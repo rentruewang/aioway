@@ -9,7 +9,8 @@ from torch import nn
 
 from aioway._utils import is_tuple_of
 
-from ..nn import NnInstr, UnboundedInfer, instr_dcls
+from ..infers import UnboundedInfer
+from ..nn import NnInstr, instr_dcls
 
 __all__ = [
     "Conv1d",

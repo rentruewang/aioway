@@ -1,0 +1,30 @@
+# Copyright (c) AIoWay Authors - All Rights Reserved
+
+import dataclasses as dcls
+
+from aioway.tspecs import TSpecInfer, TSpecLike
+
+__all__ = ["identity_infer", "UnboundedInfer"]
+
+
+def identity_infer[T: TSpecLike](tspec: T) -> T:
+    return tspec
+
+
+@dcls.dataclass(frozen=True)
+class UnboundedInfer(TSpecInfer):
+    """
+    Infer an unbounded output from an unbounded input.
+    """
+
+    instr: Instr
+
+    def __call__(self, tspec: TSpecLike, /) -> tspecs.Unbounded:
+        assert isinstance(tspec, tspecs.Unbounded)
+
+        with fake_mode():
+            module = self.instr.module()
+            random = tspec.sample(torch.Size([1]))
+
+        output = module(random)
+        return tspecs.Unbounded(shape=output.shape)

@@ -3,7 +3,8 @@
 
 from torch import nn
 
-from ..nn import NnInstr, UnboundedInfer, instr_dcls
+from ..infers import UnboundedInfer
+from ..nn import NnInstr, instr_dcls
 
 __all__ = ["Embedding"]
 

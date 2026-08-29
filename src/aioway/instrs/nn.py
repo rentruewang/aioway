@@ -1,5 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+"The base class for `NnInfer`, bring `nn.Module` by `torch` into `Instr`."
+
 import abc
 import dataclasses as dcls
 import functools
@@ -7,16 +9,13 @@ import typing
 
 import torch
 from torch import nn
-from torchrl.data import tensor_specs as tspecs
 
 from aioway._utils import dcls_asdict, render_fcall
 from aioway.dsets import InputTarget
-from aioway.modes import fake_mode
-from aioway.tspecs import TSpecInfer, TSpecLike
 
 from .instrs import AiowayModule, Instr
 
-__all__ = ["NnInstr", "instr_dcls", "NnLayer", "NnLoss", "UnboundedInfer"]
+__all__ = ["NnInstr", "instr_dcls", "NnLayer", "NnLoss"]
 
 
 @typing.dataclass_transform()
@@ -56,25 +55,6 @@ class NnLoss(AiowayModule[InputTarget, torch.Tensor]):
     @functools.cached_property
     def __repr(self) -> str:
         return "nn_loss::" + repr(self.loss)
-
-
-@dcls.dataclass(frozen=True)
-class UnboundedInfer(TSpecInfer):
-    """
-    Infer an unbounded output from an unbounded input.
-    """
-
-    instr: Instr
-
-    def __call__(self, tspec: TSpecLike, /) -> tspecs.Unbounded:
-        assert isinstance(tspec, tspecs.Unbounded)
-
-        with fake_mode():
-            module = self.instr.module()
-            random = tspec.sample(torch.Size([1]))
-
-        output = module(random)
-        return tspecs.Unbounded(shape=output.shape)
 
 
 @instr_dcls

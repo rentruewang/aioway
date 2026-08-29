@@ -6,6 +6,7 @@ from torch import nn
 
 from aioway.tspecs import TSpecInfer
 
+from ..infers import identity_infer
 from ..nn import NnInstr, instr_dcls
 
 __all__ = [
@@ -31,7 +32,7 @@ class _ActivationInstr(NnInstr):
         but modelling it as unbounded -> unbounded will do now.
         """
 
-        return lambda t: t
+        return identity_infer
 
 
 @instr_dcls

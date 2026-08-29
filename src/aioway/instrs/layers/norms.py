@@ -3,6 +3,7 @@
 
 from torch import nn
 
+from ..infers import identity_infer
 from ..nn import NnInstr, instr_dcls
 
 __all__ = [
@@ -44,7 +45,7 @@ class _BaseNorm(NnInstr):
 
     def __tspec_infer__(self):
         "Norms does not change the data type."
-        return lambda t: t
+        return identity_infer
 
 
 class BatchNorm1d(_BaseNorm):

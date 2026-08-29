@@ -3,6 +3,7 @@
 
 from torch import nn
 
+from ..infers import identity_infer
 from ..nn import NnInstr, instr_dcls
 
 __all__ = ["Dropout", "Dropout1d", "Dropout2d", "Dropout3d"]
@@ -18,7 +19,7 @@ class _BaseDropout(NnInstr):
 
     def __tspec_infer__(self):
         "Dropouts does not change the data type."
-        return lambda t: t
+        return identity_infer
 
 
 @instr_dcls
