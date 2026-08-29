@@ -16,6 +16,10 @@ class _BaseDropout(NnInstr):
     inplace: bool = False
     "If set to True, will do this operation in-place. Default: `False`."
 
+    def __tspec_infer__(self):
+        "Dropouts does not change the data type."
+        return lambda t: t
+
 
 @instr_dcls
 class Dropout(_BaseDropout):

@@ -42,6 +42,10 @@ class _BaseNorm(NnInstr):
         if self.momentum is not None and self.momentum <= 0:
             raise ValueError(f"If given, {self.momentum=} should be positive.")
 
+    def __tspec_infer__(self):
+        "Norms does not change the data type."
+        return lambda t: t
+
 
 class BatchNorm1d(_BaseNorm):
     "Applies Batch Normalization over a 2D or 3D input."

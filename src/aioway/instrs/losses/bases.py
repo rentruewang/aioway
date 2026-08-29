@@ -1,5 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import abc
 import logging
 import typing
 
@@ -27,7 +28,7 @@ _REDUCTION = frozenset(["none", "mean", "sum"])
 
 
 @instr_dcls
-class BaseLossInstr(NnInstr):
+class BaseLossInstr(NnInstr, abc.ABC):
     """
     Creates a criterion that measures the mean absolute error (MAE)
     between each element in the input x and target y

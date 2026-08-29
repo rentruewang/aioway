@@ -7,14 +7,16 @@ import typing
 
 import torch
 from torch import nn
+from torchrl.data import tensor_specs as tspecs
 
 from aioway._utils import dcls_asdict, render_fcall
 from aioway.dsets import InputTarget
-from aioway.tspecs import TSpecInfer
+from aioway.modes import fake_mode
+from aioway.tspecs import TSpecInfer, TSpecLike
 
 from .instrs import AiowayModule, Instr
 
-__all__ = ["NnInstr", "instr_dcls", "NnLayer", "NnLoss"]
+__all__ = ["NnInstr", "instr_dcls", "NnLayer", "NnLoss", "UnboundedInfer"]
 
 
 @typing.dataclass_transform()
@@ -56,6 +58,25 @@ class NnLoss(AiowayModule[InputTarget, torch.Tensor]):
         return "nn_loss::" + repr(self.loss)
 
 
+@dcls.dataclass(frozen=True)
+class UnboundedInfer(TSpecInfer):
+    """
+    Infer an unbounded output from an unbounded input.
+    """
+
+    instr: Instr
+
+    def __call__(self, tspec: TSpecLike, /) -> tspecs.Unbounded:
+        assert isinstance(tspec, tspecs.Unbounded)
+
+        with fake_mode():
+            module = self.instr.module()
+            random = tspec.sample(torch.Size([1]))
+
+        output = module(random)
+        return tspecs.Unbounded(shape=output.shape)
+
+
 @instr_dcls
 class NnInstr(Instr, abc.ABC):
     """
@@ -67,10 +88,6 @@ class NnInstr(Instr, abc.ABC):
     @typing.override
     def __repr__(self) -> str:
         return render_fcall("nn_init::" + type(self).__qualname__, **dcls_asdict(self))
-
-    @typing.override
-    def __tspec_infer__(self) -> TSpecInfer:
-        raise NotImplementedError
 
     @typing.override
     def module(self) -> AiowayModule:

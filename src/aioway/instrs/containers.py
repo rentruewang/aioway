@@ -4,6 +4,8 @@ import typing
 
 from torch import nn
 
+from aioway.tspecs import TSpecInfer
+
 from .instrs import Instr
 from .nn import NnInstr, NnLayer, instr_dcls
 
@@ -30,6 +32,10 @@ class Sequential(NnInstr):
     def __init__(self, *args: Instr):
         super().__init__()
         self.modules = args
+
+    @typing.override
+    def __tspec_infer__(self) -> TSpecInfer:
+        raise NotImplementedError
 
     @typing.override
     def module(self) -> NnLayer:
