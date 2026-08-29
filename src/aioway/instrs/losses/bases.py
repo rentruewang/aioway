@@ -5,6 +5,8 @@ import typing
 
 from torch import nn
 
+from aioway.tspecs import TSpecInfer
+
 from ..nn import NnInstr, NnLoss, instr_dcls
 
 __all__ = [
@@ -30,6 +32,10 @@ class BaseLossInstr(NnInstr):
     Creates a criterion that measures the mean absolute error (MAE)
     between each element in the input x and target y
     """
+
+    @typing.override
+    def __tspec_infer__(self) -> TSpecInfer:
+        raise NotImplementedError
 
     @typing.override
     def module(self) -> NnLoss:
