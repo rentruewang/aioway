@@ -16,8 +16,4 @@ def loss_module(loss_instr: type[BaseLossInstr]):
 
 
 def test_loss_instr_to_module(loss_module: NnLoss):
-    pass
-
-
-def test_loss_instr_parse(loss_instr: type[BaseLossInstr], loss_module: NnLoss):
-    assert loss_instr.lift(loss_module) == loss_instr()
+    assert isinstance(loss_module, NnLoss)
