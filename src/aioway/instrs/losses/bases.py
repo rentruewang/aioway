@@ -35,11 +35,6 @@ class BaseLossInstr(NnInstr):
     def module(self) -> NnLoss:
         return NnLoss(self.NN())
 
-    @classmethod
-    @typing.override
-    def _lift(cls, module: nn.Module) -> typing.Self:
-        return cls()
-
 
 @instr_dcls
 class L1Loss(BaseLossInstr):

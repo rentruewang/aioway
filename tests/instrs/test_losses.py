@@ -20,4 +20,4 @@ def test_loss_instr_to_module(loss_module: NnLoss):
 
 
 def test_loss_instr_parse(loss_instr: type[BaseLossInstr], loss_module: NnLoss):
-    assert loss_instr.lift(loss_module.loss) == loss_instr()
+    assert loss_instr.lift(loss_module) == loss_instr()
