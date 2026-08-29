@@ -1,10 +1,9 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import typing
 
 from torch import nn
 
-from .modules import NnInit, nn_init_dcls
+from ..nn import NnInstr, instr_dcls
 
 __all__ = [
     "BatchNorm1d",
@@ -16,11 +15,9 @@ __all__ = [
 ]
 
 
-@nn_init_dcls
-class _BaseNorm(NnInit):
+@instr_dcls
+class _BaseNorm(NnInstr):
     "Base normalization layer for shared code of batch norm and instance norm."
-
-    NN: typing.ClassVar[type[nn.Module]] = NotImplemented
 
     num_features: int
     "The number of features C of the output."

@@ -13,6 +13,7 @@ from . import (
     dsets,
     emits,
     errors,
+    instrs,
     modes,
     schemas,
     trainers,

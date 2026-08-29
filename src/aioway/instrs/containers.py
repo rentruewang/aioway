@@ -4,13 +4,14 @@ import typing
 
 from torch import nn
 
-from .modules import NnInit, nn_init_dcls
+from .instrs import Instr
+from .nn import NnInstr, NnLayer, instr_dcls
 
 __all__ = ["Sequential"]
 
 
-@nn_init_dcls
-class Sequential(NnInit):
+@instr_dcls
+class Sequential(NnInstr):
     """
     The wrapper for `nn.Sequential`.
 
@@ -21,17 +22,22 @@ class Sequential(NnInit):
 
     NN = nn.Sequential
 
-    modules: tuple[nn.Module, ...]
+    modules: tuple[Instr, ...]
     """
     A list of already initialized `nn.Module` objects.
     """
 
-    def __init__(self, *args: nn.Module):
+    def __init__(self, *args: Instr):
         super().__init__()
         self.modules = args
 
     @typing.override
-    def __call__(self) -> nn.Module:
+    def module(self) -> NnLayer:
         # Create `nn.Sequential` instance with `NnInitFn` is the best way
         # to ensure that the modes are invoked properly.
-        return self.NN(*self.modules)
+        modules = [mo.module() for mo in self.modules]
+        return NnLayer(self.NN(*modules))
+
+    @typing.override
+    def children(self):
+        yield from self.modules

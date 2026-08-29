@@ -1,18 +1,15 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import typing
 
 from torch import nn
 
-from .modules import NnInit, nn_init_dcls
+from ..nn import NnInstr, instr_dcls
 
 __all__ = ["Dropout", "Dropout1d", "Dropout2d", "Dropout3d"]
 
 
-@nn_init_dcls
-class _BaseDropout(NnInit):
-    NN: typing.ClassVar[type[nn.Module]] = NotImplemented
-
+@instr_dcls
+class _BaseDropout(NnInstr):
     p: float = 0.5
     "Probability of an element to be zeroed. Default: 0.5."
 
@@ -20,7 +17,7 @@ class _BaseDropout(NnInit):
     "If set to True, will do this operation in-place. Default: `False`."
 
 
-@nn_init_dcls
+@instr_dcls
 class Dropout(_BaseDropout):
     """
     During training, randomly zeroes some of the elements
@@ -30,7 +27,7 @@ class Dropout(_BaseDropout):
     NN = nn.Dropout
 
 
-@nn_init_dcls
+@instr_dcls
 class Dropout1d(_BaseDropout):
     """
     Randomly zero out entire channels (1D feature map).
@@ -39,7 +36,7 @@ class Dropout1d(_BaseDropout):
     NN = nn.Dropout1d
 
 
-@nn_init_dcls
+@instr_dcls
 class Dropout2d(_BaseDropout):
     """
     Randomly zero out entire channels (2D feature map).
@@ -48,7 +45,7 @@ class Dropout2d(_BaseDropout):
     NN = nn.Dropout2d
 
 
-@nn_init_dcls
+@instr_dcls
 class Dropout3d(_BaseDropout):
     """
     Randomly zero out entire channels (3D feature map).

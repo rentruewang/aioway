@@ -1,18 +1,15 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import typing
 
 from torch import nn
 
-from .modules import NnInit, nn_init_dcls
+from ..nn import NnInstr, instr_dcls
 
 __all__ = ["Embedding"]
 
 
-@nn_init_dcls
-class _BaseEmbedding(NnInit):
-    NN: typing.ClassVar[type[nn.Module]] = NotImplemented
-
+@instr_dcls
+class _BaseEmbedding(NnInstr):
     num_embeddings: int
     "The size of the dictionary of embeddings."
 
@@ -27,7 +24,7 @@ class _BaseEmbedding(NnInit):
             raise ValueError(f"{self.embedding_dim=} <= 0.")
 
 
-@nn_init_dcls
+@instr_dcls
 class Embedding(_BaseEmbedding):
     """
     A simple lookup table that stores embeddings of a fixed dictionary and size.
@@ -36,7 +33,7 @@ class Embedding(_BaseEmbedding):
     NN = nn.Embedding
 
 
-@nn_init_dcls
+@instr_dcls
 class EmbeddingBag(_BaseEmbedding):
     """
     Compute sums or means of 'bags' of embeddings,

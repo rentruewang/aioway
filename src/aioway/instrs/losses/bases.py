@@ -1,13 +1,14 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import logging
 import typing
 
 from torch import nn
 
-from .modules import NnInit, nn_init_dcls
+from ..nn import NnInstr, NnLoss, instr_dcls
 
 __all__ = [
-    "BaseLoss",
+    "BaseLossInstr",
     "L1Loss",
     "MSELoss",
     "CrossEntropyLoss",
@@ -19,21 +20,24 @@ __all__ = [
     "SmoothL1Loss",
 ]
 
+LOGGER = logging.getLogger(__name__)
 _REDUCTION = frozenset(["none", "mean", "sum"])
 
 
-@nn_init_dcls
-class BaseLoss(NnInit):
+@instr_dcls
+class BaseLossInstr(NnInstr):
     """
     Creates a criterion that measures the mean absolute error (MAE)
     between each element in the input x and target y
     """
 
-    NN: typing.ClassVar[type[nn.Module]] = NotImplemented
+    @typing.override
+    def module(self) -> NnLoss:
+        return NnLoss(self.NN())
 
 
-@nn_init_dcls
-class L1Loss(BaseLoss):
+@instr_dcls
+class L1Loss(BaseLossInstr):
     """
     Creates a criterion that measures the mean absolute error (MAE)
     between each element in the input x and target y
@@ -42,8 +46,8 @@ class L1Loss(BaseLoss):
     NN = nn.L1Loss
 
 
-@nn_init_dcls
-class MSELoss(BaseLoss):
+@instr_dcls
+class MSELoss(BaseLossInstr):
     """
     Creates a criterion that measures the mean squared error (squared L2 norm)
     between each element in the input x and target y
@@ -52,8 +56,8 @@ class MSELoss(BaseLoss):
     NN = nn.MSELoss
 
 
-@nn_init_dcls
-class CrossEntropyLoss(BaseLoss):
+@instr_dcls
+class CrossEntropyLoss(BaseLossInstr):
     """
     This criterion computes the cross entropy loss between input logits and target.
     """
@@ -61,8 +65,8 @@ class CrossEntropyLoss(BaseLoss):
     NN = nn.CrossEntropyLoss
 
 
-@nn_init_dcls
-class CTCLoss(BaseLoss):
+@instr_dcls
+class CTCLoss(BaseLossInstr):
     """
     The Connectionist Temporal Classification loss.
     """
@@ -70,8 +74,8 @@ class CTCLoss(BaseLoss):
     NN = nn.CTCLoss
 
 
-@nn_init_dcls
-class NLLLoss(BaseLoss):
+@instr_dcls
+class NLLLoss(BaseLossInstr):
     """
     The negative log likelihood loss.
     It is useful to train a classification problem with C classes.
@@ -80,8 +84,8 @@ class NLLLoss(BaseLoss):
     NN = nn.NLLLoss
 
 
-@nn_init_dcls
-class KLDivLoss(BaseLoss):
+@instr_dcls
+class KLDivLoss(BaseLossInstr):
     """
     The Kullback-Leibler divergence loss.
     """
@@ -89,8 +93,8 @@ class KLDivLoss(BaseLoss):
     NN = nn.KLDivLoss
 
 
-@nn_init_dcls
-class BCELoss(BaseLoss):
+@instr_dcls
+class BCELoss(BaseLossInstr):
     """
     Creates a criterion that measures the Binary Cross Entropy between the target and the input probabilities.
     """
@@ -98,8 +102,8 @@ class BCELoss(BaseLoss):
     NN = nn.BCELoss
 
 
-@nn_init_dcls
-class BCEWithLogitsLoss(BaseLoss):
+@instr_dcls
+class BCEWithLogitsLoss(BaseLossInstr):
     """
     This loss combines a Sigmoid layer and the BCELoss in one single class.
     This version is more numerically stable than using a plain Sigmoid followed by a BCELoss as,
@@ -110,8 +114,8 @@ class BCEWithLogitsLoss(BaseLoss):
     NN = nn.BCEWithLogitsLoss
 
 
-@nn_init_dcls
-class SmoothL1Loss(BaseLoss):
+@instr_dcls
+class SmoothL1Loss(BaseLossInstr):
     """
     Creates a criterion that uses a squared term
     if the absolute element-wise error falls below beta and an L1 term otherwise.
