@@ -1,6 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 "The utilities for signatures."
+import functools
 
 import dataclasses as dcls
 import inspect
@@ -8,6 +9,25 @@ import typing
 from collections import abc as cabc
 
 __all__ = ["Sign"]
+
+_ParamKind: typing.TypeAlias = typing.Literal[
+    inspect.Parameter.KEYWORD_ONLY,
+    inspect.Parameter.POSITIONAL_ONLY,
+    inspect.Parameter.POSITIONAL_OR_KEYWORD,
+    inspect.Parameter.VAR_POSITIONAL,
+    inspect.Parameter.VAR_KEYWORD,
+]
+
+
+@dcls.dataclass(frozen=True)
+class UnTypedParam:
+    "The parameter that only preserves non typing related information."
+
+    name: str
+    "The name of the param."
+
+    kind: _ParamKind
+    "The kind of parameter."
 
 
 @dcls.dataclass(frozen=True)
@@ -32,6 +52,19 @@ class Sign:
     @property
     def parameters(self) -> cabc.Mapping[str, inspect.Parameter]:
         return self.signature.parameters
+
+    @functools.cached_property
+    def outline(self) -> dict[str, UnTypedParam]:
+        """
+        The outline of the signature discards all typing information.
+        """
+
+        result: dict[str, UnTypedParam] = {}
+
+        for name, param in self.parameters.items():
+            result[name] = UnTypedParam(name=param.name, kind=param.kind)
+
+        return result
 
     @property
     def return_annotation(self) -> typing.Any:
