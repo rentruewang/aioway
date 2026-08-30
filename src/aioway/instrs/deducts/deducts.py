@@ -4,7 +4,7 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-from .tspecs import TSpec
+from aioway.tspecs import TSpec
 
 __all__ = [
     "TSpecInfer",

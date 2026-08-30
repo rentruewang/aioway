@@ -10,7 +10,7 @@ from collections import abc as cabc
 
 from torch import nn
 
-from aioway.tspecs import TSpecInfer
+from .deducts import TSpecInfer
 
 __all__ = ["Instr", "AiowayModule"]
 

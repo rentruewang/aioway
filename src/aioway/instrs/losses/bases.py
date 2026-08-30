@@ -10,8 +10,9 @@ from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
 from aioway.dsets import InputTarget
-from aioway.tspecs import TSpec, TSpecInfer
+from aioway.tspecs import TSpec
 
+from ..deducts import TSpecInfer
 from ..nn import NnInstr, NnLoss, instr_dcls
 
 __all__ = [

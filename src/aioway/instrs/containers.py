@@ -4,8 +4,7 @@ import typing
 
 from torch import nn
 
-from aioway.tspecs import TSpecInfer
-
+from .deducts import TSpecInfer
 from .instrs import Instr
 from .nn import NnInstr, NnLayer, instr_dcls
 
