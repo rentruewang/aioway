@@ -24,7 +24,7 @@ __all__ = [
 @instr_dcls
 class _ActivationInstr(NnInstr):
     @typing.override
-    def __tspec_infer__(self) -> TSpecInfer:
+    def __deduct__(self) -> TSpecInfer:
         """
         Activation does not change the input.
         For relu, it does change from unbounded to bounded,

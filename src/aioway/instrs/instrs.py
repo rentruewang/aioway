@@ -34,7 +34,7 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
 
     It requires several methods to be implemented.
 
-    `__tspec_infer__`: Describe how `forward` transforms data.
+    `__deduct__`: Describe how `forward` transforms data.
     """
 
     __match_args__: typing.ClassVar[tuple[str, ...]]
@@ -62,7 +62,7 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
         _INSTRS_BY_MODULE[cls.NN] = cls
 
     @abc.abstractmethod
-    def __tspec_infer__(self) -> TSpecInfer:
+    def __deduct__(self) -> TSpecInfer:
         """
         Infer how an input described by `spec` would be converted to
         another item described by the output `TSpec`.

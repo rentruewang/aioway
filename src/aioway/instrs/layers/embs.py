@@ -24,7 +24,7 @@ class _BaseEmbedding(NnInstr):
         if self.embedding_dim <= 0:
             raise ValueError(f"{self.embedding_dim=} <= 0.")
 
-    def __tspec_infer__(self):
+    def __deduct__(self):
         return UnboundedInfer(self)
 
 

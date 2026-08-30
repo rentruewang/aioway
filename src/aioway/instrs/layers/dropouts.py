@@ -17,7 +17,7 @@ class _BaseDropout(NnInstr):
     inplace: bool = False
     "If set to True, will do this operation in-place. Default: `False`."
 
-    def __tspec_infer__(self):
+    def __deduct__(self):
         "Dropouts does not change the data type."
         return identity_infer
 

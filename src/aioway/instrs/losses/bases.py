@@ -55,7 +55,7 @@ class L1Loss(BaseLossInstr):
 
     NN = nn.L1Loss
 
-    def __tspec_infer__(self):
+    def __deduct__(self):
         return SymTSpecInfer()
 
 
@@ -68,7 +68,7 @@ class MSELoss(BaseLossInstr):
 
     NN = nn.MSELoss
 
-    def __tspec_infer__(self):
+    def __deduct__(self):
         return SymTSpecInfer()
 
 
@@ -80,7 +80,7 @@ class CrossEntropyLoss(BaseLossInstr):
 
     NN = nn.CrossEntropyLoss
 
-    def __tspec_infer__(self):
+    def __deduct__(self):
         return CrossEntropyInfer()
 
 
@@ -93,7 +93,7 @@ class NLLLoss(BaseLossInstr):
 
     NN = nn.NLLLoss
 
-    def __tspec_infer__(self):
+    def __deduct__(self):
         return NllInfer()
 
 
@@ -105,7 +105,7 @@ class KLDivLoss(BaseLossInstr):
 
     NN = nn.KLDivLoss
 
-    def __tspec_infer__(self):
+    def __deduct__(self):
         return KlDivInfer()
 
 
@@ -117,7 +117,7 @@ class BCELoss(BaseLossInstr):
 
     NN = nn.BCELoss
 
-    def __tspec_infer__(self):
+    def __deduct__(self):
         return BceTSpecInfer(logits=False)
 
 
@@ -132,7 +132,7 @@ class BCEWithLogitsLoss(BaseLossInstr):
 
     NN = nn.BCEWithLogitsLoss
 
-    def __tspec_infer__(self):
+    def __deduct__(self):
         return BceTSpecInfer(logits=True)
 
 
@@ -147,7 +147,7 @@ class SmoothL1Loss(BaseLossInstr):
 
     NN = nn.SmoothL1Loss
 
-    def __tspec_infer__(self):
+    def __deduct__(self):
         return SymTSpecInfer()
 
 

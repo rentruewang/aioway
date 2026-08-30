@@ -43,7 +43,7 @@ class _BaseNorm(NnInstr):
         if self.momentum is not None and self.momentum <= 0:
             raise ValueError(f"If given, {self.momentum=} should be positive.")
 
-    def __tspec_infer__(self):
+    def __deduct__(self):
         "Norms does not change the data type."
         return identity_infer
 
