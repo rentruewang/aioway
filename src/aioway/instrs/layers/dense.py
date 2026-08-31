@@ -1,9 +1,8 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 "The linear layers."
+
 import torch
-
-
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 

@@ -1,8 +1,9 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import torch
 import pytest
+import torch
 from torch import nn
+from torchrl.data import tensor_specs as tspecs
 
 from aioway.instrs import (
     Bilinear,
@@ -11,7 +12,6 @@ from aioway.instrs import (
     deductor_registry,
     new_deductor_registry,
 )
-from torchrl.data import tensor_specs as tspecs
 
 
 @pytest.fixture
