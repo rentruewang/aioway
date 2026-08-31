@@ -9,7 +9,14 @@ import tensordict as td
 import torch
 from torchrl.data import tensor_specs as tspecs
 
-__all__ = ["TSpec", "TSpecLike", "TSpecCompat", "as_tspec", "is_tspec_like"]
+__all__ = [
+    "TSpec",
+    "TSpecLike",
+    "TSpecCompat",
+    "as_tspec",
+    "is_tspec_like",
+    "is_tspec_subtype",
+]
 
 
 type TSpecLike = TSpec | tspecs.TensorSpec | TSpecCompat
@@ -18,8 +25,7 @@ Types compatible with `TSpec`.
 """
 
 
-@typing.runtime_checkable
-class TSpec(typing.Protocol):
+class TSpec(abc.ABC):
     """
     `TSpec` is essentially a protocol that mimicks `TensorSpec`,
     but only contains the most important functionalities,
@@ -76,20 +82,17 @@ class TSpecCompat(typing.Protocol):
     def __tspec__(self) -> TSpec: ...
 
 
-def is_tspec_like(spec: typing.Any, /) -> typing.TypeIs[TSpecLike]:
-    """
-    Check if item is like a `TSpec`.
-    """
-
-    try:
-        _ = as_tspec(spec)
-    except TypeError:
-        return False
-    else:
-        return True
+def is_tspec_subtype(cls: type) -> typing.TypeIs[type[TSpecLike]]:
+    "Check if `cls` is a subclass of `TSpecLike`."
+    return issubclass(cls, TSpec | tspecs.TensorSpec)
 
 
-def as_tspec(spec: TSpecLike, /) -> TSpec:
+def is_tspec_like(spec) -> typing.TypeIs[TSpecLike]:
+    "Check if `cls` is an instance of `TSpecLike`."
+    return isinstance(spec, TSpec | tspecs.TensorSpec)
+
+
+def as_tspec(spec: TSpecLike, /) -> TSpec | tspecs.TensorSpec:
     """
     Convert an object into a `TSpec`. If attempts fail, a `TypeError` is raised.
 
@@ -99,12 +102,7 @@ def as_tspec(spec: TSpecLike, /) -> TSpec:
     2. `TSpecLike`. Types that define `__tspec__` (convert to `TSpec`).
     """
 
-    # Single out `TensorSpec` type because it is common and it's cheaper this way,
-    # even if the `isinstance(spec, TSpec)` would catch it.
-    if isinstance(spec, tspecs.TensorSpec):
-        return spec
-
-    if isinstance(spec, TSpec):
+    if is_tspec_like(spec):
         return spec
 
     if isinstance(spec, TSpecCompat):
