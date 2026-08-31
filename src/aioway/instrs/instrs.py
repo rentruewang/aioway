@@ -10,7 +10,7 @@ from collections import abc as cabc
 
 from torch import nn
 
-from .deducts import TSpecInfer
+from .deducts import Deductor, deductor_for
 
 __all__ = ["Instr", "AiowayModule"]
 
@@ -62,22 +62,6 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
         _INSTRS_BY_MODULE[cls.NN] = cls
 
     @abc.abstractmethod
-    def __deduct__(self) -> TSpecInfer:
-        """
-        Infer how an input described by `spec` would be converted to
-        another item described by the output `TSpec`.
-
-        Args:
-            spec: The input `TSpec`. This would `.contains` valid input to `forward`.
-
-        Returns:
-            A `TSpec` that describes the output to `forward`.
-            Should return `NotImplemented` for non-supported input.
-        """
-
-        raise NotImplementedError
-
-    @abc.abstractmethod
     def module(self) -> AiowayModule:
         """
         Build the module represented by this current `Instr`.
@@ -98,6 +82,25 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
         """
 
         raise NotImplementedError
+
+    @classmethod
+    def __deductor__(cls) -> Deductor:
+        """
+        Infer how an input described by `spec` would be converted to
+        another item described by the output `TSpec`.
+
+        The signature would match the `nn.Module.forward` signature,
+        for example, `nn.Linear` would have a `Deductor` of signature `(input: tspecs.Unbounded)`.
+
+        Returns:
+            A `Deductor` that transforms the input argumnts `TSpec` to an output `TSpec`.
+            Should return `NotImplemented` for non-supported input.
+        """
+
+        if deductor := deductor_for(cls.NN):
+            return deductor
+        else:
+            return NotImplemented
 
 
 class AiowayModule[I = typing.Any, O = typing.Any](nn.Module, abc.ABC):

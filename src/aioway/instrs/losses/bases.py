@@ -1,7 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import abc
-import dataclasses as dcls
 import logging
 import typing
 
@@ -9,10 +8,6 @@ import torch
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.dsets import InputTarget
-from aioway.tspecs import TSpec
-
-from ..deducts import TSpecInfer
 from ..nn import NnInstr, NnLoss, instr_dcls
 
 __all__ = [
@@ -55,9 +50,6 @@ class L1Loss(BaseLossInstr):
 
     NN = nn.L1Loss
 
-    def __deduct__(self):
-        return SymTSpecInfer()
-
 
 @instr_dcls
 class MSELoss(BaseLossInstr):
@@ -68,9 +60,6 @@ class MSELoss(BaseLossInstr):
 
     NN = nn.MSELoss
 
-    def __deduct__(self):
-        return SymTSpecInfer()
-
 
 @instr_dcls
 class CrossEntropyLoss(BaseLossInstr):
@@ -79,9 +68,6 @@ class CrossEntropyLoss(BaseLossInstr):
     """
 
     NN = nn.CrossEntropyLoss
-
-    def __deduct__(self):
-        return CrossEntropyInfer()
 
 
 @instr_dcls
@@ -93,9 +79,6 @@ class NLLLoss(BaseLossInstr):
 
     NN = nn.NLLLoss
 
-    def __deduct__(self):
-        return NllInfer()
-
 
 @instr_dcls
 class KLDivLoss(BaseLossInstr):
@@ -105,9 +88,6 @@ class KLDivLoss(BaseLossInstr):
 
     NN = nn.KLDivLoss
 
-    def __deduct__(self):
-        return KlDivInfer()
-
 
 @instr_dcls
 class BCELoss(BaseLossInstr):
@@ -116,9 +96,6 @@ class BCELoss(BaseLossInstr):
     """
 
     NN = nn.BCELoss
-
-    def __deduct__(self):
-        return BceTSpecInfer(logits=False)
 
 
 @instr_dcls
@@ -132,9 +109,6 @@ class BCEWithLogitsLoss(BaseLossInstr):
 
     NN = nn.BCEWithLogitsLoss
 
-    def __deduct__(self):
-        return BceTSpecInfer(logits=True)
-
 
 @instr_dcls
 class SmoothL1Loss(BaseLossInstr):
@@ -147,108 +121,105 @@ class SmoothL1Loss(BaseLossInstr):
 
     NN = nn.SmoothL1Loss
 
-    def __deduct__(self):
-        return SymTSpecInfer()
+
+# class LossDeductor(Deductor, abc.ABC):
+#     def __call__(self, tspec: TSpec):
+#         return _LOSS_TSPEC if self._is_valid(tspec) else NotImplemented
+
+#     def _is_valid(self, tspec: TSpec) -> bool:
+#         if not _is_input_target(tspec):
+#             return False
+
+#         return self._check(tspec)
+
+#     @abc.abstractmethod
+#     def _check(self, tspec: tspecs.Composite) -> bool:
+#         raise NotImplementedError
 
 
-class LossTSpecInfer(TSpecInfer, abc.ABC):
-    def __call__(self, tspec: TSpec):
-        return _LOSS_TSPEC if self._is_valid(tspec) else NotImplemented
-
-    def _is_valid(self, tspec: TSpec) -> bool:
-        if not _is_input_target(tspec):
-            return False
-
-        return self._check(tspec)
-
-    @abc.abstractmethod
-    def _check(self, tspec: tspecs.Composite) -> bool:
-        raise NotImplementedError
+# class SymDeductor(LossDeductor):
+#     def _check(self, tspec: tspecs.Composite) -> bool:
+#         input = tspec["input"]
+#         target = tspec["target"]
+#         return _same_shape(tspec) and _is_unbounded(input) and _is_unbounded(target)
 
 
-class SymTSpecInfer(LossTSpecInfer):
-    def _check(self, tspec: tspecs.Composite) -> bool:
-        input = tspec["input"]
-        target = tspec["target"]
-        return _same_shape(tspec) and _is_unbounded(input) and _is_unbounded(target)
+# class KlDivInfer(LossDeductor):
+#     def _check(self, tspec: tspecs.Composite) -> bool:
+#         return (
+#             True
+#             and _same_shape(tspec)
+#             and _is_neg_bounded(tspec["input"])
+#             and _is_prob(tspec["target"])
+#         )
 
 
-class KlDivInfer(LossTSpecInfer):
-    def _check(self, tspec: tspecs.Composite) -> bool:
-        return (
-            True
-            and _same_shape(tspec)
-            and _is_neg_bounded(tspec["input"])
-            and _is_prob(tspec["target"])
-        )
+# class NllInfer(LossDeductor):
+#     def _check(self, tspec: tspecs.Composite) -> bool:
+#         return (
+#             True
+#             and _same_shape(tspec)
+#             and _is_neg_bounded(tspec["input"])
+#             and _is_categorical(tspec["target"])
+#         )
 
 
-class NllInfer(LossTSpecInfer):
-    def _check(self, tspec: tspecs.Composite) -> bool:
-        return (
-            True
-            and _same_shape(tspec)
-            and _is_neg_bounded(tspec["input"])
-            and _is_categorical(tspec["target"])
-        )
+# class CrossEntropyInfer(LossDeductor):
+#     def _check(self, tspec: tspecs.Composite) -> bool:
+#         return (
+#             True
+#             and _same_shape(tspec)
+#             and _is_unbounded(tspec["input"])
+#             and _is_categorical(tspec["target"])
+#         )
 
 
-class CrossEntropyInfer(LossTSpecInfer):
-    def _check(self, tspec: tspecs.Composite) -> bool:
-        return (
-            True
-            and _same_shape(tspec)
-            and _is_unbounded(tspec["input"])
-            and _is_categorical(tspec["target"])
-        )
+# @dcls.dataclass
+# class BceDeductor(LossDeductor):
+#     logits: bool
+
+#     def _check(self, tspec: tspecs.Composite) -> bool:
+#         check_input = _is_unbounded if self.logits else _is_prob
+
+#         return (
+#             True
+#             and _same_shape(tspec)
+#             and check_input(tspec["input"])
+#             and _is_boolean(tspec["target"])
+#         )
 
 
-@dcls.dataclass
-class BceTSpecInfer(LossTSpecInfer):
-    logits: bool
-
-    def _check(self, tspec: tspecs.Composite) -> bool:
-        check_input = _is_unbounded if self.logits else _is_prob
-
-        return (
-            True
-            and _same_shape(tspec)
-            and check_input(tspec["input"])
-            and _is_boolean(tspec["target"])
-        )
+# def _same_shape(tspec: tspecs.Composite) -> bool:
+#     return tspec["input"].shape == tspec["target"].shape
 
 
-def _same_shape(tspec: tspecs.Composite) -> bool:
-    return tspec["input"].shape == tspec["target"].shape
+# def _is_neg_bounded(tspec: tspecs.TensorSpec) -> bool:
+#     # It's negative input (log of prob).
+#     return isinstance(tspec, tspecs.Bounded) and tspec.high == 0
 
 
-def _is_neg_bounded(tspec: tspecs.TensorSpec) -> bool:
-    # It's negative input (log of prob).
-    return isinstance(tspec, tspecs.Bounded) and tspec.high == 0
+# def _is_categorical(tspec: tspecs.TensorSpec) -> typing.TypeIs[tspecs.Categorical]:
+#     return isinstance(tspec, tspecs.Categorical)
 
 
-def _is_categorical(tspec: tspecs.TensorSpec) -> typing.TypeIs[tspecs.Categorical]:
-    return isinstance(tspec, tspecs.Categorical)
+# def _is_prob(tspec: tspecs.TensorSpec) -> bool:
+#     # Target is probability. Should also sum to 1 but now this should suffice.
+#     return isinstance(tspec, tspecs.Bounded) and tspec.low == 0 and tspec.high == 1
 
 
-def _is_prob(tspec: tspecs.TensorSpec) -> bool:
-    # Target is probability. Should also sum to 1 but now this should suffice.
-    return isinstance(tspec, tspecs.Bounded) and tspec.low == 0 and tspec.high == 1
+# def _is_unbounded(tspec: tspecs.TensorSpec) -> typing.TypeIs[tspecs.Unbounded]:
+#     return isinstance(tspec, tspecs.Unbounded)
 
 
-def _is_unbounded(tspec: tspecs.TensorSpec) -> typing.TypeIs[tspecs.Unbounded]:
-    return isinstance(tspec, tspecs.Unbounded)
+# def _is_boolean(tspec: tspecs.TensorSpec) -> bool:
+#     return isinstance(tspec, tspecs.Categorical) and tspec.n == 2
 
 
-def _is_boolean(tspec: tspecs.TensorSpec) -> bool:
-    return isinstance(tspec, tspecs.Categorical) and tspec.n == 2
+# def _is_input_target(tspec) -> typing.TypeIs[tspecs.Composite]:
+#     if not isinstance(tspec, tspecs.Composite):
+#         return False
 
+#     if tspec.data_cls is not InputTarget:
+#         return False
 
-def _is_input_target(tspec) -> typing.TypeIs[tspecs.Composite]:
-    if not isinstance(tspec, tspecs.Composite):
-        return False
-
-    if tspec.data_cls is not InputTarget:
-        return False
-
-    return True
+#     return True

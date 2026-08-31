@@ -3,6 +3,7 @@
 "`Instr` is the IR for `aioway`."
 
 from .containers import *
+from .deducts import *
 from .instrs import *
 from .layers import *
 from .losses import *

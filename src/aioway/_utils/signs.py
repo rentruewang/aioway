@@ -7,6 +7,8 @@ import inspect
 import typing
 from collections import abc as cabc
 
+from .typing import is_any_type_hint
+
 __all__ = ["Param", "Sign"]
 
 
@@ -47,7 +49,7 @@ class Param:
 
     @property
     def is_any_type(self) -> bool:
-        return self.annotation is inspect.Parameter.empty
+        return is_any_type_hint(self.annotation)
 
     def strip_type(self) -> typing.Self:
         "Strip the type from `inspect.Parameter`."
@@ -97,7 +99,7 @@ class Sign:
     @property
     def returns_any_type(self) -> bool:
         "Whether or not the return type is defined."
-        return self.return_annotation is inspect.Parameter.empty
+        return is_any_type_hint(self.return_annotation)
 
     def strip_type(self) -> typing.Self:
         """
@@ -128,6 +130,11 @@ class Sign:
         arguments = bound.arguments
         assert isinstance(arguments, dict), arguments
         return arguments
+
+    def drop_first(self) -> typing.Self:
+        "Drop the `self` parameter."
+        params = [param.parameter for param in self.param_list[1:]]
+        return type(self)(inspect.Signature(params))
 
     @property
     def argc(self) -> int:

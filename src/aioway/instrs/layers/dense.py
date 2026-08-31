@@ -1,11 +1,13 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import typing
+"The linear layers."
 
+import torch
 from torch import nn
+from torchrl.data import tensor_specs as tspecs
 
-from ..deducts import TSpecInfer
-from ..infers import UnboundedInfer, identity_infer
+from aioway.instrs import deductor_for
+
 from ..nn import NnInstr, instr_dcls
 
 __all__ = ["Identity", "Linear", "Bilinear"]
@@ -18,11 +20,6 @@ class Identity(NnInstr):
     """
 
     NN = nn.Identity
-
-    @typing.override
-    def __deduct__(self) -> TSpecInfer:
-        "Identity `TSpec` function."
-        return identity_infer
 
 
 @instr_dcls
@@ -49,9 +46,13 @@ class Linear(NnInstr):
         if self.out_features <= 0:
             raise ValueError(f"{self.out_features=} <= 0.")
 
-    @typing.override
-    def __deduct__(self):
-        return UnboundedInfer(self)
+
+@deductor_for(nn.Linear).register
+def linear(linear: Linear, input: tspecs.Unbounded) -> tspecs.Unbounded:
+    assert input.shape[-1] == linear.in_features
+    return tspecs.Unbounded(
+        shape=torch.Size([*input.shape[:-1], linear.out_features]), dtype=input.dtype
+    )
 
 
 @instr_dcls
@@ -83,7 +84,3 @@ class Bilinear(NnInstr):
 
         if self.out_features <= 0:
             raise ValueError(f"{self.out_features=} <= 0.")
-
-    @typing.override
-    def __deduct__(self):
-        return UnboundedInfer(self)

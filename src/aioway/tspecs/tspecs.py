@@ -3,6 +3,7 @@
 "The `TSpec` interface."
 
 import abc
+import functools
 import typing
 
 import tensordict as td
@@ -25,7 +26,8 @@ Types compatible with `TSpec`.
 """
 
 
-class TSpec(abc.ABC):
+@typing.runtime_checkable
+class TSpec(typing.Protocol):
     """
     `TSpec` is essentially a protocol that mimicks `TensorSpec`,
     but only contains the most important functionalities,
@@ -82,17 +84,17 @@ class TSpecCompat(typing.Protocol):
     def __tspec__(self) -> TSpec: ...
 
 
-def is_tspec_subtype(cls: type) -> typing.TypeIs[type[TSpecLike]]:
+def is_tspec_subtype(cls: type) -> typing.TypeIs[type[TSpec]]:
     "Check if `cls` is a subclass of `TSpecLike`."
-    return issubclass(cls, TSpec | tspecs.TensorSpec)
+    return issubclass(cls, tspecs.TensorSpec) or _inherits_from_tspec(cls)
 
 
-def is_tspec_like(spec) -> typing.TypeIs[TSpecLike]:
+def is_tspec_like(spec) -> typing.TypeIs[TSpec]:
     "Check if `cls` is an instance of `TSpecLike`."
-    return isinstance(spec, TSpec | tspecs.TensorSpec)
+    return isinstance(spec, tspecs.TensorSpec | TSpec)
 
 
-def as_tspec(spec: TSpecLike, /) -> TSpec | tspecs.TensorSpec:
+def as_tspec(spec: TSpecLike, /) -> TSpec:
     """
     Convert an object into a `TSpec`. If attempts fail, a `TypeError` is raised.
 
@@ -109,3 +111,25 @@ def as_tspec(spec: TSpecLike, /) -> TSpec | tspecs.TensorSpec:
         return as_tspec(spec.__tspec__())
 
     raise TypeError(f"Do not know how to handle {spec=}.")
+
+
+def _inherits_from_tspec(cls: type):
+    bases = _find_bases(cls)
+    return TSpec in bases
+
+
+def _visit_bases(cls: type, seen: set[type]) -> None:
+    if cls in seen:
+        return
+
+    seen.add(cls)
+
+    for sub in cls.__bases__:
+        _visit_bases(sub, seen)
+
+
+@functools.cache
+def _find_bases(cls: type) -> frozenset[type]:
+    seen: set[type] = set()
+    _visit_bases(cls, seen)
+    return frozenset(seen)
