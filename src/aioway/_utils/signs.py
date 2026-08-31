@@ -34,8 +34,11 @@ class Sign:
     def parameters(self) -> cabc.Mapping[str, inspect.Parameter]:
         return self.signature.parameters
 
-    @functools.cached_property
-    def outline(self) -> typing.Self:
+    @property
+    def return_annotation(self) -> type:
+        return self.signature.return_annotation
+
+    def strip_type(self) -> typing.Self:
         """
         The outline of the signature discards all typing information.
         """
@@ -45,10 +48,6 @@ class Sign:
         ]
 
         return type(self)(inspect.Signature(parameters=params))
-
-    @property
-    def return_annotation(self) -> typing.Any:
-        return self.signature.return_annotation
 
     def bind(self, *args, **kwargs) -> inspect.BoundArguments:
         """

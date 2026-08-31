@@ -1,6 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 "The TSpec signature type."
+from aioway._utils import Sign
 
 import dataclasses as dcls
 import typing
@@ -19,4 +20,4 @@ class TSpecSign(tspecs.Composite):
 
     @classmethod
     def parse_callable(cls, function: cabc.Callable) -> typing.Self:
-        raise NotImplementedError
+        sign = Sign.from_callable(function)

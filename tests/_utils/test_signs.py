@@ -19,12 +19,12 @@ def add(a, b):
 
 
 @pytest.fixture
-def int_add_sign():
+def add_sign_i():
     return Sign.from_callable(int_add)
 
 
 @pytest.fixture
-def float_add_sign():
+def add_sign_f():
     return Sign.from_callable(float_add)
 
 
@@ -33,11 +33,11 @@ def add_sign():
     return Sign.from_callable(add)
 
 
-def test_sign_not_equal(int_add_sign: Sign, float_add_sign: Sign, add_sign: Sign):
-    assert int_add_sign != float_add_sign
-    assert int_add_sign != add_sign
-    assert float_add_sign != add_sign
+def test_sign_not_equal(add_sign_i: Sign, add_sign_f: Sign, add_sign: Sign):
+    assert add_sign_i != add_sign_f
+    assert add_sign_i != add_sign
+    assert add_sign_f != add_sign
 
 
-def test_sign_outline_equal(int_add_sign: Sign, float_add_sign: Sign, add_sign: Sign):
-    assert int_add_sign.outline == float_add_sign.outline == add_sign.outline
+def test_sign_outline_equal(add_sign_i: Sign, add_sign_f: Sign, add_sign: Sign):
+    assert add_sign_i.strip_type() == add_sign_f.strip_type() == add_sign.strip_type()
