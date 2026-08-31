@@ -129,6 +129,11 @@ class Sign:
         assert isinstance(arguments, dict), arguments
         return arguments
 
+    def drop_first(self) -> typing.Self:
+        "Drop the `self` parameter."
+        params = [param.parameter for param in self.param_list[1:]]
+        return type(self)(inspect.Signature(params))
+
     @property
     def argc(self) -> int:
         return len(self.signature.parameters)
