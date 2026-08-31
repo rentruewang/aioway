@@ -4,7 +4,7 @@ import typing
 
 from torch import nn
 
-from .deducts import TSpecInfer
+from .deducts import Deductor
 from .instrs import Instr
 from .nn import NnInstr, NnLayer, instr_dcls
 
@@ -33,7 +33,7 @@ class Sequential(NnInstr):
         self.modules = args
 
     @typing.override
-    def __deduct__(self) -> TSpecInfer:
+    def __deduct__(self) -> Deductor:
         raise NotImplementedError
 
     @typing.override

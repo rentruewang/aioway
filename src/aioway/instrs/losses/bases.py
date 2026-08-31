@@ -12,7 +12,7 @@ from torchrl.data import tensor_specs as tspecs
 from aioway.dsets import InputTarget
 from aioway.tspecs import TSpec
 
-from ..deducts import TSpecInfer
+from ..deducts import Deductor
 from ..nn import NnInstr, NnLoss, instr_dcls
 
 __all__ = [
@@ -56,7 +56,7 @@ class L1Loss(BaseLossInstr):
     NN = nn.L1Loss
 
     def __deduct__(self):
-        return SymTSpecInfer()
+        return SymDeductor()
 
 
 @instr_dcls
@@ -69,7 +69,7 @@ class MSELoss(BaseLossInstr):
     NN = nn.MSELoss
 
     def __deduct__(self):
-        return SymTSpecInfer()
+        return SymDeductor()
 
 
 @instr_dcls
@@ -118,7 +118,7 @@ class BCELoss(BaseLossInstr):
     NN = nn.BCELoss
 
     def __deduct__(self):
-        return BceTSpecInfer(logits=False)
+        return BceDeductor(logits=False)
 
 
 @instr_dcls
@@ -133,7 +133,7 @@ class BCEWithLogitsLoss(BaseLossInstr):
     NN = nn.BCEWithLogitsLoss
 
     def __deduct__(self):
-        return BceTSpecInfer(logits=True)
+        return BceDeductor(logits=True)
 
 
 @instr_dcls
@@ -148,10 +148,10 @@ class SmoothL1Loss(BaseLossInstr):
     NN = nn.SmoothL1Loss
 
     def __deduct__(self):
-        return SymTSpecInfer()
+        return SymDeductor()
 
 
-class LossTSpecInfer(TSpecInfer, abc.ABC):
+class LossDeductor(Deductor, abc.ABC):
     def __call__(self, tspec: TSpec):
         return _LOSS_TSPEC if self._is_valid(tspec) else NotImplemented
 
@@ -166,14 +166,14 @@ class LossTSpecInfer(TSpecInfer, abc.ABC):
         raise NotImplementedError
 
 
-class SymTSpecInfer(LossTSpecInfer):
+class SymDeductor(LossDeductor):
     def _check(self, tspec: tspecs.Composite) -> bool:
         input = tspec["input"]
         target = tspec["target"]
         return _same_shape(tspec) and _is_unbounded(input) and _is_unbounded(target)
 
 
-class KlDivInfer(LossTSpecInfer):
+class KlDivInfer(LossDeductor):
     def _check(self, tspec: tspecs.Composite) -> bool:
         return (
             True
@@ -183,7 +183,7 @@ class KlDivInfer(LossTSpecInfer):
         )
 
 
-class NllInfer(LossTSpecInfer):
+class NllInfer(LossDeductor):
     def _check(self, tspec: tspecs.Composite) -> bool:
         return (
             True
@@ -193,7 +193,7 @@ class NllInfer(LossTSpecInfer):
         )
 
 
-class CrossEntropyInfer(LossTSpecInfer):
+class CrossEntropyInfer(LossDeductor):
     def _check(self, tspec: tspecs.Composite) -> bool:
         return (
             True
@@ -204,7 +204,7 @@ class CrossEntropyInfer(LossTSpecInfer):
 
 
 @dcls.dataclass
-class BceTSpecInfer(LossTSpecInfer):
+class BceDeductor(LossDeductor):
     logits: bool
 
     def _check(self, tspec: tspecs.Composite) -> bool:

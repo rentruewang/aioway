@@ -10,7 +10,7 @@ from collections import abc as cabc
 
 from torch import nn
 
-from .deducts import TSpecInfer
+from .deducts import Deductor
 
 __all__ = ["Instr", "AiowayModule"]
 
@@ -62,7 +62,7 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
         _INSTRS_BY_MODULE[cls.NN] = cls
 
     @abc.abstractmethod
-    def __deduct__(self) -> TSpecInfer:
+    def __deduct__(self) -> Deductor:
         """
         Infer how an input described by `spec` would be converted to
         another item described by the output `TSpec`.

@@ -9,7 +9,7 @@ from aioway.modes import fake_mode
 from aioway.tspecs import TSpecLike
 
 from ..instrs import Instr
-from .deducts import TSpecInfer
+from .deducts import Deductor
 
 __all__ = ["identity_infer", "UnboundedInfer"]
 
@@ -19,7 +19,7 @@ def identity_infer[T: TSpecLike](tspec: T) -> T:
 
 
 @dcls.dataclass(frozen=True)
-class UnboundedInfer(TSpecInfer):
+class UnboundedInfer(Deductor):
     """
     Infer an unbounded output from an unbounded input.
     """

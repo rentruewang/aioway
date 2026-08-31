@@ -4,18 +4,18 @@ import typing
 
 from aioway.tspecs import TSpec
 
-__all__ = ["TSpecInfer", "TSpecInferLike", "TSpecInferCompat"]
+__all__ = ["Deductor", "DeductorLike", "DeductorCompat"]
 
-type TSpecInferLike = TSpecInfer | TSpecInferCompat
+type DeductorLike = Deductor | DeductorCompat
 """
-Types compatible with `TSpecInfer`.
+Types compatible with `Deductor`.
 """
 
 
 @typing.runtime_checkable
-class TSpecInfer(typing.Protocol):
+class Deductor(typing.Protocol):
     """
-    `TSpecInfer` converts from an input `TSpec` to another `TSpec`.
+    `Deductor` converts from an input `TSpec` to another `TSpec`.
 
     It's the type of callables that consumes a torch object and outputs another one.
     """
@@ -24,9 +24,9 @@ class TSpecInfer(typing.Protocol):
 
 
 @typing.runtime_checkable
-class TSpecInferCompat(typing.Protocol):
+class DeductorCompat(typing.Protocol):
     """
-    `TSpecInferCompat` can be converted to a `TSpecInfer`.
+    `DeductorCompat` can be converted to a `Deductor`.
     """
 
-    def __deduct__(self) -> TSpecInfer: ...
+    def __deduct__(self) -> Deductor: ...
