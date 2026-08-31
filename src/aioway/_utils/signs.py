@@ -35,17 +35,16 @@ class Sign:
         return self.signature.parameters
 
     @functools.cached_property
-    def outline(self) -> dict[str, inspect.Parameter]:
+    def outline(self) -> typing.Self:
         """
         The outline of the signature discards all typing information.
         """
 
-        result: dict[str, inspect.Parameter] = {}
+        params: list[inspect.Parameter] = [
+            strip_type_from_param(param) for param in self.parameters.values()
+        ]
 
-        for name, param in self.parameters.items():
-            result[name] = strip_type_from_param(param)
-
-        return result
+        return type(self)(inspect.Signature(parameters=params))
 
     @property
     def return_annotation(self) -> typing.Any:
