@@ -1,33 +1,14 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 "The utilities for signatures."
-import functools
 
 import dataclasses as dcls
+import functools
 import inspect
 import typing
 from collections import abc as cabc
 
 __all__ = ["Sign"]
-
-_ParamKind: typing.TypeAlias = typing.Literal[
-    inspect.Parameter.KEYWORD_ONLY,
-    inspect.Parameter.POSITIONAL_ONLY,
-    inspect.Parameter.POSITIONAL_OR_KEYWORD,
-    inspect.Parameter.VAR_POSITIONAL,
-    inspect.Parameter.VAR_KEYWORD,
-]
-
-
-@dcls.dataclass(frozen=True)
-class UnTypedParam:
-    "The parameter that only preserves non typing related information."
-
-    name: str
-    "The name of the param."
-
-    kind: _ParamKind
-    "The kind of parameter."
 
 
 @dcls.dataclass(frozen=True)
@@ -54,15 +35,15 @@ class Sign:
         return self.signature.parameters
 
     @functools.cached_property
-    def outline(self) -> dict[str, UnTypedParam]:
+    def outline(self) -> dict[str, inspect.Parameter]:
         """
         The outline of the signature discards all typing information.
         """
 
-        result: dict[str, UnTypedParam] = {}
+        result: dict[str, inspect.Parameter] = {}
 
         for name, param in self.parameters.items():
-            result[name] = UnTypedParam(name=param.name, kind=param.kind)
+            result[name] = strip_type_from_param(param)
 
         return result
 
@@ -111,3 +92,14 @@ class Sign:
                 ]
             )
         )
+
+
+def strip_type_from_param(param: inspect.Parameter) -> inspect.Parameter:
+    "Strip the type from `inspect.Parameter`."
+
+    return inspect.Parameter(
+        name=param.name,
+        kind=param.kind,
+        default=param.default,
+        annotation=inspect.Parameter.empty,
+    )

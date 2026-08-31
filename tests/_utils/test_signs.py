@@ -1,8 +1,9 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 
-from aioway._utils import Sign
 import pytest
+
+from aioway._utils import Sign
 
 
 def int_add(a: int, b: int):

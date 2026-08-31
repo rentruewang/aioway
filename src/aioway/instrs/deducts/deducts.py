@@ -1,8 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import dataclasses as dcls
 import typing
-from collections import abc as cabc
 
 from aioway.tspecs import TSpec
 
