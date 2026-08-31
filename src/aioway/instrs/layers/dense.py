@@ -1,11 +1,14 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 "The linear layers."
+import torch
 
-from aioway.instrs import deductor_for
-import dataclasses as dcls
+
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
+
+from aioway.instrs import deductor_for
+
 from ..nn import NnInstr, instr_dcls
 
 __all__ = ["Identity", "Linear", "Bilinear"]
@@ -48,7 +51,9 @@ class Linear(NnInstr):
 @deductor_for(nn.Linear).register
 def linear(linear: Linear, input: tspecs.Unbounded) -> tspecs.Unbounded:
     assert input.shape[-1] == linear.in_features
-    return dcls.replace(input, shape=[*input.shape[:-1], linear.out_features])
+    return tspecs.Unbounded(
+        shape=torch.Size([*input.shape[:-1], linear.out_features]), dtype=input.dtype
+    )
 
 
 @instr_dcls

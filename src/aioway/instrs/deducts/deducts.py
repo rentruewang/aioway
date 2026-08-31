@@ -2,10 +2,10 @@
 
 "The deductor type."
 
+import contextlib as ctxl
 import dataclasses as dcls
 import functools
 import logging
-import typing
 from collections import abc as cabc
 
 from torch import nn
@@ -13,9 +13,8 @@ from torchrl.data import tensor_specs as tspecs
 
 from aioway._utils import Param, Sign
 from aioway.tspecs import TSpec, TSpecLike, as_tspec, is_tspec_subtype
-import contextlib as ctxl
 
-__all__ = ["Deductor", "deductor_for", "new_deductor_registry"]
+__all__ = ["Deductor", "deductor_for", "new_deductor_registry", "deductor_registry"]
 
 LOGGER = logging.getLogger(__name__)
 
@@ -28,7 +27,11 @@ _deductor_registry: dict[type[nn.Module], Deductor] = {}
 class DeductorRule:
     "The deductor rules. It wraps a function, whose type hints are all `TSpec`s."
 
+    nn_type: type[nn.Module]
+    "The type of `nn.Module`."
+
     function: cabc.Callable
+    "The actual function."
 
     def __post_init__(self) -> None:
         self._validate_deduct_annotations()
@@ -43,25 +46,31 @@ class DeductorRule:
             raise TypeError(f"{sign=}'s return annotation is not `TSpecLike`.")
 
         self_param, *remains = sign.param_list
-        _check_self_param(self_param)
-        _check_param_list_remains(remains)
+        self._check_self_param(self_param)
+        self._check_remaining_params(remains)
 
+    def _check_self_param(self, self_param: Param):
+        from aioway.instrs import Instr
 
-def _check_self_param(self_param: Param):
-    from aioway.instrs import Instr
+        if self_param.is_any_type:
+            return
 
-    if self_param.is_any_type:
-        return
+        if not issubclass(annot := self_param.annotation, Instr):
+            raise TypeError(
+                f"{self_param.annotation=} is not Any or subclass of `Instr`."
+            )
 
-    if issubclass(self_param.annotation, Instr):
-        return
+        if annot.NN is not self.nn_type:
+            raise TypeError(f"{annot.NN=} is not {self.nn_type}.")
 
-    raise TypeError(f"{self_param} is not Any or subclass of `Instr`.")
+    def _check_remaining_params(self, remains: list[Param]):
+        for param in remains:
+            if param.is_any_type:
+                continue
 
+            if is_tspec_subtype(param.annotation):
+                continue
 
-def _check_param_list_remains(remains: list[Param]):
-    for param in remains:
-        if not param.is_any_type and not is_tspec_subtype(param.annotation):
             raise TypeError(f"{param.annotation=} but it should be a `TSpecLike` type.")
 
 
@@ -124,9 +133,9 @@ class Deductor:
             def linear_deductor(module, input): ...
         """
 
-        rule = DeductorRule(impl)
+        rule = DeductorRule(self.nn_type, impl)
         self._validate_against_module(rule)
-        self._impls.append(DeductorRule(impl))
+        self._impls.append(rule)
         return impl
 
     def _validate_against_module(self, impl: DeductorRule):
@@ -137,6 +146,10 @@ class Deductor:
             raise TypeError(
                 f"{impl_signature} is not compatible with {nn_module_sign}."
             )
+
+    @property
+    def nn_type(self) -> type[nn.Module]:
+        return self._nn_type
 
     @property
     def rules(self) -> cabc.Sequence[DeductorRule]:
@@ -203,3 +216,7 @@ def new_deductor_registry():
         yield
     finally:
         _deductor_registry = before
+
+
+def deductor_registry() -> cabc.Mapping[type[nn.Module], Deductor]:
+    return _deductor_registry
