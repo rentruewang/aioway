@@ -84,7 +84,7 @@ class TSpecCompat(typing.Protocol):
     def __tspec__(self) -> TSpec: ...
 
 
-def is_tspec_subtype(cls: type) -> typing.TypeIs[type[TSpecLike]]:
+def is_tspec_subtype(cls: type) -> typing.TypeIs[type[TSpec]]:
     "Check if `cls` is a subclass of `TSpecLike`."
     return issubclass(cls, tspecs.TensorSpec) or _inherits_from_tspec(cls)
 
