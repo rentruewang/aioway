@@ -14,7 +14,7 @@ from torchrl.data import tensor_specs as tspecs
 from aioway._utils import Sign
 from aioway.tspecs import TSpec, TSpecLike, as_tspec, is_tspec_subtype
 
-__all__ = ["Deductor", "DeductorLike", "DeductorCompat"]
+__all__ = ["Deductor", "DeductorLike", "DeductorCompat", "deductor_for"]
 
 LOGGER = logging.getLogger(__name__)
 
@@ -22,6 +22,9 @@ type DeductorLike = Deductor | DeductorCompat
 """
 Types compatible with `Deductor`.
 """
+
+_DEDUCTOR_REGISTRY: dict[type[nn.Module], Deductor] = {}
+"The deductor registry."
 
 
 @dcls.dataclass(frozen=True)
@@ -62,6 +65,9 @@ class Deductor:
 
         for impl in impls:
             self.register(impl)
+
+    def __repr__(self) -> str:
+        return f"Deductor({self._nn_type.__name__})"
 
     def __call__(
         self, *args: TSpecLike, **kwargs: TSpecLike
@@ -136,3 +142,14 @@ class DeductorCompat(typing.Protocol):
     """
 
     def __deduct__(self) -> Deductor: ...
+
+
+def deductor_for(nn_type: type[nn.Module]) -> Deductor:
+    """
+    Get the deductor registered for type of `nn.Module`.
+    """
+
+    if nn_type not in _DEDUCTOR_REGISTRY:
+        _DEDUCTOR_REGISTRY[nn_type] = Deductor(nn_type)
+
+    return _DEDUCTOR_REGISTRY[nn_type]
