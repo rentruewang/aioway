@@ -136,12 +136,3 @@ class DeductorCompat(typing.Protocol):
     """
 
     def __deduct__(self) -> Deductor: ...
-
-
-def _validate_deduct_annotations(sign: Sign) -> None:
-    if not sign.returns_any_type and not is_tspec_subtype(sign.return_annotation):
-        raise TypeError(f"{sign=}'s return annotation is not `TSpecLike`.")
-
-    for param in sign.param_list:
-        if not param.is_any_type and not is_tspec_subtype(param.annotation):
-            raise TypeError(f"{param.annotation=} but it should be a `TSpecLike` type.")
