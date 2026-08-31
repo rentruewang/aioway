@@ -23,7 +23,7 @@ __all__ = [
 class _ActivationInstr(NnInstr):
     def __init_subclass__(cls) -> None:
         super().__init_subclass__()
-        deductor_for(cls.NN).register(lambda loss, input: input)
+        deductor_for(cls.NN).register(lambda self, input: input)
 
 
 @instr_dcls

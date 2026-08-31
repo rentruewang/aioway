@@ -102,12 +102,33 @@ class Deductor:
         return NotImplemented
 
     def register[T: cabc.Callable](self, impl: T) -> T:
+        """
+        Register a deductor for for a specific module type.
+        The registered function should have the following signature:
+
+        Examples:
+
+            ```
+            @deductor_for(MyModule)
+            def function(module, *args, **kwargs): ...
+            ```
+
+            Where args, kwargs should match `MyModule.forward` exactly,
+            and `module` would be passed an `Instr` at runtime (for the configs).
+
+            For instance,
+
+            ```
+            deductor_for(nn.Linear)
+            def linear_deductor(module, input): ...
+        """
+
         rule = DeductorRule(impl)
-        self._validate_impl(rule)
+        self._validate_against_module(rule)
         self._impls.append(DeductorRule(impl))
         return impl
 
-    def _validate_impl(self, impl: DeductorRule):
+    def _validate_against_module(self, impl: DeductorRule):
         nn_module_sign = self._nn_module_forward.strip_type()
         impl_signature = impl.signature.strip_type()
 
