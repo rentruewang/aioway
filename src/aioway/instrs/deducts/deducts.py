@@ -109,10 +109,11 @@ class Deductor:
 
     def _validate_impl(self, impl: DeductorRule):
         nn_module_sign = self._nn_module_forward.strip_type()
+        impl_signature = impl.signature.strip_type()
 
-        if impl.signature.drop_first().strip_type() != nn_module_sign:
+        if impl_signature.drop_first() != nn_module_sign.drop_first():
             raise TypeError(
-                f"{impl.signature} is not compatible with {nn_module_sign}."
+                f"{impl_signature} is not compatible with {nn_module_sign}."
             )
 
     @property
@@ -121,7 +122,7 @@ class Deductor:
 
     @functools.cached_property
     def _nn_module_forward(self) -> Sign:
-        return Sign.from_callable(self._nn_type.forward).drop_first()
+        return Sign.from_callable(self._nn_type.forward)
 
 
 def _attempt_call(impl: cabc.Callable, module: nn.Module, *args, **kwargs):

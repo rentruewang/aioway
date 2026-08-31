@@ -7,9 +7,9 @@ import inspect
 import typing
 from collections import abc as cabc
 
-from aioway._utils import is_any_type_hint
+from .typing import is_any_type_hint
 
-__all__ = ["Param", "Sign", "is_any"]
+__all__ = ["Param", "Sign"]
 
 
 @dcls.dataclass(frozen=True)
