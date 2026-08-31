@@ -13,13 +13,14 @@ from torchrl.data import tensor_specs as tspecs
 
 from aioway._utils import Param, Sign
 from aioway.tspecs import TSpec, TSpecLike, as_tspec, is_tspec_subtype
+import contextlib as ctxl
 
-__all__ = ["Deductor", "deductor_for"]
+__all__ = ["Deductor", "deductor_for", "new_deductor_registry"]
 
 LOGGER = logging.getLogger(__name__)
 
 
-_DEDUCTOR_REGISTRY: dict[type[nn.Module], Deductor] = {}
+_deductor_registry: dict[type[nn.Module], Deductor] = {}
 "The deductor registry."
 
 
@@ -41,23 +42,27 @@ class DeductorRule:
         if not sign.returns_any_type and not is_tspec_subtype(sign.return_annotation):
             raise TypeError(f"{sign=}'s return annotation is not `TSpecLike`.")
 
-        self_param, *rest = sign.param_list
-
-        for param in rest:
-            if not param.is_any_type and not is_tspec_subtype(param.annotation):
-                raise TypeError(
-                    f"{param.annotation=} but it should be a `TSpecLike` type."
-                )
+        self_param, *remains = sign.param_list
+        _check_self_param(self_param)
+        _check_param_list_remains(remains)
 
 
 def _check_self_param(self_param: Param):
+    from aioway.instrs import Instr
+
     if self_param.is_any_type:
         return
 
-    if issubclass(self_param.annotation, nn.Module):
+    if issubclass(self_param.annotation, Instr):
         return
 
-    raise TypeError("{self_param} is not Any or `nn.Module`.")
+    raise TypeError(f"{self_param} is not Any or subclass of `Instr`.")
+
+
+def _check_param_list_remains(remains: list[Param]):
+    for param in remains:
+        if not param.is_any_type and not is_tspec_subtype(param.annotation):
+            raise TypeError(f"{param.annotation=} but it should be a `TSpecLike` type.")
 
 
 class Deductor:
@@ -178,7 +183,23 @@ def deductor_for(nn_type: type[nn.Module]) -> Deductor:
     Get the deductor registered for type of `nn.Module`.
     """
 
-    if nn_type not in _DEDUCTOR_REGISTRY:
-        _DEDUCTOR_REGISTRY[nn_type] = Deductor(nn_type)
+    if nn_type not in _deductor_registry:
+        _deductor_registry[nn_type] = Deductor(nn_type)
 
-    return _DEDUCTOR_REGISTRY[nn_type]
+    return _deductor_registry[nn_type]
+
+
+@ctxl.contextmanager
+def new_deductor_registry():
+    """
+    Overwrite the registry with a new one in the scope. Used in testing.
+    """
+
+    global _deductor_registry
+
+    before, _deductor_registry = _deductor_registry, {}
+
+    try:
+        yield
+    finally:
+        _deductor_registry = before
