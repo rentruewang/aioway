@@ -3,7 +3,6 @@
 
 from torch import nn
 
-from ..infers import identity_infer
 from ..nn import NnInstr, instr_dcls
 
 __all__ = [
@@ -42,10 +41,6 @@ class _BaseNorm(NnInstr):
 
         if self.momentum is not None and self.momentum <= 0:
             raise ValueError(f"If given, {self.momentum=} should be positive.")
-
-    def __deduct__(self):
-        "Norms does not change the data type."
-        return identity_infer
 
 
 class BatchNorm1d(_BaseNorm):

@@ -10,7 +10,7 @@ from collections import abc as cabc
 
 from torch import nn
 
-from .deducts import Deductor
+from .deducts import Deductor, deductor_for
 
 __all__ = ["Instr", "AiowayModule"]
 
@@ -61,21 +61,21 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
         LOGGER.debug("%s is registered into registry.", cls)
         _INSTRS_BY_MODULE[cls.NN] = cls
 
-    @abc.abstractmethod
+    @typing.final
     def __deduct__(self) -> Deductor:
         """
         Infer how an input described by `spec` would be converted to
         another item described by the output `TSpec`.
 
-        Args:
-            spec: The input `TSpec`. This would `.contains` valid input to `forward`.
+        The signature would match the `nn.Module.forward` signature,
+        for example, `nn.Linear` would have a `Deductor` of signature `(input: tspecs.Unbounded)`.
 
         Returns:
-            A `TSpec` that describes the output to `forward`.
+            A `Deductor` that transforms the input argumnts `TSpec` to an output `TSpec`.
             Should return `NotImplemented` for non-supported input.
         """
 
-        raise NotImplementedError
+        return deductor_for(self.NN)
 
     @abc.abstractmethod
     def module(self) -> AiowayModule:

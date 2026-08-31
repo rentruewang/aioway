@@ -7,7 +7,9 @@ import inspect
 import typing
 from collections import abc as cabc
 
-__all__ = ["Param", "Sign"]
+from aioway._utils import is_any_type_hint
+
+__all__ = ["Param", "Sign", "is_any"]
 
 
 @dcls.dataclass(frozen=True)
@@ -47,7 +49,7 @@ class Param:
 
     @property
     def is_any_type(self) -> bool:
-        return self.annotation is inspect.Parameter.empty
+        return is_any_type_hint(self.annotation)
 
     def strip_type(self) -> typing.Self:
         "Strip the type from `inspect.Parameter`."
@@ -97,7 +99,7 @@ class Sign:
     @property
     def returns_any_type(self) -> bool:
         "Whether or not the return type is defined."
-        return self.return_annotation is inspect.Parameter.empty
+        return is_any_type_hint(self.return_annotation)
 
     def strip_type(self) -> typing.Self:
         """

@@ -1,11 +1,9 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import typing
-
 from torch import nn
 
-from ..deducts import Deductor
-from ..infers import identity_infer
+from aioway.instrs import deductor_for
+
 from ..nn import NnInstr, instr_dcls
 
 __all__ = [
@@ -23,15 +21,9 @@ __all__ = [
 
 @instr_dcls
 class _ActivationInstr(NnInstr):
-    @typing.override
-    def __deduct__(self) -> Deductor:
-        """
-        Activation does not change the input.
-        For relu, it does change from unbounded to bounded,
-        but modelling it as unbounded -> unbounded will do now.
-        """
-
-        return identity_infer
+    def __init_subclass__(cls) -> None:
+        super().__init_subclass__()
+        deductor_for(cls.NN).register(lambda t: t)
 
 
 @instr_dcls
