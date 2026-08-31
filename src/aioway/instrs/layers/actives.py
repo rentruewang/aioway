@@ -4,8 +4,7 @@ import typing
 
 from torch import nn
 
-from aioway.tspecs import TSpecInfer
-
+from ..deducts import TSpecInfer
 from ..infers import identity_infer
 from ..nn import NnInstr, instr_dcls
 
@@ -25,7 +24,7 @@ __all__ = [
 @instr_dcls
 class _ActivationInstr(NnInstr):
     @typing.override
-    def __tspec_infer__(self) -> TSpecInfer:
+    def __deduct__(self) -> TSpecInfer:
         """
         Activation does not change the input.
         For relu, it does change from unbounded to bounded,

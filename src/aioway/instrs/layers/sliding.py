@@ -49,7 +49,7 @@ class _BaseAvgSliding(NnInstr, abc.ABC):
         _ = _cast_ndim_int(self.NDIM, self.stride)
         _ = _cast_ndim_int(self.NDIM, self.padding)
 
-    def __tspec_infer__(self):
+    def __deduct__(self):
         return UnboundedInfer(self)
 
 

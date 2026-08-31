@@ -8,8 +8,8 @@ from torchrl.data import tensor_specs as tspecs
 from aioway.modes import fake_mode
 from aioway.tspecs import TSpecLike
 
+from ..instrs import Instr
 from .deducts import TSpecInfer
-from .instrs import Instr
 
 __all__ = ["identity_infer", "UnboundedInfer"]
 

@@ -10,8 +10,9 @@ from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
 from aioway.dsets import InputTarget
-from aioway.tspecs import TSpec, TSpecInfer
+from aioway.tspecs import TSpec
 
+from ..deducts import TSpecInfer
 from ..nn import NnInstr, NnLoss, instr_dcls
 
 __all__ = [
@@ -54,7 +55,7 @@ class L1Loss(BaseLossInstr):
 
     NN = nn.L1Loss
 
-    def __tspec_infer__(self):
+    def __deduct__(self):
         return SymTSpecInfer()
 
 
@@ -67,7 +68,7 @@ class MSELoss(BaseLossInstr):
 
     NN = nn.MSELoss
 
-    def __tspec_infer__(self):
+    def __deduct__(self):
         return SymTSpecInfer()
 
 
@@ -79,7 +80,7 @@ class CrossEntropyLoss(BaseLossInstr):
 
     NN = nn.CrossEntropyLoss
 
-    def __tspec_infer__(self):
+    def __deduct__(self):
         return CrossEntropyInfer()
 
 
@@ -92,7 +93,7 @@ class NLLLoss(BaseLossInstr):
 
     NN = nn.NLLLoss
 
-    def __tspec_infer__(self):
+    def __deduct__(self):
         return NllInfer()
 
 
@@ -104,7 +105,7 @@ class KLDivLoss(BaseLossInstr):
 
     NN = nn.KLDivLoss
 
-    def __tspec_infer__(self):
+    def __deduct__(self):
         return KlDivInfer()
 
 
@@ -116,7 +117,7 @@ class BCELoss(BaseLossInstr):
 
     NN = nn.BCELoss
 
-    def __tspec_infer__(self):
+    def __deduct__(self):
         return BceTSpecInfer(logits=False)
 
 
@@ -131,7 +132,7 @@ class BCEWithLogitsLoss(BaseLossInstr):
 
     NN = nn.BCEWithLogitsLoss
 
-    def __tspec_infer__(self):
+    def __deduct__(self):
         return BceTSpecInfer(logits=True)
 
 
@@ -146,7 +147,7 @@ class SmoothL1Loss(BaseLossInstr):
 
     NN = nn.SmoothL1Loss
 
-    def __tspec_infer__(self):
+    def __deduct__(self):
         return SymTSpecInfer()
 
 

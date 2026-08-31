@@ -4,8 +4,7 @@ import typing
 
 from torch import nn
 
-from aioway.tspecs import TSpecInfer
-
+from ..deducts import TSpecInfer
 from ..infers import UnboundedInfer, identity_infer
 from ..nn import NnInstr, instr_dcls
 
@@ -21,7 +20,7 @@ class Identity(NnInstr):
     NN = nn.Identity
 
     @typing.override
-    def __tspec_infer__(self) -> TSpecInfer:
+    def __deduct__(self) -> TSpecInfer:
         "Identity `TSpec` function."
         return identity_infer
 
@@ -51,7 +50,7 @@ class Linear(NnInstr):
             raise ValueError(f"{self.out_features=} <= 0.")
 
     @typing.override
-    def __tspec_infer__(self):
+    def __deduct__(self):
         return UnboundedInfer(self)
 
 
@@ -86,5 +85,5 @@ class Bilinear(NnInstr):
             raise ValueError(f"{self.out_features=} <= 0.")
 
     @typing.override
-    def __tspec_infer__(self):
+    def __deduct__(self):
         return UnboundedInfer(self)
