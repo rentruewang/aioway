@@ -61,22 +61,6 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
         LOGGER.debug("%s is registered into registry.", cls)
         _INSTRS_BY_MODULE[cls.NN] = cls
 
-    @typing.final
-    def __deduct__(self) -> Deductor:
-        """
-        Infer how an input described by `spec` would be converted to
-        another item described by the output `TSpec`.
-
-        The signature would match the `nn.Module.forward` signature,
-        for example, `nn.Linear` would have a `Deductor` of signature `(input: tspecs.Unbounded)`.
-
-        Returns:
-            A `Deductor` that transforms the input argumnts `TSpec` to an output `TSpec`.
-            Should return `NotImplemented` for non-supported input.
-        """
-
-        return deductor_for(self.NN)
-
     @abc.abstractmethod
     def module(self) -> AiowayModule:
         """
@@ -98,6 +82,25 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
         """
 
         raise NotImplementedError
+
+    @classmethod
+    def __deductor__(cls) -> Deductor:
+        """
+        Infer how an input described by `spec` would be converted to
+        another item described by the output `TSpec`.
+
+        The signature would match the `nn.Module.forward` signature,
+        for example, `nn.Linear` would have a `Deductor` of signature `(input: tspecs.Unbounded)`.
+
+        Returns:
+            A `Deductor` that transforms the input argumnts `TSpec` to an output `TSpec`.
+            Should return `NotImplemented` for non-supported input.
+        """
+
+        if deductor := deductor_for(cls.NN):
+            return deductor
+        else:
+            return NotImplemented
 
 
 class AiowayModule[I = typing.Any, O = typing.Any](nn.Module, abc.ABC):

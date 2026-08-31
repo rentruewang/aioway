@@ -14,14 +14,10 @@ from torchrl.data import tensor_specs as tspecs
 from aioway._utils import Param, Sign
 from aioway.tspecs import TSpec, TSpecLike, as_tspec, is_tspec_subtype
 
-__all__ = ["Deductor", "DeductorLike", "DeductorCompat", "deductor_for"]
+__all__ = ["Deductor", "deductor_for"]
 
 LOGGER = logging.getLogger(__name__)
 
-type DeductorLike = Deductor | DeductorCompat
-"""
-Types compatible with `Deductor`.
-"""
 
 _DEDUCTOR_REGISTRY: dict[type[nn.Module], Deductor] = {}
 "The deductor registry."
@@ -175,15 +171,6 @@ def _signature_matches(impl: cabc.Callable, *args, **kwargs) -> bool:
             return False
 
     return True
-
-
-@typing.runtime_checkable
-class DeductorCompat(typing.Protocol):
-    """
-    `DeductorCompat` can be converted to a `Deductor`.
-    """
-
-    def __deduct__(self) -> Deductor: ...
 
 
 def deductor_for(nn_type: type[nn.Module]) -> Deductor:
