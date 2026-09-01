@@ -4,18 +4,15 @@
 
 import abc
 import dataclasses as dcls
-import functools
 import typing
 
-import torch
 from torch import nn
 
 from aioway._utils import dcls_asdict, render_fcall
-from aioway.dsets import InputTarget
 
-from .instrs import AiowayModule, Instr
+from .instrs import Instr
 
-__all__ = ["NnInstr", "instr_dcls", "NnLayer", "NnLoss"]
+__all__ = ["NnInstr", "instr_dcls"]
 
 
 @typing.dataclass_transform()
@@ -23,38 +20,6 @@ __all__ = ["NnInstr", "instr_dcls", "NnLayer", "NnLoss"]
 def instr_dcls(cls):
     "Decorator of dataclass for `Instr`."
     return dcls.dataclass(repr=False)(cls)
-
-
-class NnLayer(AiowayModule[torch.Tensor, torch.Tensor]):
-    def __init__(self, layer: nn.Module) -> None:
-        super().__init__()
-        self.layer = layer
-
-    def __repr__(self) -> str:
-        return self.__repr
-
-    def forward(self, tensor: torch.Tensor) -> torch.Tensor:
-        return self.layer(tensor)
-
-    @functools.cached_property
-    def __repr(self) -> str:
-        return "nn_layer::" + repr(self.loss)
-
-
-class NnLoss(AiowayModule[InputTarget, torch.Tensor]):
-    def __init__(self, loss: nn.Module) -> None:
-        super().__init__()
-        self.loss = loss
-
-    def __repr__(self) -> str:
-        return self.__repr
-
-    def forward(self, input_target: InputTarget) -> torch.Tensor:
-        return self.loss(input_target.input, input_target.target)
-
-    @functools.cached_property
-    def __repr(self) -> str:
-        return "nn_loss::" + repr(self.loss)
 
 
 @instr_dcls
@@ -70,8 +35,8 @@ class NnInstr(Instr, abc.ABC):
         return render_fcall("nn_init::" + type(self).__qualname__, **dcls_asdict(self))
 
     @typing.override
-    def module(self) -> AiowayModule:
-        return NnLayer(self.NN(**dcls_asdict(self)))
+    def module(self) -> nn.Module:
+        return self.NN(**dcls_asdict(self))
 
     @typing.override
     def children(self):

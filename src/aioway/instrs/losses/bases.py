@@ -8,7 +8,7 @@ import torch
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
-from ..nn import NnInstr, NnLoss, instr_dcls
+from ..nn import NnInstr, instr_dcls
 
 __all__ = [
     "BaseLossInstr",
@@ -37,8 +37,8 @@ class BaseLossInstr(NnInstr, abc.ABC):
     """
 
     @typing.override
-    def module(self) -> NnLoss:
-        return NnLoss(self.NN())
+    def module(self) -> nn.Module:
+        return self.NN()
 
 
 @instr_dcls
@@ -125,7 +125,7 @@ class SmoothL1Loss(BaseLossInstr):
 @L1Loss.deductor().register
 @SmoothL1Loss.deductor().register
 @MSELoss.deductor().register
-def symmetric_loss(
+def symmetric_loss_deduct(
     self, input: tspecs.Unbounded, target: tspecs.Unbounded
 ) -> tspecs.Unbounded:
     if input != target:
