@@ -59,5 +59,5 @@ class Dropout3d(_BaseDropout):
 @Dropout1d.deductor().register
 @Dropout2d.deductor().register
 @Dropout3d.deductor().register
-def norm_deduct(self, input: tspecs.Unbounded):
+def dropout_deduct(self, input: tspecs.Unbounded):
     return input
