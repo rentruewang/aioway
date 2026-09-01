@@ -10,6 +10,7 @@ import torch
 from torch import nn
 
 from aioway._utils import AnySet
+from aioway.instrs import Instr
 from aioway.tspecs import TSpec
 
 __all__ = [
@@ -71,16 +72,12 @@ def emit(observ: TSpec, action: TSpec, /) -> cabc.Generator[nn.Module]:
 
 class EmitterLike(typing.Protocol):
     """
-    The baseline function that `emit` uses to generate `nn.Module`s.
+    The baseline function that `emit` uses to generate `Instr`s.
     If the `TSpec` is not supported, `NotImplemented` should be returned.
-
-    All the `BaseLine`s are registered, and iterated over during `Emitter` call.
-
-    Right now a `BaseLine` is stateless, perhaps find a way to make it stateful?
     """
 
     @abc.abstractmethod
-    def __call__(self, observ: TSpec, action: TSpec, /) -> nn.Module:
+    def __call__(self, observ: TSpec, action: TSpec, /) -> Instr:
         raise NotImplementedError
 
 
@@ -128,14 +125,14 @@ class RouteEmitter(Emitter):
     The emitters to choose to emit from.
     """
 
-    def __call__(self, observ: TSpec, action: TSpec) -> nn.Module:
+    def __call__(self, observ: TSpec, action: TSpec) -> Instr:
         for module in self.candidates(observ, action):
             return module
 
         else:
             raise ValueError(f"No candidate found for {observ=} and {action=}.")
 
-    def candidates(self, observ: TSpec, action: TSpec) -> cabc.Generator[nn.Module]:
+    def candidates(self, observ: TSpec, action: TSpec) -> cabc.Generator[Instr]:
         """
         Emit all possible candidates.
         """
@@ -162,7 +159,7 @@ class _FuncEmitter(Emitter):
     The function to wrap.
     """
 
-    def __call__(self, observ: TSpec, action: TSpec, /) -> nn.Module:
+    def __call__(self, observ: TSpec, action: TSpec, /) -> Instr:
         return self.function(observ, action)
 
 
