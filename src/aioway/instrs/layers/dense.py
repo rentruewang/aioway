@@ -51,7 +51,7 @@ class Linear(NnInstr):
 
 
 @Linear.deductor().register
-def linear(linear: Linear, input: tspecs.Unbounded) -> tspecs.Unbounded:
+def linear_deduct(linear: Linear, input: tspecs.Unbounded) -> tspecs.Unbounded:
     assert input.shape[-1] == linear.in_features
     return tspecs.Unbounded(
         shape=torch.Size([*input.shape[:-1], linear.out_features]), dtype=input.dtype
@@ -90,7 +90,7 @@ class Bilinear(NnInstr):
 
 
 @Bilinear.deductor().register
-def bilinear(
+def bilinear_deduct(
     self: Bilinear, input1: tspecs.Unbounded, input2: tspecs.Unbounded
 ) -> tspecs.Unbounded:
     input1_shape = input1.shape
