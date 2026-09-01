@@ -1,6 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import dataclasses as dcls
+import inspect
 import typing
 from collections import abc as cabc
 
@@ -18,6 +19,7 @@ __all__ = [
     "is_list_of",
     "is_tuple_of",
     "is_seq_of",
+    "is_any_type_hint",
     "is_dict_of_str_to",
     "HasLen",
     "SeqKeysView",
@@ -31,6 +33,14 @@ type FloatArrayLike = tuple[float, ...] | list[float] | FloatArray
 type BoolArray = npt.NDArray[np.bool_]
 type BoolArrayLike = tuple[bool, ...] | list[bool] | BoolArray
 type UIntArray = npt.NDArray[np.uint]
+
+
+_ANY_TYPE = inspect.Parameter.empty, typing.Any, object
+
+
+def is_any_type_hint(typ) -> bool:
+    "Check if `typ` is no constraint."
+    return isinstance(typ, type) and typ in _ANY_TYPE
 
 
 @typing.no_type_check

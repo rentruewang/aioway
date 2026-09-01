@@ -6,12 +6,8 @@ from collections import abc as cabc
 
 import torch
 from torch import nn, optim
-from torchrl.data import tensor_specs as tspecs
 
-from aioway.emits import Emitter, emitter_dcls
-from aioway.tspecs import TSpec
-
-__all__ = ["NmfTrainer", "NmfEmitter"]
+__all__ = ["NmfTrainer"]
 
 
 class NmfTrainer(nn.Module):
@@ -51,28 +47,3 @@ class NmfTrainer(nn.Module):
         self.optim.zero_grad()
         loss.backward()
         self.optim.step()
-
-
-@emitter_dcls
-class NmfEmitter(Emitter):
-
-    hidden: int
-    "The hidden latent size."
-
-    def __call__(self, observ: TSpec, action: TSpec) -> nn.Module:
-
-        if not (isinstance(observ, tspecs.Unbounded) and observ.ndim == 2):
-            return NotImplemented
-
-        if not (isinstance(action, tspecs.UnboundedContinuous) and action.ndim == 0):
-            return NotImplemented
-
-        hidden = self.hidden
-        rows, cols = observ.shape
-
-        left = nn.Parameter(torch.empty(hidden, rows))
-        right = nn.Parameter(torch.empty(hidden, cols))
-        loss = nn.MSELoss()
-        optim_type = optim.Adam
-
-        return NmfTrainer(left, right, loss, optim_type)

@@ -21,8 +21,8 @@ from torch import nn, optim
 from torch.utils import data as dutils
 from torchrl.data import tensor_specs as tspecs
 
+from aioway.compilers import ClfLogitHead, linear_regression
 from aioway.dsets import DatasetIdxDset, Dset, InputTarget, MnistDataset
-from aioway.emits import ClfLogitHead, linear_regression
 from aioway.trainers import StaticTrainer, TrainCfg
 from aioway.tspecs import as_tspec
 
@@ -66,7 +66,8 @@ def main(batch_size: int):
 
     module = ClfLogitHead(linear_regression)(
         as_tspec(dset.input_tspec), as_tspec(dset.target_tspec)
-    )
+    ).module()
+
     optimizer = optim.AdamW(module.parameters())
     loss_func = nn.CrossEntropyLoss()
 

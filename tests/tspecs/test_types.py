@@ -32,6 +32,14 @@ def not_tspec(request):
     return request.param
 
 
+def test_tspec_protocol(tspec: tspecs.TensorSpec):
+    """
+    Test if the `TSpec` protocol captures the types given directly by `torchrl`.
+    """
+
+    assert is_tspec_like(tspec)
+
+
 def test_tspec_type(tspec):
     assert is_tspec_like(tspec)
 
