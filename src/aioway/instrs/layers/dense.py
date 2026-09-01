@@ -6,8 +6,6 @@ import torch
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.instrs import deductor_for
-
 from ..nn import NnInstr, instr_dcls
 
 __all__ = ["Identity", "Linear", "Bilinear"]
@@ -20,6 +18,11 @@ class Identity(NnInstr):
     """
 
     NN = nn.Identity
+
+
+@Identity.deductor().register
+def identity_deduct(self, input):
+    return input
 
 
 @instr_dcls
@@ -47,7 +50,7 @@ class Linear(NnInstr):
             raise ValueError(f"{self.out_features=} <= 0.")
 
 
-@deductor_for(nn.Linear).register
+@Linear.deductor().register
 def linear(linear: Linear, input: tspecs.Unbounded) -> tspecs.Unbounded:
     assert input.shape[-1] == linear.in_features
     return tspecs.Unbounded(

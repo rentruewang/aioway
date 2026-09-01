@@ -1,7 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 "The `Instr` interface."
-import warnings
 
 import abc
 import inspect
@@ -11,7 +10,8 @@ from collections import abc as cabc
 
 from torch import nn
 
-from .deducts import Deductor, deductor_for
+if typing.TYPE_CHECKING:
+    from .deducts import Deductor
 
 __all__ = ["Instr", "AiowayModule"]
 
@@ -51,7 +51,7 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
 
     def __init_subclass__(cls) -> None:
         # Don't do anything if `cls.NN` is not updated.
-        if _nn_not_defined(cls.NN):
+        if not cls.implements_nn():
             LOGGER.debug("%s is an abstract class.", cls)
             return
 
@@ -59,12 +59,6 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
             raise RuntimeError(
                 f"{cls=} is abstract, but it should not be when {cls.NN=}."
             )
-
-        # Using a warning if `cls.deductor()` would be `NotImplemented`.
-        # This is easier than raising an error.
-        if not cls._has_deductor():
-            cls_name = f"{cls.__module__}.{cls.__qualname__}"
-            warnings.warn(f"{cls_name} is missing deductor implementation.")
 
         LOGGER.debug("%s is registered into registry.", cls)
         _INSTRS_BY_MODULE[cls.NN] = cls
@@ -102,23 +96,25 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
 
         Returns:
             A `Deductor` that transforms the input argumnts `TSpec` to an output `TSpec`.
-            Should return `NotImplemented` for non-supported input.
         """
 
-        if deductor := deductor_for(cls.NN):
-            return deductor
-        else:
-            return NotImplemented
+        from .deducts import deductor_for
+
+        return deductor_for(cls)
 
     @classmethod
-    def _has_deductor(cls) -> bool:
+    def deductor_is_defined(cls) -> bool:
         """
         Check if `cls.deductor()` returns a `Deductor` or not.
 
         This is useful in testing.
         """
 
-        return cls.deductor() is not NotImplemented
+        return len(cls.deductor()) != 0
+
+    @classmethod
+    def implements_nn(cls) -> bool:
+        return _nn_is_defined(cls.NN)
 
 
 class AiowayModule[I = typing.Any, O = typing.Any](nn.Module, abc.ABC):
@@ -128,5 +124,5 @@ class AiowayModule[I = typing.Any, O = typing.Any](nn.Module, abc.ABC):
         raise NotImplementedError
 
 
-def _nn_not_defined(cls: type[nn.Module]) -> bool:
-    return cls is _NOT_CONCRETE_INSTR_NN
+def _nn_is_defined(cls: type[nn.Module]) -> bool:
+    return cls is not _NOT_CONCRETE_INSTR_NN

@@ -2,8 +2,6 @@
 
 from torch import nn
 
-from aioway.instrs import deductor_for
-
 from ..nn import NnInstr, instr_dcls
 
 __all__ = [
@@ -23,7 +21,7 @@ __all__ = [
 class _ActivationInstr(NnInstr):
     def __init_subclass__(cls) -> None:
         super().__init_subclass__()
-        deductor_for(cls.NN).register(lambda self, input: input)
+        cls.deductor().register(lambda self, input: input)
 
 
 @instr_dcls

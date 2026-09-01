@@ -14,6 +14,8 @@ from torchrl.data import tensor_specs as tspecs
 from aioway._utils import Param, Sign
 from aioway.tspecs import TSpec, TSpecLike, as_tspec, is_tspec_subtype
 
+from ..instrs import Instr
+
 __all__ = ["Deductor", "deductor_for", "new_deductor_registry", "deductor_registry"]
 
 LOGGER = logging.getLogger(__name__)
@@ -137,7 +139,7 @@ class Deductor:
         self._validate_module_signature(rule)
 
         if rule.signature in self._registered_rules:
-            raise KeyError(f"{rule.signature=} already registered.")
+            raise KeyError(f"{rule.signature=} already registered for {self.nn_type}.")
 
         self._registered_rules[rule.signature] = rule
         return impl
@@ -149,7 +151,7 @@ class Deductor:
 
         if impl_signature.drop_first() != nn_module_sign.drop_first():
             raise TypeError(
-                f"{impl_signature} is not compatible with {nn_module_sign}."
+                f"{impl_signature} is not compatible with {self.nn_type}: {nn_module_sign}."
             )
 
     @property
@@ -198,11 +200,15 @@ def _signature_matches(impl: cabc.Callable, *args, **kwargs) -> bool:
     return True
 
 
-def deductor_for(nn_type: type[nn.Module]) -> Deductor:
+def deductor_for(nn_type: type[nn.Module | Instr]) -> Deductor:
     """
     Get the deductor registered for type of `nn.Module`.
     """
 
+    if issubclass(nn_type, Instr):
+        nn_type = nn_type.NN
+
+    assert issubclass(nn_type, nn.Module)
     if nn_type not in _deductor_registry:
         _deductor_registry[nn_type] = Deductor(nn_type)
 
