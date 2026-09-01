@@ -4,8 +4,12 @@ import pytest
 import torch
 from torch import nn, optim
 
-from aioway.emits import emit_one, linear_regression
-from aioway.instrs import ContrastiveLoss, ContrastiveLossEmitter
+from aioway.compilers import (
+    ContrastiveLoss,
+    ContrastiveLossEmitter,
+    emit_one,
+    linear_regression,
+)
 from aioway.schemas import Shape
 from aioway.tspecs import unbounded_box_tspec
 

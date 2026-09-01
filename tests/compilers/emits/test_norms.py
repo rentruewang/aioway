@@ -5,7 +5,7 @@ import typing
 import pytest
 import torch
 
-from aioway.emits import NormEmitter, NormType, emit_one, layer_norm_emitter
+from aioway.compilers import NormEmitter, NormType, emit_one, layer_norm_emitter
 from aioway.tspecs import unbounded_box_tspec
 
 

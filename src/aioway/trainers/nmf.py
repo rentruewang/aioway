@@ -8,7 +8,7 @@ import torch
 from torch import nn, optim
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.emits import Emitter, emitter_dcls
+from aioway.compilers import Emitter, emitter_dcls
 from aioway.tspecs import TSpec
 
 __all__ = ["NmfTrainer", "NmfEmitter"]
