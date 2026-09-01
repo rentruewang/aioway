@@ -4,6 +4,8 @@ import typing
 
 from torch import nn
 
+from aioway.tspecs import TSpec
+
 from .instrs import Instr
 from .nn import NnInstr, NnLayer, instr_dcls
 
@@ -41,3 +43,15 @@ class Sequential(NnInstr):
     @typing.override
     def children(self):
         yield from self.modules
+
+
+@Sequential.deductor().register
+def sequential_deduct(self: Sequential, input: TSpec) -> TSpec:
+    for sub in self.modules:
+        deductor = sub.deductor()
+
+        if (output := deductor(sub, input)) is NotImplemented:
+            return NotImplemented
+
+        input = output
+    return input

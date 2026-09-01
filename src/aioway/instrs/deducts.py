@@ -9,7 +9,6 @@ import logging
 from collections import abc as cabc
 
 from torch import nn
-from torchrl.data import tensor_specs as tspecs
 
 from aioway._utils import Param, Sign
 from aioway.tspecs import TSpec, TSpecLike, as_tspec, is_tspec_subtype
@@ -52,8 +51,6 @@ class DeductorRule:
         self._check_remaining_params(remains)
 
     def _check_self_param(self, self_param: Param):
-        from aioway.instrs import Instr
-
         if self_param.is_any_type:
             return
 
@@ -99,14 +96,13 @@ class Deductor:
     def __repr__(self) -> str:
         return f"Deductor({self._nn_type.__name__})"
 
-    def __call__(
-        self, module: nn.Module, *args: TSpecLike, **kwargs: TSpecLike
-    ) -> TSpec | tspecs.TensorSpec:
+    def __call__(self, instr: Instr, /, *args: TSpecLike, **kwargs: TSpecLike) -> TSpec:
         args_list = [as_tspec(tspec) for tspec in args]
         kwargs_dict = {key: as_tspec(tspec) for key, tspec in kwargs.items()}
 
+        # Check each implementation, if failed, try next one.
         for impl in self._registered_rules.values():
-            result = _attempt_call(impl.function, module, *args_list, **kwargs_dict)
+            result = _attempt_call(impl.function, instr, *args_list, **kwargs_dict)
 
             if result is NotImplemented:
                 LOGGER.debug("%s failed to parse (*%s, **%s)", impl, args, kwargs)
@@ -114,6 +110,7 @@ class Deductor:
 
             LOGGER.debug("%s successfully parsed (*%s, **%s)", impl, args, kwargs)
             return result
+
         return NotImplemented
 
     def register[T: cabc.Callable](self, impl: T) -> T:
@@ -172,13 +169,13 @@ class Deductor:
         return Sign.from_callable(self._nn_type.forward)
 
 
-def _attempt_call(impl: cabc.Callable, module: nn.Module, *args, **kwargs):
+def _attempt_call(impl: cabc.Callable, instr: Instr, *args, **kwargs):
     # If signature does not match, don't even attempt.
     if not _signature_matches(impl, *args, **kwargs):
         return NotImplemented
 
     # If the function itself returns `NotImplemented`, give up.
-    if (result := impl(*args, **kwargs)) is NotImplemented:
+    if (result := impl(instr, *args, **kwargs)) is NotImplemented:
         return NotImplemented
 
     return result
