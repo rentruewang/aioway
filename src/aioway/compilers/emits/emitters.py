@@ -27,7 +27,7 @@ _EMITTERS: AnySet[Emitter] = AnySet()
 "The emitters that are considered."
 
 
-def emit_one(observ: TSpec, action: TSpec) -> nn.Module:
+def emit_one(observ: TSpec, action: TSpec) -> Instr:
     """
     A convenient wrapper to only emit the first target found.
     """
@@ -36,7 +36,7 @@ def emit_one(observ: TSpec, action: TSpec) -> nn.Module:
     return route_emitter(observ, action)
 
 
-def emit(observ: TSpec, action: TSpec, /) -> cabc.Generator[nn.Module]:
+def emit(observ: TSpec, action: TSpec, /) -> cabc.Generator[Instr]:
     """
     Emit some candidates based on the given spaces.
     """
