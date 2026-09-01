@@ -1,10 +1,10 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import pytest
-from torch import nn
 
 from aioway.compilers import emit_one
 from aioway.compilers.emits.convs import ImageRegressorEmitter
+from aioway.instrs import Instr
 from aioway.schemas import Shape
 from aioway.tspecs import (
     TSpec,
@@ -46,8 +46,8 @@ def test_emit_image_regressor(
     feat_size: int,
 ):
     image_mod = emit_one(image_tspec, output_tspec)
-    assert isinstance(image_mod, nn.Module)
+    assert isinstance(image_mod, Instr)
 
     with set_batch_size(7):
         img = sample_from_tspec(image_tspec)
-    assert image_mod(img).shape == (7, feat_size)
+    assert image_mod.module()(img).shape == (7, feat_size)

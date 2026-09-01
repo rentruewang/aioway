@@ -4,11 +4,11 @@ import typing
 
 import pytest
 import torch
-from torch import nn
 from torch.utils import data as dutils
 from torchrl.data import tensor_specs as tspecs
 
 from aioway.compilers import MlpEmitter, emit, emit_one, linear_regression
+from aioway.instrs import Instr, Linear, Sequential
 from aioway.schemas import Shape
 from aioway.tspecs import TSpec, unbounded_box_tspec
 
@@ -57,10 +57,9 @@ def consider_mlp():
 
 
 def test_just_linear(input_shape_tspec: TSpec, output_tspec: TSpec, consider_linear):
-    module = emit_one(input_shape_tspec, output_tspec)
-    assert isinstance(module, nn.Linear | nn.Sequential)
+    instr = emit_one(input_shape_tspec, output_tspec)
     _check_linear(
-        module,
+        instr,
         in_features=input_shape_tspec.shape,
         out_features=output_tspec.shape,
     )
@@ -71,15 +70,15 @@ def test_mlp_emitter(
 ):
     input = torch.randn(13, 3, 4, 6)
 
-    for module in emit(input_shape_tspec, output_tspec):
-        output = module(input)
+    for instr in emit(input_shape_tspec, output_tspec):
+        output = instr.module()(input)
 
     assert output.shape == (13, 3, 4, 7)
 
 
-def _check_linear(linear: nn.Module, in_features: torch.Size, out_features: torch.Size):
-    assert isinstance(linear, nn.Linear | nn.Sequential)
+def _check_linear(linear: Instr, in_features: torch.Size, out_features: torch.Size):
+    assert isinstance(linear, Linear | Sequential)
 
     in_tensor = torch.randn(101, *in_features)
 
-    assert linear(in_tensor).shape == (101, *out_features)
+    assert linear.module()(in_tensor).shape == (101, *out_features)

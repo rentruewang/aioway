@@ -3,7 +3,6 @@
 "The linear layers."
 
 import typing
-from collections import abc as cabc
 
 import torch
 from torch import nn
@@ -53,14 +52,14 @@ class Unflatten(NnInstr):
     dim: int
     "The dimension."
 
-    sizes: cabc.Sequence[int]
+    unflattened_size: tuple[int, ...]
     "The sizes to unflatten to."
 
 
 @Unflatten.deductor().register
 @typing.no_type_check
 def unflatten_deduct(self: Unflatten, input: tspecs.Unbounded):
-    return input.unflatten(self.dim, sizes=torch.Size(self.sizes))
+    return input.unflatten(self.dim, sizes=torch.Size(self.unflattened_size))
 
 
 @instr_dcls
