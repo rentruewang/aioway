@@ -2,6 +2,7 @@
 
 
 from torch import nn
+from torchrl.data import tensor_specs as tspecs
 
 from ..nn import NnInstr, instr_dcls
 
@@ -52,3 +53,11 @@ class Dropout3d(_BaseDropout):
     """
 
     NN = nn.Dropout3d
+
+
+@Dropout.deductor().register
+@Dropout1d.deductor().register
+@Dropout2d.deductor().register
+@Dropout3d.deductor().register
+def norm_deduct(self, input: tspecs.Unbounded):
+    return input

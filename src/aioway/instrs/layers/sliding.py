@@ -1,17 +1,18 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from aioway.emits import sample_from_tspec
-import torch
-from aioway.modes import fake_mode
-from aioway.instrs import Instr
 import abc
 import dataclasses as dcls
 import math
 import typing
-from torchrl.data import tensor_specs as tspecs
+
+import torch
 from torch import nn
-import dataclasses as dcls
+from torchrl.data import tensor_specs as tspecs
+
 from aioway._utils import is_tuple_of
+from aioway.emits import sample_from_tspec
+from aioway.instrs import Instr
+from aioway.modes import fake_mode
 
 from ..nn import NnInstr, instr_dcls
 

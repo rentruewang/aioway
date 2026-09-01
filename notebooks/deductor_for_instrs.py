@@ -15,6 +15,7 @@
 
 # %%
 import rich
+
 from aioway.instrs import Instr
 
 
