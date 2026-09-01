@@ -2,7 +2,15 @@
 
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.instrs import Activation, Flatten, Instr, Linear, RlMlp, Sequential
+from aioway.instrs import (
+    Activation,
+    Flatten,
+    Instr,
+    Linear,
+    RlMlp,
+    Sequential,
+    Unflatten,
+)
 from aioway.tspecs import TSpec
 
 from .emitters import Emitter, emitter_dcls, emitter_function
@@ -43,7 +51,7 @@ def linear_regression(observ: TSpec, action: TSpec) -> Instr:
 
     # Map back.
     if action.ndim != 1:
-        return module_list.append(Unflatten(-1, action.shape))
+        module_list.append(Unflatten(-1, action.shape))
 
     return Sequential(*module_list)
 

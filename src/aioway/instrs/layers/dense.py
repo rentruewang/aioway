@@ -11,7 +11,7 @@ from torchrl.data import tensor_specs as tspecs
 
 from ..nn import NnInstr, instr_dcls
 
-__all__ = ["Identity", "Flatten", "Linear", "Bilinear"]
+__all__ = ["Identity", "Flatten", "Unflatten", "Linear", "Bilinear"]
 
 
 @instr_dcls
@@ -43,9 +43,9 @@ def flatten_deduct(self, input: tspecs.Unbounded):
 
 
 @instr_dcls
-class UnFlatten(NnInstr):
+class Unflatten(NnInstr):
     """
-    `UnFlatten` un-flattens the input tensor.
+    `Unflatten` un-flattens the input tensor.
     """
 
     NN = nn.Unflatten
@@ -57,9 +57,9 @@ class UnFlatten(NnInstr):
     "The sizes to unflatten to."
 
 
-@UnFlatten.deductor().register
+@Unflatten.deductor().register
 @typing.no_type_check
-def unflatten_deduct(self: UnFlatten, input: tspecs.Unbounded):
+def unflatten_deduct(self: Unflatten, input: tspecs.Unbounded):
     return input.unflatten(self.dim, sizes=torch.Size(self.sizes))
 
 
