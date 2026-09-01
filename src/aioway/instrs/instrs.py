@@ -30,11 +30,12 @@ The registry storing all the `Instr`s corresponding to their `nn.Module` type.
 
 class Instr[I = typing.Any, O = typing.Any](abc.ABC):
     """
-    `NeInstrt` is the module type that `aioway` emits.
+    `Instr` is the IR `aioway` emits.
 
-    It requires several methods to be implemented.
+    It bridges several functionalities:
 
-    `__deduct__`: Describe how `forward` transforms data.
+    - It emits `nn.Module`.
+    - It transforms `TSpec` to match the underlying data change.
     """
 
     __match_args__: typing.ClassVar[tuple[str, ...]]
@@ -84,7 +85,7 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
         raise NotImplementedError
 
     @classmethod
-    def __deductor__(cls) -> Deductor:
+    def deductor(cls) -> Deductor:
         """
         Infer how an input described by `spec` would be converted to
         another item described by the output `TSpec`.

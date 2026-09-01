@@ -83,7 +83,7 @@ class Deductor:
 
     def __init__(self, nn_type: type[nn.Module], *impls: cabc.Callable) -> None:
         self._nn_type = nn_type
-        self._impls: dict[Sign, DeductorRule] = []
+        self._registered_rules: dict[Sign, DeductorRule] = {}
 
         for impl in impls:
             self.register(impl)
@@ -100,7 +100,7 @@ class Deductor:
         args_list = [as_tspec(tspec) for tspec in args]
         kwargs_dict = {key: as_tspec(tspec) for key, tspec in kwargs.items()}
 
-        for impl in self._impls:
+        for impl in self._registered_rules.values():
             result = _attempt_call(impl.function, module, *args_list, **kwargs_dict)
 
             if result is NotImplemented:
@@ -135,7 +135,11 @@ class Deductor:
 
         rule = DeductorRule(self.nn_type, impl)
         self._validate_module_signature(rule)
-        self._impls.append(rule)
+
+        if rule.signature in self._registered_rules:
+            raise KeyError(f"{rule.signature=} already registered.")
+
+        self._registered_rules[rule.signature] = rule
         return impl
 
     def _validate_module_signature(self, impl: DeductorRule):
@@ -155,8 +159,8 @@ class Deductor:
         return self._nn_type
 
     @property
-    def rules(self) -> cabc.Sequence[DeductorRule]:
-        return self._impls
+    def rules(self) -> cabc.Mapping[Sign, DeductorRule]:
+        return self._registered_rules
 
     @functools.cached_property
     def _nn_module_forward(self) -> Sign:
