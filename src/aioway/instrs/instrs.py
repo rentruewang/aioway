@@ -64,7 +64,7 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
         _INSTRS_BY_MODULE[cls.NN] = cls
 
     @abc.abstractmethod
-    def module(self) -> AiowayModule:
+    def module(self) -> nn.Module:
         """
         Build the module represented by this current `Instr`.
         This function is responsible for recursively construct sub-modules as well,

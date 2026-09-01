@@ -14,7 +14,7 @@ from torchrl.data import tensor_specs as tspecs
 from aioway._utils import Param, Sign
 from aioway.tspecs import TSpec, TSpecLike, as_tspec, is_tspec_subtype
 
-from ..instrs import Instr
+from .instrs import Instr
 
 __all__ = ["Deductor", "deductor_for", "new_deductor_registry", "deductor_registry"]
 
@@ -63,7 +63,10 @@ class DeductorRule:
             )
 
         if annot.NN is not self.nn_type:
-            raise TypeError(f"{annot.NN=} is not {self.nn_type}.")
+            raise TypeError(
+                f"The first parameter of deductor function {annot=} "
+                f"has {annot.NN=}, which is not {self.nn_type}."
+            )
 
     def _check_remaining_params(self, remains: list[Param]):
         for param in remains:

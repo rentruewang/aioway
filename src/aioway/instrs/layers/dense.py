@@ -87,3 +87,16 @@ class Bilinear(NnInstr):
 
         if self.out_features <= 0:
             raise ValueError(f"{self.out_features=} <= 0.")
+
+
+@Bilinear.deductor().register
+def bilinear(
+    self: Bilinear, input1: tspecs.Unbounded, input2: tspecs.Unbounded
+) -> tspecs.Unbounded:
+    input1_shape = input1.shape
+    input2_shape = input2.shape
+
+    if input1_shape[:-1] != input2_shape[:-1]:
+        return NotImplemented
+
+    return tspecs.Unbounded(shape=torch.Size([*input1_shape[:-1], self.out_features]))
