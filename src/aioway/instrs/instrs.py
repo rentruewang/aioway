@@ -1,6 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 "The `Instr` interface."
+import warnings
 
 import abc
 import inspect
@@ -59,6 +60,10 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
                 f"{cls=} is abstract, but it should not be when {cls.NN=}."
             )
 
+        if not cls._deductor_is_defined():
+            cls_name = f"{cls.__module__}.{cls.__qualname__}"
+            warnings.warn(f"{cls_name} is missing deductor implementation.")
+
         LOGGER.debug("%s is registered into registry.", cls)
         _INSTRS_BY_MODULE[cls.NN] = cls
 
@@ -102,6 +107,16 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
             return deductor
         else:
             return NotImplemented
+
+    @classmethod
+    def _deductor_is_defined(cls) -> bool:
+        """
+        Check if `cls.deductor()` returns a `Deductor` or not.
+
+        This is useful in testing.
+        """
+
+        return cls.deductor() is not NotImplemented
 
 
 class AiowayModule[I = typing.Any, O = typing.Any](nn.Module, abc.ABC):
