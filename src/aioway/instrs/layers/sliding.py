@@ -5,9 +5,14 @@ import dataclasses as dcls
 import math
 import typing
 
+import torch
 from torch import nn
+from torchrl.data import tensor_specs as tspecs
 
 from aioway._utils import is_tuple_of
+from aioway.emits import sample_from_tspec
+from aioway.instrs import Instr
+from aioway.modes import fake_mode
 
 from ..nn import NnInstr, instr_dcls
 
@@ -227,3 +232,32 @@ def _cast_ndim_int(ndim: int, val: int | tuple[int, ...]) -> tuple[int, ...]:
         return val
 
     raise ValueError(f"Invalid value: {val}.")
+
+
+@dcls.dataclass(frozen=True)
+class _PoolDeductor:
+    allowed_dims: tuple[int, ...]
+    "The allowed dimensions."
+
+    # Mark `instr` as `typing.Any` to use with multiple types.
+    def __call__(self, instr: typing.Any, input: tspecs.Unbounded) -> tspecs.Unbounded:
+        if input.ndim not in self.allowed_dims:
+            return NotImplemented
+
+        with fake_mode():
+            module = instr.module()
+            output: torch.Tensor = module(sample_from_tspec(input))
+
+        batch, *rest = output.shape
+        assert batch == input.shape[0]
+
+        return tspecs.Unbounded(torch.Size(rest))
+
+    def register(self, *instrs: type[Instr]) -> None:
+        for instr in instrs:
+            instr.deductor().register(self)
+
+
+_PoolDeductor((1, 2)).register(Conv1d, AvgPool1d, MaxPool1d)
+_PoolDeductor((3,)).register(Conv2d, AvgPool2d, MaxPool2d)
+_PoolDeductor((4,)).register(Conv3d, AvgPool3d, MaxPool3d)

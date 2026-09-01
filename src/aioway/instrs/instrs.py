@@ -10,7 +10,8 @@ from collections import abc as cabc
 
 from torch import nn
 
-from .deducts import Deductor, deductor_for
+if typing.TYPE_CHECKING:
+    from .deducts import Deductor
 
 __all__ = ["Instr", "AiowayModule"]
 
@@ -30,11 +31,12 @@ The registry storing all the `Instr`s corresponding to their `nn.Module` type.
 
 class Instr[I = typing.Any, O = typing.Any](abc.ABC):
     """
-    `NeInstrt` is the module type that `aioway` emits.
+    `Instr` is the IR `aioway` emits.
 
-    It requires several methods to be implemented.
+    It bridges several functionalities:
 
-    `__deduct__`: Describe how `forward` transforms data.
+    - It emits `nn.Module`.
+    - It transforms `TSpec` to match the underlying data change.
     """
 
     __match_args__: typing.ClassVar[tuple[str, ...]]
@@ -49,7 +51,7 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
 
     def __init_subclass__(cls) -> None:
         # Don't do anything if `cls.NN` is not updated.
-        if _nn_not_defined(cls.NN):
+        if not cls.implements_nn():
             LOGGER.debug("%s is an abstract class.", cls)
             return
 
@@ -62,7 +64,7 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
         _INSTRS_BY_MODULE[cls.NN] = cls
 
     @abc.abstractmethod
-    def module(self) -> AiowayModule:
+    def module(self) -> nn.Module:
         """
         Build the module represented by this current `Instr`.
         This function is responsible for recursively construct sub-modules as well,
@@ -84,7 +86,7 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
         raise NotImplementedError
 
     @classmethod
-    def __deductor__(cls) -> Deductor:
+    def deductor(cls) -> Deductor:
         """
         Infer how an input described by `spec` would be converted to
         another item described by the output `TSpec`.
@@ -94,13 +96,25 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
 
         Returns:
             A `Deductor` that transforms the input argumnts `TSpec` to an output `TSpec`.
-            Should return `NotImplemented` for non-supported input.
         """
 
-        if deductor := deductor_for(cls.NN):
-            return deductor
-        else:
-            return NotImplemented
+        from .deducts import deductor_for
+
+        return deductor_for(cls)
+
+    @classmethod
+    def deductor_is_defined(cls) -> bool:
+        """
+        Check if `cls.deductor()` returns a `Deductor` or not.
+
+        This is useful in testing.
+        """
+
+        return len(cls.deductor()) != 0
+
+    @classmethod
+    def implements_nn(cls) -> bool:
+        return _nn_is_defined(cls.NN)
 
 
 class AiowayModule[I = typing.Any, O = typing.Any](nn.Module, abc.ABC):
@@ -110,5 +124,5 @@ class AiowayModule[I = typing.Any, O = typing.Any](nn.Module, abc.ABC):
         raise NotImplementedError
 
 
-def _nn_not_defined(cls: type[nn.Module]) -> bool:
-    return cls is _NOT_CONCRETE_INSTR_NN
+def _nn_is_defined(cls: type[nn.Module]) -> bool:
+    return cls is not _NOT_CONCRETE_INSTR_NN

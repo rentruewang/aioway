@@ -8,7 +8,7 @@ import torch
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
-from ..nn import NnInstr, NnLoss, instr_dcls
+from ..nn import NnInstr, instr_dcls
 
 __all__ = [
     "BaseLossInstr",
@@ -37,8 +37,8 @@ class BaseLossInstr(NnInstr, abc.ABC):
     """
 
     @typing.override
-    def module(self) -> NnLoss:
-        return NnLoss(self.NN())
+    def module(self) -> nn.Module:
+        return self.NN()
 
 
 @instr_dcls
@@ -122,104 +122,13 @@ class SmoothL1Loss(BaseLossInstr):
     NN = nn.SmoothL1Loss
 
 
-# class LossDeductor(Deductor, abc.ABC):
-#     def __call__(self, tspec: TSpec):
-#         return _LOSS_TSPEC if self._is_valid(tspec) else NotImplemented
+@L1Loss.deductor().register
+@SmoothL1Loss.deductor().register
+@MSELoss.deductor().register
+def symmetric_loss_deduct(
+    self, input: tspecs.Unbounded, target: tspecs.Unbounded
+) -> tspecs.Unbounded:
+    if input != target:
+        return NotImplemented
 
-#     def _is_valid(self, tspec: TSpec) -> bool:
-#         if not _is_input_target(tspec):
-#             return False
-
-#         return self._check(tspec)
-
-#     @abc.abstractmethod
-#     def _check(self, tspec: tspecs.Composite) -> bool:
-#         raise NotImplementedError
-
-
-# class SymDeductor(LossDeductor):
-#     def _check(self, tspec: tspecs.Composite) -> bool:
-#         input = tspec["input"]
-#         target = tspec["target"]
-#         return _same_shape(tspec) and _is_unbounded(input) and _is_unbounded(target)
-
-
-# class KlDivInfer(LossDeductor):
-#     def _check(self, tspec: tspecs.Composite) -> bool:
-#         return (
-#             True
-#             and _same_shape(tspec)
-#             and _is_neg_bounded(tspec["input"])
-#             and _is_prob(tspec["target"])
-#         )
-
-
-# class NllInfer(LossDeductor):
-#     def _check(self, tspec: tspecs.Composite) -> bool:
-#         return (
-#             True
-#             and _same_shape(tspec)
-#             and _is_neg_bounded(tspec["input"])
-#             and _is_categorical(tspec["target"])
-#         )
-
-
-# class CrossEntropyInfer(LossDeductor):
-#     def _check(self, tspec: tspecs.Composite) -> bool:
-#         return (
-#             True
-#             and _same_shape(tspec)
-#             and _is_unbounded(tspec["input"])
-#             and _is_categorical(tspec["target"])
-#         )
-
-
-# @dcls.dataclass
-# class BceDeductor(LossDeductor):
-#     logits: bool
-
-#     def _check(self, tspec: tspecs.Composite) -> bool:
-#         check_input = _is_unbounded if self.logits else _is_prob
-
-#         return (
-#             True
-#             and _same_shape(tspec)
-#             and check_input(tspec["input"])
-#             and _is_boolean(tspec["target"])
-#         )
-
-
-# def _same_shape(tspec: tspecs.Composite) -> bool:
-#     return tspec["input"].shape == tspec["target"].shape
-
-
-# def _is_neg_bounded(tspec: tspecs.TensorSpec) -> bool:
-#     # It's negative input (log of prob).
-#     return isinstance(tspec, tspecs.Bounded) and tspec.high == 0
-
-
-# def _is_categorical(tspec: tspecs.TensorSpec) -> typing.TypeIs[tspecs.Categorical]:
-#     return isinstance(tspec, tspecs.Categorical)
-
-
-# def _is_prob(tspec: tspecs.TensorSpec) -> bool:
-#     # Target is probability. Should also sum to 1 but now this should suffice.
-#     return isinstance(tspec, tspecs.Bounded) and tspec.low == 0 and tspec.high == 1
-
-
-# def _is_unbounded(tspec: tspecs.TensorSpec) -> typing.TypeIs[tspecs.Unbounded]:
-#     return isinstance(tspec, tspecs.Unbounded)
-
-
-# def _is_boolean(tspec: tspecs.TensorSpec) -> bool:
-#     return isinstance(tspec, tspecs.Categorical) and tspec.n == 2
-
-
-# def _is_input_target(tspec) -> typing.TypeIs[tspecs.Composite]:
-#     if not isinstance(tspec, tspecs.Composite):
-#         return False
-
-#     if tspec.data_cls is not InputTarget:
-#         return False
-
-#     return True
+    return _LOSS_TSPEC

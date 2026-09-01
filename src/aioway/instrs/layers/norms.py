@@ -2,6 +2,7 @@
 
 
 from torch import nn
+from torchrl.data import tensor_specs as tspecs
 
 from ..nn import NnInstr, instr_dcls
 
@@ -77,3 +78,13 @@ class InstanceNorm3d(_BaseNorm):
     "Applies Instance Normalization over a 5D input."
 
     NN = nn.InstanceNorm3d
+
+
+@BatchNorm1d.deductor().register
+@BatchNorm2d.deductor().register
+@BatchNorm3d.deductor().register
+@InstanceNorm1d.deductor().register
+@InstanceNorm2d.deductor().register
+@InstanceNorm3d.deductor().register
+def norm_deduct(self, input: tspecs.Unbounded):
+    return input

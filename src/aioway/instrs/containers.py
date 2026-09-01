@@ -4,8 +4,10 @@ import typing
 
 from torch import nn
 
+from aioway.tspecs import TSpec
+
 from .instrs import Instr
-from .nn import NnInstr, NnLayer, instr_dcls
+from .nn import NnInstr, instr_dcls
 
 __all__ = ["Sequential"]
 
@@ -32,12 +34,24 @@ class Sequential(NnInstr):
         self.modules = args
 
     @typing.override
-    def module(self) -> NnLayer:
+    def module(self) -> nn.Sequential:
         # Create `nn.Sequential` instance with `NnInitFn` is the best way
         # to ensure that the modes are invoked properly.
         modules = [mo.module() for mo in self.modules]
-        return NnLayer(self.NN(*modules))
+        return self.NN(*modules)
 
     @typing.override
     def children(self):
         yield from self.modules
+
+
+@Sequential.deductor().register
+def sequential_deduct(self: Sequential, input: TSpec) -> TSpec:
+    for sub in self.modules:
+        deductor = sub.deductor()
+
+        if (output := deductor(sub, input)) is NotImplemented:
+            return NotImplemented
+
+        input = output
+    return input

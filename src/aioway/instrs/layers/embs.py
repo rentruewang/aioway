@@ -1,7 +1,9 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 
+import torch
 from torch import nn
+from torchrl.data import tensor_specs as tspecs
 
 from ..nn import NnInstr, instr_dcls
 
@@ -31,6 +33,12 @@ class Embedding(_BaseEmbedding):
     """
 
     NN = nn.Embedding
+
+
+@Embedding.deductor().register
+def emb_deduct(self: Embedding, input: tspecs.Categorical) -> tspecs.Unbounded:
+    shape = torch.Size([self.num_embeddings])
+    return tspecs.Unbounded(shape=shape)
 
 
 @instr_dcls

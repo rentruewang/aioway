@@ -9,10 +9,11 @@ import logging
 from collections import abc as cabc
 
 from torch import nn
-from torchrl.data import tensor_specs as tspecs
 
 from aioway._utils import Param, Sign
 from aioway.tspecs import TSpec, TSpecLike, as_tspec, is_tspec_subtype
+
+from .instrs import Instr
 
 __all__ = ["Deductor", "deductor_for", "new_deductor_registry", "deductor_registry"]
 
@@ -50,8 +51,6 @@ class DeductorRule:
         self._check_remaining_params(remains)
 
     def _check_self_param(self, self_param: Param):
-        from aioway.instrs import Instr
-
         if self_param.is_any_type:
             return
 
@@ -61,7 +60,10 @@ class DeductorRule:
             )
 
         if annot.NN is not self.nn_type:
-            raise TypeError(f"{annot.NN=} is not {self.nn_type}.")
+            raise TypeError(
+                f"The first parameter of deductor function {annot=} "
+                f"has {annot.NN=}, which is not {self.nn_type}."
+            )
 
     def _check_remaining_params(self, remains: list[Param]):
         for param in remains:
@@ -83,7 +85,7 @@ class Deductor:
 
     def __init__(self, nn_type: type[nn.Module], *impls: cabc.Callable) -> None:
         self._nn_type = nn_type
-        self._impls: list[DeductorRule] = []
+        self._registered_rules: dict[Sign, DeductorRule] = {}
 
         for impl in impls:
             self.register(impl)
@@ -94,14 +96,13 @@ class Deductor:
     def __repr__(self) -> str:
         return f"Deductor({self._nn_type.__name__})"
 
-    def __call__(
-        self, module: nn.Module, *args: TSpecLike, **kwargs: TSpecLike
-    ) -> TSpec | tspecs.TensorSpec:
+    def __call__(self, instr: Instr, /, *args: TSpecLike, **kwargs: TSpecLike) -> TSpec:
         args_list = [as_tspec(tspec) for tspec in args]
         kwargs_dict = {key: as_tspec(tspec) for key, tspec in kwargs.items()}
 
-        for impl in self._impls:
-            result = _attempt_call(impl.function, module, *args_list, **kwargs_dict)
+        # Check each implementation, if failed, try next one.
+        for impl in self._registered_rules.values():
+            result = _attempt_call(impl.function, instr, *args_list, **kwargs_dict)
 
             if result is NotImplemented:
                 LOGGER.debug("%s failed to parse (*%s, **%s)", impl, args, kwargs)
@@ -109,6 +110,7 @@ class Deductor:
 
             LOGGER.debug("%s successfully parsed (*%s, **%s)", impl, args, kwargs)
             return result
+
         return NotImplemented
 
     def register[T: cabc.Callable](self, impl: T) -> T:
@@ -134,39 +136,46 @@ class Deductor:
         """
 
         rule = DeductorRule(self.nn_type, impl)
-        self._validate_against_module(rule)
-        self._impls.append(rule)
+        self._validate_module_signature(rule)
+
+        if rule.signature in self._registered_rules:
+            raise KeyError(f"{rule.signature=} already registered for {self.nn_type}.")
+
+        self._registered_rules[rule.signature] = rule
         return impl
 
-    def _validate_against_module(self, impl: DeductorRule):
+    def _validate_module_signature(self, impl: DeductorRule):
+        "Validate against the function signature against the module signature."
         nn_module_sign = self._nn_module_forward.strip_type()
         impl_signature = impl.signature.strip_type()
 
         if impl_signature.drop_first() != nn_module_sign.drop_first():
             raise TypeError(
-                f"{impl_signature} is not compatible with {nn_module_sign}."
+                f"{impl_signature} is not compatible with {self.nn_type}: {nn_module_sign}."
             )
 
     @property
     def nn_type(self) -> type[nn.Module]:
+        "The type of `nn.Module` that this deductor is for."
+
         return self._nn_type
 
     @property
-    def rules(self) -> cabc.Sequence[DeductorRule]:
-        return self._impls
+    def rules(self) -> cabc.Mapping[Sign, DeductorRule]:
+        return self._registered_rules
 
     @functools.cached_property
     def _nn_module_forward(self) -> Sign:
         return Sign.from_callable(self._nn_type.forward)
 
 
-def _attempt_call(impl: cabc.Callable, module: nn.Module, *args, **kwargs):
+def _attempt_call(impl: cabc.Callable, instr: Instr, *args, **kwargs):
     # If signature does not match, don't even attempt.
     if not _signature_matches(impl, *args, **kwargs):
         return NotImplemented
 
     # If the function itself returns `NotImplemented`, give up.
-    if (result := impl(*args, **kwargs)) is NotImplemented:
+    if (result := impl(instr, *args, **kwargs)) is NotImplemented:
         return NotImplemented
 
     return result
@@ -191,11 +200,15 @@ def _signature_matches(impl: cabc.Callable, *args, **kwargs) -> bool:
     return True
 
 
-def deductor_for(nn_type: type[nn.Module]) -> Deductor:
+def deductor_for(nn_type: type[nn.Module | Instr]) -> Deductor:
     """
     Get the deductor registered for type of `nn.Module`.
     """
 
+    if issubclass(nn_type, Instr):
+        nn_type = nn_type.NN
+
+    assert issubclass(nn_type, nn.Module)
     if nn_type not in _deductor_registry:
         _deductor_registry[nn_type] = Deductor(nn_type)
 
