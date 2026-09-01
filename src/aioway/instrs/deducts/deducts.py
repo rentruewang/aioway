@@ -83,7 +83,7 @@ class Deductor:
 
     def __init__(self, nn_type: type[nn.Module], *impls: cabc.Callable) -> None:
         self._nn_type = nn_type
-        self._impls: list[DeductorRule] = []
+        self._impls: dict[Sign, DeductorRule] = []
 
         for impl in impls:
             self.register(impl)
@@ -134,11 +134,12 @@ class Deductor:
         """
 
         rule = DeductorRule(self.nn_type, impl)
-        self._validate_against_module(rule)
+        self._validate_module_signature(rule)
         self._impls.append(rule)
         return impl
 
-    def _validate_against_module(self, impl: DeductorRule):
+    def _validate_module_signature(self, impl: DeductorRule):
+        "Validate against the function signature against the module signature."
         nn_module_sign = self._nn_module_forward.strip_type()
         impl_signature = impl.signature.strip_type()
 
@@ -149,6 +150,8 @@ class Deductor:
 
     @property
     def nn_type(self) -> type[nn.Module]:
+        "The type of `nn.Module` that this deductor is for."
+
         return self._nn_type
 
     @property

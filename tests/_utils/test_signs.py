@@ -33,6 +33,13 @@ def add_sign():
     return Sign.from_callable(add)
 
 
+def test_sign_hashable(add_sign_i, add_sign_f, add_sign):
+    # If it can be put into `set`, it is hashable.
+    signs = {add_sign_i, add_sign_f, add_sign}
+
+    assert len(signs) == 3
+
+
 def test_sign_not_equal(add_sign_i: Sign, add_sign_f: Sign, add_sign: Sign):
     assert add_sign_i != add_sign_f
     assert add_sign_i != add_sign
