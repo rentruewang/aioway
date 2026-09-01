@@ -60,7 +60,9 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
                 f"{cls=} is abstract, but it should not be when {cls.NN=}."
             )
 
-        if not cls._deductor_is_defined():
+        # Using a warning if `cls.deductor()` would be `NotImplemented`.
+        # This is easier than raising an error.
+        if not cls._has_deductor():
             cls_name = f"{cls.__module__}.{cls.__qualname__}"
             warnings.warn(f"{cls_name} is missing deductor implementation.")
 
@@ -109,7 +111,7 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
             return NotImplemented
 
     @classmethod
-    def _deductor_is_defined(cls) -> bool:
+    def _has_deductor(cls) -> bool:
         """
         Check if `cls.deductor()` returns a `Deductor` or not.
 
