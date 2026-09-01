@@ -4,15 +4,13 @@
 
 import functools
 
-from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
 from aioway._utils import is_list_of
-from aioway.emits import sample_from_tspec
+from aioway.instrs import Activation, Conv2d, Flatten, Instr, Sequential
 from aioway.schemas import Shape
-from aioway.tspecs import TSpec, unbounded_box_tspec
+from aioway.tspecs import TSpec, sample_from_tspec, unbounded_box_tspec
 
-from ._utils import Activation, activation_module
 from .emitters import Emitter, emitter_dcls
 from .linear import linear_regression
 
@@ -34,7 +32,7 @@ class ImageRegressorEmitter(Emitter):
     strides: int | list[int]
     "The stride sizes."
 
-    activation: Activation = "relu"
+    activation: str = "relu"
     "The non linear activation to use."
 
     def _validate(self) -> None:
@@ -43,45 +41,53 @@ class ImageRegressorEmitter(Emitter):
     def __len__(self) -> int:
         return self._size
 
-    def __call__(self, observ: TSpec, action: TSpec) -> nn.Sequential:
+    def __call__(self, observ: TSpec, action: TSpec) -> Sequential:
         if not isinstance(observ, tspecs.BoundedContinuous):
             return NotImplemented
 
         if not isinstance(action, tspecs.Unbounded):
             return NotImplemented
 
-        activation = activation_module(self.activation)
+        assert observ.ndim == 3
 
-        modules: list[nn.Module] = []
+        activation = Activation(self.activation)
 
-        channels = self._as_list(self.channels)
+        modules: list[Instr] = []
+
+        def sequential():
+            "The sequential function. Defined s.t. it updates with `modules`."
+            return Sequential(*modules)
+
+        out_channels = self._as_list(self.channels)
+        in_channels = [observ.shape[0], *out_channels[:-1]]
         kernels = self._as_list(self.kernels)
         strides = self._as_list(self.strides)
+
         for i in range(len(self)):
             modules.append(
-                nn.LazyConv2d(
-                    out_channels=channels[i],
+                Conv2d(
+                    in_channels=in_channels[i],
+                    out_channels=out_channels[i],
                     kernel_size=kernels[i],
                     stride=strides[i],
                 )
             )
 
             if activation is not NotImplemented:
-                modules.append(activation)
+                modules.append(activation.instr_cls())
 
-        seq = nn.Sequential(*modules, nn.Flatten())
+        modules.append(Flatten())
 
         sim_in = sample_from_tspec(observ)
-        sim_out = seq(sim_in)
+        sim_out = sequential().module()(sim_in)
 
-        # Emits a linear final layer, that uses our `linear_shape` logic.
+        # Emits a linear final layer, that uses our `linear_regression` logic.
         linear = linear_regression(
             unbounded_box_tspec(shape=Shape.parse(sim_out.shape[1:])), action
         )
+        modules.append(linear)
 
-        seq.append(linear)
-
-        return seq
+        return sequential()
 
     @functools.cached_property
     def _size(self) -> int:

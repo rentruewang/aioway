@@ -1,0 +1,41 @@
+# Copyright (c) AIoWay Authors - All Rights Reserved
+
+"Normalization layers."
+
+import typing
+
+from torchrl.data import tensor_specs as tspecs
+
+from aioway.instrs import Instr
+from aioway.tspecs import TSpec
+
+from .emitters import Emitter, emitter_dcls
+
+__all__ = ["NormEmitter", "NormType"]
+
+type NormType = typing.Literal["instance", "batch"]
+
+
+@emitter_dcls
+class NormEmitter(Emitter):
+    norm_type: NormType
+    "The type of normalization layer."
+
+    def __call__(self, observ: TSpec, action: TSpec) -> Instr:
+
+        if not isinstance(observ, tspecs.Unbounded):
+            return NotImplemented
+
+        if not isinstance(action, tspecs.Unbounded):
+            return NotImplemented
+
+        if observ != action:
+            return NotImplemented
+
+        return self._get_norm(observ.ndim - 1, observ.shape[0])
+
+    def _get_norm(self, non_channel_ndim: int, num_features: int) -> Instr:
+        from aioway.instrs.layers import norms
+
+        klass = getattr(norms, f"{self.norm_type.capitalize()}Norm{non_channel_ndim}d")
+        return klass(num_features=num_features)
