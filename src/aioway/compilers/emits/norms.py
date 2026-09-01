@@ -1,16 +1,15 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 "Normalization layers."
-from aioway.instrs import Instr
 
 import typing
 
-from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
+from aioway.instrs import Instr
 from aioway.tspecs import TSpec
 
-from .emitters import Emitter, emitter_dcls, emitter_function
+from .emitters import Emitter, emitter_dcls
 
 __all__ = ["NormEmitter", "NormType"]
 

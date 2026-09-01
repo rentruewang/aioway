@@ -8,13 +8,7 @@ from torch import nn
 from torch.utils import data as dutils
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.compilers import (
-    MlpCompoundEmitter,
-    MlpEmitter,
-    emit,
-    emit_one,
-    linear_regression,
-)
+from aioway.compilers import MlpEmitter, emit, emit_one, linear_regression
 from aioway.schemas import Shape
 from aioway.tspecs import TSpec, unbounded_box_tspec
 
@@ -56,14 +50,9 @@ def consider_linear():
         yield
 
 
-def _mlp_emitters():
-    yield MlpCompoundEmitter([100, 100])
-    yield MlpEmitter([100, 100])
-
-
-@pytest.fixture(params=_mlp_emitters())
-def consider_mlp(request: pytest.FixtureRequest):
-    with request.param.consider():
+@pytest.fixture
+def consider_mlp():
+    with MlpEmitter([100, 100]).consider():
         yield
 
 

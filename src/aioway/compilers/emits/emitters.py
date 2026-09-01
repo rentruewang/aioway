@@ -6,8 +6,6 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-from torch import nn
-
 from aioway._utils import AnySet
 from aioway.instrs import Instr
 from aioway.tspecs import TSpec

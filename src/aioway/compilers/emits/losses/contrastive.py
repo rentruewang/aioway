@@ -8,11 +8,7 @@ import torch
 from torch import nn, optim
 from torch.nn import functional as F
 
-from aioway.tspecs import TSpec
-
-from ..emitters import Emitter, emitter_dcls
-
-__all__ = ["ContrastiveLoss", "ContrastiveLossEmitter"]
+__all__ = ["ContrastiveLoss"]
 
 
 class ContrastiveLoss(nn.Module):
@@ -43,23 +39,3 @@ class ContrastiveLoss(nn.Module):
         loss_t = F.cross_entropy(matrix.T, label)
 
         return (loss + loss_t) / 2
-
-
-@emitter_dcls
-class ContrastiveLossEmitter(Emitter):
-    """
-    Contrastive loss's emitter. This depends on another emitter to emit the actual `UFunc`.
-    """
-
-    emitter: Emitter
-    "The default emitter when it's time to emit."
-
-    def __call__(self, observ: TSpec, action: TSpec, /) -> nn.Module:
-        # In batch negative is a reconstruction error.
-        if observ != action:
-            return NotImplemented
-
-        emission = self.emitter(observ, action)
-
-        assert isinstance(emission, nn.Module), type(emission)
-        return ContrastiveLoss(emission, nn.MSELoss(), optim.Adam)

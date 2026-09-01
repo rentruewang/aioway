@@ -66,7 +66,8 @@ def main(batch_size: int):
 
     module = ClfLogitHead(linear_regression)(
         as_tspec(dset.input_tspec), as_tspec(dset.target_tspec)
-    )
+    ).module()
+
     optimizer = optim.AdamW(module.parameters())
     loss_func = nn.CrossEntropyLoss()
 
