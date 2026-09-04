@@ -10,7 +10,7 @@ from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
 from aioway._utils import is_tuple_of
-from aioway.instrs import Instr
+from aioway.deductions import deduction_for
 from aioway.modes import fake_mode
 from aioway.tspecs import sample_from_tspec
 
@@ -253,11 +253,11 @@ class _PoolDeduction:
 
         return tspecs.Unbounded(torch.Size(rest))
 
-    def register(self, *instrs: type[Instr]) -> None:
-        for instr in instrs:
-            instr.deduction().register(self)
+    def register(self, *modules: type[nn.Module]) -> None:
+        for module in modules:
+            deduction_for(module).register(self)
 
 
-_PoolDeduction((1, 2)).register(Conv1d, AvgPool1d, MaxPool1d)
-_PoolDeduction((3,)).register(Conv2d, AvgPool2d, MaxPool2d)
-_PoolDeduction((4,)).register(Conv3d, AvgPool3d, MaxPool3d)
+_PoolDeduction((1, 2)).register(nn.Conv1d, nn.AvgPool1d, nn.MaxPool1d)
+_PoolDeduction((3,)).register(nn.Conv2d, nn.AvgPool2d, nn.MaxPool2d)
+_PoolDeduction((4,)).register(nn.Conv3d, nn.AvgPool3d, nn.MaxPool3d)
