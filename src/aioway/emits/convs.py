@@ -84,7 +84,7 @@ class ImageRegressorEmitter(Emitter):
 
         seq.append(linear)
 
-        return sequential()
+        return seq
 
     @functools.cached_property
     def _size(self) -> int:

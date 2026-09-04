@@ -48,7 +48,7 @@ def linear_regression(observ: TSpec, action: TSpec) -> nn.Module:
 
     # Map back.
     if action.ndim != 1:
-        return module.append(nn.Unflatten(-1, action.shape))
+        module.append(nn.Unflatten(-1, action.shape))
 
     return module
 
