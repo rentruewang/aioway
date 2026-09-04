@@ -49,6 +49,8 @@ class ImageRegressorEmitter(Emitter):
         if not isinstance(action, tspecs.Unbounded):
             return NotImplemented
 
+        assert observ.ndim == 3, f"Observation should be 3D. Got {observ.shape=}."
+
         activation = Activation(self.activation).nn_type()
 
         modules: list[nn.Module] = []
