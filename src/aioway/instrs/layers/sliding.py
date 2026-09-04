@@ -235,7 +235,7 @@ def _cast_ndim_int(ndim: int, val: int | tuple[int, ...]) -> tuple[int, ...]:
 
 
 @dcls.dataclass(frozen=True)
-class _PoolDeduction:
+class _SlidingDeduction:
     allowed_dims: tuple[int, ...]
     "The allowed dimensions."
 
@@ -258,6 +258,6 @@ class _PoolDeduction:
             deduction_for(module).register(self)
 
 
-_PoolDeduction((1, 2)).register(nn.Conv1d, nn.AvgPool1d, nn.MaxPool1d)
-_PoolDeduction((3,)).register(nn.Conv2d, nn.AvgPool2d, nn.MaxPool2d)
-_PoolDeduction((4,)).register(nn.Conv3d, nn.AvgPool3d, nn.MaxPool3d)
+_SlidingDeduction((1, 2)).register(nn.Conv1d, nn.AvgPool1d, nn.MaxPool1d)
+_SlidingDeduction((3,)).register(nn.Conv2d, nn.AvgPool2d, nn.MaxPool2d)
+_SlidingDeduction((4,)).register(nn.Conv3d, nn.AvgPool3d, nn.MaxPool3d)
