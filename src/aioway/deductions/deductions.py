@@ -14,9 +14,6 @@ from torch import nn
 from aioway._utils import Param, Sign
 from aioway.tspecs import TSpec, TSpecLike, as_tspec, is_tspec_subtype
 
-if typing.TYPE_CHECKING:
-    from .instrs import Instr
-
 __all__ = ["Deduction", "deduction_for", "new_deduction_registry", "deduction_registry"]
 
 LOGGER = logging.getLogger(__name__)
@@ -31,7 +28,7 @@ class DeductionRule:
     "The deduction rules. It wraps a function, whose type hints are all `TSpec`s."
 
     nn_type: type[nn.Module]
-    "The type of `nn.Module`."
+    "The type of `nn.Module`. The type in `@deduction_for(nn_type)`."
 
     function: cabc.Callable
     "The actual function."
@@ -53,20 +50,18 @@ class DeductionRule:
         self._check_remaining_params(remains)
 
     def _check_self_param(self, self_param: Param):
-        from aioway.instrs.instrs import Instr
-
         if self_param.is_any_type:
             return
 
-        if not issubclass(annot := self_param.annotation, Instr):
+        if not issubclass(annot := self_param.annotation, nn.Module):
             raise TypeError(
-                f"{self_param.annotation=} is not Any or subclass of `Instr`."
+                f"{self_param.annotation=} is not Any or subclass of `nn.Module`."
             )
 
-        if annot.NN is not self.nn_type:
+        if annot is not self.nn_type:
             raise TypeError(
                 f"The first parameter of deduction function {annot=} "
-                f"has {annot.NN=}, which is not {self.nn_type}."
+                f"has {annot=}, which is not {self.nn_type}."
             )
 
     def _check_remaining_params(self, remains: list[Param]):
@@ -100,13 +95,15 @@ class Deduction:
     def __repr__(self) -> str:
         return f"Deduction({self._nn_type.__name__})"
 
-    def __call__(self, instr: Instr, /, *args: TSpecLike, **kwargs: TSpecLike) -> TSpec:
+    def __call__(
+        self, module: nn.Module, /, *args: TSpecLike, **kwargs: TSpecLike
+    ) -> TSpec:
         args_list = [as_tspec(tspec) for tspec in args]
         kwargs_dict = {key: as_tspec(tspec) for key, tspec in kwargs.items()}
 
         # Check each implementation, if failed, try next one.
         for impl in self._registered_rules.values():
-            result = _attempt_call(impl.function, instr, *args_list, **kwargs_dict)
+            result = _attempt_call(impl.function, module, *args_list, **kwargs_dict)
 
             if result is NotImplemented:
                 LOGGER.debug("%s failed to parse (*%s, **%s)", impl, args, kwargs)
@@ -173,13 +170,13 @@ class Deduction:
         return Sign.from_callable(self._nn_type.forward)
 
 
-def _attempt_call(impl: cabc.Callable, instr: Instr, *args, **kwargs):
+def _attempt_call(impl: cabc.Callable, module: nn.Module, /, *args, **kwargs):
     # If signature does not match, don't even attempt.
     if not _signature_matches(impl, *args, **kwargs):
         return NotImplemented
 
     # If the function itself returns `NotImplemented`, give up.
-    if (result := impl(instr, *args, **kwargs)) is NotImplemented:
+    if (result := impl(module, *args, **kwargs)) is NotImplemented:
         return NotImplemented
 
     return result
@@ -204,16 +201,24 @@ def _signature_matches(impl: cabc.Callable, *args, **kwargs) -> bool:
     return True
 
 
-def deduction_for(nn_type: type[nn.Module]) -> Deduction:
+def deduction_for(module: type[nn.Module] | nn.Module) -> Deduction:
     """
     Get the deduction registered for type of `nn.Module`.
     """
 
-    assert issubclass(nn_type, nn.Module)
-    if nn_type not in _deduction_registry:
-        _deduction_registry[nn_type] = Deduction(nn_type)
+    if isinstance(module, nn.Module):
+        module = type(module)
 
-    return _deduction_registry[nn_type]
+    if not _is_nn_type(module):
+        raise TypeError(
+            "`deduction_for` only accepts `nn.Module` type or instances. "
+            f"Got {type(module)=}."
+        )
+
+    if module not in _deduction_registry:
+        _deduction_registry[module] = Deduction(module)
+
+    return _deduction_registry[module]
 
 
 @ctxl.contextmanager
@@ -234,3 +239,7 @@ def new_deduction_registry():
 
 def deduction_registry() -> cabc.Mapping[type[nn.Module], Deduction]:
     return _deduction_registry
+
+
+def _is_nn_type(module) -> typing.TypeIs[type[nn.Module]]:
+    return isinstance(module, type) and issubclass(module, nn.Module)

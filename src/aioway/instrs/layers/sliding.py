@@ -239,13 +239,13 @@ class _SlidingDeduction:
     allowed_dims: tuple[int, ...]
     "The allowed dimensions."
 
-    # Mark `instr` as `typing.Any` to use with multiple types.
-    def __call__(self, instr: typing.Any, input: tspecs.Unbounded) -> tspecs.Unbounded:
+    # Mark `module` as `typing.Any` to use with multiple types.
+    def __call__(self, module: typing.Any, input: tspecs.Unbounded) -> tspecs.Unbounded:
         if input.ndim not in self.allowed_dims:
             return NotImplemented
 
         with fake_mode():
-            module = instr.module()
+            module = module.module()
             output: torch.Tensor = module(sample_from_tspec(input))
 
         batch, *rest = output.shape

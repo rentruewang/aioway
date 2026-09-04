@@ -6,7 +6,7 @@ from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
 from aioway.deductions import deduction_for, deduction_registry, new_deduction_registry
-from aioway.instrs import Bilinear, Linear, Sequential
+from aioway.instrs import Bilinear, Linear
 
 
 @pytest.fixture
@@ -44,7 +44,7 @@ def test_linear_deduct():
     from aioway.instrs.layers.dense import linear_deduct
 
     unbounded = tspecs.Unbounded(torch.Size([3, 4, 5, 6]))
-    output = linear_deduct(Linear(6, 7), unbounded)
+    output = linear_deduct(nn.Linear(6, 7), unbounded)
     assert output == tspecs.Unbounded(torch.Size([3, 4, 5, 7]))
 
 
@@ -52,14 +52,14 @@ def test_sequential_deduct():
     from aioway.instrs.containers import sequential_deduct
 
     unbounded = tspecs.Unbounded(torch.Size([3, 4, 5, 6]))
-    sequential = Sequential(Linear(6, 7), Linear(7, 8), Linear(8, 9))
+    sequential = nn.Sequential(nn.Linear(6, 7), nn.Linear(7, 8), nn.Linear(8, 9))
     output = sequential_deduct(sequential, unbounded)
     assert output == tspecs.Unbounded(torch.Size([3, 4, 5, 9]))
 
 
 def test_mse_deduct():
-    from aioway.losses.bases import MSELoss, symmetric_loss_deduct
+    from aioway.losses.bases import symmetric_loss_deduct
 
     unbounded = tspecs.Unbounded(torch.Size([3, 4, 5, 6]))
-    output = symmetric_loss_deduct(MSELoss(), unbounded, unbounded)
+    output = symmetric_loss_deduct(nn.MSELoss(), unbounded, unbounded)
     assert output == tspecs.Unbounded(torch.Size([]))

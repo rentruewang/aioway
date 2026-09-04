@@ -47,9 +47,9 @@ class Sequential(NnInstr):
 
 
 @deduction_for(nn.Sequential).register
-def sequential_deduct(self: Sequential, input: TSpec) -> TSpec:
-    for sub in self.modules:
-        deduction = sub.deduction()
+def sequential_deduct(self: nn.Sequential, input: TSpec) -> TSpec:
+    for sub in self.children():
+        deduction = deduction_for(sub)
 
         if (output := deduction(sub, input)) is NotImplemented:
             return NotImplemented

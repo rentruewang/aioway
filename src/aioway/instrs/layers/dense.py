@@ -60,7 +60,7 @@ class Unflatten(NnInstr):
 
 @deduction_for(nn.Unflatten).register
 @typing.no_type_check
-def unflatten_deduct(self: Unflatten, input: tspecs.Unbounded):
+def unflatten_deduct(self: nn.Unflatten, input: tspecs.Unbounded):
     return input.unflatten(self.dim, sizes=torch.Size(self.unflattened_size))
 
 
@@ -90,7 +90,7 @@ class Linear(NnInstr):
 
 
 @deduction_for(nn.Linear).register
-def linear_deduct(linear: Linear, input: tspecs.Unbounded) -> tspecs.Unbounded:
+def linear_deduct(linear: nn.Linear, input: tspecs.Unbounded) -> tspecs.Unbounded:
     assert input.shape[-1] == linear.in_features
     return tspecs.Unbounded(
         shape=torch.Size([*input.shape[:-1], linear.out_features]), dtype=input.dtype
@@ -130,7 +130,7 @@ class Bilinear(NnInstr):
 
 @deduction_for(nn.Bilinear).register
 def bilinear_deduct(
-    self: Bilinear, input1: tspecs.Unbounded, input2: tspecs.Unbounded
+    self: nn.Bilinear, input1: tspecs.Unbounded, input2: tspecs.Unbounded
 ) -> tspecs.Unbounded:
     input1_shape = input1.shape
     input2_shape = input2.shape
