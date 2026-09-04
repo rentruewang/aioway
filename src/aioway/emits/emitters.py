@@ -6,8 +6,10 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
+import torch
+from torch import nn
+
 from aioway._utils import AnySet
-from aioway.instrs import Instr
 from aioway.tspecs import TSpec
 
 __all__ = [
@@ -19,13 +21,37 @@ __all__ = [
     "emit",
     "emitter_function",
     "emitters_in_scope",
+    "sample_from_tspec",
+    "set_batch_size",
 ]
 
 _EMITTERS: AnySet[Emitter] = AnySet()
 "The emitters that are considered."
 
+_batch_size: torch.Size | None = None
+"The batch size to use for emitting."
 
-def emit_one(observ: TSpec, action: TSpec) -> Instr:
+
+@ctxl.contextmanager
+def set_batch_size(*batch_size: int) -> cabc.Generator[None]:
+    "Configure the batch size to use with `spec` and `emit`."
+
+    global _batch_size
+    _batch_size = torch.Size(batch_size)
+
+    try:
+        yield
+    finally:
+        _batch_size = None
+
+
+def sample_from_tspec(spec: TSpec, /) -> typing.Any:
+    "Sample from the `spec` with the batch size configured by `with_batch_size`."
+    assert _batch_size
+    return spec.sample(torch.Size(_batch_size))
+
+
+def emit_one(observ: TSpec, action: TSpec) -> nn.Module:
     """
     A convenient wrapper to only emit the first target found.
     """
@@ -34,7 +60,7 @@ def emit_one(observ: TSpec, action: TSpec) -> Instr:
     return route_emitter(observ, action)
 
 
-def emit(observ: TSpec, action: TSpec, /) -> cabc.Generator[Instr]:
+def emit(observ: TSpec, action: TSpec, /) -> cabc.Generator[nn.Module]:
     """
     Emit some candidates based on the given spaces.
     """
@@ -45,12 +71,16 @@ def emit(observ: TSpec, action: TSpec, /) -> cabc.Generator[Instr]:
 
 class EmitterLike(typing.Protocol):
     """
-    The baseline function that `emit` uses to generate `Instr`s.
+    The baseline function that `emit` uses to generate `nn.Module`s.
     If the `TSpec` is not supported, `NotImplemented` should be returned.
+
+    All the `BaseLine`s are registered, and iterated over during `Emitter` call.
+
+    Right now a `BaseLine` is stateless, perhaps find a way to make it stateful?
     """
 
     @abc.abstractmethod
-    def __call__(self, observ: TSpec, action: TSpec, /) -> Instr:
+    def __call__(self, observ: TSpec, action: TSpec, /) -> nn.Module:
         raise NotImplementedError
 
 
@@ -98,14 +128,14 @@ class RouteEmitter(Emitter):
     The emitters to choose to emit from.
     """
 
-    def __call__(self, observ: TSpec, action: TSpec) -> Instr:
+    def __call__(self, observ: TSpec, action: TSpec) -> nn.Module:
         for module in self.candidates(observ, action):
             return module
 
         else:
             raise ValueError(f"No candidate found for {observ=} and {action=}.")
 
-    def candidates(self, observ: TSpec, action: TSpec) -> cabc.Generator[Instr]:
+    def candidates(self, observ: TSpec, action: TSpec) -> cabc.Generator[nn.Module]:
         """
         Emit all possible candidates.
         """
@@ -132,7 +162,7 @@ class _FuncEmitter(Emitter):
     The function to wrap.
     """
 
-    def __call__(self, observ: TSpec, action: TSpec, /) -> Instr:
+    def __call__(self, observ: TSpec, action: TSpec, /) -> nn.Module:
         return self.function(observ, action)
 
 

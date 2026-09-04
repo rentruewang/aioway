@@ -4,11 +4,17 @@ import typing
 
 import pytest
 import torch
+from torch import nn
 from torch.utils import data as dutils
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.emits import MlpEmitter, emit, emit_one, linear_regression
-from aioway.instrs import Instr, Linear, Sequential
+from aioway.emits import (
+    MlpCompoundEmitter,
+    MlpEmitter,
+    emit,
+    emit_one,
+    linear_regression,
+)
 from aioway.schemas import Shape
 from aioway.tspecs import TSpec, unbounded_box_tspec
 
@@ -50,16 +56,22 @@ def consider_linear():
         yield
 
 
-@pytest.fixture
-def consider_mlp():
-    with MlpEmitter([100, 100]).consider():
+def _mlp_emitters():
+    yield MlpCompoundEmitter([100, 100])
+    yield MlpEmitter([100, 100])
+
+
+@pytest.fixture(params=_mlp_emitters())
+def consider_mlp(request: pytest.FixtureRequest):
+    with request.param.consider():
         yield
 
 
 def test_just_linear(input_shape_tspec: TSpec, output_tspec: TSpec, consider_linear):
-    instr = emit_one(input_shape_tspec, output_tspec)
+    module = emit_one(input_shape_tspec, output_tspec)
+    assert isinstance(module, nn.Linear | nn.Sequential)
     _check_linear(
-        instr,
+        module,
         in_features=input_shape_tspec.shape,
         out_features=output_tspec.shape,
     )
@@ -70,15 +82,15 @@ def test_mlp_emitter(
 ):
     input = torch.randn(13, 3, 4, 6)
 
-    for instr in emit(input_shape_tspec, output_tspec):
-        output = instr.module()(input)
+    for module in emit(input_shape_tspec, output_tspec):
+        output = module(input)
 
     assert output.shape == (13, 3, 4, 7)
 
 
-def _check_linear(linear: Instr, in_features: torch.Size, out_features: torch.Size):
-    assert isinstance(linear, Linear | Sequential)
+def _check_linear(linear: nn.Module, in_features: torch.Size, out_features: torch.Size):
+    assert isinstance(linear, nn.Linear | nn.Sequential)
 
     in_tensor = torch.randn(101, *in_features)
 
-    assert linear.module()(in_tensor).shape == (101, *out_features)
+    assert linear(in_tensor).shape == (101, *out_features)

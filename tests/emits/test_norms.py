@@ -5,7 +5,7 @@ import typing
 import pytest
 import torch
 
-from aioway.emits import NormEmitter, NormType, emit_one
+from aioway.emits import NormEmitter, NormType, emit_one, layer_norm_emitter
 from aioway.tspecs import unbounded_box_tspec
 
 
@@ -31,6 +31,12 @@ def batch_inst_norm_emitter(norm):
 
 
 @pytest.fixture
+def layer_norm():
+    with layer_norm_emitter.consider():
+        yield
+
+
+@pytest.fixture
 def spec(ndim, num_features):
     shape = list(range(5, 5 + ndim))
     return unbounded_box_tspec(shape=[num_features, *shape])
@@ -39,5 +45,12 @@ def spec(ndim, num_features):
 def test_batch_inst_norm(batch_inst_norm_emitter, spec):
     mod = emit_one(spec, spec)
     input = spec.sample(torch.Size([13]))
-    output = mod.module()(input)
+    output = mod(input)
+    assert output.shape == input.shape
+
+
+def test_layer_norm(layer_norm, spec):
+    mod = emit_one(spec, spec)
+    input = spec.sample(torch.Size([13]))
+    output = mod(input)
     assert output.shape == input.shape
