@@ -235,7 +235,7 @@ def _cast_ndim_int(ndim: int, val: int | tuple[int, ...]) -> tuple[int, ...]:
 
 
 @dcls.dataclass(frozen=True)
-class _PoolDeductor:
+class _PoolDeducer:
     allowed_dims: tuple[int, ...]
     "The allowed dimensions."
 
@@ -255,9 +255,9 @@ class _PoolDeductor:
 
     def register(self, *instrs: type[Instr]) -> None:
         for instr in instrs:
-            instr.deductor().register(self)
+            instr.deducer().register(self)
 
 
-_PoolDeductor((1, 2)).register(Conv1d, AvgPool1d, MaxPool1d)
-_PoolDeductor((3,)).register(Conv2d, AvgPool2d, MaxPool2d)
-_PoolDeductor((4,)).register(Conv3d, AvgPool3d, MaxPool3d)
+_PoolDeducer((1, 2)).register(Conv1d, AvgPool1d, MaxPool1d)
+_PoolDeducer((3,)).register(Conv2d, AvgPool2d, MaxPool2d)
+_PoolDeducer((4,)).register(Conv3d, AvgPool3d, MaxPool3d)

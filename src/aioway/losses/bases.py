@@ -122,9 +122,9 @@ class SmoothL1Loss(BaseLossInstr):
     NN = nn.SmoothL1Loss
 
 
-@L1Loss.deductor().register
-@SmoothL1Loss.deductor().register
-@MSELoss.deductor().register
+@L1Loss.deducer().register
+@SmoothL1Loss.deducer().register
+@MSELoss.deducer().register
 def symmetric_loss_deduct(
     self, input: tspecs.Unbounded, target: tspecs.Unbounded
 ) -> tspecs.Unbounded:

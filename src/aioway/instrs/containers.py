@@ -45,12 +45,12 @@ class Sequential(NnInstr):
         yield from self.modules
 
 
-@Sequential.deductor().register
+@Sequential.deducer().register
 def sequential_deduct(self: Sequential, input: TSpec) -> TSpec:
     for sub in self.modules:
-        deductor = sub.deductor()
+        deducer = sub.deducer()
 
-        if (output := deductor(sub, input)) is NotImplemented:
+        if (output := deducer(sub, input)) is NotImplemented:
             return NotImplemented
 
         input = output

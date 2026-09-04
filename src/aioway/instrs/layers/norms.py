@@ -80,11 +80,11 @@ class InstanceNorm3d(_BaseNorm):
     NN = nn.InstanceNorm3d
 
 
-@BatchNorm1d.deductor().register
-@BatchNorm2d.deductor().register
-@BatchNorm3d.deductor().register
-@InstanceNorm1d.deductor().register
-@InstanceNorm2d.deductor().register
-@InstanceNorm3d.deductor().register
+@BatchNorm1d.deducer().register
+@BatchNorm2d.deducer().register
+@BatchNorm3d.deducer().register
+@InstanceNorm1d.deducer().register
+@InstanceNorm2d.deducer().register
+@InstanceNorm3d.deducer().register
 def norm_deduct(self, input: tspecs.Unbounded):
     return input

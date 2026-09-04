@@ -22,7 +22,7 @@ class Identity(NnInstr):
     NN = nn.Identity
 
 
-@Identity.deductor().register
+@Identity.deducer().register
 def identity_deduct(self, input):
     return input
 
@@ -36,7 +36,7 @@ class Flatten(NnInstr):
     NN = nn.Flatten
 
 
-@Flatten.deductor().register
+@Flatten.deducer().register
 def flatten_deduct(self, input: tspecs.Unbounded):
     return input.flatten(0, -1)
 
@@ -56,7 +56,7 @@ class Unflatten(NnInstr):
     "The sizes to unflatten to."
 
 
-@Unflatten.deductor().register
+@Unflatten.deducer().register
 @typing.no_type_check
 def unflatten_deduct(self: Unflatten, input: tspecs.Unbounded):
     return input.unflatten(self.dim, sizes=torch.Size(self.unflattened_size))
@@ -87,7 +87,7 @@ class Linear(NnInstr):
             raise ValueError(f"{self.out_features=} <= 0.")
 
 
-@Linear.deductor().register
+@Linear.deducer().register
 def linear_deduct(linear: Linear, input: tspecs.Unbounded) -> tspecs.Unbounded:
     assert input.shape[-1] == linear.in_features
     return tspecs.Unbounded(
@@ -126,7 +126,7 @@ class Bilinear(NnInstr):
             raise ValueError(f"{self.out_features=} <= 0.")
 
 
-@Bilinear.deductor().register
+@Bilinear.deducer().register
 def bilinear_deduct(
     self: Bilinear, input1: tspecs.Unbounded, input2: tspecs.Unbounded
 ) -> tspecs.Unbounded:

@@ -5,24 +5,18 @@ import torch
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.instrs import (
-    Bilinear,
-    Linear,
-    Sequential,
-    deductor_for,
-    deductor_registry,
-    new_deductor_registry,
-)
+from aioway.deductions import deducer_for, deducer_registry, new_deducer_registry
+from aioway.instrs import Bilinear, Linear, Sequential
 
 
 @pytest.fixture
-def use_new_deductors():
-    with new_deductor_registry():
+def use_new_deducers():
+    with new_deducer_registry():
         yield
 
 
-def test_new_deductor(use_new_deductors):
-    assert not deductor_registry()
+def test_new_deducer(use_new_deducers):
+    assert not deducer_registry()
 
 
 def _wrong_function():
@@ -41,9 +35,9 @@ def wrong_func(request):
     return request.param
 
 
-def test_wrong_func(wrong_func, use_new_deductors):
+def test_wrong_func(wrong_func, use_new_deducers):
     with pytest.raises(TypeError):
-        deductor_for(nn.Linear).register(wrong_func)
+        deducer_for(nn.Linear).register(wrong_func)
 
 
 def test_linear_deduct():
