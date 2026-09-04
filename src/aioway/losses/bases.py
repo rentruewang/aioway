@@ -8,6 +8,7 @@ import torch
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
+from aioway.deductions import deduction_for
 from aioway.instrs import NnInstr, instr_dcls
 
 __all__ = [
@@ -122,9 +123,9 @@ class SmoothL1Loss(BaseLossInstr):
     NN = nn.SmoothL1Loss
 
 
-@L1Loss.deduction().register
-@SmoothL1Loss.deduction().register
-@MSELoss.deduction().register
+@deduction_for(nn.L1Loss).register
+@deduction_for(nn.SmoothL1Loss).register
+@deduction_for(nn.MSELoss).register
 def symmetric_loss_deduct(
     self, input: tspecs.Unbounded, target: tspecs.Unbounded
 ) -> tspecs.Unbounded:

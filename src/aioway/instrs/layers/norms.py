@@ -4,6 +4,8 @@
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
+from aioway.deductions import deduction_for
+
 from ..nn import NnInstr, instr_dcls
 
 __all__ = [
@@ -80,11 +82,11 @@ class InstanceNorm3d(_BaseNorm):
     NN = nn.InstanceNorm3d
 
 
-@BatchNorm1d.deduction().register
-@BatchNorm2d.deduction().register
-@BatchNorm3d.deduction().register
-@InstanceNorm1d.deduction().register
-@InstanceNorm2d.deduction().register
-@InstanceNorm3d.deduction().register
+@deduction_for(nn.BatchNorm1d).register
+@deduction_for(nn.BatchNorm2d).register
+@deduction_for(nn.BatchNorm3d).register
+@deduction_for(nn.InstanceNorm1d).register
+@deduction_for(nn.InstanceNorm2d).register
+@deduction_for(nn.InstanceNorm3d).register
 def norm_deduct(self, input: tspecs.Unbounded):
     return input

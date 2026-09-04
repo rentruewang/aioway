@@ -4,6 +4,7 @@ import typing
 
 from torch import nn
 
+from aioway.deductions import deduction_for
 from aioway.tspecs import TSpec
 
 from .instrs import Instr
@@ -45,7 +46,7 @@ class Sequential(NnInstr):
         yield from self.modules
 
 
-@Sequential.deduction().register
+@deduction_for(nn.Sequential).register
 def sequential_deduct(self: Sequential, input: TSpec) -> TSpec:
     for sub in self.modules:
         deduction = sub.deduction()

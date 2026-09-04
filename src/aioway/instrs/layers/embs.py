@@ -5,6 +5,8 @@ import torch
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
+from aioway.deductions import deduction_for
+
 from ..nn import NnInstr, instr_dcls
 
 __all__ = ["Embedding"]
@@ -35,7 +37,7 @@ class Embedding(_BaseEmbedding):
     NN = nn.Embedding
 
 
-@Embedding.deduction().register
+@deduction_for(nn.Embedding).register
 def emb_deduct(self: Embedding, input: tspecs.Categorical) -> tspecs.Unbounded:
     shape = torch.Size([self.num_embeddings])
     return tspecs.Unbounded(shape=shape)

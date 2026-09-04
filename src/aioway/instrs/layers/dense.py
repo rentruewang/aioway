@@ -8,6 +8,8 @@ import torch
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
+from aioway.deductions import deduction_for
+
 from ..nn import NnInstr, instr_dcls
 
 __all__ = ["Identity", "Flatten", "Unflatten", "Linear", "Bilinear"]
@@ -22,7 +24,7 @@ class Identity(NnInstr):
     NN = nn.Identity
 
 
-@Identity.deduction().register
+@deduction_for(nn.Identity).register
 def identity_deduct(self, input):
     return input
 
@@ -36,7 +38,7 @@ class Flatten(NnInstr):
     NN = nn.Flatten
 
 
-@Flatten.deduction().register
+@deduction_for(nn.Flatten).register
 def flatten_deduct(self, input: tspecs.Unbounded):
     return input.flatten(0, -1)
 
@@ -56,7 +58,7 @@ class Unflatten(NnInstr):
     "The sizes to unflatten to."
 
 
-@Unflatten.deduction().register
+@deduction_for(nn.Unflatten).register
 @typing.no_type_check
 def unflatten_deduct(self: Unflatten, input: tspecs.Unbounded):
     return input.unflatten(self.dim, sizes=torch.Size(self.unflattened_size))
@@ -87,7 +89,7 @@ class Linear(NnInstr):
             raise ValueError(f"{self.out_features=} <= 0.")
 
 
-@Linear.deduction().register
+@deduction_for(nn.Linear).register
 def linear_deduct(linear: Linear, input: tspecs.Unbounded) -> tspecs.Unbounded:
     assert input.shape[-1] == linear.in_features
     return tspecs.Unbounded(
@@ -126,7 +128,7 @@ class Bilinear(NnInstr):
             raise ValueError(f"{self.out_features=} <= 0.")
 
 
-@Bilinear.deduction().register
+@deduction_for(nn.Bilinear).register
 def bilinear_deduct(
     self: Bilinear, input1: tspecs.Unbounded, input2: tspecs.Unbounded
 ) -> tspecs.Unbounded:
