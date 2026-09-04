@@ -53,17 +53,14 @@ class ImageRegressorEmitter(Emitter):
 
         activation = Activation(self.activation).nn_type()
 
-        modules: list[nn.Module] = []
-
-        def sequential() -> nn.Sequential:
-            "The sequential function. Defined s.t. it updates with `modules`."
-            return nn.Sequential(*modules)
+        seq = nn.Sequential()
 
         channels = self._as_list(self.channels)
         kernels = self._as_list(self.kernels)
         strides = self._as_list(self.strides)
+
         for i in range(len(self)):
-            modules.append(
+            seq.append(
                 nn.LazyConv2d(
                     out_channels=channels[i],
                     kernel_size=kernels[i],
@@ -72,9 +69,10 @@ class ImageRegressorEmitter(Emitter):
             )
 
             if activation is not NotImplemented:
-                modules.append(activation)
+                seq.append(activation)
 
-        seq = nn.Sequential(*modules, nn.Flatten())
+        # First flatten then add linear layer.
+        seq.append(nn.Flatten())
 
         sim_in = sample_from_tspec(observ)
         sim_out = seq(sim_in)
@@ -86,7 +84,7 @@ class ImageRegressorEmitter(Emitter):
 
         seq.append(linear)
 
-        return seq
+        return sequential()
 
     @functools.cached_property
     def _size(self) -> int:
