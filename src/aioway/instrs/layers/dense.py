@@ -2,13 +2,7 @@
 
 "The linear layers."
 
-import typing
-
-import torch
 from torch import nn
-from torchrl.data import tensor_specs as tspecs
-
-from aioway.deductions import deduction_for
 
 from ..nn import NnInstr, instr_dcls
 
@@ -24,11 +18,6 @@ class Identity(NnInstr):
     NN = nn.Identity
 
 
-@deduction_for(nn.Identity).register
-def identity_deduct(self, input):
-    return input
-
-
 @instr_dcls
 class Flatten(NnInstr):
     """
@@ -36,11 +25,6 @@ class Flatten(NnInstr):
     """
 
     NN = nn.Flatten
-
-
-@deduction_for(nn.Flatten).register
-def flatten_deduct(self, input: tspecs.Unbounded):
-    return input.flatten(0, -1)
 
 
 @instr_dcls
@@ -56,12 +40,6 @@ class Unflatten(NnInstr):
 
     unflattened_size: tuple[int, ...]
     "The sizes to unflatten to."
-
-
-@deduction_for(nn.Unflatten).register
-@typing.no_type_check
-def unflatten_deduct(self: nn.Unflatten, input: tspecs.Unbounded):
-    return input.unflatten(self.dim, sizes=torch.Size(self.unflattened_size))
 
 
 @instr_dcls
@@ -87,14 +65,6 @@ class Linear(NnInstr):
 
         if self.out_features <= 0:
             raise ValueError(f"{self.out_features=} <= 0.")
-
-
-@deduction_for(nn.Linear).register
-def linear_deduct(linear: nn.Linear, input: tspecs.Unbounded) -> tspecs.Unbounded:
-    assert input.shape[-1] == linear.in_features
-    return tspecs.Unbounded(
-        shape=torch.Size([*input.shape[:-1], linear.out_features]), dtype=input.dtype
-    )
 
 
 @instr_dcls
@@ -126,16 +96,3 @@ class Bilinear(NnInstr):
 
         if self.out_features <= 0:
             raise ValueError(f"{self.out_features=} <= 0.")
-
-
-@deduction_for(nn.Bilinear).register
-def bilinear_deduct(
-    self: nn.Bilinear, input1: tspecs.Unbounded, input2: tspecs.Unbounded
-) -> tspecs.Unbounded:
-    input1_shape = input1.shape
-    input2_shape = input2.shape
-
-    if input1_shape[:-1] != input2_shape[:-1]:
-        return NotImplemented
-
-    return tspecs.Unbounded(shape=torch.Size([*input1_shape[:-1], self.out_features]))

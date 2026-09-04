@@ -2,4 +2,5 @@
 
 "The deduction types."
 
+from . import containers, dense
 from .deductions import *

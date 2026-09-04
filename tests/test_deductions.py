@@ -41,7 +41,7 @@ def test_wrong_func(wrong_func, use_new_deductions):
 
 
 def test_linear_deduct():
-    from aioway.instrs.layers.dense import linear_deduct
+    from aioway.deductions.dense import linear_deduct
 
     unbounded = tspecs.Unbounded(torch.Size([3, 4, 5, 6]))
     output = linear_deduct(nn.Linear(6, 7), unbounded)
@@ -49,7 +49,7 @@ def test_linear_deduct():
 
 
 def test_sequential_deduct():
-    from aioway.instrs.containers import sequential_deduct
+    from aioway.deductions.containers import sequential_deduct
 
     unbounded = tspecs.Unbounded(torch.Size([3, 4, 5, 6]))
     sequential = nn.Sequential(nn.Linear(6, 7), nn.Linear(7, 8), nn.Linear(8, 9))
