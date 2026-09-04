@@ -5,9 +5,9 @@ from torch import nn
 from torchrl import modules as rlmods
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.instrs import Activation
 from aioway.tspecs import TSpec
 
+from ._utils import Activation
 from .compound import BuilderNode, BuiltModule, CompoundBuilder
 from .emitters import Emitter, emitter_dcls, emitter_function
 

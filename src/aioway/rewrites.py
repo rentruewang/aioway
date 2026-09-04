@@ -4,7 +4,7 @@
 
 import typing
 
-from aioway.instrs import Instr
+from torch import nn
 
 __all__ = ["Rewriter"]
 
@@ -14,4 +14,4 @@ class Rewriter(typing.Protocol):
     The rewriter rewrites an `Instr` into another.
     """
 
-    def __call__(self, instr: Instr) -> Instr: ...
+    def __call__(self, module: nn.Module, /) -> nn.Module: ...
