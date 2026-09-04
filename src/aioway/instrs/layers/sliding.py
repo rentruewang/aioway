@@ -10,9 +10,9 @@ from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
 from aioway._utils import is_tuple_of
-from aioway.emits import sample_from_tspec
 from aioway.instrs import Instr
 from aioway.modes import fake_mode
+from aioway.tspecs import sample_from_tspec
 
 from ..nn import NnInstr, instr_dcls
 
