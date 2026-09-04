@@ -77,7 +77,7 @@ class ImageRegressorEmitter(Emitter):
         sim_in = sample_from_tspec(observ)
         sim_out = seq(sim_in)
 
-        # Emits a linear final layer, that uses our `linear_shape` logic.
+        # Emits a linear final layer, that uses our `linear_regression` logic.
         linear = linear_regression(
             unbounded_box_tspec(shape=Shape.parse(sim_out.shape[1:])), action
         )
