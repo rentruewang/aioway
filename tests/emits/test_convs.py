@@ -2,8 +2,8 @@
 
 import pytest
 
-from aioway.compilers import emit_one
-from aioway.compilers.emits.convs import ImageRegressorEmitter
+from aioway.emits import emit_one
+from aioway.emits.convs import ImageRegressorEmitter
 from aioway.instrs import Instr
 from aioway.schemas import Shape
 from aioway.tspecs import (

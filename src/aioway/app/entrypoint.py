@@ -5,7 +5,7 @@ from collections import abc as cabc
 
 from torch import optim
 
-from aioway.compilers import emit, route_loss
+from aioway.emits import emit, route_loss
 from aioway.dsets import Dset, route_dset
 from aioway.instrs import Instr
 from aioway.trainers import StaticTrainer, TrainCfg

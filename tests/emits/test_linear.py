@@ -7,7 +7,7 @@ import torch
 from torch.utils import data as dutils
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.compilers import MlpEmitter, emit, emit_one, linear_regression
+from aioway.emits import MlpEmitter, emit, emit_one, linear_regression
 from aioway.instrs import Instr, Linear, Sequential
 from aioway.schemas import Shape
 from aioway.tspecs import TSpec, unbounded_box_tspec

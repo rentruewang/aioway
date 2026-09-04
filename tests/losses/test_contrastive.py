@@ -3,7 +3,7 @@
 import torch
 from torch import nn, optim
 
-from aioway.compilers import (
+from aioway.emits import (
     ContrastiveLoss,
 )
 
