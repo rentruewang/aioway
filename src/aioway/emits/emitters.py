@@ -46,12 +46,8 @@ def emit(observ: TSpec, action: TSpec, /) -> cabc.Generator[nn.Module]:
 
 class EmitterLike(typing.Protocol):
     """
-    The baseline function that `emit` uses to generate `nn.Module`s.
+    The baseline function that `emit` uses to generate `Instr`s.
     If the `TSpec` is not supported, `NotImplemented` should be returned.
-
-    All the `BaseLine`s are registered, and iterated over during `Emitter` call.
-
-    Right now a `BaseLine` is stateless, perhaps find a way to make it stateful?
     """
 
     @abc.abstractmethod
