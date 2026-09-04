@@ -2,13 +2,15 @@
 
 "The linear layers."
 
+import typing
+
 import torch
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
 from ..nn import NnInstr, instr_dcls
 
-__all__ = ["Identity", "Linear", "Bilinear"]
+__all__ = ["Identity", "Flatten", "Unflatten", "Linear", "Bilinear"]
 
 
 @instr_dcls
@@ -23,6 +25,41 @@ class Identity(NnInstr):
 @Identity.deductor().register
 def identity_deduct(self, input):
     return input
+
+
+@instr_dcls
+class Flatten(NnInstr):
+    """
+    `Flatten` flattens the input tensor. This is a wrapper to `nn.Flatten`.
+    """
+
+    NN = nn.Flatten
+
+
+@Flatten.deductor().register
+def flatten_deduct(self, input: tspecs.Unbounded):
+    return input.flatten(0, -1)
+
+
+@instr_dcls
+class Unflatten(NnInstr):
+    """
+    `Unflatten` un-flattens the input tensor.
+    """
+
+    NN = nn.Unflatten
+
+    dim: int
+    "The dimension."
+
+    unflattened_size: tuple[int, ...]
+    "The sizes to unflatten to."
+
+
+@Unflatten.deductor().register
+@typing.no_type_check
+def unflatten_deduct(self: Unflatten, input: tspecs.Unbounded):
+    return input.unflatten(self.dim, sizes=torch.Size(self.unflattened_size))
 
 
 @instr_dcls
