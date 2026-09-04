@@ -4,6 +4,7 @@ import enum
 import typing
 from collections import abc as cabc
 
+from torch import nn
 from torchrl import modules as rlmods
 
 from aioway.instrs import CELU, GELU, Instr, ReLU, ReLU6, Sigmoid, Tanh
@@ -44,6 +45,10 @@ class Activation(enum.StrEnum):
                 return Tanh
 
         raise NotImplementedError(self)
+
+    @property
+    def nn_type(self) -> type[nn.Module]:
+        return self.instr_cls.NN
 
 
 @typing.final

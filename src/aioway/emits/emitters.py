@@ -6,8 +6,9 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
+from torch import nn
+
 from aioway._utils import AnySet
-from aioway.instrs import Instr
 from aioway.tspecs import TSpec
 
 __all__ = [
@@ -25,7 +26,7 @@ _EMITTERS: AnySet[Emitter] = AnySet()
 "The emitters that are considered."
 
 
-def emit_one(observ: TSpec, action: TSpec) -> Instr:
+def emit_one(observ: TSpec, action: TSpec) -> nn.Module:
     """
     A convenient wrapper to only emit the first target found.
     """
@@ -34,7 +35,7 @@ def emit_one(observ: TSpec, action: TSpec) -> Instr:
     return route_emitter(observ, action)
 
 
-def emit(observ: TSpec, action: TSpec, /) -> cabc.Generator[Instr]:
+def emit(observ: TSpec, action: TSpec, /) -> cabc.Generator[nn.Module]:
     """
     Emit some candidates based on the given spaces.
     """
@@ -50,7 +51,7 @@ class EmitterLike(typing.Protocol):
     """
 
     @abc.abstractmethod
-    def __call__(self, observ: TSpec, action: TSpec, /) -> Instr:
+    def __call__(self, observ: TSpec, action: TSpec, /) -> nn.Module:
         raise NotImplementedError
 
 
@@ -98,14 +99,14 @@ class RouteEmitter(Emitter):
     The emitters to choose to emit from.
     """
 
-    def __call__(self, observ: TSpec, action: TSpec) -> Instr:
+    def __call__(self, observ: TSpec, action: TSpec) -> nn.Module:
         for module in self.candidates(observ, action):
             return module
 
         else:
             raise ValueError(f"No candidate found for {observ=} and {action=}.")
 
-    def candidates(self, observ: TSpec, action: TSpec) -> cabc.Generator[Instr]:
+    def candidates(self, observ: TSpec, action: TSpec) -> cabc.Generator[nn.Module]:
         """
         Emit all possible candidates.
         """
@@ -132,7 +133,7 @@ class _FuncEmitter(Emitter):
     The function to wrap.
     """
 
-    def __call__(self, observ: TSpec, action: TSpec, /) -> Instr:
+    def __call__(self, observ: TSpec, action: TSpec, /) -> nn.Module:
         return self.function(observ, action)
 
 

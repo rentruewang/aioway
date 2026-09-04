@@ -3,11 +3,11 @@
 import operator
 from collections import abc as cabc
 
-from torch import optim
+from torch import nn, optim
 
 from aioway.dsets import Dset, route_dset
-from aioway.emits import emit, route_loss
-from aioway.instrs import Instr
+from aioway.emits import emit
+from aioway.losses import route_loss
 from aioway.trainers import StaticTrainer, TrainCfg
 from aioway.tspecs import TSpec, as_tspec
 
@@ -50,7 +50,7 @@ def add_output(name: str, spec: TSpec) -> None:
     _OUTPUT_SPECS[name] = spec
 
 
-def add_module(input: str, output: str) -> cabc.Generator[Instr]:
+def add_module(input: str, output: str) -> cabc.Generator[nn.Module]:
     input_dataset = _INPUT_DATASETS[input]
     output_spec = _OUTPUT_SPECS[output]
 
@@ -70,8 +70,7 @@ def add_trainer(
             "because they have different lengths."
         )
 
-    for instr in add_module(input, output):
-        module = instr.module()
+    for module in add_module(input, output):
         yield StaticTrainer(
             cfg=cfg,
             module=module,
