@@ -102,7 +102,9 @@ class Deduction:
         kwargs_dict = {key: as_tspec(tspec) for key, tspec in kwargs.items()}
 
         # Check each implementation, if failed, try next one.
+        # If all failed, `NotImplemented` is returned.
         for impl in self._registered_rules.values():
+            LOGGER.debug("Attempts to call %s for %s", impl.function, type(module))
             result = _attempt_call(impl.function, module, *args_list, **kwargs_dict)
 
             if result is NotImplemented:
@@ -172,7 +174,7 @@ class Deduction:
 
 def _attempt_call(impl: cabc.Callable, module: nn.Module, /, *args, **kwargs):
     # If signature does not match, don't even attempt.
-    if not _signature_matches(impl, *args, **kwargs):
+    if not _signature_handles(impl, *args, **kwargs):
         return NotImplemented
 
     # If the function itself returns `NotImplemented`, give up.
@@ -182,8 +184,12 @@ def _attempt_call(impl: cabc.Callable, module: nn.Module, /, *args, **kwargs):
     return result
 
 
-def _signature_matches(impl: cabc.Callable, *args, **kwargs) -> bool:
-    "Check if signature does match."
+def _signature_handles(impl: cabc.Callable, *args, **kwargs) -> bool:
+    """
+    Check if signature does match.
+
+    Allows subclasses to be handled e.g. `tspecs.TensorSpec` handles `tspecs.Unbounded`.
+    """
 
     impl_sign = Sign.from_callable(impl).drop_first()
     arguments = impl_sign.apply(*args, **kwargs)
@@ -195,6 +201,7 @@ def _signature_matches(impl: cabc.Callable, *args, **kwargs) -> bool:
         if typ.is_any_type:
             continue
 
+        # This should allow subclasses.
         if not isinstance(arguments[key], typ.annotation):
             return False
 

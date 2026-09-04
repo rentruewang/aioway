@@ -6,6 +6,8 @@ import torch
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
+from aioway.tspecs import TSpec
+
 from .deductions import deduction_for
 
 __all__ = [
@@ -18,7 +20,7 @@ __all__ = [
 
 
 @deduction_for(nn.Identity).register
-def identity_deduct(self, input):
+def identity_deduct(self, input: TSpec) -> TSpec:
     return input
 
 

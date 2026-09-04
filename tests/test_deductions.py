@@ -6,7 +6,6 @@ from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
 from aioway.deductions import deduction_for, deduction_registry, new_deduction_registry
-from aioway.instrs import Bilinear, Linear
 
 
 @pytest.fixture
@@ -20,10 +19,10 @@ def test_new_deduction(use_new_deductions):
 
 
 def _wrong_function():
-    def wrong_args(linear: Linear, output):
+    def wrong_args(linear: nn.Linear, output):
         pass
 
-    def wrong_instr(linear: Bilinear, input):
+    def wrong_instr(linear: nn.Bilinear, input):
         pass
 
     yield wrong_args
@@ -58,7 +57,7 @@ def test_sequential_deduct():
 
 
 def test_mse_deduct():
-    from aioway.losses.bases import symmetric_loss_deduct
+    from aioway.deductions.losses import symmetric_loss_deduct
 
     unbounded = tspecs.Unbounded(torch.Size([3, 4, 5, 6]))
     output = symmetric_loss_deduct(nn.MSELoss(), unbounded, unbounded)

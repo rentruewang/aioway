@@ -2,5 +2,5 @@
 
 "The deduction types."
 
-from . import containers, dense, embs, norms, sliding
+from . import containers, dense, miscs, sliding
 from .deductions import *
