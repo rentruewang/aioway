@@ -64,7 +64,7 @@ def test_sequential_deduct():
 
 
 def test_mse_deduct():
-    from aioway.losses.bases import symmetric_loss_deduct, MSELoss
+    from aioway.losses.bases import MSELoss, symmetric_loss_deduct
 
     unbounded = tspecs.Unbounded(torch.Size([3, 4, 5, 6]))
     output = symmetric_loss_deduct(MSELoss(), unbounded, unbounded)

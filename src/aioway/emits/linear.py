@@ -5,9 +5,9 @@ from torch import nn
 from torchrl import modules as rlmods
 from torchrl.data import tensor_specs as tspecs
 
+from aioway.instrs import Activation
 from aioway.tspecs import TSpec
 
-from ._utils import Activation, activation_class, activation_module
 from .compound import BuilderNode, BuiltModule, CompoundBuilder
 from .emitters import Emitter, emitter_dcls, emitter_function
 
@@ -90,7 +90,7 @@ class _MlpEmitter(Emitter):
     The hidden sizes of MLP.
     """
 
-    activation: Activation = "relu"
+    activation: str = "relu"
     """
     The activation to use.
     """
@@ -105,7 +105,7 @@ class TorchRlMlpEmitter(_MlpEmitter):
             in_features=observ.shape[-1],
             out_features=action.shape[-1],
             num_cells=self.hidden_sizes,
-            activation_class=activation_class(self.activation),
+            activation_class=Activation(self.activation).nn_type,
         )
 
 
@@ -125,7 +125,7 @@ class MlpEmitter(_MlpEmitter):
         sizes = [observ.shape[-1], *self.hidden_sizes, action.shape[-1]]
 
         modules: list[nn.Module] = []
-        activ = activation_module(self.activation)
+        activ = Activation(self.activation).nn_type()
 
         for in_feats, out_feats in zip(sizes[:-1], sizes[1:]):
             modules.append(nn.Linear(in_features=in_feats, out_features=out_feats))
@@ -158,7 +158,7 @@ class MlpCompoundEmitter(_MlpEmitter):
         builder = CompoundBuilder()
 
         x: BuilderNode = builder.input("input")
-        activ = activation_module(self.activation)
+        activ = Activation(self.activation).nn_type()
 
         for in_feats, out_feats in zip(sizes[:-1], sizes[1:]):
             x = builder.thunk(

@@ -7,3 +7,4 @@ from .deducts import *
 from .instrs import *
 from .layers import *
 from .nn import *
+from .rl import *

@@ -9,10 +9,10 @@ from torchrl.data import tensor_specs as tspecs
 
 from aioway._utils import is_list_of
 from aioway.emits import sample_from_tspec
+from aioway.instrs import Activation
 from aioway.schemas import Shape
 from aioway.tspecs import TSpec, unbounded_box_tspec
 
-from ._utils import Activation, activation_module
 from .emitters import Emitter, emitter_dcls
 from .linear import linear_regression
 
@@ -34,7 +34,7 @@ class ImageRegressorEmitter(Emitter):
     strides: int | list[int]
     "The stride sizes."
 
-    activation: Activation = "relu"
+    activation: str = "relu"
     "The non linear activation to use."
 
     def _validate(self) -> None:
@@ -50,7 +50,7 @@ class ImageRegressorEmitter(Emitter):
         if not isinstance(action, tspecs.Unbounded):
             return NotImplemented
 
-        activation = activation_module(self.activation)
+        activation = Activation(self.activation).nn_type()
 
         modules: list[nn.Module] = []
 
