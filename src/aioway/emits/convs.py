@@ -55,6 +55,10 @@ class ImageRegressorEmitter(Emitter):
 
         modules: list[nn.Module] = []
 
+        def sequential() -> nn.Sequential:
+            "The sequential function. Defined s.t. it updates with `modules`."
+            return nn.Sequential(*modules)
+
         channels = self._as_list(self.channels)
         kernels = self._as_list(self.kernels)
         strides = self._as_list(self.strides)
