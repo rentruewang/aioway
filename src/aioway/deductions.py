@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"The deducer type."
+"The deduction type."
 
 import contextlib as ctxl
 import dataclasses as dcls
@@ -17,18 +17,18 @@ from aioway.tspecs import TSpec, TSpecLike, as_tspec, is_tspec_subtype
 if typing.TYPE_CHECKING:
     from .instrs import Instr
 
-__all__ = ["Deducer", "deducer_for", "new_deducer_registry", "deducer_registry"]
+__all__ = ["Deduction", "deduction_for", "new_deduction_registry", "deduction_registry"]
 
 LOGGER = logging.getLogger(__name__)
 
 
-_deducer_registry: dict[type[nn.Module], Deducer] = {}
-"The deducer registry."
+_deduction_registry: dict[type[nn.Module], Deduction] = {}
+"The deduction registry."
 
 
 @dcls.dataclass(frozen=True)
-class DeducerRule:
-    "The deducer rules. It wraps a function, whose type hints are all `TSpec`s."
+class DeductionRule:
+    "The deduction rules. It wraps a function, whose type hints are all `TSpec`s."
 
     nn_type: type[nn.Module]
     "The type of `nn.Module`."
@@ -65,7 +65,7 @@ class DeducerRule:
 
         if annot.NN is not self.nn_type:
             raise TypeError(
-                f"The first parameter of deducer function {annot=} "
+                f"The first parameter of deduction function {annot=} "
                 f"has {annot.NN=}, which is not {self.nn_type}."
             )
 
@@ -80,16 +80,16 @@ class DeducerRule:
             raise TypeError(f"{param.annotation=} but it should be a `TSpecLike` type.")
 
 
-class Deducer:
+class Deduction:
     """
-    `Deducer` converts from an input `TSpec` to another `TSpec`.
+    `Deduction` converts from an input `TSpec` to another `TSpec`.
 
     It's the type of callables that consumes a torch object and outputs another one.
     """
 
     def __init__(self, nn_type: type[nn.Module], *impls: cabc.Callable) -> None:
         self._nn_type = nn_type
-        self._registered_rules: dict[Sign, DeducerRule] = {}
+        self._registered_rules: dict[Sign, DeductionRule] = {}
 
         for impl in impls:
             self.register(impl)
@@ -98,7 +98,7 @@ class Deducer:
         return len(self.rules)
 
     def __repr__(self) -> str:
-        return f"Deducer({self._nn_type.__name__})"
+        return f"Deduction({self._nn_type.__name__})"
 
     def __call__(self, instr: Instr, /, *args: TSpecLike, **kwargs: TSpecLike) -> TSpec:
         args_list = [as_tspec(tspec) for tspec in args]
@@ -119,13 +119,13 @@ class Deducer:
 
     def register[T: cabc.Callable](self, impl: T) -> T:
         """
-        Register a deducer for for a specific module type.
+        Register a deduction for for a specific module type.
         The registered function should have the following signature:
 
         Examples:
 
             ```
-            @deducer_for(MyModule)
+            @deduction_for(MyModule)
             def function(module, *args, **kwargs): ...
             ```
 
@@ -135,11 +135,11 @@ class Deducer:
             For instance,
 
             ```
-            deducer_for(nn.Linear)
-            def linear_deducer(module, input): ...
+            deduction_for(nn.Linear)
+            def linear_deduction(module, input): ...
         """
 
-        rule = DeducerRule(self.nn_type, impl)
+        rule = DeductionRule(self.nn_type, impl)
         self._validate_module_signature(rule)
 
         if rule.signature in self._registered_rules:
@@ -148,7 +148,7 @@ class Deducer:
         self._registered_rules[rule.signature] = rule
         return impl
 
-    def _validate_module_signature(self, impl: DeducerRule):
+    def _validate_module_signature(self, impl: DeductionRule):
         "Validate against the function signature against the module signature."
         nn_module_sign = self._nn_module_forward.strip_type()
         impl_signature = impl.signature.strip_type()
@@ -160,12 +160,12 @@ class Deducer:
 
     @property
     def nn_type(self) -> type[nn.Module]:
-        "The type of `nn.Module` that this deducer is for."
+        "The type of `nn.Module` that this deduction is for."
 
         return self._nn_type
 
     @property
-    def rules(self) -> cabc.Mapping[Sign, DeducerRule]:
+    def rules(self) -> cabc.Mapping[Sign, DeductionRule]:
         return self._registered_rules
 
     @functools.cached_property
@@ -204,33 +204,33 @@ def _signature_matches(impl: cabc.Callable, *args, **kwargs) -> bool:
     return True
 
 
-def deducer_for(nn_type: type[nn.Module]) -> Deducer:
+def deduction_for(nn_type: type[nn.Module]) -> Deduction:
     """
-    Get the deducer registered for type of `nn.Module`.
+    Get the deduction registered for type of `nn.Module`.
     """
 
     assert issubclass(nn_type, nn.Module)
-    if nn_type not in _deducer_registry:
-        _deducer_registry[nn_type] = Deducer(nn_type)
+    if nn_type not in _deduction_registry:
+        _deduction_registry[nn_type] = Deduction(nn_type)
 
-    return _deducer_registry[nn_type]
+    return _deduction_registry[nn_type]
 
 
 @ctxl.contextmanager
-def new_deducer_registry():
+def new_deduction_registry():
     """
     Overwrite the registry with a new one in the scope. Used in testing.
     """
 
-    global _deducer_registry
+    global _deduction_registry
 
-    before, _deducer_registry = _deducer_registry, {}
+    before, _deduction_registry = _deduction_registry, {}
 
     try:
         yield
     finally:
-        _deducer_registry = before
+        _deduction_registry = before
 
 
-def deducer_registry() -> cabc.Mapping[type[nn.Module], Deducer]:
-    return _deducer_registry
+def deduction_registry() -> cabc.Mapping[type[nn.Module], Deduction]:
+    return _deduction_registry

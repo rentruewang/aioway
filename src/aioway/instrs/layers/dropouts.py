@@ -55,9 +55,9 @@ class Dropout3d(_BaseDropout):
     NN = nn.Dropout3d
 
 
-@Dropout.deducer().register
-@Dropout1d.deducer().register
-@Dropout2d.deducer().register
-@Dropout3d.deducer().register
+@Dropout.deduction().register
+@Dropout1d.deduction().register
+@Dropout2d.deduction().register
+@Dropout3d.deduction().register
 def dropout_deduct(self, input: tspecs.Unbounded):
     return input

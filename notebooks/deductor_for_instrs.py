@@ -35,8 +35,8 @@ find_subclasses(Instr, seen)
 # %%
 classes = sorted(
     seen,
-    key=lambda t: [not t.implements_nn(), t.deducer_is_defined(), t.__name__],
+    key=lambda t: [not t.implements_nn(), t.deduction_is_defined(), t.__name__],
 )
 for c in classes:
     if c.implements_nn():
-        rich.print(c, c.deducer_is_defined())
+        rich.print(c, c.deduction_is_defined())

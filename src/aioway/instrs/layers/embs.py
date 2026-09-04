@@ -35,7 +35,7 @@ class Embedding(_BaseEmbedding):
     NN = nn.Embedding
 
 
-@Embedding.deducer().register
+@Embedding.deduction().register
 def emb_deduct(self: Embedding, input: tspecs.Categorical) -> tspecs.Unbounded:
     shape = torch.Size([self.num_embeddings])
     return tspecs.Unbounded(shape=shape)

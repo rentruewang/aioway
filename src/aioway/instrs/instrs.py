@@ -10,7 +10,7 @@ from collections import abc as cabc
 
 from torch import nn
 
-from aioway.deductions import Deducer, deducer_for
+from aioway.deductions import Deduction, deduction_for
 
 __all__ = ["Instr", "AiowayModule"]
 
@@ -85,29 +85,29 @@ class Instr[I = typing.Any, O = typing.Any](abc.ABC):
         raise NotImplementedError
 
     @classmethod
-    def deducer(cls) -> Deducer:
+    def deduction(cls) -> Deduction:
         """
         Infer how an input described by `spec` would be converted to
         another item described by the output `TSpec`.
 
         The signature would match the `nn.Module.forward` signature,
-        for example, `nn.Linear` would have a `Deducer` of signature `(input: tspecs.Unbounded)`.
+        for example, `nn.Linear` would have a `Deduction` of signature `(input: tspecs.Unbounded)`.
 
         Returns:
-            A `Deducer` that transforms the input argumnts `TSpec` to an output `TSpec`.
+            A `Deduction` that transforms the input argumnts `TSpec` to an output `TSpec`.
         """
 
-        return deducer_for(cls.NN)
+        return deduction_for(cls.NN)
 
     @classmethod
-    def deducer_is_defined(cls) -> bool:
+    def deduction_is_defined(cls) -> bool:
         """
-        Check if `cls.deducer()` returns a `Deducer` or not.
+        Check if `cls.deduction()` returns a `Deduction` or not.
 
         This is useful in testing.
         """
 
-        return len(cls.deducer()) != 0
+        return len(cls.deduction()) != 0
 
     @classmethod
     def implements_nn(cls) -> bool:
