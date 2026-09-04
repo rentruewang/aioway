@@ -2,9 +2,6 @@
 
 
 from torch import nn
-from torchrl.data import tensor_specs as tspecs
-
-from aioway.deductions import deduction_for
 
 from ..nn import NnInstr, instr_dcls
 
@@ -55,11 +52,3 @@ class Dropout3d(_BaseDropout):
     """
 
     NN = nn.Dropout3d
-
-
-@deduction_for(nn.Dropout).register
-@deduction_for(nn.Dropout1d).register
-@deduction_for(nn.Dropout2d).register
-@deduction_for(nn.Dropout3d).register
-def dropout_deduct(self, input: tspecs.Unbounded):
-    return input

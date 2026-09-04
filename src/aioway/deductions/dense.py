@@ -8,6 +8,14 @@ from torchrl.data import tensor_specs as tspecs
 
 from .deductions import deduction_for
 
+__all__ = [
+    "identity_deduct",
+    "flatten_deduct",
+    "unflatten_deduct",
+    "linear_deduct",
+    "bilinear_deduct",
+]
+
 
 @deduction_for(nn.Identity).register
 def identity_deduct(self, input):
