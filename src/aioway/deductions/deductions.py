@@ -41,6 +41,8 @@ class DeductionRule:
         return Sign.from_callable(self.function)
 
     def _validate_deduct_annotations(self) -> None:
+        "Check if all annotations are valid `TSpec` types."
+
         sign = self.signature
         if not sign.returns_any_type and not is_tspec_subtype(sign.return_annotation):
             raise TypeError(f"{sign=}'s return annotation is not `TSpecLike`.")
@@ -50,6 +52,8 @@ class DeductionRule:
         self._check_remaining_params(remains)
 
     def _check_self_param(self, self_param: Param):
+        "Check the module param annotations. Should be subclass of `nn.Module`."
+
         if self_param.is_any_type:
             return
 
@@ -58,13 +62,15 @@ class DeductionRule:
                 f"{self_param.annotation=} is not Any or subclass of `nn.Module`."
             )
 
-        if annot is not self.nn_type:
+        # Allows supertype of `nn_type` for more flexiblity.
+        if not issubclass(self.nn_type, annot):
             raise TypeError(
                 f"The first parameter of deduction function {annot=} "
                 f"has {annot=}, which is not {self.nn_type}."
             )
 
     def _check_remaining_params(self, remains: list[Param]):
+        "Check the non module param annotations."
         for param in remains:
             if param.is_any_type:
                 continue
