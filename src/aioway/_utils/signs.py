@@ -1,8 +1,8 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 "The utilities for signatures."
-import collections
 
+import collections
 import dataclasses as dcls
 import inspect
 import typing
