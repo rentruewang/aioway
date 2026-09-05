@@ -2,10 +2,10 @@
 # It is not intended for manual editing.
 
 [metadata]
-groups = ["default", "api", "build", "debugging", "docs", "faiss", "networkx", "pre-commit", "sklearn", "tests"]
+groups = ["default", "api", "build", "debugging", "docs", "explainable", "faiss", "networkx", "pre-commit", "sklearn", "tests"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.1"
-content_hash = "sha256:dabec2df740387ebe615a51e152e77ceca5562048503ac866a2a0b5535aefea2"
+content_hash = "sha256:452dbf9163e018734ddf9ae9d1f1eeaf6096657c4ea2d868285a811166167d84"
 
 [[metadata.targets]]
 requires_python = ">=3.14,<3.15"
@@ -540,6 +540,24 @@ files = [
 ]
 
 [[package]]
+name = "captum"
+version = "0.9.0"
+requires_python = ">=3.10"
+summary = "Model Interpretability for PyTorch"
+groups = ["explainable"]
+dependencies = [
+    "matplotlib",
+    "numpy",
+    "packaging",
+    "torch>=2.3",
+    "tqdm",
+]
+files = [
+    {file = "captum-0.9.0-py3-none-any.whl", hash = "sha256:cda38e1d42c37591d71560bb2f5813ac4cae8d8543afac45279c7efd5945997e"},
+    {file = "captum-0.9.0.tar.gz", hash = "sha256:e4868e22b68224f1a5355d2b7966803c021cf9fe5d893f51f587b4002a666b54"},
+]
+
+[[package]]
 name = "certifi"
 version = "2026.7.22"
 requires_python = ">=3.7"
@@ -693,7 +711,7 @@ name = "colorama"
 version = "0.4.6"
 requires_python = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,>=2.7"
 summary = "Cross-platform colored terminal text."
-groups = ["default", "api", "build", "debugging", "docs", "pre-commit", "tests"]
+groups = ["default", "api", "build", "debugging", "docs", "explainable", "pre-commit", "tests"]
 marker = "os_name == \"nt\" or sys_platform == \"win32\" or platform_system == \"Windows\""
 files = [
     {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
@@ -716,7 +734,7 @@ name = "contourpy"
 version = "1.3.3"
 requires_python = ">=3.11"
 summary = "Python library for calculating contours of 2D quadrilateral grids"
-groups = ["debugging", "networkx"]
+groups = ["debugging", "explainable", "networkx"]
 dependencies = [
     "numpy>=1.25",
 ]
@@ -890,7 +908,7 @@ files = [
 name = "cuda-bindings"
 version = "12.9.4"
 summary = "Python bindings for CUDA"
-groups = ["default"]
+groups = ["default", "explainable"]
 marker = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
 dependencies = [
     "cuda-pathfinder~=1.1",
@@ -909,7 +927,7 @@ name = "cuda-pathfinder"
 version = "1.7.0"
 requires_python = ">=3.10"
 summary = "Pathfinder for CUDA components"
-groups = ["default"]
+groups = ["default", "explainable"]
 marker = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
 files = [
     {file = "cuda_pathfinder-1.7.0-py3-none-any.whl", hash = "sha256:e9d67e950f3d5992b854dfd25917c3719d0c21d3057b11abe86ba6feec526138"},
@@ -920,7 +938,7 @@ name = "cycler"
 version = "0.12.1"
 requires_python = ">=3.8"
 summary = "Composable style cycles"
-groups = ["debugging", "networkx"]
+groups = ["debugging", "explainable", "networkx"]
 files = [
     {file = "cycler-0.12.1-py3-none-any.whl", hash = "sha256:85cef7cff222d8644161529808465972e51340599459b8ac3ccbac5a854e0d30"},
     {file = "cycler-0.12.1.tar.gz", hash = "sha256:88bb128f02ba341da8ef447245a9e138fae777f6a23943da4540077d3601eb1c"},
@@ -1205,7 +1223,7 @@ name = "filelock"
 version = "3.32.4"
 requires_python = ">=3.10"
 summary = "A platform independent file lock."
-groups = ["default", "pre-commit"]
+groups = ["default", "explainable", "pre-commit"]
 files = [
     {file = "filelock-3.32.4-py3-none-any.whl", hash = "sha256:22e58ca3b1ae3b98993b762d7338367ae64fe50252bf78d59da3bfebcdf1cedd"},
     {file = "filelock-3.32.4.tar.gz", hash = "sha256:2bde2e4cf732e0153406d8a7bc80620ecf5e621fe0d25e41143c4e3b4733ff30"},
@@ -1216,7 +1234,7 @@ name = "fonttools"
 version = "4.63.0"
 requires_python = ">=3.10"
 summary = "Tools to manipulate font files"
-groups = ["debugging", "networkx"]
+groups = ["debugging", "explainable", "networkx"]
 files = [
     {file = "fonttools-4.63.0-cp314-cp314-macosx_10_15_universal2.whl", hash = "sha256:fd1e3094f42d806d3d7c79162fc59e5910fcbe3a7360c385b8da969bc4493745"},
     {file = "fonttools-4.63.0-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:6e528da43bc3791085f8cb6141b1d13e459226790240340fcbb4625649238b03"},
@@ -1300,7 +1318,7 @@ name = "fsspec"
 version = "2026.7.0"
 requires_python = ">=3.10"
 summary = "File-system specification"
-groups = ["default"]
+groups = ["default", "explainable"]
 files = [
     {file = "fsspec-2026.7.0-py3-none-any.whl", hash = "sha256:b57ddbafedfaef7018c1ecab32aa200a9d7ca26b77965f64e48b70061249d279"},
     {file = "fsspec-2026.7.0.tar.gz", hash = "sha256:c803c40f4cf860b49dea58ee3e1c33cb9c790520e233537e1340049f89b82a88"},
@@ -1753,7 +1771,7 @@ name = "jinja2"
 version = "3.1.6"
 requires_python = ">=3.7"
 summary = "A very fast and expressive template engine."
-groups = ["default", "debugging", "docs"]
+groups = ["default", "debugging", "docs", "explainable"]
 dependencies = [
     "MarkupSafe>=2.0",
 ]
@@ -2179,7 +2197,7 @@ name = "kiwisolver"
 version = "1.5.0"
 requires_python = ">=3.10"
 summary = "A fast implementation of the Cassowary constraint solver"
-groups = ["debugging", "networkx"]
+groups = ["debugging", "explainable", "networkx"]
 files = [
     {file = "kiwisolver-1.5.0-cp314-cp314-macosx_10_15_universal2.whl", hash = "sha256:8df31fe574b8b3993cc61764f40941111b25c2d9fea13d3ce24a49907cd2d615"},
     {file = "kiwisolver-1.5.0-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:1d49a49ac4cbfb7c1375301cd1ec90169dfeae55ff84710d782260ce77a75a02"},
@@ -2323,7 +2341,7 @@ name = "markupsafe"
 version = "3.0.3"
 requires_python = ">=3.9"
 summary = "Safely add untrusted strings to HTML/XML markup."
-groups = ["default", "debugging", "docs"]
+groups = ["default", "debugging", "docs", "explainable"]
 files = [
     {file = "markupsafe-3.0.3-cp314-cp314-macosx_10_13_x86_64.whl", hash = "sha256:eaa9599de571d72e2daf60164784109f19978b327a3910d3e9de8c97b5b70cfe"},
     {file = "markupsafe-3.0.3-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:c47a551199eb8eb2121d4f0f15ae0f923d31350ab9280078d1e5f12b249e0026"},
@@ -2355,7 +2373,7 @@ name = "matplotlib"
 version = "3.11.1"
 requires_python = ">=3.11"
 summary = "Python plotting package"
-groups = ["debugging", "networkx"]
+groups = ["debugging", "explainable", "networkx"]
 dependencies = [
     "contourpy>=1.0.1",
     "cycler>=0.10",
@@ -2483,7 +2501,7 @@ files = [
 name = "mpmath"
 version = "1.3.0"
 summary = "Python library for arbitrary-precision floating-point arithmetic"
-groups = ["default"]
+groups = ["default", "explainable"]
 files = [
     {file = "mpmath-1.3.0-py3-none-any.whl", hash = "sha256:a0b2b9fe80bbcd81a6647ff13108738cfb482d481d826cc0e02f5b35e5c88d2c"},
     {file = "mpmath-1.3.0.tar.gz", hash = "sha256:7a28eb2a9774d00c7bc92411c19a89209d5da7c4c9a9e227be8330a23a25b91f"},
@@ -2691,7 +2709,7 @@ name = "networkx"
 version = "3.6"
 requires_python = ">=3.11"
 summary = "Python package for creating and manipulating graphs and networks"
-groups = ["default", "networkx"]
+groups = ["default", "explainable", "networkx"]
 files = [
     {file = "networkx-3.6-py3-none-any.whl", hash = "sha256:cdb395b105806062473d3be36458d8f1459a4e4b98e236a66c3a48996e07684f"},
     {file = "networkx-3.6.tar.gz", hash = "sha256:285276002ad1f7f7da0f7b42f004bcba70d381e936559166363707fdad3d72ad"},
@@ -2774,7 +2792,7 @@ name = "numpy"
 version = "2.5.2"
 requires_python = ">=3.12"
 summary = "Fundamental package for array computing in Python"
-groups = ["default", "debugging", "faiss", "networkx", "sklearn"]
+groups = ["default", "debugging", "explainable", "faiss", "networkx", "sklearn"]
 files = [
     {file = "numpy-2.5.2-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:d787cf769c3baeb5f6235e778edb52c08dfa923789b5958f28e6450f96107cb1"},
     {file = "numpy-2.5.2-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:24b9dc2e3d84aa58523798805194e23e736f3f6ce2d1a5b92583ae734e6dbda8"},
@@ -2805,7 +2823,7 @@ name = "nvidia-cublas-cu12"
 version = "12.8.4.1"
 requires_python = ">=3"
 summary = "CUBLAS native runtime libraries"
-groups = ["default"]
+groups = ["default", "explainable"]
 marker = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
 files = [
     {file = "nvidia_cublas_cu12-12.8.4.1-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:b86f6dd8935884615a0683b663891d43781b819ac4f2ba2b0c9604676af346d0"},
@@ -2818,7 +2836,7 @@ name = "nvidia-cuda-cupti-cu12"
 version = "12.8.90"
 requires_python = ">=3"
 summary = "CUDA profiling tools runtime libs."
-groups = ["default"]
+groups = ["default", "explainable"]
 marker = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
 files = [
     {file = "nvidia_cuda_cupti_cu12-12.8.90-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:4412396548808ddfed3f17a467b104ba7751e6b58678a4b840675c56d21cf7ed"},
@@ -2831,7 +2849,7 @@ name = "nvidia-cuda-nvrtc-cu12"
 version = "12.8.93"
 requires_python = ">=3"
 summary = "NVRTC native runtime libraries"
-groups = ["default"]
+groups = ["default", "explainable"]
 marker = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
 files = [
     {file = "nvidia_cuda_nvrtc_cu12-12.8.93-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.whl", hash = "sha256:a7756528852ef889772a84c6cd89d41dfa74667e24cca16bb31f8f061e3e9994"},
@@ -2844,7 +2862,7 @@ name = "nvidia-cuda-runtime-cu12"
 version = "12.8.90"
 requires_python = ">=3"
 summary = "CUDA Runtime native Libraries"
-groups = ["default"]
+groups = ["default", "explainable"]
 marker = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
 files = [
     {file = "nvidia_cuda_runtime_cu12-12.8.90-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:52bf7bbee900262ffefe5e9d5a2a69a30d97e2bc5bb6cc866688caa976966e3d"},
@@ -2857,7 +2875,7 @@ name = "nvidia-cudnn-cu12"
 version = "9.10.2.21"
 requires_python = ">=3"
 summary = "cuDNN runtime libraries"
-groups = ["default"]
+groups = ["default", "explainable"]
 marker = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
 dependencies = [
     "nvidia-cublas-cu12",
@@ -2873,7 +2891,7 @@ name = "nvidia-cufft-cu12"
 version = "11.3.3.83"
 requires_python = ">=3"
 summary = "CUFFT native runtime libraries"
-groups = ["default"]
+groups = ["default", "explainable"]
 marker = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
 dependencies = [
     "nvidia-nvjitlink-cu12",
@@ -2889,7 +2907,7 @@ name = "nvidia-cufile-cu12"
 version = "1.13.1.3"
 requires_python = ">=3"
 summary = "cuFile GPUDirect libraries"
-groups = ["default"]
+groups = ["default", "explainable"]
 marker = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
 files = [
     {file = "nvidia_cufile_cu12-1.13.1.3-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:1d069003be650e131b21c932ec3d8969c1715379251f8d23a1860554b1cb24fc"},
@@ -2901,7 +2919,7 @@ name = "nvidia-curand-cu12"
 version = "10.3.9.90"
 requires_python = ">=3"
 summary = "CURAND native runtime libraries"
-groups = ["default"]
+groups = ["default", "explainable"]
 marker = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
 files = [
     {file = "nvidia_curand_cu12-10.3.9.90-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:dfab99248034673b779bc6decafdc3404a8a6f502462201f2f31f11354204acd"},
@@ -2914,7 +2932,7 @@ name = "nvidia-cusolver-cu12"
 version = "11.7.3.90"
 requires_python = ">=3"
 summary = "CUDA solver native runtime libraries"
-groups = ["default"]
+groups = ["default", "explainable"]
 marker = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
 dependencies = [
     "nvidia-cublas-cu12",
@@ -2932,7 +2950,7 @@ name = "nvidia-cusparse-cu12"
 version = "12.5.8.93"
 requires_python = ">=3"
 summary = "CUSPARSE native runtime libraries"
-groups = ["default"]
+groups = ["default", "explainable"]
 marker = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
 dependencies = [
     "nvidia-nvjitlink-cu12",
@@ -2947,7 +2965,7 @@ files = [
 name = "nvidia-cusparselt-cu12"
 version = "0.7.1"
 summary = "NVIDIA cuSPARSELt"
-groups = ["default"]
+groups = ["default", "explainable"]
 marker = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
 files = [
     {file = "nvidia_cusparselt_cu12-0.7.1-py3-none-manylinux2014_aarch64.whl", hash = "sha256:8878dce784d0fac90131b6817b607e803c36e629ba34dc5b433471382196b6a5"},
@@ -2960,7 +2978,7 @@ name = "nvidia-nccl-cu12"
 version = "2.27.5"
 requires_python = ">=3"
 summary = "NVIDIA Collective Communication Library (NCCL) Runtime"
-groups = ["default"]
+groups = ["default", "explainable"]
 marker = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
 files = [
     {file = "nvidia_nccl_cu12-2.27.5-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:31432ad4d1fb1004eb0c56203dc9bc2178a1ba69d1d9e02d64a6938ab5e40e7a"},
@@ -2972,7 +2990,7 @@ name = "nvidia-nvjitlink-cu12"
 version = "12.8.93"
 requires_python = ">=3"
 summary = "Nvidia JIT LTO Library"
-groups = ["default"]
+groups = ["default", "explainable"]
 marker = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
 files = [
     {file = "nvidia_nvjitlink_cu12-12.8.93-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.whl", hash = "sha256:81ff63371a7ebd6e6451970684f916be2eab07321b73c9d244dc2b4da7f73b88"},
@@ -2985,7 +3003,7 @@ name = "nvidia-nvshmem-cu12"
 version = "3.4.5"
 requires_python = ">=3"
 summary = "NVSHMEM creates a global address space that provides efficient and scalable communication for NVIDIA GPU clusters."
-groups = ["default"]
+groups = ["default", "explainable"]
 marker = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
 files = [
     {file = "nvidia_nvshmem_cu12-3.4.5-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:0b48363fc6964dede448029434c6abed6c5e37f823cb43c3bcde7ecfc0457e15"},
@@ -2997,7 +3015,7 @@ name = "nvidia-nvtx-cu12"
 version = "12.8.90"
 requires_python = ">=3"
 summary = "NVIDIA Tools Extension"
-groups = ["default"]
+groups = ["default", "explainable"]
 marker = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
 files = [
     {file = "nvidia_nvtx_cu12-12.8.90-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:d7ad891da111ebafbf7e015d34879f7112832fc239ff0d7d776b6cb685274615"},
@@ -3038,7 +3056,7 @@ name = "packaging"
 version = "26.3"
 requires_python = ">=3.9"
 summary = "Core utilities for Python packages"
-groups = ["default", "api", "build", "debugging", "docs", "faiss", "networkx", "pre-commit", "tests"]
+groups = ["default", "api", "build", "debugging", "docs", "explainable", "faiss", "networkx", "pre-commit", "tests"]
 files = [
     {file = "packaging-26.3-py3-none-any.whl", hash = "sha256:d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c"},
     {file = "packaging-26.3.tar.gz", hash = "sha256:94edc256424af38762eb31306eed28beb9f0efc50a8837492c9d6fd6004aed79"},
@@ -3140,7 +3158,7 @@ name = "pillow"
 version = "12.3.0"
 requires_python = ">=3.10"
 summary = "Python Imaging Library (fork)"
-groups = ["default", "debugging", "networkx"]
+groups = ["default", "debugging", "explainable", "networkx"]
 files = [
     {file = "pillow-12.3.0-cp314-cp314-ios_13_0_arm64_iphoneos.whl", hash = "sha256:9cf95fe4d0f84c82d282745d9bb08ad9f926efa00be4697e767b814ce40d4330"},
     {file = "pillow-12.3.0-cp314-cp314-ios_13_0_arm64_iphonesimulator.whl", hash = "sha256:8728f216dcdb6e6d555cf971cb34076139ad74b31fc2c14da4fafc741c5f6217"},
@@ -3553,7 +3571,7 @@ name = "pyparsing"
 version = "3.3.2"
 requires_python = ">=3.9"
 summary = "pyparsing - Classes and methods to define and execute parsing grammars"
-groups = ["debugging", "networkx"]
+groups = ["debugging", "explainable", "networkx"]
 files = [
     {file = "pyparsing-3.3.2-py3-none-any.whl", hash = "sha256:850ba148bd908d7e2411587e247a1e4f0327839c40e2e5e6d05a007ecc69911d"},
     {file = "pyparsing-3.3.2.tar.gz", hash = "sha256:c777f4d763f140633dcb6d8a3eda953bf7a214dc4eff598413c070bcdc117cbc"},
@@ -3679,7 +3697,7 @@ name = "python-dateutil"
 version = "2.9.0.post0"
 requires_python = "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7"
 summary = "Extensions to the standard Python datetime module"
-groups = ["default", "debugging", "networkx"]
+groups = ["default", "debugging", "explainable", "networkx"]
 dependencies = [
     "six>=1.5",
 ]
@@ -4205,7 +4223,7 @@ name = "setuptools"
 version = "84.0.0"
 requires_python = ">=3.10"
 summary = "Most extensible Python build backend with support for C/C++ extension modules"
-groups = ["default", "build"]
+groups = ["default", "build", "explainable"]
 files = [
     {file = "setuptools-84.0.0-py3-none-any.whl", hash = "sha256:51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670"},
     {file = "setuptools-84.0.0.tar.gz", hash = "sha256:f4695c21257f0d9b537ec2692c941d02ee143b7cc1276941349a546573b2ef73"},
@@ -4245,7 +4263,7 @@ name = "six"
 version = "1.17.0"
 requires_python = "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7"
 summary = "Python 2 and 3 compatibility utilities"
-groups = ["default", "debugging", "networkx"]
+groups = ["default", "debugging", "explainable", "networkx"]
 files = [
     {file = "six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274"},
     {file = "six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81"},
@@ -4444,7 +4462,7 @@ name = "sympy"
 version = "1.14.0"
 requires_python = ">=3.9"
 summary = "Computer algebra system (CAS) in Python"
-groups = ["default"]
+groups = ["default", "explainable"]
 dependencies = [
     "mpmath<1.4,>=1.1.0",
 ]
@@ -4553,7 +4571,7 @@ name = "torch"
 version = "2.10.0"
 requires_python = ">=3.10"
 summary = "Tensors and Dynamic neural networks in Python with strong GPU acceleration"
-groups = ["default"]
+groups = ["default", "explainable"]
 dependencies = [
     "cuda-bindings==12.9.4; platform_system == \"Linux\" and platform_machine == \"x86_64\"",
     "filelock",
@@ -4678,7 +4696,7 @@ name = "tqdm"
 version = "4.70.0"
 requires_python = ">=3.8"
 summary = "Fast, Extensible Progress Meter"
-groups = ["default"]
+groups = ["default", "explainable"]
 dependencies = [
     "colorama; platform_system == \"Windows\"",
 ]
@@ -4725,7 +4743,7 @@ name = "triton"
 version = "3.6.0"
 requires_python = "<3.15,>=3.10"
 summary = "A language and compiler for custom Deep Learning operations"
-groups = ["default"]
+groups = ["default", "explainable"]
 marker = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
 dependencies = [
     "importlib-metadata; python_version < \"3.10\"",
@@ -4759,7 +4777,7 @@ name = "typing-extensions"
 version = "4.16.0"
 requires_python = ">=3.9"
 summary = "Backported and Experimental Type Hints for Python 3.9+"
-groups = ["default", "api", "debugging", "docs", "pre-commit"]
+groups = ["default", "api", "debugging", "docs", "explainable", "pre-commit"]
 files = [
     {file = "typing_extensions-4.16.0-py3-none-any.whl", hash = "sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8"},
     {file = "typing_extensions-4.16.0.tar.gz", hash = "sha256:dc983d19a509c94dba722ee6abd33940f7c05a89e243c47e907eb4db6f1a43e5"},
@@ -4785,7 +4803,7 @@ version = "2026.3"
 requires_python = ">=2"
 summary = "Provider of IANA time zone data"
 groups = ["default", "debugging"]
-marker = "sys_platform == \"win32\" or sys_platform == \"emscripten\" or python_version >= \"3.9\""
+marker = "sys_platform == \"emscripten\" or sys_platform == \"win32\" or python_version >= \"3.9\""
 files = [
     {file = "tzdata-2026.3-py2.py3-none-any.whl", hash = "sha256:dc096730c87af6cab1b171c9d532be840741ff5d459015e7f6947bd7d7e54931"},
     {file = "tzdata-2026.3.tar.gz", hash = "sha256:4a1518b8993086a7982523e071643f3c0e5f213e75b21318e78bcabfff9d1415"},
