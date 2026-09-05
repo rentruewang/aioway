@@ -1,15 +1,45 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 "Route the spaces to losses."
+from aioway.emits import emitter_function
 
 from collections import abc as cabc
 
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.tspecs import TSpecLike, as_tspec
+from aioway.tspecs import (
+    TSpecLike,
+    as_tspec,
+    ArgsTSpec,
+    TSpec,
+    is_tspec_like,
+    LossTSpec,
+)
 
 __all__ = ["route_loss"]
+
+_INPUT = "input"
+_TARGET = "target"
+
+
+@emitter_function
+def emit_loss(observ: TSpec, action: TSpec) -> nn.Module:
+    "Get the next loss type with an `Emitter` API."
+
+    if not isinstance(observ, ArgsTSpec):
+        return NotImplemented
+
+    if not isinstance(action, LossTSpec):
+        return NotImplemented
+
+    input_spec = observ.get(_INPUT)
+    target_spec = observ.get(_TARGET)
+
+    if not is_tspec_like(input_spec) or not is_tspec_like(target_spec):
+        return NotImplemented
+
+    return next(route_loss(input_spec, target_spec))
 
 
 def route_loss(input: TSpecLike, target: TSpecLike) -> cabc.Generator[nn.Module]:
