@@ -17,7 +17,7 @@ from aioway.tspecs import (
     LossTSpec,
 )
 
-__all__ = ["route_loss"]
+__all__ = ["emit_loss", "route_loss"]
 
 _INPUT = "input"
 _TARGET = "target"
@@ -39,7 +39,10 @@ def emit_loss(observ: TSpec, action: TSpec) -> nn.Module:
     if not is_tspec_like(input_spec) or not is_tspec_like(target_spec):
         return NotImplemented
 
-    return next(route_loss(input_spec, target_spec))
+    try:
+        return next(route_loss(input_spec, target_spec))
+    except StopIteration:
+        return NotImplemented
 
 
 def route_loss(input: TSpecLike, target: TSpecLike) -> cabc.Generator[nn.Module]:
