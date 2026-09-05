@@ -2,7 +2,7 @@
 
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.losses import route_loss
+from aioway.emits import route_loss
 
 
 def test_route_unbounded_loss():
