@@ -24,5 +24,4 @@ class LossTSpec(tspecs.Unbounded):
             dtype=DType.parse(dtype).torch() if dtype is not None else None,
         )
 
-        if self.shape:
-            raise ValueError(f"Only empty shape is allowed. {self.shape=}.")
+        assert not self.shape
