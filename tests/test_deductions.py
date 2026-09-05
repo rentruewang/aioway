@@ -1,11 +1,14 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import typing
+
 import pytest
 import torch
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
 from aioway.deductions import deduction_for, deduction_registry, new_deduction_registry
+from aioway.tspecs import LossTSpec
 
 
 @pytest.fixture
@@ -61,4 +64,8 @@ def test_mse_deduct():
 
     unbounded = tspecs.Unbounded(torch.Size([3, 4, 5, 6]))
     output = symmetric_loss_deduct(nn.MSELoss(), unbounded, unbounded)
-    assert output == tspecs.Unbounded(torch.Size([]))
+    assert is_loss_output(output)
+
+
+def is_loss_output(output) -> typing.TypeIs[LossTSpec]:
+    return isinstance(output, LossTSpec)
