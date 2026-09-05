@@ -57,16 +57,6 @@ class TSpec(typing.Protocol):
     def ndim(self) -> int:
         return len(self.shape)
 
-    @property
-    @abc.abstractmethod
-    def device(self) -> torch.device:
-        raise NotImplementedError
-
-    @property
-    @abc.abstractmethod
-    def dtype(self) -> torch.dtype:
-        raise NotImplementedError
-
     @abc.abstractmethod
     def rand(self, shape: torch.Size, /) -> torch.Tensor | td.TensorDictBase:
         raise NotImplementedError

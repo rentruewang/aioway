@@ -1,20 +1,20 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 "Route the spaces to losses."
-from aioway.emits import emitter_function
 
 from collections import abc as cabc
 
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
+from aioway.emits import emitter_function
 from aioway.tspecs import (
+    ArgsTSpec,
+    LossTSpec,
+    TSpec,
     TSpecLike,
     as_tspec,
-    ArgsTSpec,
-    TSpec,
     is_tspec_like,
-    LossTSpec,
 )
 
 __all__ = ["emit_loss", "route_loss"]
