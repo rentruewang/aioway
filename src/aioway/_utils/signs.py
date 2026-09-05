@@ -2,6 +2,7 @@
 
 "The utilities for signatures."
 
+import collections
 import dataclasses as dcls
 import inspect
 import typing
@@ -64,6 +65,31 @@ class Param:
         )
 
 
+class ArgsAnnot(collections.UserDict[str, type]):
+    "The argument annotation should be a mapping of name to type."
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, ArgsAnnot):
+            return NotImplemented
+
+        # Keys should be equal.
+        if self.keys() != other.keys():
+            return False
+
+        for key in self.keys():
+            self_type = self[key]
+            other_type = other[key]
+
+            # If either is `typing.Any` or missing or `object`, skip.
+            if is_any_type_hint(self_type) or is_any_type_hint(other_type):
+                continue
+
+            if self_type != other_type:
+                return False
+
+        return True
+
+
 @dcls.dataclass(frozen=True)
 class Sign:
     "The convenient wrapper for `inspect.Signature`."
@@ -82,6 +108,13 @@ class Sign:
                 return self.signature == other
             case _:
                 return NotImplemented
+
+    def args_annot(self) -> ArgsAnnot:
+        "Get the arguments' annotations."
+
+        return ArgsAnnot(
+            {name: param.annotation for name, param in self.params.items()}
+        )
 
     @property
     def params(self) -> dict[str, Param]:

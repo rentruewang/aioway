@@ -2,26 +2,36 @@
 
 "The `LossTSpec` interface."
 
+import dataclasses as dcls
+import typing
+
 import torch
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.schemas import Device, DeviceLike, DType, DTypeLike
+from .tspecs import TSpec
 
 __all__ = ["LossTSpec"]
 
 
-class LossTSpec(tspecs.Unbounded):
+@typing.final
+@dcls.dataclass(frozen=True)
+class LossTSpec(TSpec):
     """
     The `TSpec` that will be marked as losses.
     """
 
-    def __init__(
-        self, device: DeviceLike | None = None, dtype: DTypeLike | None = None
-    ) -> None:
-        super().__init__(
-            shape=torch.Size(()),
-            device=Device.parse(device).torch() if device is not None else None,
-            dtype=DType.parse(dtype).torch() if dtype is not None else None,
-        )
+    tspec: TSpec = dcls.field(default_factory=lambda: tspecs.Unbounded(torch.Size(())))
 
-        assert not self.shape
+    def __post_init__(self) -> None:
+        if self.tspec.shape:
+            raise ValueError(f"{self.shape=} should be ().")
+
+    def is_in(self, item):
+        return self.tspec.is_in(item)
+
+    @property
+    def shape(self) -> torch.Size:
+        return torch.Size(())
+
+    def rand(self, batch: torch.Size, /):
+        return self.tspec.rand(batch)
