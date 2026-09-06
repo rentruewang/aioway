@@ -25,11 +25,11 @@ def _wrong_function():
     def wrong_args(linear: nn.Linear, output):
         pass
 
-    def wrong_instr(linear: nn.Bilinear, input):
+    def wrong_module(linear: nn.Bilinear, input):
         pass
 
     yield wrong_args
-    yield wrong_instr
+    yield wrong_module
 
 
 @pytest.fixture(params=_wrong_function())
