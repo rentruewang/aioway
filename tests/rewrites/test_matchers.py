@@ -1,8 +1,9 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from aioway.rewrites import Matcher
 import pytest
 from torch import nn
+
+from aioway.rewrites import Matcher
 
 
 @pytest.fixture
