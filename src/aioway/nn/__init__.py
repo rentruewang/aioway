@@ -2,4 +2,5 @@
 
 from .deductions import *
 from .emits import *
+from .rewrites import *
 from .tspecs import *

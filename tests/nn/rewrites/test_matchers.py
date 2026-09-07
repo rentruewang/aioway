@@ -3,7 +3,7 @@
 import pytest
 from torch import nn
 
-from aioway.rewrites import Matcher
+from aioway.nn import Matcher
 
 
 @pytest.fixture
