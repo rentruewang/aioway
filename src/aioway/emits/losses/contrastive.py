@@ -9,7 +9,7 @@ from torch import nn, optim
 from torch.nn import functional as F
 
 from aioway.emits import Emitter, emitter_dcls
-from aioway.tspecs import TSpec
+from aioway.nn import TSpec
 
 __all__ = ["ContrastiveLoss", "ContrastiveLossEmitter"]
 

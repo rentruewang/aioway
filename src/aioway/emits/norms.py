@@ -7,7 +7,7 @@ import typing
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.tspecs import TSpec
+from aioway.nn import TSpec
 
 from .emitters import Emitter, emitter_dcls, emitter_function
 

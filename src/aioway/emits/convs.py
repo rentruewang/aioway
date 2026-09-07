@@ -9,7 +9,7 @@ from torchrl.data import tensor_specs as tspecs
 
 from aioway._utils import is_list_of
 from aioway.schemas import Shape
-from aioway.tspecs import TSpec, sample_from_tspec, unbounded_box_tspec
+from aioway.nn import TSpec, sample_from_tspec, unbounded_box_tspec
 
 from ._utils import Activation
 from .emitters import Emitter, emitter_dcls

@@ -5,7 +5,7 @@ import logging
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.tspecs import LossTSpec
+from aioway.nn.tspecs import LossTSpec
 
 from .deductions import deduction_for
 

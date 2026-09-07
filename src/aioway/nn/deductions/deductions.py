@@ -12,7 +12,7 @@ from collections import abc as cabc
 from torch import nn
 
 from aioway._utils import Param, Sign
-from aioway.tspecs import TSpec, TSpecLike, as_tspec, is_tspec_subtype
+from aioway.nn.tspecs import TSpec, TSpecLike, as_tspec, is_tspec_subtype
 
 __all__ = ["Deduction", "deduction_for", "new_deduction_registry", "deduction_registry"]
 

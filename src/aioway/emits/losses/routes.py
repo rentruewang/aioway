@@ -8,7 +8,7 @@ from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
 from aioway.emits import emitter_function
-from aioway.tspecs import (
+from aioway.nn import (
     ArgsTSpec,
     LossTSpec,
     TSpec,

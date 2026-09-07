@@ -13,7 +13,7 @@ from torch.utils import data as dutils
 from torchrl.data import tensor_specs as tspecs
 
 from aioway.dsets import Dset, InputTarget, InputTargetLikeDset
-from aioway.tspecs import TSpec, TSpecCompat
+from aioway.nn import TSpec, TSpecCompat
 
 from .steps import LossFunc, PredLossPair, TrainStep, ValidateStep
 

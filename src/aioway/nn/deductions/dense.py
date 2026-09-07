@@ -6,7 +6,7 @@ import torch
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.tspecs import TSpec
+from aioway.nn.tspecs import TSpec
 
 from .deductions import deduction_for
 

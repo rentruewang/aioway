@@ -11,7 +11,7 @@ from aioway.emits import (
     linear_regression,
 )
 from aioway.schemas import Shape
-from aioway.tspecs import unbounded_box_tspec
+from aioway.nn import unbounded_box_tspec
 
 
 @pytest.fixture
