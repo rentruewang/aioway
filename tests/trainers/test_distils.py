@@ -1,8 +1,9 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import pytest
 import torch
 from torch import nn, optim
-import pytest
+
 from aioway.trainers.distils import distil
 
 

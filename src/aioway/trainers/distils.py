@@ -1,9 +1,10 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import torch
 from collections import abc as cabc
-from .static import BatchIter
+
 from torch import nn, optim
+
+from .static import BatchIter
 
 __all__ = ["distil"]
 
