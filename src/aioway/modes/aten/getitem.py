@@ -6,7 +6,7 @@ import typing
 import torch
 from torch import ops
 
-from aioway._costs import Cost
+from aioway.sessions import Cost
 
 from .aten import Aten, aten_dcls
 

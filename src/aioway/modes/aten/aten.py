@@ -10,8 +10,8 @@ from collections import abc as cabc
 
 from torch import _ops
 
-from aioway._costs import Cost
 from aioway._utils import camel_to_snake, find_nested_tensors, render_fcall
+from aioway.sessions import Cost
 
 if typing.TYPE_CHECKING:
     from aioway.modes import TorchDispThunk
