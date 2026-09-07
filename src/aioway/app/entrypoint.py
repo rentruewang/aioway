@@ -7,7 +7,7 @@ from torch import nn, optim
 
 from aioway.io import Dset, route_dset
 from aioway.nn import TSpec, as_tspec, emit, route_loss
-from aioway.trainers import StaticTrainer, TrainCfg
+from aioway.heads import StaticTrainer, TrainCfg
 
 from .server import serve
 
