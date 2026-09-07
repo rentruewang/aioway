@@ -7,8 +7,12 @@ import torch
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.nn import deduction_for, deduction_registry, new_deduction_registry
-from aioway.nn import LossTSpec
+from aioway.nn import (
+    LossTSpec,
+    deduction_for,
+    deduction_registry,
+    new_deduction_registry,
+)
 
 
 @pytest.fixture

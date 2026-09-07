@@ -56,6 +56,7 @@ class EmitterLike(typing.Protocol):
 
 
 @typing.dataclass_transform(frozen_default=True)
+@typing.no_type_check
 def emitter_dcls[T](cls: type[T]) -> type[T]:
     return dcls.dataclass(frozen=True)(cls)
 
