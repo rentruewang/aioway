@@ -7,7 +7,7 @@ import torch
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.deductions import deduction_for, deduction_registry, new_deduction_registry
+from aioway.nn import deduction_for, deduction_registry, new_deduction_registry
 from aioway.tspecs import LossTSpec
 
 
@@ -43,7 +43,7 @@ def test_wrong_func(wrong_func, use_new_deductions):
 
 
 def test_linear_deduct():
-    from aioway.deductions.dense import linear_deduct
+    from aioway.nn.deductions.dense import linear_deduct
 
     unbounded = tspecs.Unbounded(torch.Size([3, 4, 5, 6]))
     output = linear_deduct(nn.Linear(6, 7), unbounded)
@@ -51,7 +51,7 @@ def test_linear_deduct():
 
 
 def test_sequential_deduct():
-    from aioway.deductions.containers import sequential_deduct
+    from aioway.nn.deductions.containers import sequential_deduct
 
     unbounded = tspecs.Unbounded(torch.Size([3, 4, 5, 6]))
     sequential = nn.Sequential(nn.Linear(6, 7), nn.Linear(7, 8), nn.Linear(8, 9))
@@ -60,7 +60,7 @@ def test_sequential_deduct():
 
 
 def test_mse_deduct():
-    from aioway.deductions.losses import symmetric_loss_deduct
+    from aioway.nn.deductions.losses import symmetric_loss_deduct
 
     unbounded = tspecs.Unbounded(torch.Size([3, 4, 5, 6]))
     output = symmetric_loss_deduct(nn.MSELoss(), unbounded, unbounded)
