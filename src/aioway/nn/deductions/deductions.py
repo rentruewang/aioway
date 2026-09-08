@@ -2,25 +2,21 @@
 
 "The deduction type."
 
-import contextlib as ctxl
 import dataclasses as dcls
 import functools
 import logging
-import typing
 from collections import abc as cabc
 
 from torch import nn
 
-from aioway._utils import Param, Sign
+from aioway._utils import Param, Sign, is_nn_type
+from aioway.nn.regs import NnRegAttr, nn_reg
+from aioway.nn.signs import nn_sign_skeleton
 from aioway.nn.tspecs import TSpec, TSpecLike, as_tspec, is_tspec_subtype
 
-__all__ = ["Deduction", "deduction_for", "new_deduction_registry", "deduction_registry"]
+__all__ = ["Deduction", "deduction_for", "deduction_reg"]
 
 LOGGER = logging.getLogger(__name__)
-
-
-_deduction_registry: dict[type[nn.Module], Deduction] = {}
-"The deduction registry."
 
 
 @dcls.dataclass(frozen=True)
@@ -153,12 +149,13 @@ class Deduction:
         self._registered_rules[rule.signature] = rule
         return impl
 
-    def _validate_module_signature(self, impl: DeductionRule):
+    def _validate_module_signature(self, rule: DeductionRule):
         "Validate against the function signature against the module signature."
-        nn_module_sign = self._nn_module_forward.strip_type()
-        impl_signature = impl.signature.strip_type()
 
-        if impl_signature.drop_first() != nn_module_sign.drop_first():
+        nn_module_sign = nn_sign_skeleton(self._nn_type)
+        impl_signature = rule.signature.strip_type()
+
+        if impl_signature.drop_first() != nn_module_sign:
             raise TypeError(
                 f"{impl_signature} is not compatible with {self.nn_type}: {nn_module_sign}."
             )
@@ -178,26 +175,26 @@ class Deduction:
         return Sign.from_callable(self._nn_type.forward)
 
 
-def _attempt_call(impl: cabc.Callable, module: nn.Module, /, *args, **kwargs):
+def _attempt_call(deduction: cabc.Callable, module: nn.Module, /, *args, **kwargs):
     # If signature does not match, don't even attempt.
-    if not _signature_handles(impl, *args, **kwargs):
+    if not _signature_handles(deduction, *args, **kwargs):
         return NotImplemented
 
     # If the function itself returns `NotImplemented`, give up.
-    if (result := impl(module, *args, **kwargs)) is NotImplemented:
+    if (result := deduction(module, *args, **kwargs)) is NotImplemented:
         return NotImplemented
 
     return result
 
 
-def _signature_handles(impl: cabc.Callable, *args, **kwargs) -> bool:
+def _signature_handles(deduction: cabc.Callable, *args, **kwargs) -> bool:
     """
     Check if signature does match.
 
     Allows subclasses to be handled e.g. `tspecs.TensorSpec` handles `tspecs.Unbounded`.
     """
 
-    impl_sign = Sign.from_callable(impl).drop_first()
+    impl_sign = Sign.from_callable(deduction).drop_first()
     arguments = impl_sign.apply(*args, **kwargs)
     params = impl_sign.params
     assert arguments.keys() == params.keys()
@@ -214,6 +211,10 @@ def _signature_handles(impl: cabc.Callable, *args, **kwargs) -> bool:
     return True
 
 
+def deduction_reg() -> NnRegAttr[Deduction]:
+    return NnRegAttr("deduction", Deduction, nn_reg())
+
+
 def deduction_for(module: type[nn.Module] | nn.Module) -> Deduction:
     """
     Get the deduction registered for type of `nn.Module`.
@@ -222,37 +223,15 @@ def deduction_for(module: type[nn.Module] | nn.Module) -> Deduction:
     if isinstance(module, nn.Module):
         module = type(module)
 
-    if not _is_nn_type(module):
+    if not is_nn_type(module):
         raise TypeError(
             "`deduction_for` only accepts `nn.Module` type or instances. "
             f"Got {type(module)=}."
         )
 
-    if module not in _deduction_registry:
-        _deduction_registry[module] = Deduction(module)
+    dreg = deduction_reg()
 
-    return _deduction_registry[module]
+    if module not in dreg:
+        dreg[module] = Deduction(module)
 
-
-@ctxl.contextmanager
-def new_deduction_registry():
-    """
-    Overwrite the registry with a new one in the scope. Used in testing.
-    """
-
-    global _deduction_registry
-
-    before, _deduction_registry = _deduction_registry, {}
-
-    try:
-        yield
-    finally:
-        _deduction_registry = before
-
-
-def deduction_registry() -> cabc.Mapping[type[nn.Module], Deduction]:
-    return _deduction_registry
-
-
-def _is_nn_type(module) -> typing.TypeIs[type[nn.Module]]:
-    return isinstance(module, type) and issubclass(module, nn.Module)
+    return dreg[module]

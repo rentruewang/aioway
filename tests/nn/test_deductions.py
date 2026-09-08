@@ -7,22 +7,17 @@ import torch
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.nn import (
-    LossTSpec,
-    deduction_for,
-    deduction_registry,
-    new_deduction_registry,
-)
+from aioway.nn import LossTSpec, deduction_for, deduction_reg, with_nn_reg
 
 
 @pytest.fixture
-def use_new_deductions():
-    with new_deduction_registry():
+def use_new_reg():
+    with with_nn_reg():
         yield
 
 
-def test_new_deduction(use_new_deductions):
-    assert not deduction_registry()
+def test_new_deduction(use_new_reg):
+    assert not deduction_reg()
 
 
 def _wrong_function():
@@ -41,7 +36,7 @@ def wrong_func(request):
     return request.param
 
 
-def test_wrong_func(wrong_func, use_new_deductions):
+def test_wrong_func(wrong_func, use_new_reg):
     with pytest.raises(TypeError):
         deduction_for(nn.Linear).register(wrong_func)
 

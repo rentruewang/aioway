@@ -7,6 +7,7 @@ from collections import abc as cabc
 
 import numpy as np
 from numpy import typing as npt
+from torch import nn
 
 __all__ = [
     "IntArray",
@@ -21,6 +22,7 @@ __all__ = [
     "is_seq_of",
     "is_any_type_hint",
     "is_dict_of_str_to",
+    "is_nn_type",
     "HasLen",
     "SeqKeysView",
     "SetKeysView",
@@ -102,6 +104,10 @@ def is_dict_of_str_to[T](
     typ: type[T], /
 ) -> cabc.Callable[[typing.Any], typing.TypeGuard[dict[str, T]]]:
     return _mapping_check(dict, str, typ)
+
+
+def is_nn_type(module) -> typing.TypeIs[type[nn.Module]]:
+    return isinstance(module, type) and issubclass(module, nn.Module)
 
 
 @typing.runtime_checkable

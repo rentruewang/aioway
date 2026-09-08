@@ -5,11 +5,10 @@ import typing
 from collections import abc as cabc
 
 import torch
-from torchrl.data import tensor_specs as tspecs
 
 from .tspecs import TSpec
 
-__all__ = ["sample_from_tspec", "set_batch_size", "ArgsTSpec"]
+__all__ = ["sample_from_tspec", "set_batch_size"]
 
 _batch_size: torch.Size | None = None
 "The batch size to use for emitting."
@@ -33,9 +32,3 @@ def sample_from_tspec(spec: TSpec, /) -> typing.Any:
 
     assert _batch_size
     return spec.sample(torch.Size(_batch_size))
-
-
-class ArgsTSpec(tspecs.Composite):
-    """
-    The `Composite` subclass that represents an argument list.
-    """
