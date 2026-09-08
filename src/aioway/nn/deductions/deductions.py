@@ -11,6 +11,7 @@ from torch import nn
 
 from aioway._utils import Param, Sign, is_nn_type
 from aioway.nn.regs import NnRegAttr, nn_reg
+from aioway.nn.signs import nn_sign_skeleton
 from aioway.nn.tspecs import TSpec, TSpecLike, as_tspec, is_tspec_subtype
 
 __all__ = ["Deduction", "deduction_for", "deduction_reg"]
@@ -148,12 +149,13 @@ class Deduction:
         self._registered_rules[rule.signature] = rule
         return impl
 
-    def _validate_module_signature(self, impl: DeductionRule):
+    def _validate_module_signature(self, rule: DeductionRule):
         "Validate against the function signature against the module signature."
-        nn_module_sign = self._nn_module_forward.strip_type()
-        impl_signature = impl.signature.strip_type()
 
-        if impl_signature.drop_first() != nn_module_sign.drop_first():
+        nn_module_sign = nn_sign_skeleton(self._nn_type)
+        impl_signature = rule.signature.strip_type()
+
+        if impl_signature.drop_first() != nn_module_sign:
             raise TypeError(
                 f"{impl_signature} is not compatible with {self.nn_type}: {nn_module_sign}."
             )

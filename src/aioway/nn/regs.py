@@ -9,6 +9,8 @@ from collections import abc as cabc
 
 from torch import nn
 
+from aioway._utils import Sign
+
 if typing.TYPE_CHECKING:
     from .deductions import Deduction
 
@@ -23,6 +25,9 @@ class NnOp:
     This is a shared location s.t. we can store all needed operations together,
     without having to import multiple functions to access multiple utilities.
     """
+
+    signature: Sign | None = None
+    "The signature of `nn.Module` using `.forward`."
 
     deduction: Deduction | None = None
     "The deduction function."
