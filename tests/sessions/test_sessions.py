@@ -4,7 +4,7 @@ import contextlib as ctxl
 
 import pytest
 
-from aioway.sessions import Session
+from aioway.data import Session
 
 
 class SubSession(Session["SubSession"]):

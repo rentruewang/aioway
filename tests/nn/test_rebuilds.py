@@ -6,8 +6,8 @@ import pytest
 import torch
 from torch import nn
 
-from aioway._modules import rebuild_module
-from aioway.modes import fake_mode, is_fake_tensor, is_real_tensor, real_mode
+from aioway.data import fake_mode, is_fake_tensor, is_real_tensor, real_mode
+from aioway.nn import rebuild_module
 
 
 @pytest.fixture

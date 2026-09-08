@@ -15,7 +15,7 @@ from torch import _ops, overrides
 from torch.utils import _python_dispatch as pyd
 
 from aioway._utils import Stack, find_nested_tensors
-from aioway.schemas import render_function_body_prefix
+from aioway.data.schemas import render_function_body_prefix
 
 from .aten import is_aten_op, is_prim_op
 

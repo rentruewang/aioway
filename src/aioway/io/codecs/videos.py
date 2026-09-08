@@ -8,8 +8,7 @@ import typing
 import torch
 
 from aioway._utils import num_threads
-from aioway.modes import is_fake_mode_on, torch_set_fake_mode_func
-from aioway.schemas import Attr
+from aioway.data import Attr, is_fake_mode_on, torch_set_fake_mode_func
 
 from ._av import VideoStream
 from ._bases import TorchCompatible

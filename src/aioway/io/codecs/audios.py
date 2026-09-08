@@ -8,8 +8,7 @@ import typing
 import torch
 from torch.utils import data as dutils
 
-from aioway.modes import is_fake_mode_on, torch_set_fake_mode_func
-from aioway.schemas import Attr
+from aioway.data import Attr, is_fake_mode_on, torch_set_fake_mode_func
 
 from ._av import AudioStream
 from ._bases import TorchCompatible

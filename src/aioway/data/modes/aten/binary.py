@@ -9,7 +9,7 @@ from collections import abc as cabc
 import torch
 from torch import ops
 
-from aioway.sessions import Cost
+from aioway.data.sessions import Cost
 
 from .aten import Aten, aten_dcls
 
