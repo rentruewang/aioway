@@ -2,25 +2,20 @@
 
 "The deduction type."
 
-import contextlib as ctxl
 import dataclasses as dcls
 import functools
 import logging
-import typing
 from collections import abc as cabc
 
 from torch import nn
 
-from aioway._utils import Param, Sign
+from aioway._utils import Param, Sign, is_nn_type
+from aioway.nn.regs import NnRegAttr, nn_reg
 from aioway.nn.tspecs import TSpec, TSpecLike, as_tspec, is_tspec_subtype
 
-__all__ = ["Deduction", "deduction_for", "new_deduction_registry", "deduction_registry"]
+__all__ = ["Deduction", "deduction_for", "deduction_reg"]
 
 LOGGER = logging.getLogger(__name__)
-
-
-_deduction_registry: dict[type[nn.Module], Deduction] = {}
-"The deduction registry."
 
 
 @dcls.dataclass(frozen=True)
@@ -214,6 +209,10 @@ def _signature_handles(impl: cabc.Callable, *args, **kwargs) -> bool:
     return True
 
 
+def deduction_reg() -> NnRegAttr[Deduction]:
+    return NnRegAttr("deduction", Deduction, nn_reg())
+
+
 def deduction_for(module: type[nn.Module] | nn.Module) -> Deduction:
     """
     Get the deduction registered for type of `nn.Module`.
@@ -222,37 +221,15 @@ def deduction_for(module: type[nn.Module] | nn.Module) -> Deduction:
     if isinstance(module, nn.Module):
         module = type(module)
 
-    if not _is_nn_type(module):
+    if not is_nn_type(module):
         raise TypeError(
             "`deduction_for` only accepts `nn.Module` type or instances. "
             f"Got {type(module)=}."
         )
 
-    if module not in _deduction_registry:
-        _deduction_registry[module] = Deduction(module)
+    dreg = deduction_reg()
 
-    return _deduction_registry[module]
+    if module not in dreg:
+        dreg[module] = Deduction(module)
 
-
-@ctxl.contextmanager
-def new_deduction_registry():
-    """
-    Overwrite the registry with a new one in the scope. Used in testing.
-    """
-
-    global _deduction_registry
-
-    before, _deduction_registry = _deduction_registry, {}
-
-    try:
-        yield
-    finally:
-        _deduction_registry = before
-
-
-def deduction_registry() -> cabc.Mapping[type[nn.Module], Deduction]:
-    return _deduction_registry
-
-
-def _is_nn_type(module) -> typing.TypeIs[type[nn.Module]]:
-    return isinstance(module, type) and issubclass(module, nn.Module)
+    return dreg[module]
