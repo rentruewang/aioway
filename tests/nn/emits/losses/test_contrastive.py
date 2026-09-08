@@ -11,7 +11,7 @@ from aioway.nn import (
     linear_regression,
     unbounded_box_tspec,
 )
-from aioway.schemas import Shape
+from aioway.data import Shape
 
 
 @pytest.fixture
