@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from aioway.data import Cost, CostSession
+from aioway.tensors import Cost, CostSession
 
 
 def test_cost():

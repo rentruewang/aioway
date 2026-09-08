@@ -10,14 +10,14 @@ import typing
 import rich
 
 from aioway._utils import replace_tensors
-from aioway.data.schemas import replace_tensors_with_attr
+from aioway.tensors.schemas import replace_tensors_with_attr
 
 from .fake import fake_mode, is_fake_mode_on
 from .hists import HistTensorGraph
 from .modes import TorchDispMode, TorchDispThunk, TorchFuncMode, TorchFuncThunk
 
 if typing.TYPE_CHECKING:
-    from aioway.data import AtenThunk
+    from aioway.tensors import AtenThunk
 
 __all__ = [
     "track_fn",
@@ -130,7 +130,7 @@ def route_aten_thunk(thunk: TorchDispThunk) -> object:
     Route `torch.aten` calls to `AtenThunk` for some `aioway` specific functionalities.
     """
 
-    from aioway.data import AtenThunk
+    from aioway.tensors import AtenThunk
 
     fn: AtenThunk | TorchDispThunk
 

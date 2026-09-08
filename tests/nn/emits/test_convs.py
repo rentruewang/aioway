@@ -12,7 +12,7 @@ from aioway.nn import (
     unbounded_box_tspec,
 )
 from aioway.nn.emits.convs import ImageRegressorEmitter
-from aioway.data import Shape
+from aioway.tensors import Shape
 
 
 @pytest.fixture

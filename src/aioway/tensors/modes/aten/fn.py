@@ -10,7 +10,7 @@ from .aten import Aten, find_aten
 from .guards import is_aten_op
 
 if typing.TYPE_CHECKING:
-    from aioway.data import TorchDispThunk
+    from aioway.tensors import TorchDispThunk
 
 __all__ = ["AtenThunk"]
 

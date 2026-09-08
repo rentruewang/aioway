@@ -19,7 +19,7 @@ import pickle
 import torch
 
 # %%
-from aioway.data import Attr
+from aioway.tensors import Attr
 
 # %%
 

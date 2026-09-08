@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from aioway.data import fake_fn, fake_mode, is_fake_mode_on, track_fn
+from aioway.tensors import fake_fn, fake_mode, is_fake_mode_on, track_fn
 
 
 @pytest.fixture

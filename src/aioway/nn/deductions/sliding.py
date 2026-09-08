@@ -7,7 +7,7 @@ import torch
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.data import fake_mode
+from aioway.tensors import fake_mode
 from aioway.nn.tspecs import sample_from_tspec
 
 from .deductions import deduction_for

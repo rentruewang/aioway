@@ -12,7 +12,7 @@ import torch
 
 from aioway._thunks import Thunk
 from aioway._utils import TensorInput, find_nested_tensors, topo_sort
-from aioway.data.schemas import Attr, replace_tensors_with_attr
+from aioway.tensors.schemas import Attr, replace_tensors_with_attr
 
 from .aten import is_leaf_has_grad
 from .modes import ModeThunk

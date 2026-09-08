@@ -8,7 +8,7 @@ import torch
 from numpy import typing as npt
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.data import Device, DeviceLike, DType, DTypeLike, Shape, ShapeLike
+from aioway.tensors import Device, DeviceLike, DType, DTypeLike, Shape, ShapeLike
 
 __all__ = ["unbounded_box_tspec", "scalar_box_tspec", "array_box_tspec"]
 
