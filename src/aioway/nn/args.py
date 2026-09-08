@@ -1,14 +1,15 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import torch
-import inspect
-import typing
-import tensordict as td
-from torchrl.data import tensor_specs as tspecs
 import dataclasses as dcls
-from torch import nn
-from .signs import sign_reg
+import typing
 from collections import abc as cabc
+
+import tensordict as td
+import torch
+from torch import nn
+from torchrl.data import tensor_specs as tspecs
+
+from .signs import sign_reg
 
 __all__ = ["ArgsTSpec", "NnArgs"]
 
@@ -27,8 +28,8 @@ class Invoker(typing.Protocol):
 class NnArgs:
     "The tensordict that marks something"
 
-    arguments: typing.Any
-    "The underlying tensordict."
+    args: typing.Any
+    "The underlying tensordict or tensor."
 
     def __post_init__(self) -> None:
         _ = self.invoke
@@ -37,16 +38,16 @@ class NnArgs:
     def invoke(self) -> Invoker:
         "Invoke the module for you, with the unpacking taken care of."
 
-        if isinstance(self.arguments, cabc.Mapping | td.TensorDict | td.TensorClass):
+        if isinstance(self.args, cabc.Mapping | td.TensorDict | td.TensorClass):
             return self._invoke_tdict
 
-        if isinstance(self.arguments, torch.Tensor):
+        if isinstance(self.args, torch.Tensor):
             return self._invoke_tensor
 
-        raise TypeError(f"Unhandled type {type(self.argument)=}.")
+        raise TypeError(f"Unhandled type {type(self.args)=}.")
 
     def _invoke_tensor(self, module: nn.Module):
-        return module(self.arguments)
+        return module(self.args)
 
     def _invoke_tdict(self, module: nn.Module) -> typing.Any:
         args, kwargs = self._apply_tdict(type(module))
@@ -64,9 +65,9 @@ class NnArgs:
 
         for key, param in signature.params.items():
             if param.is_positional_only:
-                args.append(self.arguments[key])
+                args.append(self.args[key])
 
             else:
-                kwargs[key] = self.arguments[key]
+                kwargs[key] = self.args[key]
 
         return args, kwargs
