@@ -173,26 +173,26 @@ class Deduction:
         return Sign.from_callable(self._nn_type.forward)
 
 
-def _attempt_call(impl: cabc.Callable, module: nn.Module, /, *args, **kwargs):
+def _attempt_call(deduction: cabc.Callable, module: nn.Module, /, *args, **kwargs):
     # If signature does not match, don't even attempt.
-    if not _signature_handles(impl, *args, **kwargs):
+    if not _signature_handles(deduction, *args, **kwargs):
         return NotImplemented
 
     # If the function itself returns `NotImplemented`, give up.
-    if (result := impl(module, *args, **kwargs)) is NotImplemented:
+    if (result := deduction(module, *args, **kwargs)) is NotImplemented:
         return NotImplemented
 
     return result
 
 
-def _signature_handles(impl: cabc.Callable, *args, **kwargs) -> bool:
+def _signature_handles(deduction: cabc.Callable, *args, **kwargs) -> bool:
     """
     Check if signature does match.
 
     Allows subclasses to be handled e.g. `tspecs.TensorSpec` handles `tspecs.Unbounded`.
     """
 
-    impl_sign = Sign.from_callable(impl).drop_first()
+    impl_sign = Sign.from_callable(deduction).drop_first()
     arguments = impl_sign.apply(*args, **kwargs)
     params = impl_sign.params
     assert arguments.keys() == params.keys()
