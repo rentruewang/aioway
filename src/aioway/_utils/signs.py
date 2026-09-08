@@ -61,6 +61,14 @@ class Param:
         return self.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD
 
     @property
+    def is_var_positional(self):
+        return self.kind == inspect.Parameter.VAR_POSITIONAL
+
+    @property
+    def is_var_keyword(self):
+        return self.kind == inspect.Parameter.VAR_KEYWORD
+
+    @property
     def is_any_type(self) -> bool:
         return is_any_type_hint(self.annotation)
 
