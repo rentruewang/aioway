@@ -1,5 +1,5 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+from .attrs import *
 from .modes import *
-from .schemas import *
 from .sessions import *
