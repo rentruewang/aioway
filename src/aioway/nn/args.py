@@ -7,8 +7,9 @@ from torchrl.data import tensor_specs as tspecs
 import dataclasses as dcls
 from torch import nn
 from .signs import sign_reg
+from collections import abc as cabc
 
-__all__ = ["ArgsTSpec"]
+__all__ = ["ArgsTSpec", "NnArgs"]
 
 
 class ArgsTSpec(tspecs.Composite):
@@ -18,10 +19,10 @@ class ArgsTSpec(tspecs.Composite):
 
 
 @dcls.dataclass(frozen=True)
-class Args:
+class NnArgs:
     "The tensordict that marks something"
 
-    tdict: td.TensorDict | td.TensorClass
+    tdict: td.TensorDict | td.TensorClass | cabc.Mapping[str, typing.Any]
     "The underlying tensordict."
 
     def invoke(self, module: nn.Module) -> typing.Any:
