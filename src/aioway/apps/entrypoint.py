@@ -5,9 +5,12 @@ from collections import abc as cabc
 
 from torch import nn, optim
 
+from aioway.contrib.dsets import route_dset
 from aioway.io import Dset
 from aioway.nn import TSpec, as_tspec, emit, route_loss
 from aioway.tasks import StaticTrainer, TrainCfg
+
+from .server import serve
 
 __all__ = ["add_input", "add_output", "add_module", "add_trainer"]
 
@@ -27,6 +30,12 @@ def add_input(name: str, dset: Dset) -> None:
         raise KeyError(f"{name=} is already used by another input dataset.")
 
     _INPUT_DATASETS[name] = dset
+
+
+@serve("add_input")
+def add_input_by_name(name: str, path: str) -> None:
+    dset = route_dset(path)
+    add_input(name, dset)
 
 
 def add_output(name: str, spec: TSpec) -> None:
