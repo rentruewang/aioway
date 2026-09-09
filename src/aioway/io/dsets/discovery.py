@@ -1,9 +1,9 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 "Discover datasets."
-import datasets
-
 import pathlib
+
+import datasets
 
 from .dsets import Dset
 

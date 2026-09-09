@@ -9,8 +9,6 @@ from aioway.io import Dset
 from aioway.nn import TSpec, as_tspec, emit, route_loss
 from aioway.tasks import StaticTrainer, TrainCfg
 
-from .server import serve
-
 __all__ = ["add_input", "add_output", "add_module", "add_trainer"]
 
 _INPUT_DATASETS: dict[str, Dset] = {}
