@@ -22,6 +22,7 @@ dependencies = [
     "torchrl>=0.13",
     "gymnasium>=1",
     "lightning>=2",
+    "captum>=0.9",
 ]
 
 [project.optional-dependencies]
@@ -38,9 +39,6 @@ sklearn = [
 api = [
     "fastapi>=0.141",
     "fastmcp>=3",
-]
-explainable = [
-    "captum>=0.9.0",
 ]
 
 [build-system]
@@ -110,6 +108,7 @@ check_untyped_defs = true
 # Skipping analysis for some modules because they are not typed.
 [[tool.mypy.overrides]]
 module = [
+    "captum.*",
     "sklearn.*",
     "tensordict.*",
     "torchvision.*",
