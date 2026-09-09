@@ -5,7 +5,11 @@
 groups = ["default", "api", "build", "debugging", "docs", "faiss", "networkx", "pre-commit", "sklearn", "tests"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.1"
+<<<<<<< Updated upstream
 content_hash = "sha256:c0fca2fe9f7ef52718ac7ac6b09056dbf72b1dbe9889bbaf9ac5c1d9acc9adc0"
+=======
+content_hash = "sha256:4df6a6b7e6217d61b3e59ae7efb895a3a151a7c0af658ec012c36a569d6a976a"
+>>>>>>> Stashed changes
 
 [[metadata.targets]]
 requires_python = ">=3.14,<3.15"
