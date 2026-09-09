@@ -3,4 +3,3 @@
 from .comps import *
 from .discovery import *
 from .dsets import *
-from .mnist import *
