@@ -16,10 +16,6 @@ __all__ = [
     "real_mode",
     "torch_set_fake_mode",
     "torch_set_fake_mode_func",
-    "is_fake_tensor",
-    "is_real_tensor",
-    "to_fake_tensor",
-    "to_fake_tdict",
     "is_fake_mode_on",
     "active_fake_mode",
 ]
@@ -31,12 +27,48 @@ _FAKE_MODE = ft.FakeTensorMode(allow_non_fake_inputs=True)
 _fake_mode_is_active: bool = False
 
 
-def to_fake_tensor(tensor: torch.Tensor) -> ft.FakeTensor:
+@typing.overload
+def to_fake(item: torch.Tensor) -> ft.FakeTensor: ...
+
+
+@typing.overload
+def to_fake[C](item: C) -> C: ...
+
+
+def to_fake(item):
+    raise NotImplementedError
+
+
+@typing.overload
+def is_fake(item: torch.Tensor) -> typing.TypeIs[ft.FakeTensor]: ...
+
+
+@typing.overload
+def is_fake(item) -> bool: ...
+
+
+def is_fake(item):
+    match item:
+        case torch.Tensor():
+            # All fake tensors are of this type.
+            return isinstance(item, ft.FakeTensor)
+
+        case td.TensorDict():
+            pass
+
+    raise NotImplementedError
+
+
+def is_real(item) -> bool:
+    return not is_fake(item)
+
+
+def _to_fake_tensor(tensor: torch.Tensor) -> ft.FakeTensor:
     """
     Move a possibly real tensor to a fake torch.Tensor
     """
 
-    if is_fake_tensor(tensor):
+    if _is_fake_tensor(tensor):
         return tensor
 
     with fake_mode() as mode:
@@ -45,7 +77,7 @@ def to_fake_tensor(tensor: torch.Tensor) -> ft.FakeTensor:
 
 
 def to_fake_tdict(tdict: td.TensorDict) -> td.TensorDict:
-    result = td.TensorDict({key: to_fake_tensor(val) for key, val in tdict.items()})
+    result = td.TensorDict({key: _to_fake_tensor(val) for key, val in tdict.items()})
     result.shape = tdict.shape
     return result
 
@@ -55,10 +87,10 @@ def is_real_tensor(tensor: object) -> typing.TypeIs[torch.Tensor]:
     Detect if a tensor is a normal tensor.
     """
 
-    return isinstance(tensor, torch.Tensor) and not is_fake_tensor(tensor)
+    return isinstance(tensor, torch.Tensor) and not _is_fake_tensor(tensor)
 
 
-def is_fake_tensor(tensor: object) -> typing.TypeIs[ft.FakeTensor]:
+def _is_fake_tensor(tensor: object) -> typing.TypeIs[ft.FakeTensor]:
     """
     Detect if a tensor is a fake tensor.
     """

@@ -20,13 +20,13 @@ def rebuild_module(module: nn.Module, /) -> nn.Module:
     Used when you want to re initialize the `nn.Module` in the current context.
     """
 
-    for child in module.children():
-        rebuild_module(child)
+    module.apply(_init)
+    return module
 
+
+def _init(module: nn.Module) -> None:
     _init_params(module)
     _init_buffers(module)
-
-    return module
 
 
 def _init_buffers(module: nn.Module):
