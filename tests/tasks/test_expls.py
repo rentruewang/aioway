@@ -1,16 +1,16 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import torch
-from huggingface_hub import FeatureExtractionInput
-from torch import nn
 import pytest
+import torch
+from torch import nn
+
 from aioway.tasks import (
-    SaliencyExpl,
     DeepLiftExpl,
-    KernelShapExpl,
+    Expl,
     FeatureAblationExpl,
     IntegratedGradientsExpl,
-    Expl,
+    KernelShapExpl,
+    SaliencyExpl,
 )
 
 

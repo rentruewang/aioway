@@ -1,9 +1,8 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from .expls import Expl, expl_dcls
-
 from captum import attr
 
+from .expls import Expl, expl_dcls
 
 __all__ = [
     "SaliencyExpl",

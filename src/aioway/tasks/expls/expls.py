@@ -2,9 +2,9 @@
 
 "The `Explainer` interface."
 
-import inspect
 import abc
 import dataclasses as dcls
+import inspect
 import typing
 from collections import abc as cabc
 
