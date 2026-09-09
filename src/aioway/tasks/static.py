@@ -5,7 +5,6 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-import tensordict as td
 import torch
 from rich import progress
 from torch import nn, optim
@@ -13,9 +12,10 @@ from torch.utils import data as dutils
 from torchrl.data import tensor_specs as tspecs
 
 from aioway.io import Dset, InputTarget, InputTargetLikeDset
-from aioway.nn import TSpec, TSpecCompat
+from aioway.nn import TSpecCompat
 
 from .steps import LossFunc, PredLossPair, TrainStep, ValidateStep
+from .tasks import BatchIter
 
 if typing.TYPE_CHECKING:
     import lightning as L
@@ -91,22 +91,6 @@ class LoopState:
 
     total_size: int | None = None
     "The total size. For stream this would be `None`."
-
-
-class BatchIter[T: td.TensorClass | td.TensorDict = typing.Any](typing.Protocol):
-    """
-    The constraints that trainer uses to define what trainer handles.
-    """
-
-    def __iter__(self) -> cabc.Iterator[T]:
-        "Iterates and yield batches."
-
-        ...
-
-    def __tspec__(self) -> TSpec:
-        """
-        The space constraining the output of `__iter__`.
-        """
 
 
 @dcls.dataclass(frozen=True)

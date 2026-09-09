@@ -14,8 +14,9 @@ from collections import abc as cabc
 from torch import _ops, overrides
 from torch.utils import _python_dispatch as pyd
 
-from aioway._utils import Stack, find_nested_tensors
-from aioway.tensors.attrs import render_function_body_prefix
+from aioway._utils import Stack
+from aioway.tensors.nested import find_nested_tensors
+from aioway.tensors.renders import render_function_body_prefix
 
 from .aten import is_aten_op, is_prim_op
 

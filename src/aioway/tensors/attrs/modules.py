@@ -2,7 +2,7 @@
 
 from torch import nn
 
-from .utils import replace_tensors_with_attr
+from aioway.tensors.nested import replace_tensors_with_attr
 
 __all__ = ["hash_module_state_dict"]
 

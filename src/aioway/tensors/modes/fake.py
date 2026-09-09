@@ -3,12 +3,8 @@
 "A bunch of context managers controlling the fake mode."
 
 import contextlib as ctxl
-import logging
-import typing
 from collections import abc as cabc
 
-import tensordict as td
-import torch
 from torch._subclasses import fake_tensor as ft
 
 __all__ = [
@@ -16,54 +12,13 @@ __all__ = [
     "real_mode",
     "torch_set_fake_mode",
     "torch_set_fake_mode_func",
-    "is_fake_tensor",
-    "is_real_tensor",
-    "to_fake_tensor",
-    "to_fake_tdict",
     "is_fake_mode_on",
     "active_fake_mode",
 ]
 
-LOGGER = logging.getLogger(__name__)
-
 
 _FAKE_MODE = ft.FakeTensorMode(allow_non_fake_inputs=True)
 _fake_mode_is_active: bool = False
-
-
-def to_fake_tensor(tensor: torch.Tensor) -> ft.FakeTensor:
-    """
-    Move a possibly real tensor to a fake torch.Tensor
-    """
-
-    if is_fake_tensor(tensor):
-        return tensor
-
-    with fake_mode() as mode:
-        converter = mode.fake_tensor_converter
-        return converter.from_real_tensor(mode, tensor)
-
-
-def to_fake_tdict(tdict: td.TensorDict) -> td.TensorDict:
-    result = td.TensorDict({key: to_fake_tensor(val) for key, val in tdict.items()})
-    result.shape = tdict.shape
-    return result
-
-
-def is_real_tensor(tensor: object) -> typing.TypeIs[torch.Tensor]:
-    """
-    Detect if a tensor is a normal tensor.
-    """
-
-    return isinstance(tensor, torch.Tensor) and not is_fake_tensor(tensor)
-
-
-def is_fake_tensor(tensor: object) -> typing.TypeIs[ft.FakeTensor]:
-    """
-    Detect if a tensor is a fake tensor.
-    """
-
-    return isinstance(tensor, ft.FakeTensor)
 
 
 def is_fake_mode_on() -> bool:

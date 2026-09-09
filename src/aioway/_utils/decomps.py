@@ -9,15 +9,12 @@ from collections import abc as cabc
 
 import numpy as np
 import pandas as pd
-import torch
 
 from .types import AnyDict
 
 __all__ = [
-    "replace_tensors",
     "decomp_flatten",
     "decomp_replace",
-    "find_nested_tensors",
     "dcls_asdict",
     "decomp_block_items",
     "decomp_block_types",
@@ -51,30 +48,6 @@ def decomp_block_types(*types: type):
         yield
     finally:
         _decomp_block_types = prev
-
-
-def replace_tensors(
-    obj: object, replace: cabc.Callable[[torch.Tensor], object]
-) -> object:
-    """
-    Replace tensors whenever encountered with the given function.
-
-    This function has the `__torch_function__` disabled in the scope of the rendering,
-    because it can mess with attribute access, which oftentimes means that
-    this function fails also during debugging if `__torch_function__` is not disabled.
-    Caused by `.device` / `.shape` / `.dtype` calls, which is used in `replace_tensors`.
-    """
-
-    from aioway.tensors import mode_off
-
-    def maybe_replace(item):
-        if not isinstance(item, torch.Tensor):
-            return NotImplemented
-
-        return replace(item)
-
-    with mode_off():
-        return decomp_replace(obj, maybe_replace)
 
 
 def stop_decompose(obj: object) -> bool:
@@ -184,19 +157,6 @@ def decomp_flatten(
     # Only unhandled input would reach here. If `.strict`, raise `ValueError`.
     if strict:
         raise ValueError(f"The object {obj=} is not handled.")
-
-
-def find_nested_tensors(
-    obj: object, *, only_tensors: bool = False
-) -> cabc.Iterator[torch.Tensor]:
-    """
-    Find and unpack tensors from containers.
-
-    If `only_tensors` is `True`, raies an error
-    if `obj` cannot be decomposed into purely tensors.
-    """
-
-    yield from decomp_flatten(obj, torch.Tensor, strict=only_tensors)
 
 
 def dcls_asdict(obj: object) -> dict[str, typing.Any]:
