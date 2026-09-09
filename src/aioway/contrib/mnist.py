@@ -9,7 +9,7 @@ from torchrl.data import tensor_specs as tspecs
 from torchvision import datasets
 from torchvision import transforms as T
 
-from .comps import InputTarget, InputTargetLikeDset
+from aioway.io import InputTarget, InputTargetLikeDset
 
 __all__ = ["MnistDataset"]
 
