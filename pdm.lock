@@ -5,7 +5,7 @@
 groups = ["default", "api", "build", "debugging", "docs", "faiss", "networkx", "pre-commit", "sklearn", "tests"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.1"
-content_hash = "sha256:c0fca2fe9f7ef52718ac7ac6b09056dbf72b1dbe9889bbaf9ac5c1d9acc9adc0"
+content_hash = "sha256:6f72ebf587c3a59902fe9aaa72a3588b4cfa29cf6c3427055f09d394b9d72405"
 
 [[metadata.targets]]
 requires_python = ">=3.14,<3.15"
@@ -4882,7 +4882,7 @@ version = "2026.3"
 requires_python = ">=2"
 summary = "Provider of IANA time zone data"
 groups = ["default", "debugging"]
-marker = "sys_platform == \"win32\" or sys_platform == \"emscripten\" or python_version >= \"3.9\""
+marker = "sys_platform == \"emscripten\" or sys_platform == \"win32\" or python_version >= \"3.9\""
 files = [
     {file = "tzdata-2026.3-py2.py3-none-any.whl", hash = "sha256:dc096730c87af6cab1b171c9d532be840741ff5d459015e7f6947bd7d7e54931"},
     {file = "tzdata-2026.3.tar.gz", hash = "sha256:4a1518b8993086a7982523e071643f3c0e5f213e75b21318e78bcabfff9d1415"},
@@ -4955,7 +4955,7 @@ files = [
 
 [[package]]
 name = "virtualenv"
-version = "21.7.8"
+version = "21.7.9"
 requires_python = ">=3.9"
 summary = "Virtual Python Environment builder"
 groups = ["pre-commit"]
@@ -4968,8 +4968,8 @@ dependencies = [
     "typing-extensions>=4.13.2; python_version < \"3.11\"",
 ]
 files = [
-    {file = "virtualenv-21.7.8-py3-none-any.whl", hash = "sha256:3040eb3cbf5d32b10ffd57d167e6a162237ad82ba7d8cf1400a1efed593d85ac"},
-    {file = "virtualenv-21.7.8.tar.gz", hash = "sha256:1dc49c790072a9072cb1803f9bd62aa69cd583077cada32390f75505cdc64c9b"},
+    {file = "virtualenv-21.7.9-py3-none-any.whl", hash = "sha256:ba3b0bb41063c848d84d76a9fe3fb7711aaa0f2fe78708e8f3cd9714770e4eac"},
+    {file = "virtualenv-21.7.9.tar.gz", hash = "sha256:a7e42d81d779dec8afd7dc4be71640fb959ea861bccfa5980cb4ad9f92e30675"},
 ]
 
 [[package]]

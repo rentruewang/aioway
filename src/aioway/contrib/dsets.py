@@ -4,7 +4,7 @@
 
 import pathlib
 
-from .dsets import Dset
+from aioway.io import Dset
 
 __all__ = ["route_dset"]
 
