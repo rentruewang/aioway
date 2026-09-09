@@ -21,7 +21,7 @@ def nn_sign_skeleton(module: type[nn.Module]) -> Sign:
     sreg = sign_reg()
 
     if module not in sreg:
-        sign = Sign.from_callable(module.forward).drop_first().strip_type()
+        sign = Sign.from_nn_forward(module).strip_type()
         sreg[module] = sign
 
     return sreg[module]

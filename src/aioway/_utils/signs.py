@@ -8,7 +8,9 @@ import inspect
 import typing
 from collections import abc as cabc
 
-from .typing import is_any_type_hint
+from torch import nn
+
+from .typing import is_any_type_hint, is_nn_type
 
 __all__ = ["Param", "Sign"]
 
@@ -192,6 +194,21 @@ class Sign:
     @property
     def argc(self) -> int:
         return len(self.signature.parameters)
+
+    @classmethod
+    def from_nn_forward(cls, module: nn.Module | type[nn.Module]) -> typing.Self:
+        """
+        Get the signature of `.forward` function, excluding `self`,
+        from type or instance of `nn.Module`.
+        """
+
+        if isinstance(module, nn.Module):
+            module = type(module)
+
+        if not is_nn_type(module):
+            raise TypeError(f"{module=} should be a subclass of `nn.Module`.")
+
+        return cls.from_callable(module.forward).drop_first()
 
     @classmethod
     def from_callable(cls, func: cabc.Callable) -> typing.Self:
