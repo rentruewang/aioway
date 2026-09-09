@@ -1,38 +1,47 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from .explainers import Explainer, explainer_dcls
+from .expls import Expl, expl_dcls
 
 from captum import attr
 
 
-@explainer_dcls
-class SaliencyExplainer(Explainer):
+__all__ = [
+    "SaliencyExpl",
+    "IntegratedGradientsExpl",
+    "DeepLiftExpl",
+    "FeatureAblationExpl",
+    "KernelShapExpl",
+]
+
+
+@expl_dcls
+class SaliencyExpl(Expl):
     _CAPTUM_CLASS = attr.Saliency
 
     abs: bool = False
 
 
-@explainer_dcls
-class IntegratedGradientsExplainer(Explainer):
+@expl_dcls
+class IntegratedGradientsExpl(Expl):
     _CAPTUM_CLASS = attr.IntegratedGradients
 
     n_steps: int = 32
 
 
-@explainer_dcls
-class DeepLiftExplainer(Explainer):
+@expl_dcls
+class DeepLiftExpl(Expl):
     _CAPTUM_CLASS = attr.DeepLift
 
 
-@explainer_dcls
-class FeatureAblationExplainer(Explainer):
+@expl_dcls
+class FeatureAblationExpl(Expl):
     _CAPTUM_CLASS = attr.FeatureAblation
 
     perturbations_per_eval: int = 8
 
 
-@explainer_dcls
-class KernelShapExplainer(Explainer):
+@expl_dcls
+class KernelShapExpl(Expl):
     _CAPTUM_CLASS = attr.KernelShap
 
     n_samples: int = 128

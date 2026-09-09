@@ -14,19 +14,19 @@ from torch import nn
 
 from aioway._utils import dcls_asdict, is_seq_of
 
-__all__ = ["Explainer", "explainer_dcls"]
+__all__ = ["Expl", "expl_dcls"]
 
-_EXPLAINER_TYPES: dict[str, type[Explainer]] = {}
+_EXPLAINER_TYPES: dict[str, type[Expl]] = {}
 "The explainer corresponding to its unique identifiers."
 
 
 @typing.dataclass_transform(frozen_default=True)
-def explainer_dcls(cls):
+def expl_dcls(cls):
     return dcls.dataclass(frozen=True)(cls)
 
 
-@explainer_dcls
-class Explainer(abc.ABC):
+@expl_dcls
+class Expl(abc.ABC):
     """
     The explainer based on `captum.attr.Attribution`.
 
@@ -53,7 +53,7 @@ class Explainer(abc.ABC):
         _EXPLAINER_TYPES[name] = cls
 
     def __call__(
-        self, module: nn.Module, output: torch.Tensor, /
+        self, module: nn.Module, *inputs: torch.Tensor
     ) -> cabc.Iterator[torch.Tensor]:
         """
         This function corresponds to `captum.attr.*`'s `.attribute` method.
@@ -61,10 +61,14 @@ class Explainer(abc.ABC):
         Since `captum.attr.*.attribute` may return a `torch.Tensor` or a sequence of it,
         to match the module's input, this yields an `Iterator[torch.Tensor]`,
         s.t. they can share the same API module(*iterator of tensor).
+
+        Args:
+            module: An `nn.Module`, must output a scalar tenosr.
+            inputs: Inputs that will be fed to the `module`.
         """
 
         captum_attr = self._CAPTUM_CLASS(module)
-        result = captum_attr.attribute(output, **self._kwargs())
+        result = captum_attr.attribute(inputs, **self._kwargs())
 
         if isinstance(result, torch.Tensor):
             yield result
@@ -86,7 +90,7 @@ class Explainer(abc.ABC):
 
 
 def _is_abstract_explainer(cls: type) -> bool:
-    if not issubclass(cls, Explainer):
+    if not issubclass(cls, Expl):
         raise TypeError
 
     if inspect.isabstract(cls):
