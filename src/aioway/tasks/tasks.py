@@ -9,7 +9,7 @@ import torch
 
 from aioway.nn import TSpec
 
-__all__ = ["Task", "BatchIter"]
+__all__ = ["NnInput", "Task", "BatchIter"]
 
 type NnInput = torch.Tensor | td.TensorClass | td.TensorDict
 
