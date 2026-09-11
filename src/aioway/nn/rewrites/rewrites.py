@@ -10,7 +10,7 @@ from torch import nn
 __all__ = ["Rewriter"]
 
 
-class Rewriter[I: nn.Module = typing.Any, O: nn.Module = typing.Any](abc.ABC):
+class Rewriter(abc.ABC):
     """
     The rewriter rewrites an `Instr` into another.
     """
@@ -23,7 +23,7 @@ class Rewriter[I: nn.Module = typing.Any, O: nn.Module = typing.Any](abc.ABC):
         return self.rewrite(module)
 
     @abc.abstractmethod
-    def handle(self, module: I, /) -> bool:
+    def handle(self, module: nn.Module, /) -> bool:
         """
         Check whether the `Rewriter` handles the module or not.
         """
@@ -31,7 +31,7 @@ class Rewriter[I: nn.Module = typing.Any, O: nn.Module = typing.Any](abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def rewrite(self, module: I, /) -> O:
+    def rewrite(self, module: typing.Any, /) -> nn.Module:
         """
         Perform the rewrite. Should not modify the input module.
 
