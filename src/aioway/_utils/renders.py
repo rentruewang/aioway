@@ -70,7 +70,7 @@ def render_fcall(func: FunctionLike, *args: typing.Any, **kwargs: typing.Any) ->
     return f"{func!s}({args_str})"
 
 
-def render_class_syntax(cls: type):
+def render_class_syntax(cls: type) -> syntax.Syntax:
     return syntax.Syntax(f"class {cls.__module__}.{cls.__qualname__}", lexer="py")
 
 
@@ -96,7 +96,7 @@ def _subclass_tree(
     tree: tree.Tree,
     seen: set[type],
     render: cabc.Callable[[type], typing.Any],
-):
+) -> None:
     """
     Convert subclass into a `rich.tree.Tree`.
     """
