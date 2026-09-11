@@ -1,11 +1,10 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from aioway.tensors import is_fake_mode_on
-from aioway.nn import deduction_for
 import typing
 
-from torch import nn
 import torch
+from torch import nn
+
 from .rewrites import Rewriter
 
 __all__ = ["NetMorphLinearDeeper"]
