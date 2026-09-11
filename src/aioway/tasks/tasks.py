@@ -31,13 +31,36 @@ class BatchIter[T: NnInput = typing.Any](typing.Protocol):
 
 
 class Task[T: NnInput](abc.ABC):
+    @abc.abstractmethod
     def fake(self) -> T:
+        """
+        Generate one batch of fake data.
+        """
+
         raise NotImplementedError
 
     @abc.abstractmethod
     def iterator(self) -> BatchIter[T]:
+        """
+        Yield the batches required to run the task.
+        """
+
         raise NotImplementedError
 
     @abc.abstractmethod
     def step(self, batch: T, /) -> None:
+        """
+        Perform each step in the task.
+        In `fake_mode`, it should only do cheap operations.
+        """
+
         raise NotImplementedError
+
+    def fake_step(self) -> None:
+        """
+        Step once, with fake data.
+        Useful for tracking computation symbolically.
+        """
+
+        fake_data = self.fake()
+        self.step(fake_data)
