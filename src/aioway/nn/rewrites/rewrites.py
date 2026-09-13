@@ -3,13 +3,20 @@
 "The rewriter module."
 
 import abc
+import dataclasses as dcls
 import typing
 
 from torch import nn
 
-__all__ = ["Rewriter"]
+__all__ = ["Rewriter", "rewriter_dcls"]
 
 
+@typing.dataclass_transform(frozen_default=True)
+def rewriter_dcls(cls):
+    return dcls.dataclass(frozen=True)(cls)
+
+
+@rewriter_dcls
 class Rewriter(abc.ABC):
     """
     The rewriter rewrites an `Instr` into another.
