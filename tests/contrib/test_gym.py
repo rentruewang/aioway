@@ -86,3 +86,20 @@ def test_multi_discrete_multi_categorical(gs, gym_space_tspec):
     assert isinstance(tspec, tspecs.MultiCategorical)
     assert tspec.shape == torch.Size((3,))
     assert tspec.nvec.tolist() == [3, 2, 4]
+
+
+def test_dict_maps_to_composite(gs, gym_space_tspec):
+    space = gs.Dict(
+        {
+            "obs": gs.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32),
+            "id": gs.Discrete(3),
+        }
+    )
+    tspec = gym_space_tspec(space)
+
+    assert isinstance(tspec, tspecs.Composite)
+    assert tspec.shape == torch.Size(())
+    assert set(tspec.keys()) == {"obs", "id"}
+    assert isinstance(tspec["obs"], tspecs.Bounded)
+    assert tspec["obs"].shape == torch.Size((2,))
+    assert isinstance(tspec["id"], tspecs.Categorical)
