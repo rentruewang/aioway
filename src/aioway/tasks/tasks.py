@@ -7,7 +7,7 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway.nn import TSpec
+from aioway.tensors import TSpec
 
 __all__ = ["Task", "BatchIter"]
 

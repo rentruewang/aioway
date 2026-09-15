@@ -9,9 +9,8 @@ from aioway.nn import (
     ContrastiveLossEmitter,
     emit_one,
     linear_regression,
-    unbounded_box_tspec,
 )
-from aioway.tensors import Shape
+from aioway.tensors import Shape, unbounded_box_tspec
 
 
 @pytest.fixture

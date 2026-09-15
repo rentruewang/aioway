@@ -9,15 +9,25 @@ from numpy import typing as npt
 from torchrl.data import tensor_specs as tspecs
 
 from aioway.tensors import Device, DeviceLike, DType, DTypeLike, Shape, ShapeLike
-import typing
+
+from .tspecs import TSpec
 
 if typing.TYPE_CHECKING:
     import gymnasium as gym
+
 __all__ = ["unbounded_box_tspec", "scalar_box_tspec", "array_box_tspec"]
 
 
-def map_gym_space(space: gym.Space):
+def gym_space_tspec(space: gym.Space) -> TSpec:
+    """
+    Convert `gymnasium.Space` to `TSpec`.
+    """
+
+    from gymnasium import spaces as gs
+
     match space:
+        case gs.Box():
+            raise NotImplementedError
         case _:
             raise NotImplementedError
 

@@ -12,7 +12,7 @@ from torch import nn
 from aioway._utils import Param, Sign, is_nn_type
 from aioway.nn.regs import NnRegAttr, nn_reg
 from aioway.nn.signs import nn_sign_skeleton
-from aioway.nn.tspecs import TSpec, TSpecLike, as_tspec, is_tspec_subtype
+from aioway.tensors import TSpec, TSpecLike, as_tspec, is_tspec_subtype
 
 __all__ = ["Deduction", "deduction_for", "deduction_reg"]
 

@@ -3,16 +3,16 @@
 import pytest
 from torch import nn
 
-from aioway.nn import (
+from aioway.nn import emit_one
+from aioway.nn.emits.convs import ImageRegressorEmitter
+from aioway.tensors import (
+    Shape,
     TSpec,
-    emit_one,
     float_image_tspec,
     sample_from_tspec,
     set_batch_size,
     unbounded_box_tspec,
 )
-from aioway.nn.emits.convs import ImageRegressorEmitter
-from aioway.tensors import Shape
 
 
 @pytest.fixture
