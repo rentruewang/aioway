@@ -1,6 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 from .attrs import *
+from .discovery import *
 from .fake import *
 from .modes import *
 from .nested import *

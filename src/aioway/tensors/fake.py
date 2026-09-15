@@ -2,7 +2,6 @@
 
 "A bunch of context managers controlling the fake mode."
 
-import dataclasses as dcls
 import logging
 import typing
 from collections import abc as cabc
@@ -11,8 +10,7 @@ import tensordict as td
 import torch
 from torch._subclasses import fake_tensor as ft
 
-from aioway._utils import dcls_asdict
-
+from ._utils import tcol_to_tdict
 from .modes import fake_mode
 
 __all__ = ["is_fake", "is_real", "to_fake"]
@@ -36,7 +34,7 @@ def to_fake(item):
         return td.from_dict(_to_fake_dict(item))
 
     if not isinstance(item, type) and td.is_tensor_collection(item):
-        tdict = _tcol_to_tdict(item)
+        tdict = tcol_to_tdict(item)
         mapping = _to_fake_dict(tdict)
         return type(item)(**mapping)
 
@@ -64,7 +62,7 @@ def is_fake(item) -> bool:
 
     # Check if it's a `td.TensorClass` or `td.TensorDict` item.
     if not isinstance(item, type) and td.is_tensor_collection(item):
-        tdict = _tcol_to_tdict(item)
+        tdict = tcol_to_tdict(item)
         return is_fake(tdict)
 
     if isinstance(item, cabc.Mapping):
@@ -80,22 +78,6 @@ def is_real(item) -> bool:
     "Check if the item is a real one."
 
     return is_fake(item) != True
-
-
-def _tcol_to_tdict(item) -> td.TensorDict:
-    "Convert from tensor collection to `TensorDict`."
-
-    if not td.is_tensor_collection(item):
-        raise ValueError("Not tensor collection.")
-
-    if isinstance(item, td.TensorDict):
-        return item
-
-    assert dcls.is_dataclass(item)
-    attrs = dcls_asdict(item)
-    result = td.from_dict(attrs)
-    assert isinstance(result, td.TensorDict)
-    return result
 
 
 def _to_fake_tensor(tensor: torch.Tensor) -> ft.FakeTensor:
