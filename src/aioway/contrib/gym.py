@@ -7,8 +7,8 @@ import torch
 from gymnasium import spaces as gs
 from torchrl.data import tensor_specs as tspecs
 
-from ._utils import exec_if_not_none, parse_dtype
-from .tspecs import TSpec
+from aioway.tensors import TSpec
+from aioway.tensors.tspecs._utils import exec_if_not_none, parse_dtype
 
 __all__ = ["gym_space_tspec"]
 
