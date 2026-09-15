@@ -80,8 +80,11 @@ class AudioStream(_AvStream[AudioStreamInfo]):
         self._sample_rate = sample_rate
 
     @typing.override
-    @functools.cache
     def info(self) -> AudioStreamInfo:
+        return self._info
+
+    @functools.cached_property
+    def _info(self) -> AudioStreamInfo:
         stream = self.audio_stream
         duration = stream.duration
         assert duration, "Duration should exist, this is not a stream!"

@@ -127,7 +127,6 @@ parallel = true
 concurrency = ["multiprocessing"]
 
 [tool.pyrefly]
-preset = "legacy"
 ignore-missing-imports = [
     "torchcodec",
 ]

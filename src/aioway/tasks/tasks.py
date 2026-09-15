@@ -7,7 +7,7 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway.tensors import TSpecCompat
+from aioway.tensors import TSpecLike
 
 __all__ = ["Task", "BatchIter"]
 
@@ -24,7 +24,7 @@ class BatchIter[T: NnInput = typing.Any](typing.Protocol):
 
         ...
 
-    def __tspec__(self) -> TSpecCompat:
+    def __tspec__(self) -> TSpecLike:
         """
         The space constraining the output of `__iter__`.
         """

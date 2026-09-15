@@ -76,9 +76,9 @@ def test_mlp_emitter(
     input = torch.randn(13, 3, 4, 6)
 
     for module in emit(input_shape_tspec, output_tspec):
-        output = module(input)
+        input = module(input)
 
-    assert output.shape == (13, 3, 4, 7)
+    assert input.shape == (13, 3, 4, 7)
 
 
 def _check_linear(linear: nn.Module, in_features: torch.Size, out_features: torch.Size):

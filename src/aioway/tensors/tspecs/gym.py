@@ -8,7 +8,7 @@ import torch
 from gymnasium import spaces as gs
 from torchrl.data import tensor_specs as tspecs
 
-from ._utils import exec_if_not_none, parse_dtype
+from ._utils import parse_dtype, parse_shape
 from .tspecs import TSpec
 
 __all__ = ["gym_space_tspec"]
@@ -19,12 +19,14 @@ def gym_space_tspec(space: gym.Space) -> TSpec:
     Convert `gymnasium.Space` to `TSpec`.
     """
 
-    dtype = exec_if_not_none(space.dtype, parse_dtype)
-    shape = exec_if_not_none(space.shape, torch.Size)
+    assert space.dtype is not None
+    assert space.shape is not None
+
+    dtype = parse_dtype(space.dtype)
+    shape = parse_shape(space.shape)
 
     match space:
         case gs.Box():
-
             # A box that is not bounded.
             if not space.is_bounded("below") and not space.is_bounded("above"):
                 return tspecs.Unbounded(shape=shape, dtype=dtype)

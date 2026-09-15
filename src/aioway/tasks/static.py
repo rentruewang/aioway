@@ -12,7 +12,7 @@ from torch.utils import data as dutils
 from torchrl.data import tensor_specs as tspecs
 
 from aioway.io import Dset, InputTarget, InputTargetLikeDset
-from aioway.tensors import TSpecCompat
+from aioway.tensors import TSpecLike
 
 from .steps import LossFunc, PredLossPair, TrainStep, ValidateStep
 from .tasks import BatchIter
@@ -98,12 +98,12 @@ class IterableBatchIter(BatchIter):
     "Wraps an iterable and space."
 
     iterable: cabc.Iterable
-    space: TSpecCompat
+    space: TSpecLike
 
     def __iter__(self):
         yield from self.iterable
 
-    def __tspec__(self) -> TSpecCompat:
+    def __tspec__(self) -> TSpecLike:
         return self.space
 
 
@@ -137,6 +137,8 @@ class StaticTrainer:
     def train_epoch(self, batch_iter: BatchIter[InputTarget]):
         for pair in batch_iter:
             x, y = pair.input, pair.target
+            assert isinstance(x, torch.Tensor)
+            assert isinstance(y, torch.Tensor)
 
             try:
                 inferred = self.train_step(x, y)
@@ -155,6 +157,8 @@ class StaticTrainer:
     def validate_epoch(self, batch_iter: BatchIter[InputTarget]):
         for pair in batch_iter:
             x, y = pair.input, pair.target
+            assert isinstance(x, torch.Tensor)
+            assert isinstance(y, torch.Tensor)
             inferred = self.infer_step(x, y)
             yield inferred
 
