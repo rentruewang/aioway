@@ -94,7 +94,7 @@ class LoopState:
 
 
 @dcls.dataclass(frozen=True)
-class IterableBatchIter:
+class IterableBatchIter(BatchIter):
     "Wraps an iterable and space."
 
     iterable: cabc.Iterable
@@ -193,7 +193,7 @@ class StaticTrainer:
         "The optimizer to use."
         return self._optimizer
 
-    def _data_loader(self, dataset: InputTargetLikeDset):
+    def _data_loader(self, dataset: InputTargetLikeDset) -> BatchIter:
         loader: cabc.Iterable = self.cfg.make_data_loader(dataset)
 
         if self.cfg.progress_bar:

@@ -65,9 +65,14 @@ class ClfLogitHead(Emitter):
         if not isinstance(observ, tspecs.Unbounded):
             return NotImplemented
 
-        if not isinstance(action, tspecs.BoundedDiscrete) or action.ndim != 0:
+        if not isinstance(action, tspecs.BoundedDiscrete):
             return NotImplemented
 
+        return self._get_module(observ, action)
+
+    def _get_module(
+        self, observ: tspecs.Unbounded, action: tspecs.BoundedDiscrete
+    ) -> nn.Sequential:
         action_count = int(action.high - action.low + 1)
 
         module = nn.Sequential(

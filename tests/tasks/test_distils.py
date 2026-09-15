@@ -1,5 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+from collections import abc as cabc
+
 import pytest
 import torch
 from torch import nn, optim
@@ -17,7 +19,7 @@ def linear():
     return nn.Linear(3, 3, bias=False)
 
 
-def _generate_batch():
+def _generate_batch() -> cabc.Generator[torch.Tensor]:
     for _ in range(2000):
         yield torch.randn(1024, 3)
 

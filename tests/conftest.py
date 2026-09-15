@@ -6,14 +6,15 @@ import typing
 from collections import abc as cabc
 
 import git
+import numpy as np
 import pytest
+import tensordict as td
 import torch
 from numpy import random as npr
 from rich import traceback
+from torch import cuda
 
 from aioway.tensors import fake_fn, track_fn
-
-from .mock import batch_sizes, cpu_and_maybe_cuda
 
 _PROJECT_ROOT = pathlib.Path(__file__).parent.parent.resolve()
 _REPO = git.Repo(_PROJECT_ROOT)
@@ -68,6 +69,50 @@ def python_git_files(folder: pathlib.Path) -> cabc.Generator[pathlib.Path]:
 
 def _relative_to_root(path: pathlib.Path) -> pathlib.Path:
     return path.relative_to(_PROJECT_ROOT)
+
+
+def cpu_and_maybe_cuda() -> list[str]:
+    """
+    The devices used in the tests.
+
+    """
+
+    devs = ["cpu"]
+
+    if cuda.is_available():
+        devs.append("cuda")
+
+    return devs
+
+
+def batch_sizes():
+    yield 64
+    yield 1024
+
+
+def chunk_ok(*, size: int, device: str) -> td.TensorDict:
+    return td.TensorDict(
+        {
+            "f1d": torch.randn(size),
+            "f2d": torch.randn(size, 32),
+            "i1d": torch.randint(0, 100, [size]),
+            "i2d": torch.randint(0, 100, [size, 32]),
+        },
+        batch_size=size,
+        device=device,
+    )
+
+
+def unionable_ok(*, size: int, device: str):
+    return chunk_ok(size=size + 1, device=device)
+
+
+def concat_ok(*, size: int, device: str):
+    return chunk_ok(size=size, device=device)
+
+
+def random_things():
+    return [1, None, "hello", torch.tensor([100]), np.arange(100).reshape(4, 25)]
 
 
 @pytest.fixture(scope="module")

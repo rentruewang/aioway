@@ -127,7 +127,7 @@ class InputBuilderNode(BuilderNode):
         # Compute handles cases wehre `self not in node_vals`, impossible for this type.
         raise KeyError(f"{self=} is not found in inputs.")
 
-    def deps(self):
+    def deps(self) -> cabc.Generator:
         return
         yield
 

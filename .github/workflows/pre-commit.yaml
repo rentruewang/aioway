@@ -39,4 +39,4 @@ jobs:
           cache: true
 
       - name: ⌨️ Type checking
-        run: make setup install mypy
+        run: make setup install pyrefly

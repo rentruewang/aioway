@@ -4,13 +4,11 @@ from collections import abc as cabc
 
 from torch import nn, optim
 
-from .static import BatchIter
-
 __all__ = ["distil"]
 
 
 def distil(
-    batches: BatchIter,
+    batches: cabc.Iterator,
     source: nn.Module,
     target: nn.Module,
     loss_fn: nn.Module,

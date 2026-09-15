@@ -46,20 +46,13 @@ class Shape(TorchAttrBase[torch.Size], cabc.Sequence[int]):
 
     @typing.no_type_check
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, Shape):
-            return len(self) == len(other) and all(
-                l == r for l, r in zip(self, other) if l >= 0 and r >= 0
-            )
+        if (result := super().__eq__(other)) is not NotImplemented:
+            return result
 
         if isinstance(other, np.ndarray):
             return other.ndim == 1 and self == other.tolist()
 
-        if (
-            False
-            or isinstance(other, torch.Size)
-            or _is_tuple_of_int(other)
-            or _is_list_of_int(other)
-        ):
+        if _is_tuple_of_int(other) or _is_list_of_int(other):
             return self._data == tuple(other)
 
         return NotImplemented

@@ -51,12 +51,11 @@ build-backend = "setuptools.build_meta"
 
 
 [dependency-groups]
-pre-commit = [
+checks = [
     "autoflake>=2",
     "black>=26",
     "isort>=8",
-    "mypy>=1",
-    "pre-commit>=4",
+    "pyrefly>=1",
 ]
 tests = [
     "pytest>=9",
@@ -66,7 +65,7 @@ tests = [
     "pytest-timeout>=2",
     "pytest-testmon>=2",
     "coverage>=7",
-    "gitpython>=3.1",
+    "gitpython>=3",
 ]
 debugging = [
     "ipython>=9",
@@ -107,18 +106,6 @@ profile = "black"
 show_error_codes = true
 check_untyped_defs = true
 
-# Skipping analysis for some modules because they are not typed.
-[[tool.mypy.overrides]]
-module = [
-    "captum.*",
-    "sklearn.*",
-    "tensordict.*",
-    "torchvision.*",
-    "torchcodec.*",
-    "torchrl.*",
-]
-ignore_missing_imports = true
-
 [tool.pytest]
 addopts = [
     "-v",
@@ -137,3 +124,11 @@ testpaths = [
 [tool.coverage.run]
 parallel = true
 concurrency = ["multiprocessing"]
+
+[tool.pyrefly]
+preset = "legacy"
+ignore-missing-imports = [
+    "torchcodec",
+]
+check-unannotated-defs = true
+infer-return-types = "checked" 

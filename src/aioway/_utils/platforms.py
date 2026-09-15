@@ -15,7 +15,7 @@ def num_threads(target: int, ratio: float = 1) -> int:
 
 
 @functools.cache
-def _os_cores():
+def _os_cores() -> int:
     cpu = os.cpu_count()
     assert cpu
     return cpu
