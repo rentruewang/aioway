@@ -69,3 +69,20 @@ def test_box_inf_one_side(gs, gym_space_tspec):
     assert isinstance(tspec, tspecs.Bounded)
     assert not isinstance(tspec, tspecs.Unbounded)
     assert torch.isinf(tspec.high).all()
+
+
+def test_discrete_to_categorical(gs, gym_space_tspec):
+    tspec = gym_space_tspec(gs.Discrete(5))
+
+    assert isinstance(tspec, tspecs.Categorical)
+    assert tspec.n == 5
+    assert tspec.shape == torch.Size(())
+    assert tspec.dtype is torch.int64
+
+
+def test_multi_discrete_multi_categorical(gs, gym_space_tspec):
+    tspec = gym_space_tspec(gs.MultiDiscrete([3, 2, 4]))
+
+    assert isinstance(tspec, tspecs.MultiCategorical)
+    assert tspec.shape == torch.Size((3,))
+    assert tspec.nvec.tolist() == [3, 2, 4]
