@@ -9,8 +9,17 @@ from numpy import typing as npt
 from torchrl.data import tensor_specs as tspecs
 
 from aioway.tensors import Device, DeviceLike, DType, DTypeLike, Shape, ShapeLike
+import typing
 
+if typing.TYPE_CHECKING:
+    import gymnasium as gym
 __all__ = ["unbounded_box_tspec", "scalar_box_tspec", "array_box_tspec"]
+
+
+def map_gym_space(space: gym.Space):
+    match space:
+        case _:
+            raise NotImplementedError
 
 
 def unbounded_box_tspec(
