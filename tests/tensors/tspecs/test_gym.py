@@ -1,7 +1,8 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import numpy as np
-import pytest, torch
+import pytest
+import torch
 from torchrl.data import tensor_specs as tspecs
 
 
