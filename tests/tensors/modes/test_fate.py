@@ -5,7 +5,7 @@ import operator
 import pytest
 import torch
 
-from aioway.tensors import fake_fn
+from aioway.tensors import track_torch_fake_thunks
 
 
 @pytest.fixture
@@ -44,25 +44,25 @@ def op(request: pytest.FixtureRequest):
 
 
 def test_left_op_right(left, right, op):
-    with fake_fn():
+    with track_torch_fake_thunks():
         result = op(left, right)
         assert isinstance(result, torch.Tensor)
 
 
 def test_left_op_scalar(left, scalar, op):
-    with fake_fn():
+    with track_torch_fake_thunks():
         result = op(left, scalar)
         assert isinstance(result, torch.Tensor)
 
 
 def test_scalar_op_right(scalar, right, op):
-    with fake_fn():
+    with track_torch_fake_thunks():
         result = op(scalar, right)
         assert isinstance(result, torch.Tensor)
 
 
 def test_matmul():
-    with fake_fn():
+    with track_torch_fake_thunks():
         left = torch.randn(3, 5)
         right = torch.randn(5, 7)
 
@@ -71,7 +71,7 @@ def test_matmul():
 
 
 def test_batch_matmul():
-    with fake_fn():
+    with track_torch_fake_thunks():
         left = torch.randn(3, 5, 7)
         right = torch.randn(3, 7, 9)
 

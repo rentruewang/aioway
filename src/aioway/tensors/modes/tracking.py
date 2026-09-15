@@ -19,8 +19,8 @@ if typing.TYPE_CHECKING:
     from aioway.tensors import AtenThunk
 
 __all__ = [
-    "track_fn",
-    "fake_fn",
+    "track_torch_thunks",
+    "track_torch_fake_thunks",
     "PrintTorchFunc",
     "PrintTorchDisp",
     "LogTorchFunc",
@@ -188,9 +188,9 @@ class HistoryCollection(typing.NamedTuple):
 
 
 @ctxl.contextmanager
-def track_fn():
+def track_torch_thunks():
     """
-    Track all calls into the torch dispatch mode as `TorchIrThunk`.
+    Track all calls into the torch dispatch mode.
     """
 
     dis = TrackTorchDispHist()
@@ -201,11 +201,10 @@ def track_fn():
 
 
 @ctxl.contextmanager
-def fake_fn():
+def track_torch_fake_thunks():
     """
-    Track all calls into the torch dispatch mode as `TorchIrThunk`,
-    when fake mode is active.
+    Track all calls into the torch dispatch mode, and activate fake mode.
     """
 
-    with fake_mode(), track_fn() as hists:
+    with fake_mode(), track_torch_thunks() as hists:
         yield hists
