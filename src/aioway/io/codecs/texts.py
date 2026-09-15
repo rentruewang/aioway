@@ -1,6 +1,5 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from transformers import AutoTokenizer
 import dataclasses as dcls
 import functools
 import pathlib

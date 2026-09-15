@@ -60,8 +60,8 @@ black:
 isort:
 	@$(SH) pdm run isort . $(CHECK_FLAG)
 
-mypy:
-	@$(SH) pdm run mypy --install-types --non-interactive src
+pyrefly:
+	@$(SH) pdm run pyrefly check src notebooks tests
 
 
 sphinx:

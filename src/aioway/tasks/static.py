@@ -1,6 +1,5 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from torch._inductor.fx_passes.group_batch_fusion import BatchPointwiseOpsPreGradFusion
 import abc
 import dataclasses as dcls
 import typing

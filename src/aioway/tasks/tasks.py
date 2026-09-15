@@ -1,6 +1,5 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from aioway.tensors import TSpecCompat
 import abc
 import typing
 from collections import abc as cabc
@@ -8,7 +7,7 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway.tensors import TSpec
+from aioway.tensors import TSpecCompat
 
 __all__ = ["Task", "BatchIter"]
 
