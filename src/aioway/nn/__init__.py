@@ -6,4 +6,3 @@ from .emits import *
 from .rebuild import *
 from .regs import *
 from .rewrites import *
-from .tspecs import *

@@ -1,10 +1,9 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-
 import torch
 from torchrl.data import tensor_specs as tspecs
 
-from .gym import scalar_box_tspec, unbounded_box_tspec
+from .boxes import scalar_box_tspec, unbounded_box_tspec
 
 __all__ = ["float_image_tspec", "byte_image_tspec", "long_image_tspec"]
 

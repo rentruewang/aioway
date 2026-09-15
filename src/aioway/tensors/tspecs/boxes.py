@@ -1,14 +1,14 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import typing
-from collections import abc as cabc
 
 import numpy as np
 import torch
 from numpy import typing as npt
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.tensors import Device, DeviceLike, DType, DTypeLike, Shape, ShapeLike
+from aioway.tensors import DeviceLike, DTypeLike, ShapeLike
+
+from ._utils import exec_if_not_none, parse_device, parse_dtype, parse_shape
 
 __all__ = ["unbounded_box_tspec", "scalar_box_tspec", "array_box_tspec"]
 
@@ -33,9 +33,9 @@ def unbounded_box_tspec(
     """
 
     return tspecs.Unbounded(
-        shape=_parse_shape(shape),
-        device=_exec_if_not_none(device, _parse_device),
-        dtype=_exec_if_not_none(dtype, _parse_dtype),
+        shape=parse_shape(shape),
+        device=exec_if_not_none(device, parse_device),
+        dtype=exec_if_not_none(dtype, parse_dtype),
     )
 
 
@@ -64,9 +64,9 @@ def scalar_box_tspec(
     return tspecs.Bounded(
         low=low,
         high=high,
-        shape=_exec_if_not_none(shape, _parse_shape),
-        device=_exec_if_not_none(device, _parse_device),
-        dtype=_exec_if_not_none(dtype, _parse_dtype),
+        shape=exec_if_not_none(shape, parse_shape),
+        device=exec_if_not_none(device, parse_device),
+        dtype=exec_if_not_none(dtype, parse_dtype),
     )
 
 
@@ -99,34 +99,7 @@ def array_box_tspec(
     return tspecs.Bounded(
         low=low_tensor,
         high=high_tensor,
-        device=_exec_if_not_none(device, _parse_device),
-        shape=_exec_if_not_none(shape, _parse_shape),
-        dtype=_exec_if_not_none(dtype, _parse_dtype),
+        device=exec_if_not_none(device, parse_device),
+        shape=exec_if_not_none(shape, parse_shape),
+        dtype=exec_if_not_none(dtype, parse_dtype),
     )
-
-
-@typing.overload
-def _exec_if_not_none[I, O](item: None, func) -> None: ...
-
-
-@typing.overload
-def _exec_if_not_none[I, O](item: I, func: cabc.Callable[[I], O]) -> O: ...
-
-
-def _exec_if_not_none[I, O](item: I | None, func: cabc.Callable[[I], O]) -> O | None:
-    if item is None:
-        return item
-
-    return func(item)
-
-
-def _parse_shape(shape: ShapeLike) -> torch.Size:
-    return Shape.parse(shape).torch()
-
-
-def _parse_device(device: DeviceLike) -> torch.device:
-    return Device.parse(device).torch()
-
-
-def _parse_dtype(dtype: DTypeLike) -> torch.dtype:
-    return DType.parse(dtype).torch()

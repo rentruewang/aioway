@@ -7,7 +7,8 @@ import torch
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.nn import LossTSpec, deduction_for, deduction_reg, with_nn_reg
+from aioway.nn import deduction_for, deduction_reg, with_nn_reg
+from aioway.tensors import LossTSpec
 
 
 @pytest.fixture
