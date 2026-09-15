@@ -90,7 +90,9 @@ class DatasetIdxDset[T](IdxDset[T]):
     def __getitems__(self, idx):
         return self._dataset.__getitems__(idx)
 
+    @typing.no_type_check
     def to_dataset(self):
+        # This is not the type, but duck typing, should be OK.
         return self
 
     def __tspec__(self) -> TSpecLike:

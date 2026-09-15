@@ -1,5 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+from aioway.tensors import TSpecCompat
 import abc
 import typing
 from collections import abc as cabc
@@ -24,7 +25,7 @@ class BatchIter[T: NnInput = typing.Any](typing.Protocol):
 
         ...
 
-    def __tspec__(self) -> TSpec:
+    def __tspec__(self) -> TSpecCompat:
         """
         The space constraining the output of `__iter__`.
         """
