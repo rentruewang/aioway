@@ -1,21 +1,16 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import typing
-from collections import abc as cabc
 
+import gymnasium as gym
 import numpy as np
 import torch
-from numpy import typing as npt
+from gymnasium import spaces as gs
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.tensors import Device, DeviceLike, DType, DTypeLike, Shape, ShapeLike
-
+from ._utils import exec_if_not_none, parse_dtype
 from .tspecs import TSpec
 
-if typing.TYPE_CHECKING:
-    import gymnasium as gym
-
-__all__ = ["unbounded_box_tspec", "scalar_box_tspec", "array_box_tspec"]
+__all__ = ["gym_space_tspec"]
 
 
 def gym_space_tspec(space: gym.Space) -> TSpec:
@@ -23,129 +18,55 @@ def gym_space_tspec(space: gym.Space) -> TSpec:
     Convert `gymnasium.Space` to `TSpec`.
     """
 
-    from gymnasium import spaces as gs
+    dtype = exec_if_not_none(space.dtype, parse_dtype)
+    shape = exec_if_not_none(space.shape, torch.Size)
 
     match space:
         case gs.Box():
-            raise NotImplementedError
+
+            # A box that is not bounded.
+            if not space.is_bounded("below") and not space.is_bounded("above"):
+                return tspecs.Unbounded(shape=shape, dtype=dtype)
+
+            # A box that is bounded in some way.
+            return tspecs.Bounded(
+                low=torch.as_tensor(space.low, dtype=dtype),
+                high=torch.as_tensor(space.high, dtype=dtype),
+                shape=shape,
+                dtype=dtype,
+            )
+
+        case gs.Discrete(n=n, start=start):
+            if start != 0:
+                raise NotImplementedError(
+                    f"Discrete(start={start}) has no torchrl equivalent; "
+                    "Categorical is always 0-based. Shift the action in a "
+                    "transform instead."
+                )
+
+            return tspecs.Categorical(n=int(n), shape=torch.Size(()), dtype=dtype)
+
+        case gs.MultiDiscrete(nvec=nvec):
+            start = space.start
+
+            if np.any(start != 0):
+                raise ValueError(
+                    "MultiDiscrete with a non-zero start has no torchrl "
+                    "equivalent; MultiCategorical is always 0-based."
+                )
+
+            return tspecs.MultiCategorical(
+                nvec=torch.as_tensor(nvec, dtype=torch.long), shape=shape, dtype=dtype
+            )
+
+        case gs.MultiBinary():
+            assert shape, space.shape
+            return tspecs.Binary(n=int(shape[-1]), shape=shape, dtype=dtype)
+
+        case gs.Dict(spaces=subspaces):
+            return tspecs.Composite(
+                {key: gym_space_tspec(sub) for key, sub in subspaces.items()}
+            )
+
         case _:
-            raise NotImplementedError
-
-
-def unbounded_box_tspec(
-    shape: ShapeLike,
-    *,
-    dtype: DTypeLike | None = None,
-    device: DeviceLike | None = None,
-) -> tspecs.Unbounded:
-    """
-    A continuous box spec.
-
-    Args:
-        shape: The shape of the tensors.
-        dtype: The dtype of the values. Optional.
-        device: The device of the tensors. Optional.
-
-    Returns:
-        An `Unbounded` spec.
-        It would be continuous or discrete depending on the dtype.
-    """
-
-    return tspecs.Unbounded(
-        shape=_parse_shape(shape),
-        device=_exec_if_not_none(device, _parse_device),
-        dtype=_exec_if_not_none(dtype, _parse_dtype),
-    )
-
-
-def scalar_box_tspec(
-    low: float,
-    high: float,
-    *,
-    shape: ShapeLike | None = None,
-    dtype: DTypeLike | None = None,
-    device: DeviceLike | None = None,
-) -> tspecs.Bounded:
-    """
-    A continuous tensor bounded elementwise by `low` and `high`. Scalar version.
-
-    Args:
-        low: The scalar lower bound. Inclusive.
-        high: The scalar higher bound. Inclusive.
-        shape: The shape of the tensors.
-        dtype: The dtype of the values.
-        device: The device of the tensors.
-
-    Returns:
-        A `Bounded` spec.
-    """
-
-    return tspecs.Bounded(
-        low=low,
-        high=high,
-        shape=_exec_if_not_none(shape, _parse_shape),
-        device=_exec_if_not_none(device, _parse_device),
-        dtype=_exec_if_not_none(dtype, _parse_dtype),
-    )
-
-
-def array_box_tspec(
-    low: npt.ArrayLike,
-    high: npt.ArrayLike,
-    *,
-    shape: ShapeLike | None = None,
-    dtype: DTypeLike | None = None,
-    device: DeviceLike | None = None,
-) -> tspecs.Bounded:
-    """
-    A continuous tensor bounded elementwise by `low` and `high`.
-    Here each element of the shape can have different bounds.
-
-    Args:
-        low: The array lower bound. Inclusive.
-        high: The array higher bound. Inclusive.
-        shape: The shape of the tensors. Optional. Casts `low` and `high` shapes.
-        dtype: The dtype of the values. Optional. Casts `low` and `high` dtypes.
-        device: The device of the tensors. Optional. Casts `low` and `high` devices.
-
-    Returns:
-        A `Bounded` spec.
-    """
-
-    low_tensor = torch.from_numpy(np.asarray(low))
-    high_tensor = torch.from_numpy(np.asarray(high))
-
-    return tspecs.Bounded(
-        low=low_tensor,
-        high=high_tensor,
-        device=_exec_if_not_none(device, _parse_device),
-        shape=_exec_if_not_none(shape, _parse_shape),
-        dtype=_exec_if_not_none(dtype, _parse_dtype),
-    )
-
-
-@typing.overload
-def _exec_if_not_none[I, O](item: None, func) -> None: ...
-
-
-@typing.overload
-def _exec_if_not_none[I, O](item: I, func: cabc.Callable[[I], O]) -> O: ...
-
-
-def _exec_if_not_none[I, O](item: I | None, func: cabc.Callable[[I], O]) -> O | None:
-    if item is None:
-        return item
-
-    return func(item)
-
-
-def _parse_shape(shape: ShapeLike) -> torch.Size:
-    return Shape.parse(shape).torch()
-
-
-def _parse_device(device: DeviceLike) -> torch.device:
-    return Device.parse(device).torch()
-
-
-def _parse_dtype(dtype: DTypeLike) -> torch.dtype:
-    return DType.parse(dtype).torch()
+            raise TypeError(f"Unknown type {type(space)=}.")
