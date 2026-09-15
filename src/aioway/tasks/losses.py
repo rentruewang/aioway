@@ -1,10 +1,13 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import torch
+import dataclasses as dcls
 import enum
-from aioway.tensors import TSpec
-import dataclasses as dcls, typing
+import typing
+
+import torch
 from torchrl.data import tensor_specs as tspecs
+
+from aioway.tensors import TSpec
 
 
 class TaskType(enum.StrEnum):
