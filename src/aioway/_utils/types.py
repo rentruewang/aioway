@@ -46,6 +46,7 @@ class _CallCounter[**P, T]:
             return self
 
         @type(self)
+        @typing.no_type_check
         def bounded_method(*args, **kwargs):
             return self.__func__(instance, *args, **kwargs)
 

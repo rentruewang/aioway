@@ -62,7 +62,7 @@ class IdxDset[T](Dset[T], abc.ABC):
         raise NotImplementedError
 
     @typing.override
-    def to_dataset(self):
+    def to_dataset(self) -> dutils.Dataset[T]:
         return _IdxDataset(self)
 
 

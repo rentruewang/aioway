@@ -107,18 +107,6 @@ profile = "black"
 show_error_codes = true
 check_untyped_defs = true
 
-# Skipping analysis for some modules because they are not typed.
-[[tool.mypy.overrides]]
-module = [
-    "captum.*",
-    "sklearn.*",
-    "tensordict.*",
-    "torchvision.*",
-    "torchcodec.*",
-    "torchrl.*",
-]
-ignore_missing_imports = true
-
 [tool.pytest]
 addopts = [
     "-v",
@@ -137,3 +125,11 @@ testpaths = [
 [tool.coverage.run]
 parallel = true
 concurrency = ["multiprocessing"]
+
+[tool.pyrefly]
+preset = "legacy"
+ignore-missing-imports = [
+    "torchcodec",
+]
+check-unannotated-defs = true
+infer-return-types = "checked" 

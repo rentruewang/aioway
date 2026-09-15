@@ -25,7 +25,6 @@ class TorchAttrBase[T](abc.ABC):
         # Reparsing should be good enough.
         return self.parse(self._data)
 
-    @typing.final
     def __eq__(self, other: typing.Any, /) -> bool:
         if type(self) == type(other):
             assert isinstance(other, TorchAttrBase)

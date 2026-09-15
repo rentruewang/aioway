@@ -1,5 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+from transformers import AutoTokenizer
 import dataclasses as dcls
 import functools
 import pathlib
@@ -52,4 +53,6 @@ def _tokenizer(name: str):
     This simply calls `from_pretrained` from huggingface, so name can be a local path.
     """
 
-    return transformers.AutoTokenizer.from_pretrained(name)
+    tokenizer = transformers.AutoTokenizer.from_pretrained(name)
+    assert tokenizer is not None
+    return tokenizer
