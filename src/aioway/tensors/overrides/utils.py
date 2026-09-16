@@ -95,8 +95,8 @@ def _is_fake_converter() -> _TorchVisitor[bool]:
         tensor=_is_fake_tensor,
         tdict=_is_fake_tcol,
         tcls=_is_fake_tcol,
-        mapping=lambda item: is_fake(list(item.values())),
-        sequence=lambda item: any(is_fake(val) for val in item),
+        mapping=lambda item: _is_fake_iter(item.values()),
+        sequence=_is_fake_iter,
         default=lambda _: False,
     )
 
@@ -159,7 +159,11 @@ def _clone_fake(obj: typing.Any) -> typing.Any:
 
 def _is_fake_tcol(item) -> bool:
     tdict = tcol_to_tdict(item)
-    return is_fake(tdict)
+    return _is_fake_iter(tdict.values())
+
+
+def _is_fake_iter(item: cabc.Iterable):
+    return any(is_fake(val) for val in item)
 
 
 def _to_fake_tcls(item):
