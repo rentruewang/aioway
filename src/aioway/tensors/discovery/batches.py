@@ -4,13 +4,13 @@ import tensordict as td
 import torch
 from torchrl.data import tensor_specs as tspecs
 
-from ._utils import tcol_to_tdict
-from .fake import is_fake
+from aioway.tensors._utils import tcol_to_tdict
+from aioway.tensors.fake import is_fake
 
-__all__ = ["discover_tspec"]
+__all__ = ["batch_tspec"]
 
 
-def discover_tspec(item: object, /) -> tspecs.TensorSpec:
+def batch_tspec(item: object, /) -> tspecs.TensorSpec:
     if isinstance(item, torch.Tensor):
         return _tensor_tspec(item)
 
@@ -41,7 +41,7 @@ def _tdict_tspec(tdict: td.TensorDict, /) -> tspecs.Composite:
     result: dict[str, tspecs.TensorSpec] = {}
 
     for key, val in tdict.items():
-        tspec = discover_tspec(val)
+        tspec = batch_tspec(val)
         result[key] = tspec
 
     return tspecs.Composite(result)
