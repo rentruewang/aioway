@@ -10,12 +10,12 @@ from aioway._utils import Sign
 
 from .tspecs import TSpec
 
-__all__ = ["FoldTSpec", "tspec_fold_rule"]
+__all__ = ["TSpecCoercion", "tspec_coercion_rule"]
 
-_ALL_RULES: dict[FoldSign, FoldRule] = {}
+_COERCION_RULES: dict[CoerceSign, CoerceRule] = {}
 
 
-class FoldSign(typing.NamedTuple):
+class CoerceSign(typing.NamedTuple):
     """
     The signature for `FoldTSpec`.
     This is useful to classify each "rule" s.t. we can make it modular.
@@ -28,35 +28,51 @@ class FoldSign(typing.NamedTuple):
     "The type of the RHS `TSpec` of the fold."
 
 
-class FoldRule[L: TSpec = typing.Any, R: TSpec = typing.Any](typing.Protocol):
+class CoerceRule[L: TSpec = typing.Any, R: TSpec = typing.Any](typing.Protocol):
     def __call__(self, left: L, right: R) -> TSpec:
         raise NotImplementedError
 
 
-def tspec_fold_rule(left: type[TSpec], right: type[TSpec]) -> FoldRule:
+def tspec_coercion_rule(left: type[TSpec], right: type[TSpec]) -> CoerceRule:
     "Get the rule for input `(left, right)`."
 
-    return _ALL_RULES[FoldSign(left, right)]
+    return _COERCION_RULES[CoerceSign(left, right)]
+
+
+def default_coercion():
+    return TSpecCoercion(_COERCION_RULES)
 
 
 @dcls.dataclass(frozen=True)
-class FoldTSpec(FoldRule):
+class TSpecCoercion(CoerceRule):
     """
-    The left fold for `TSpec`'s casting.
-    This casts the `TSpec`s to a common `TSpec` that contains both.
+    The coercion rule collection for `TSpec`, given 2 tspecs.
     """
 
-    tspecs: dict[FoldSign, FoldRule] = dcls.field(default_factory=dict)
+    tspecs: dict[CoerceSign, CoerceRule] = dcls.field(default_factory=dict)
+    "The tspecs that are registered."
+
+    def __contains__(self, sign: CoerceSign) -> bool:
+        return sign in self.tspecs
+
+    def __len__(self) -> int:
+        return len(self.tspecs)
+
+    def __getitem__(self, key: CoerceSign) -> CoerceRule:
+        return self.tspecs[key]
+
+    def __iter__(self) -> cabc.Generator[CoerceSign]:
+        yield from self.tspecs
 
     def __call__(self, left: TSpec, right: TSpec) -> TSpec:
         type_left = type(left)
         type_right = type(right)
 
-        sign = FoldSign(type_left, type_right)
+        sign = CoerceSign(type_left, type_right)
         return self.tspecs[sign](left, right)
 
 
-def register_tspec_fold[F: FoldRule](
+def register_tspec_fold[F: CoerceRule](
     left: type[TSpec], right: type[TSpec], /
 ) -> cabc.Callable[[F], F]:
     """
@@ -64,7 +80,7 @@ def register_tspec_fold[F: FoldRule](
     """
 
     def decorator(func: F) -> F:
-        fold_sign = FoldSign(left, right)
+        fold_sign = CoerceSign(left, right)
         sign = Sign.from_callable(func)
         params = sign.param_list
 
@@ -82,10 +98,10 @@ def register_tspec_fold[F: FoldRule](
                 f"Annotation mismatch! {right=}, but function's right signature: {annot}."
             )
 
-        if fold_sign in _ALL_RULES:
+        if fold_sign in _COERCION_RULES:
             raise KeyError(f"Key {fold_sign} already exists.")
 
-        _ALL_RULES[fold_sign] = func
+        _COERCION_RULES[fold_sign] = func
 
         return func
 
