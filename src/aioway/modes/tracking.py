@@ -10,6 +10,7 @@ import typing
 import rich
 
 from aioway.tensors import (
+    AtenThunk,
     TorchDispMode,
     TorchDispThunk,
     TorchFuncMode,
@@ -134,8 +135,6 @@ def route_aten_thunk(thunk: TorchDispThunk) -> object:
     """
     Route `torch.aten` calls to `AtenThunk` for some `aioway` specific functionalities.
     """
-
-    from aioway.tensors import AtenThunk
 
     fn: AtenThunk | TorchDispThunk
 
