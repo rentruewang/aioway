@@ -10,8 +10,9 @@ import tensordict as td
 import torch
 from torch._subclasses import fake_tensor as ft
 
-from ._utils import tcol_to_tdict
-from .modes import fake_mode
+from aioway.tensors._utils import tcol_to_tdict
+
+from .fake import fake_mode
 
 __all__ = ["is_fake", "is_real", "to_fake"]
 
