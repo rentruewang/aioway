@@ -23,9 +23,6 @@ from aioway.tensors import (
 
 from .hists import HistTensorGraph
 
-if typing.TYPE_CHECKING:
-    from aioway.tensors import AtenThunk
-
 __all__ = [
     "track_torch_thunks",
     "track_torch_fake_thunks",
@@ -124,10 +121,9 @@ def clone_dispatch_thunk(thunk: TorchDispThunk) -> object:
     result = thunk()
 
     # In fake mode, clone the tensor to prevent `FakeTensor` reuse. Should be cheap.
-    if is_fake_mode_on():
+    if not is_fake_mode_on():
+        return result
         result = replace_tensors(result, lambda tensor: tensor.clone())
-
-    return result
 
 
 @TorchDispMode.function
