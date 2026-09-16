@@ -60,6 +60,13 @@ class TSpecCoercion(CoerceRule):
     tspecs: dict[CoerceSign, CoerceRule] = dcls.field(default_factory=dict)
     "The tspecs that are registered."
 
+    strict: bool = True
+    """
+    If strict, `NotImplemented` would not be discarded, but propagated.
+
+    This means that if either value is `NotImplemented`, `NotImplemented` is returned.
+    """
+
     def __contains__(self, sign: CoerceSign) -> bool:
         return sign in self.tspecs
 
@@ -73,6 +80,15 @@ class TSpecCoercion(CoerceRule):
         yield from self.tspecs
 
     def __call__(self, left: TSpec, right: TSpec) -> TSpec:
+        if self.strict and (left is NotImplemented or right is NotImplemented):
+            return NotImplemented
+
+        elif left is NotImplemented:
+            return right
+
+        elif right is NotImplemented:
+            return left
+
         type_left = type(left)
         type_right = type(right)
 
