@@ -8,7 +8,7 @@ import tensordict as td
 import torch
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.tensors import TSpec
+from .tspecs import TSpec
 
 from ._utils import tcol_to_tdict
 from .fake import is_fake
@@ -40,14 +40,16 @@ def _tensor_tspec(tensor: torch.Tensor, /) -> tspecs.TensorSpec:
     Convert `torch.Tensor` to `TSpec`.
     """
 
+    shape = tensor.shape[1:]
+
     if tensor.dtype == torch.bool:
-        return tspecs.Binary(shape=tensor.shape)
+        return tspecs.Binary(shape=shape)
 
     if is_fake(tensor):
-        return tspecs.Unbounded(shape=tensor.shape, dtype=tensor.dtype)
+        return tspecs.Unbounded(shape=shape, dtype=tensor.dtype)
 
     return tspecs.Bounded(
-        low=tensor.min(), high=tensor.max(), shape=tensor.shape, dtype=tensor.dtype
+        low=tensor.min(), high=tensor.max(), shape=shape, dtype=tensor.dtype
     )
 
 
