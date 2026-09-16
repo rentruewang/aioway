@@ -2,7 +2,8 @@
 
 "A bunch of context managers controlling the fake mode."
 
-from beartype._util.cls.pep.clspep3119 import is_type_isinstanceable
+import dataclasses as dcls
+import functools
 import logging
 import typing
 from collections import abc as cabc
@@ -20,60 +21,108 @@ __all__ = ["is_fake", "is_real", "to_fake", "clone_fake"]
 LOGGER = logging.getLogger(__name__)
 
 
-@typing.overload
-def to_fake(item: torch.Tensor) -> ft.FakeTensor: ...
+@dcls.dataclass(frozen=True)
+class _TorchVisitor[R: typing.Any = typing.Any]:
+    """
+    The visitor type for torch values.
+
+    Using this to make sure we don't miss any values.
+    """
+
+    _: dcls.KW_ONLY
+
+    tensor: cabc.Callable[[torch.Tensor], R]
+    "Tensor values."
+
+    tdict: cabc.Callable[[td.TensorDict], R]
+    "TensorDict values."
+
+    tcls: cabc.Callable[[typing.Any], R]
+    "Tensorclass values."
+
+    mapping: cabc.Callable[[cabc.Mapping], R]
+    "Mapping values."
+
+    sequence: cabc.Callable[[cabc.Sequence], R]
+    "Iterable values."
+
+    default: cabc.Callable[[typing.Any], R]
+    "The default values."
+
+    def __call__(self, item):
+        if isinstance(item, torch.Tensor):
+            return self.tensor(item)
+
+        if isinstance(item, td.TensorDict):
+            return self.tdict(item)
+
+        if not isinstance(item, type) and td.is_tensor_collection(item):
+            return self.tcls(item)
+
+        if isinstance(item, cabc.Mapping):
+            return self.mapping(item)
+
+        if isinstance(item, cabc.Sequence):
+            return self.sequence(item)
+
+        return self.default(item)
 
 
-@typing.overload
-def to_fake[C](item: C) -> C: ...
+@functools.cache
+def _to_fake_converter():
+    return _TorchVisitor(
+        tensor=_to_fake_tensor,
+        tdict=_to_fake_tdict,
+        tcls=_to_fake_tcls,
+        mapping=_to_fake_dict,
+        sequence=_to_fake_seq,
+        default=lambda item: item,
+    )
 
 
-def to_fake(item):
-    if isinstance(item, torch.Tensor):
-        return _to_fake_tensor(item)
+def to_fake[C](item: C) -> C:
+    "Convert an item to its fake counterpart."
 
-    if isinstance(item, td.TensorDict | cabc.Mapping):
-        return td.from_dict(_to_fake_dict(item))
-
-    if not isinstance(item, type) and td.is_tensor_collection(item):
-        tdict = tcol_to_tdict(item)
-        mapping = _to_fake_dict(tdict)
-        return type(item)(**mapping)
-
-    if isinstance(item, cabc.Sequence):
-        return [to_fake(elem) for elem in item]
-
-    return item
+    return _to_fake_converter()(item)
 
 
-@typing.overload
-def is_fake(item: torch.Tensor) -> typing.TypeIs[ft.FakeTensor]: ...
-
-
-@typing.overload
-def is_fake(item) -> bool: ...
+@functools.cache
+def _is_fake_converter() -> _TorchVisitor[bool]:
+    return _TorchVisitor(
+        tensor=_is_fake_tensor,
+        tdict=_is_fake_tcol,
+        tcls=_is_fake_tcol,
+        mapping=lambda item: is_fake(list(item.values())),
+        sequence=lambda item: any(is_fake(val) for val in item),
+        default=lambda _: False,
+    )
 
 
 def is_fake(item) -> bool:
     """
-    Check if the item is fake, return `NotImplemented` for non tensor object.
+    Check if the item is fake.
     """
 
-    if isinstance(item, torch.Tensor):
-        return _is_fake_tensor(item)
+    return _is_fake_converter()(item)
 
-    # Check if it's a `td.TensorClass` or `td.TensorDict` item.
-    if not isinstance(item, type) and td.is_tensor_collection(item):
-        tdict = tcol_to_tdict(item)
-        return is_fake(tdict)
 
-    if isinstance(item, cabc.Mapping):
-        return is_fake(item.values())
+def is_real(item) -> bool:
+    "Check if the item is a real one."
 
-    if isinstance(item, cabc.Iterable):
-        return any(is_fake(val) for val in item)
+    return is_fake(item) != True
 
-    return False
+
+@functools.cache
+def _clone_fake_converter() -> _TorchVisitor:
+    clone = lambda x: x.clone()
+    return _TorchVisitor(
+        tensor=clone,
+        tdict=clone,
+        tcls=clone,
+        mapping=lambda item: {key: clone_fake(val) for key, val in item.items()},
+        sequence=lambda item: [clone_fake(val) for val in item],
+        default=lambda item: item,
+    )
 
 
 def clone_fake[T](item: T) -> T:
@@ -105,10 +154,23 @@ def _clone_fake(obj: typing.Any) -> typing.Any:
     raise TypeError(f"Unknown type: {type(obj)=}.")
 
 
-def is_real(item) -> bool:
-    "Check if the item is a real one."
+def _is_fake_tcol(item) -> bool:
+    tdict = tcol_to_tdict(item)
+    return is_fake(tdict)
 
-    return is_fake(item) != True
+
+def _to_fake_tcls(item):
+    tdict = tcol_to_tdict(item)
+    mapping = _to_fake_dict(tdict)
+    return type(item)(**mapping)
+
+
+def _to_fake_seq(item):
+    return [to_fake(elem) for elem in item]
+
+
+def _to_fake_tdict(item):
+    return td.from_dict(_to_fake_dict(item))
 
 
 def _to_fake_tensor(tensor: torch.Tensor) -> ft.FakeTensor:
