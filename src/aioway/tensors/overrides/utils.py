@@ -2,6 +2,7 @@
 
 "A bunch of context managers controlling the fake mode."
 
+from beartype._util.cls.pep.clspep3119 import is_type_isinstanceable
 import logging
 import typing
 from collections import abc as cabc
@@ -14,7 +15,7 @@ from aioway.tensors._utils import tcol_to_tdict
 
 from .fake import fake_mode
 
-__all__ = ["is_fake", "is_real", "to_fake"]
+__all__ = ["is_fake", "is_real", "to_fake", "clone_fake"]
 
 LOGGER = logging.getLogger(__name__)
 
@@ -73,6 +74,35 @@ def is_fake(item) -> bool:
         return any(is_fake(val) for val in item)
 
     return False
+
+
+def clone_fake[T](item: T) -> T:
+    """
+    Call `.clone()` on `torch` / `tensordict` fake values.
+
+    This is useful in changing the `id` of fake values for uniqueness analysis.
+    """
+
+    if not is_fake(item):
+        return item
+
+    return _clone_fake(item)
+
+
+def _clone_fake(obj: typing.Any) -> typing.Any:
+    if isinstance(obj, torch.Tensor):
+        return obj.clone()
+
+    if td.is_tensor_collection(obj):
+        return obj.clone()
+
+    if isinstance(obj, cabc.Mapping):
+        return {key: clone_fake(val) for key, val in obj.items()}
+
+    if isinstance(obj, cabc.Iterable):
+        return [clone_fake(elem) for elem in obj]
+
+    raise TypeError(f"Unknown type: {type(obj)=}.")
 
 
 def is_real(item) -> bool:

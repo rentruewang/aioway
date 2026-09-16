@@ -2,6 +2,7 @@
 
 "Tracking / routing related `Thunk`s."
 
+from pydantic_settings.sources.providers.toml import import_toml
 import contextlib as ctxl
 import dataclasses as dcls
 import logging
@@ -32,7 +33,7 @@ __all__ = [
     "LogTorchDis",
     "TrackTorchDispHist",
     "TrackTorchFuncHist",
-    "clone_dispatch_thunk",
+    "clone_in_fake_mode",
     "route_aten_thunk",
 ]
 
@@ -112,7 +113,7 @@ class LogTorchDis(TorchDispMode):
 
 
 @TorchDispMode.function
-def clone_dispatch_thunk(thunk: TorchDispThunk) -> object:
+def clone_in_fake_mode(thunk: TorchDispThunk) -> object:
     """
     Automatically call `.clone()` on all tensors in the torch dispatch mode.
 
@@ -120,10 +121,11 @@ def clone_dispatch_thunk(thunk: TorchDispThunk) -> object:
     """
     result = thunk()
 
-    # In fake mode, clone the tensor to prevent `FakeTensor` reuse. Should be cheap.
     if not is_fake_mode_on():
         return result
-        result = replace_tensors(result, lambda tensor: tensor.clone())
+
+    # In fake mode, clone the tensor to prevent `FakeTensor` reuse. Should be cheap.
+    return replace_tensors(result, lambda tensor: tensor.clone())
 
 
 @TorchDispMode.function
