@@ -4,14 +4,8 @@ import pytest
 
 from aioway._thunks import Thunk
 from aioway._utils import TensorInput
-from aioway.tensors import (
-    Aten,
-    AtenThunk,
-    HistTensorGraph,
-    ModeThunk,
-    TorchDispThunk,
-    TorchFuncThunk,
-)
+from aioway.modes import HistTensorGraph
+from aioway.tensors import Aten, AtenThunk, ModeThunk, TorchDispThunk, TorchFuncThunk
 
 
 def _fn_cls():

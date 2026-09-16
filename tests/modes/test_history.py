@@ -3,7 +3,8 @@
 import pytest
 import torch
 
-from aioway.tensors import fake_fn, fake_mode, is_fake_mode_on, track_fn
+from aioway.modes import track_torch_fake_thunks, track_torch_thunks
+from aioway.tensors import fake_mode, is_fake_mode_on
 
 
 @pytest.fixture
@@ -47,7 +48,7 @@ def fake_b():
 
 
 def test_einsum(a: torch.Tensor, b: torch.Tensor):
-    with track_fn() as [func_calls, dis_calls]:
+    with track_torch_thunks() as [func_calls, dis_calls]:
         result = torch.einsum("i,j->", a, b)
 
     assert result.ndim == 0
@@ -58,7 +59,7 @@ def test_einsum(a: torch.Tensor, b: torch.Tensor):
 
 
 def test_call(a: torch.Tensor, c: torch.Tensor):
-    with track_fn() as [func_hist, dis_hist]:
+    with track_torch_thunks() as [func_hist, dis_hist]:
         result = a + c
 
     assert result.ndim == 1
@@ -79,7 +80,7 @@ def test_boolean_masking_should_fail(fake_a: torch.Tensor):
 def test_boolean_masking_patched(fake_a: torch.Tensor):
     idx = torch.randn_like(fake_a) > 0
 
-    with fake_fn():
+    with track_torch_fake_thunks():
         res = fake_a[idx]
 
     assert res.shape == fake_a.shape

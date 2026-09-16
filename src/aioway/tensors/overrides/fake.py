@@ -13,6 +13,7 @@ __all__ = [
     "torch_set_fake_mode",
     "torch_set_fake_mode_func",
     "is_fake_mode_on",
+    "is_real_mode_on",
     "active_fake_mode",
 ]
 
@@ -26,7 +27,15 @@ def is_fake_mode_on() -> bool:
     Check if we are running under a `fake_mode` context.
     """
 
-    return active_fake_mode() is not None
+    return _fake_mode_is_active
+
+
+def is_real_mode_on() -> bool:
+    """
+    Check if fake mode is turned off.
+    """
+
+    return not _fake_mode_is_active
 
 
 def active_fake_mode() -> ft.FakeTensorMode | None:

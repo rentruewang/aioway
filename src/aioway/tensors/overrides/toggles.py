@@ -1,5 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+"A quick toggle to control all the modes `aioway` defines."
+
 import contextlib as ctxl
 import typing
 

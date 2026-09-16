@@ -9,24 +9,30 @@ import typing
 
 import rich
 
-from aioway.tensors.nested import replace_tensors, replace_tensors_with_attr
+from aioway.tensors import (
+    AtenThunk,
+    TorchDispMode,
+    TorchDispThunk,
+    TorchFuncMode,
+    TorchFuncThunk,
+    fake_mode,
+    is_fake_mode_on,
+    replace_tensors,
+    replace_tensors_with_attr,
+)
 
-from .fake import fake_mode, is_fake_mode_on
 from .hists import HistTensorGraph
-from .modes import TorchDispMode, TorchDispThunk, TorchFuncMode, TorchFuncThunk
-
-if typing.TYPE_CHECKING:
-    from aioway.tensors import AtenThunk
 
 __all__ = [
-    "track_fn",
-    "fake_fn",
+    "track_torch_thunks",
+    "track_torch_fake_thunks",
     "PrintTorchFunc",
     "PrintTorchDisp",
     "LogTorchFunc",
     "LogTorchDis",
     "TrackTorchDispHist",
     "TrackTorchFuncHist",
+    "clone_in_fake_mode",
     "route_aten_thunk",
 ]
 
@@ -105,22 +111,20 @@ class LogTorchDis(TorchDispMode):
         return result
 
 
-class CloneDispOp(TorchDispMode):
+@TorchDispMode.function
+def clone_in_fake_mode(thunk: TorchDispThunk) -> object:
     """
     Automatically call `.clone()` on all tensors in the torch dispatch mode.
 
     This is useful to force a new `id` s.t. the tracking won't fail.
     """
+    result = thunk()
 
-    @typing.override
-    def run(self, thunk: TorchDispThunk, /) -> object:
-        result = thunk()
-
-        # In fake mode, clone the tensor to prevent `FakeTensor` reuse. Should be cheap.
-        if is_fake_mode_on():
-            result = replace_tensors(result, lambda tensor: tensor.clone())
-
+    if not is_fake_mode_on():
         return result
+
+    # In fake mode, clone the tensor to prevent `FakeTensor` reuse. Should be cheap.
+    return replace_tensors(result, lambda tensor: tensor.clone())
 
 
 @TorchDispMode.function
@@ -128,8 +132,6 @@ def route_aten_thunk(thunk: TorchDispThunk) -> object:
     """
     Route `torch.aten` calls to `AtenThunk` for some `aioway` specific functionalities.
     """
-
-    from aioway.tensors import AtenThunk
 
     fn: AtenThunk | TorchDispThunk
 
@@ -188,9 +190,9 @@ class HistoryCollection(typing.NamedTuple):
 
 
 @ctxl.contextmanager
-def track_fn():
+def track_torch_thunks():
     """
-    Track all calls into the torch dispatch mode as `TorchIrThunk`.
+    Track all calls into the torch dispatch mode.
     """
 
     dis = TrackTorchDispHist()
@@ -201,11 +203,10 @@ def track_fn():
 
 
 @ctxl.contextmanager
-def fake_fn():
+def track_torch_fake_thunks():
     """
-    Track all calls into the torch dispatch mode as `TorchIrThunk`,
-    when fake mode is active.
+    Track all calls into the torch dispatch mode, and activate fake mode.
     """
 
-    with fake_mode(), track_fn() as hists:
+    with fake_mode(), track_torch_thunks() as hists:
         yield hists

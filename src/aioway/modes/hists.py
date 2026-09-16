@@ -12,11 +12,13 @@ import torch
 
 from aioway._thunks import Thunk
 from aioway._utils import TensorInput, topo_sort
-from aioway.tensors.attrs import Attr
-from aioway.tensors.nested import find_nested_tensors, replace_tensors_with_attr
-
-from .aten import is_leaf_has_grad
-from .modes import ModeThunk
+from aioway.tensors import (
+    Attr,
+    ModeThunk,
+    find_nested_tensors,
+    is_leaf_has_grad,
+    replace_tensors_with_attr,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -35,10 +37,10 @@ class TensorNode(TensorInput, Thunk, typing.Protocol):
 
 
 @dcls.dataclass(frozen=True)
-class FnResult[F]:
+class ThunkResult[F]:
     "The storage class per item for `FnHistory`."
 
-    fn: F
+    thunk: F
     "The `Thunk` that has been called."
 
     result: object
@@ -47,10 +49,10 @@ class FnResult[F]:
     @typing.override
     def __repr__(self) -> str:
         if isinstance(self.result, Exception):
-            return f"{type(self.result).__name__}: {self.result}: {self.fn!r}"
+            return f"{type(self.result).__name__}: {self.result}: {self.thunk!r}"
         else:
             result = replace_tensors_with_attr(self.result)
-            return f"{self.fn!r} -> {result}"
+            return f"{self.thunk!r} -> {result}"
 
 
 @dcls.dataclass(frozen=True)
@@ -61,7 +63,7 @@ class Hist[T: ModeThunk]:
     The history list stores past thunks in the order that we received.
     """
 
-    history: list[FnResult[T]] = dcls.field(default_factory=list)
+    history: list[ThunkResult[T]] = dcls.field(default_factory=list)
     """
     The `ModeThunk` that has been called, in order.
     """
@@ -72,10 +74,10 @@ class Hist[T: ModeThunk]:
     def __len__(self) -> int:
         return len(self.history)
 
-    def __getitem__(self, idx: int) -> FnResult[T]:
+    def __getitem__(self, idx: int) -> ThunkResult[T]:
         return self.history[idx]
 
-    def __iter__(self) -> cabc.Generator[FnResult[T]]:
+    def __iter__(self) -> cabc.Generator[ThunkResult[T]]:
         yield from self.history
 
     def __repr__(self) -> str:
@@ -93,7 +95,7 @@ class Hist[T: ModeThunk]:
 
     def _append(self, thunk: T, result: object | Exception, /) -> None:
         "Add a new entry in the `History`."
-        self.history.append(FnResult(thunk, result))
+        self.history.append(ThunkResult(thunk, result))
 
 
 @dcls.dataclass(frozen=True)
@@ -151,7 +153,7 @@ class HistTensorGraph[T: ModeThunk | HashableTensorInput](Hist):
                 for input_thunk in outs[tensor]:
                     yield input_thunk
 
-        return {entry.fn: list(input_thunks(entry.fn)) for entry in self.history}
+        return {entry.thunk: list(input_thunks(entry.thunk)) for entry in self.history}
 
     def inputs(self) -> set[torch.Tensor]:
         """
@@ -181,7 +183,7 @@ class HistTensorGraph[T: ModeThunk | HashableTensorInput](Hist):
     def _all_inputs(self):
         def inputs():
             for hist in self.history:
-                yield from hist.fn.inputs()
+                yield from hist.thunk.inputs()
 
         return set(inputs())
 
