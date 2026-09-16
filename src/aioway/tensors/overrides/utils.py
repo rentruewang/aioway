@@ -70,12 +70,15 @@ class _TorchVisitor[R: typing.Any = typing.Any]:
 
 @functools.cache
 def _to_fake_converter():
+    to_fake_tdict = lambda item: td.from_dict(_to_fake_dict(item))
+    to_fake_seq = lambda item: [to_fake(elem) for elem in item]
+
     return _TorchVisitor(
         tensor=_to_fake_tensor,
-        tdict=_to_fake_tdict,
+        tdict=to_fake_tdict,
         tcls=_to_fake_tcls,
         mapping=_to_fake_dict,
-        sequence=_to_fake_seq,
+        sequence=to_fake_seq,
         default=lambda item: item,
     )
 
@@ -163,14 +166,6 @@ def _to_fake_tcls(item):
     tdict = tcol_to_tdict(item)
     mapping = _to_fake_dict(tdict)
     return type(item)(**mapping)
-
-
-def _to_fake_seq(item):
-    return [to_fake(elem) for elem in item]
-
-
-def _to_fake_tdict(item):
-    return td.from_dict(_to_fake_dict(item))
 
 
 def _to_fake_tensor(tensor: torch.Tensor) -> ft.FakeTensor:
