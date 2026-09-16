@@ -1,6 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import dataclasses as dcls
+import logging
 import typing
 from collections import abc as cabc
 
@@ -13,6 +14,7 @@ from .tspecs import TSpec
 __all__ = ["TSpecCoercion", "tspec_coercion_rule", "default_coercion", "default_coerce"]
 
 _COERCION_RULES: dict[CoerceSign, CoerceRule] = {}
+LOGGER = logging.getLogger(__name__)
 
 
 class CoerceSign(typing.NamedTuple):
@@ -90,9 +92,12 @@ class TSpecCoercion(CoerceRule):
             return left
 
         for [lt, rt], impl in self.tspecs.items():
+            LOGGER.debug("Attempting to match %s, %s", lt, rt)
             if isinstance(left, lt) and isinstance(right, rt):
+                LOGGER.debug("Matched. Implementation: %r", impl)
                 return impl(left, right)
 
+        LOGGER.debug("Failed to match.")
         failed = CoerceSign(type(left), type(right))
         raise KeyError(f"No matching implementation found for {failed}.")
 
