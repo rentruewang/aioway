@@ -10,7 +10,7 @@ from aioway._utils import Sign
 
 from .tspecs import TSpec
 
-__all__ = ["TSpecCoercion", "tspec_coercion_rule"]
+__all__ = ["TSpecCoercion", "tspec_coercion_rule", "default_coercion"]
 
 _COERCION_RULES: dict[CoerceSign, CoerceRule] = {}
 
@@ -39,7 +39,9 @@ def tspec_coercion_rule(left: type[TSpec], right: type[TSpec]) -> CoerceRule:
     return _COERCION_RULES[CoerceSign(left, right)]
 
 
-def default_coercion():
+def default_coercion() -> TSpecCoercion:
+    "Get the default coercion rule."
+
     return TSpecCoercion(_COERCION_RULES)
 
 
