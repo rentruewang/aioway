@@ -19,6 +19,7 @@ dependencies = [
     "av>=17",
     "transformers>=5",
     "tokenizers>=0.22",
+    "datasets>=5",
     "torchrl>=0.13",
     "lightning>=2",
     "captum>=0.9",
@@ -126,7 +127,6 @@ parallel = true
 concurrency = ["multiprocessing"]
 
 [tool.pyrefly]
-preset = "legacy"
 ignore-missing-imports = [
     "torchcodec",
 ]

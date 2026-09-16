@@ -80,8 +80,8 @@ class AudioDataFolder(dutils.Dataset[torch.Tensor]):
     def __len__(self) -> int:
         return len(self._files)
 
-    def __getitem__(self, idx: int) -> torch.Tensor:
-        return self._loader(self._files[idx]).to_tensor()
+    def __getitem__(self, index: int) -> torch.Tensor:
+        return self._loader(self._files[index]).to_tensor()
 
     def collate(self, max_len: int):
         """
