@@ -12,11 +12,13 @@ import torch
 
 from aioway._thunks import Thunk
 from aioway._utils import TensorInput, topo_sort
-from aioway.tensors.attrs import Attr
-from aioway.tensors.nested import find_nested_tensors, replace_tensors_with_attr
-
-from .aten import is_leaf_has_grad
-from .modes import ModeThunk
+from aioway.tensors import (
+    Attr,
+    ModeThunk,
+    find_nested_tensors,
+    is_leaf_has_grad,
+    replace_tensors_with_attr,
+)
 
 LOGGER = logging.getLogger(__name__)
 
