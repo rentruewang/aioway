@@ -27,6 +27,7 @@ __all__ = [
     "LogTorchDis",
     "TrackTorchDispHist",
     "TrackTorchFuncHist",
+    "clone_dispatch_thunk",
     "route_aten_thunk",
 ]
 
@@ -105,22 +106,20 @@ class LogTorchDis(TorchDispMode):
         return result
 
 
-class CloneDispOp(TorchDispMode):
+@TorchDispMode.function
+def clone_dispatch_thunk(thunk: TorchDispThunk) -> object:
     """
     Automatically call `.clone()` on all tensors in the torch dispatch mode.
 
     This is useful to force a new `id` s.t. the tracking won't fail.
     """
+    result = thunk()
 
-    @typing.override
-    def run(self, thunk: TorchDispThunk, /) -> object:
-        result = thunk()
+    # In fake mode, clone the tensor to prevent `FakeTensor` reuse. Should be cheap.
+    if is_fake_mode_on():
+        result = replace_tensors(result, lambda tensor: tensor.clone())
 
-        # In fake mode, clone the tensor to prevent `FakeTensor` reuse. Should be cheap.
-        if is_fake_mode_on():
-            result = replace_tensors(result, lambda tensor: tensor.clone())
-
-        return result
+    return result
 
 
 @TorchDispMode.function

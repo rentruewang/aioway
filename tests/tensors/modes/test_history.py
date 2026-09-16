@@ -4,9 +4,9 @@ import pytest
 import torch
 
 from aioway.tensors import (
-    track_torch_fake_thunks,
     fake_mode,
     is_fake_mode_on,
+    track_torch_fake_thunks,
     track_torch_thunks,
 )
 
