@@ -1,11 +1,14 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import tensordict as td
+from aioway.tensors import TSpec
+import tensordict as td, typing
 import torch
 from torchrl.data import tensor_specs as tspecs
-
-from aioway.tensors._utils import tcol_to_tdict
-from aioway.tensors.fake import is_fake
+from collections import abc as cabc
+from ._utils import tcol_to_tdict
+from .fake import is_fake
+import functools
+from .tspecs import default_coerce
 
 __all__ = ["batch_tspec"]
 
@@ -19,6 +22,12 @@ def batch_tspec(item: object, /) -> tspecs.TensorSpec:
         return _tdict_tspec(tdict)
 
     return NotImplemented
+
+
+def iter_tspec(stream: cabc.Iterable[typing.Any], /) -> TSpec:
+    "Get a tspec over a stream."
+    tspecs = [batch_tspec(elem) for elem in stream]
+    return functools.reduce(default_coerce, tspecs)
 
 
 def _tensor_tspec(tensor: torch.Tensor, /) -> tspecs.TensorSpec:

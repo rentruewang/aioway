@@ -10,7 +10,7 @@ from aioway._utils import Sign
 
 from .tspecs import TSpec
 
-__all__ = ["TSpecCoercion", "tspec_coercion_rule", "default_coercion"]
+__all__ = ["TSpecCoercion", "tspec_coercion_rule", "default_coercion", "default_coerce"]
 
 _COERCION_RULES: dict[CoerceSign, CoerceRule] = {}
 
@@ -43,6 +43,12 @@ def default_coercion() -> TSpecCoercion:
     "Get the default coercion rule."
 
     return TSpecCoercion(_COERCION_RULES)
+
+
+def default_coerce(left: TSpec, right: TSpec) -> TSpec:
+    "Coerce with the default rule."
+
+    return default_coercion()(left, right)
 
 
 @dcls.dataclass(frozen=True)
