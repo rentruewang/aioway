@@ -3,7 +3,7 @@
 "The `gymnasium` adaptor for `TSpec`."
 
 import functools
-from email.utils import parsedate
+
 import gymnasium as gym
 import numpy as np
 import torch

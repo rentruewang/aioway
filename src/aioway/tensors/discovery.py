@@ -8,11 +8,9 @@ import tensordict as td
 import torch
 from torchrl.data import tensor_specs as tspecs
 
-from .tspecs import TSpec
-
 from ._utils import tcol_to_tdict
 from .fake import is_fake
-from .tspecs import default_coerce
+from .tspecs import TSpec, default_coerce
 
 __all__ = ["batch_tspec", "iter_tspec"]
 

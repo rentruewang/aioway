@@ -89,11 +89,12 @@ class TSpecCoercion(CoerceRule):
         elif right is NotImplemented:
             return left
 
-        type_left = type(left)
-        type_right = type(right)
+        for [lt, rt], impl in self.tspecs.items():
+            if isinstance(left, lt) and isinstance(right, rt):
+                return impl(left, right)
 
-        sign = CoerceSign(type_left, type_right)
-        return self.tspecs[sign](left, right)
+        failed = CoerceSign(type(left), type(right))
+        raise KeyError(f"No matching implementation found for {failed}.")
 
 
 def register_tspec_fold[F: CoerceRule](
