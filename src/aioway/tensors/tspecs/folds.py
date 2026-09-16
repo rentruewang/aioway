@@ -10,7 +10,7 @@ from aioway._utils import Sign
 
 from .tspecs import TSpec
 
-__all__ = ["FoldTSpec"]
+__all__ = ["FoldTSpec", "tspec_fold_rule"]
 
 _ALL_RULES: dict[FoldSign, FoldRule] = {}
 
@@ -31,6 +31,12 @@ class FoldSign(typing.NamedTuple):
 class FoldRule[L: TSpec = typing.Any, R: TSpec = typing.Any](typing.Protocol):
     def __call__(self, left: L, right: R) -> TSpec:
         raise NotImplementedError
+
+
+def tspec_fold_rule(left: type[TSpec], right: type[TSpec]) -> FoldRule:
+    "Get the rule for input `(left, right)`."
+
+    return _ALL_RULES[FoldSign(left, right)]
 
 
 @dcls.dataclass(frozen=True)
