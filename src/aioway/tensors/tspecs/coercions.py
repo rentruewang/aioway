@@ -93,6 +93,7 @@ class TSpecCoercion(CoerceRule):
 
         for [lt, rt], impl in self.tspecs.items():
             LOGGER.debug("Attempting to match %s, %s", lt, rt)
+
             if isinstance(left, lt) and isinstance(right, rt):
                 LOGGER.debug("Matched. Implementation: %r", impl)
                 return impl(left, right)
