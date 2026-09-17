@@ -7,5 +7,6 @@ from .discovery import *
 from .nested import *
 from .overrides import *
 from .renders import *
+from .routes import *
 from .sessions import *
 from .tspecs import *
