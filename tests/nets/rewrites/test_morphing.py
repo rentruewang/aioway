@@ -3,7 +3,7 @@
 import pytest
 from torch import nn
 
-from aioway.nn.rewrites import NetMorphLinearDeeper
+from aioway.nets.rewrites import NetMorphLinearDeeper
 
 
 def sequential():
