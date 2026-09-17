@@ -8,10 +8,8 @@ import torch
 from IPython.core.guarded_eval import typing
 from torch import nn
 
-from aioway._utils import register_module_forward_hook
-from aioway._utils.types import AnyDict
-from aioway.tensors import fake_mode
-from aioway.tensors.routes import route_aten_thunk
+from aioway._utils import AnyDict, register_module_forward_hook
+from aioway.tensors import fake_mode, route_aten_thunk
 
 __all__ = ["capture_module_hist", "ModuleInOutThunk", "ModuleInOutHist"]
 
