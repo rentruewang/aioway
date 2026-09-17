@@ -1,7 +1,5 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from aioway.tensors import clone_in_fake_mode
-from aioway.tensors import find_nested_tensors
 import contextlib as ctxl
 import dataclasses as dcls
 import typing
@@ -11,7 +9,12 @@ import torch
 from torch import nn
 
 from aioway._utils import AnyDict, register_module_forward_hook
-from aioway.tensors import fake_mode, route_aten_thunk
+from aioway.tensors import (
+    clone_in_fake_mode,
+    fake_mode,
+    find_nested_tensors,
+    route_aten_thunk,
+)
 
 __all__ = ["capture_module_hist", "ModuleInOutThunk", "ModuleInOutHist"]
 
@@ -83,16 +86,14 @@ class ModuleInOutHist:
 
 
 @ctxl.contextmanager
-def capture_module_hist():
-    hist = ModuleInOutHist()
-
+def capture_module_hist() -> cabc.Generator[ModuleInOutHist]:
     with ctxl.ExitStack() as stack:
         for mode in [
             fake_mode(),
             clone_in_fake_mode.activate(),
             route_aten_thunk.activate(),
-            hist.register_module_forward_hook(),
+            (hist := ModuleInOutHist()).register_module_forward_hook(),
         ]:
             stack.enter_context(mode)
 
-        yield
+        yield hist
