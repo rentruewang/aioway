@@ -2,10 +2,10 @@
 
 import contextlib as ctxl
 import dataclasses as dcls
+import typing
 from collections import abc as cabc
 
 import torch
-from IPython.core.guarded_eval import typing
 from torch import nn
 
 from aioway._utils import AnyDict, register_module_forward_hook
