@@ -10,8 +10,8 @@ from collections import abc as cabc
 from torch import nn
 
 from aioway._utils import Param, Sign, is_nn_type
-from aioway.nets.regs import NnRegAttr, nn_reg
-from aioway.nets.signs import nn_sign_skeleton
+from aioway.nn.regs import NnRegAttr, nn_reg
+from aioway.nn.signs import nn_sign_skeleton
 from aioway.tensors import TSpec, TSpecLike, as_tspec, is_tspec_subtype
 
 __all__ = ["Deduction", "deduction_for", "deduction_reg"]

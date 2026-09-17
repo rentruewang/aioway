@@ -5,7 +5,7 @@ import operator
 import pytest
 import torch
 
-from aioway.nets import track_torch_fake_thunks
+from aioway.nn import track_torch_fake_thunks
 
 
 @pytest.fixture

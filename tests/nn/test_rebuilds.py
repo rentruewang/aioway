@@ -6,7 +6,7 @@ import pytest
 import torch
 from torch import nn
 
-from aioway.nets import rebuild_module
+from aioway.nn import rebuild_module
 from aioway.tensors import is_fake, is_real, real_mode
 
 
