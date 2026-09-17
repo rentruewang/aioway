@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from aioway.ir import track_torch_fake_thunks, track_torch_thunks
+from aioway.nets import track_torch_fake_thunks, track_torch_thunks
 from aioway.tensors import fake_mode, is_fake_mode_on
 
 

@@ -4,7 +4,7 @@ import pytest
 
 from aioway._thunks import Thunk
 from aioway._utils import TensorInput
-from aioway.ir import HistTensorGraph
+from aioway.nets import HistTensorGraph
 from aioway.tensors import Aten, AtenThunk, ModeThunk, TorchDispThunk, TorchFuncThunk
 
 
