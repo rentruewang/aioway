@@ -60,13 +60,17 @@ class ModuleInOutHist:
         return self.history[idx]
 
     def append(self, thunk: ModuleInOutThunk) -> None:
+        outputs = tuple(thunk.outputs())
+
+        # Check if the keys already exists,
+        # should be unique due to cloning in fake mode.
+        if not self.output_index.keys().isdisjoint(outputs):
+            raise KeyError(f"Impossible conflicting output at {self.history[-1]}.")
+
         length = len(self)
         self.history.append(thunk)
 
-        for output in thunk.outputs():
-            if output in self.output_index:
-                raise KeyError(f"Impossible conflicting output at {self.history[-1]}.")
-
+        for output in outputs:
             self.output_index[output] = length
 
     def thunk_of(self, output: torch.Tensor) -> ModuleInOutThunk:
