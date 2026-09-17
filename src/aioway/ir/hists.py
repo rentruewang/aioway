@@ -56,7 +56,7 @@ class ThunkResult[F]:
 
 
 @dcls.dataclass(frozen=True)
-class Hist[T: ModeThunk]:
+class Hist[T: Thunk]:
     """
     `Hist` is a list storing previous events in order.
 
