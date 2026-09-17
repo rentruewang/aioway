@@ -1,5 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+from aioway.tensors import clone_in_fake_mode
+from aioway.tensors import find_nested_tensors
 import contextlib as ctxl
 import dataclasses as dcls
 import typing
@@ -18,14 +20,14 @@ __all__ = ["capture_module_hist", "ModuleInOutThunk", "ModuleInOutHist"]
 class ModuleInOutThunk:
     module: nn.Module
 
-    input: tuple[torch.Tensor, ...]
-    output: torch.Tensor
+    input: typing.Any
+    output: typing.Any
 
-    def inputs(self) -> tuple[torch.Tensor, ...]:
-        return self.input
+    def inputs(self) -> cabc.Generator[torch.Tensor]:
+        yield from find_nested_tensors(self.input)
 
-    def __call__(self) -> torch.Tensor:
-        return self.output
+    def outputs(self) -> cabc.Generator[torch.Tensor]:
+        yield from find_nested_tensors(self.output)
 
 
 @dcls.dataclass(frozen=True)
@@ -57,7 +59,12 @@ class ModuleInOutHist:
     def append(self, thunk: ModuleInOutThunk) -> None:
         length = len(self)
         self.history.append(thunk)
-        self.output_index[thunk.output] = length
+
+        for output in thunk.outputs():
+            if output in self.output_index:
+                raise KeyError(f"Impossible conflicting output at {self.history[-1]}.")
+
+            self.output_index[output] = length
 
     def thunk_of(self, output: torch.Tensor) -> ModuleInOutThunk:
         idx = self.output_index[output]
@@ -79,5 +86,13 @@ class ModuleInOutHist:
 def capture_module_hist():
     hist = ModuleInOutHist()
 
-    with fake_mode(), route_aten_thunk.activate(), hist.register_module_forward_hook():
-        yield hist
+    with ctxl.ExitStack() as stack:
+        for mode in [
+            fake_mode(),
+            clone_in_fake_mode.activate(),
+            route_aten_thunk.activate(),
+            hist.register_module_forward_hook(),
+        ]:
+            stack.enter_context(mode)
+
+        yield
