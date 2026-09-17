@@ -3,7 +3,7 @@
 import pytest
 from torch import nn
 
-from aioway.tensors import hash_module_state_dict
+from aioway.nn import hash_module_state_dict
 
 
 @pytest.fixture(autouse=True)

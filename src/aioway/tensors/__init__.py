@@ -1,6 +1,5 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from ._modules import *
 from .aten import *
 from .attrs import *
 from .discovery import *
