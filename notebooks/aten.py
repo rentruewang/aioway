@@ -15,9 +15,8 @@
 # %%
 import torch
 
-from aioway._utils import *
-from aioway.modes import *
-from aioway.tensors import *
+from aioway.ir import track_torch_fake_thunks
+from aioway.tensors import PrintTorchDisp, PrintTorchFunc, fake_mode
 
 # %%
 dispatch_print = PrintTorchDisp()

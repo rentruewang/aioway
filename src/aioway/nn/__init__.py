@@ -3,6 +3,7 @@
 from .args import *
 from .deductions import *
 from .emits import *
+from .hashes import *
 from .rebuild import *
 from .regs import *
 from .rewrites import *
