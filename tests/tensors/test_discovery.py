@@ -5,7 +5,7 @@ import torch
 from numpy import random as np_rand
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.tensors import batch_tspec, iter_tspec
+from aioway.torch import batch_tspec, iter_tspec
 
 
 @pytest.fixture

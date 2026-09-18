@@ -12,7 +12,7 @@ import tensordict as td
 import torch
 from torch._subclasses import fake_tensor as ft
 
-from aioway.tensors._utils import tcol_to_tdict
+from aioway.torch._utils import tcol_to_tdict
 
 from .fake import fake_mode
 

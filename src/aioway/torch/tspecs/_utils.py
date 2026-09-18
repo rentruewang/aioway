@@ -5,7 +5,7 @@ from collections import abc as cabc
 
 import torch
 
-from aioway.tensors.attrs import (
+from aioway.torch.attrs import (
     Device,
     DeviceLike,
     DType,

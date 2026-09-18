@@ -12,7 +12,7 @@ import torch
 
 from aioway._thunks import Thunk
 from aioway._utils import TensorInput, topo_sort
-from aioway.tensors import (
+from aioway.torch import (
     Attr,
     ModeThunk,
     find_nested_tensors,

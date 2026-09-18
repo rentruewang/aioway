@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 import torch
 
-from aioway.tensors import DType, DTypeFamily
+from aioway.torch import DType, DTypeFamily
 
 
 @dcls.dataclass(frozen=True)

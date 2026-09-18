@@ -7,7 +7,7 @@ import dataclasses as dcls
 import logging
 import typing
 
-from aioway.tensors import (
+from aioway.torch import (
     AtenThunk,
     TorchDispMode,
     TorchDispThunk,

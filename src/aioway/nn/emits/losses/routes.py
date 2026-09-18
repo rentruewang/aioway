@@ -9,7 +9,7 @@ from torchrl.data import tensor_specs as tspecs
 
 from aioway.nn.args import ArgsTSpec
 from aioway.nn.emits.emitters import emitter_function
-from aioway.tensors import LossTSpec, TSpec, TSpecLike, as_tspec, is_tspec_like
+from aioway.torch import LossTSpec, TSpec, TSpecLike, as_tspec, is_tspec_like
 
 __all__ = ["emit_loss", "route_loss"]
 

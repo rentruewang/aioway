@@ -24,7 +24,7 @@ def replace_tensors(
     Caused by `.device` / `.shape` / `.dtype` calls, which is used in `replace_tensors`.
     """
 
-    from aioway.tensors.overrides import mode_off
+    from aioway.torch.overrides import mode_off
 
     def maybe_replace(item):
         if not isinstance(item, torch.Tensor):
@@ -38,7 +38,7 @@ def replace_tensors(
 
 @typing.no_type_check
 def replace_tensors_with_attr[T](obj: T) -> T:
-    from aioway.tensors.attrs import Attr
+    from aioway.torch.attrs import Attr
 
     return replace_tensors(obj, Attr.parse)
 

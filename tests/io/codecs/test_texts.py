@@ -6,7 +6,7 @@ import pytest
 import torch
 
 from aioway.io import TokenizerLoader
-from aioway.tensors import DType
+from aioway.torch import DType
 
 
 def _tokenizers():

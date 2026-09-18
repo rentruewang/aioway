@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from aioway.tensors import Device
+from aioway.torch import Device
 
 
 def _cpus():

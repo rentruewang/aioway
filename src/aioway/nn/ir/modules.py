@@ -9,7 +9,7 @@ import torch
 from torch import nn
 
 from aioway._utils import AnyDict, register_module_forward_hook
-from aioway.tensors import (
+from aioway.torch import (
     clone_in_fake_mode,
     fake_mode,
     find_nested_tensors,

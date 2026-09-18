@@ -129,7 +129,7 @@ class Attr:
         Generate a random tensor. This should be used under fake mode.
         """
 
-        from aioway.tensors import fake_mode
+        from aioway.torch import fake_mode
 
         with fake_mode():
             return torch.zeros(

@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from aioway.tensors import TSpec, array_box_tspec
+from aioway.torch import TSpec, array_box_tspec
 
 
 @pytest.fixture

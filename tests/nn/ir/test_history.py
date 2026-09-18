@@ -4,7 +4,7 @@ import pytest
 import torch
 
 from aioway.nn import track_torch_fake_thunks, track_torch_thunks
-from aioway.tensors import fake_mode, is_fake_mode_on
+from aioway.torch import fake_mode, is_fake_mode_on
 
 
 @pytest.fixture

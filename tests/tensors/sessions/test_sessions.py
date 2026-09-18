@@ -4,7 +4,7 @@ import contextlib as ctxl
 
 import pytest
 
-from aioway.tensors import Session
+from aioway.torch import Session
 
 
 class SubSession(Session["SubSession"]):
