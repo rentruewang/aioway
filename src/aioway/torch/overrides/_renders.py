@@ -4,8 +4,7 @@ import typing
 from collections import abc as cabc
 
 from aioway._utils import render_fcall, render_torch_func_name
-
-from .nested import replace_tensors_with_attr
+from aioway.torch.nested import replace_tensors_with_attr
 
 __all__ = ["render_tensor_func_short", "render_function_body_prefix"]
 
