@@ -15,7 +15,6 @@ from torch import _ops, overrides
 from torch.utils import _python_dispatch as pyd
 
 from aioway._utils import Stack
-from aioway.torch.aten import is_aten_op, is_prim_op
 from aioway.torch.nested import find_nested_tensors
 from aioway.torch.renders import render_function_body_prefix
 
@@ -325,14 +324,6 @@ class TorchDispThunk(ModeThunk):
         return render_function_body_prefix(
             "dispatch", self.func, self.args, self.kwargs
         )
-
-    @property
-    def is_aten(self) -> bool:
-        return is_aten_op(self.func)
-
-    @property
-    def is_prim(self) -> bool:
-        return is_prim_op(self.func)
 
 
 @typing.final
