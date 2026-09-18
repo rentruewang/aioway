@@ -8,8 +8,10 @@ import typing
 
 import rich
 
+from aioway.torch._utils import replace_tensors
+
 from .aten import AtenThunk
-from .nested import replace_tensors, replace_tensors_with_attr
+from .attrs import replace_tensors_with_attr
 from .overrides import (
     TorchDispMode,
     TorchDispThunk,
