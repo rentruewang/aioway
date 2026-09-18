@@ -15,7 +15,7 @@
 # %%
 import torch
 
-from aioway.nn import track_torch_fake_thunks
+from aioway.cc import track_torch_fake_thunks
 from aioway.torch import PrintTorchDisp, PrintTorchFunc, fake_mode
 
 # %%

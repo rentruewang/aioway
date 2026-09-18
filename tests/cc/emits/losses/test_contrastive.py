@@ -4,7 +4,7 @@ import pytest
 import torch
 from torch import nn, optim
 
-from aioway.nn import (
+from aioway.cc import (
     ContrastiveLoss,
     ContrastiveLossEmitter,
     emit_one,

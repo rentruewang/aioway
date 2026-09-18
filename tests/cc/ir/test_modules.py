@@ -4,7 +4,7 @@ import pytest
 import torch
 from torch import nn
 
-from aioway.nn import ModuleInOutHist, ModuleInOutThunk, capture_module_hist
+from aioway.cc import ModuleInOutHist, ModuleInOutThunk, capture_module_hist
 
 
 class Double(nn.Module):

@@ -7,8 +7,8 @@ from collections import abc as cabc
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.nn.args import ArgsTSpec
-from aioway.nn.emits.emitters import emitter_function
+from aioway.cc.args import ArgsTSpec
+from aioway.cc.emits.emitters import emitter_function
 from aioway.torch import LossTSpec, TSpec, TSpecLike, as_tspec, is_tspec_like
 
 __all__ = ["emit_loss", "route_loss"]

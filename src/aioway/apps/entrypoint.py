@@ -7,7 +7,7 @@ from torch import nn, optim
 
 from aioway.contrib.dsets import route_dset
 from aioway.io import Dset
-from aioway.nn import emit, route_loss
+from aioway.cc import emit, route_loss
 from aioway.tasks import StaticTrainer, TrainCfg
 from aioway.torch import TSpec, as_tspec
 
