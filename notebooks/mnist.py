@@ -13,6 +13,7 @@
 #     name: python3
 # ---
 
+# %%
 import typing
 
 import lightning as L
