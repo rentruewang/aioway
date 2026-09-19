@@ -6,7 +6,7 @@ from torch import nn
 
 from aioway._utils import Sign
 
-from .regs import NnRegAttr, nn_reg
+from .regs import sign_reg
 
 __all__ = ["nn_sign_skeleton", "sign_reg"]
 
@@ -25,9 +25,3 @@ def nn_sign_skeleton(module: type[nn.Module]) -> Sign:
         sreg[module] = sign
 
     return sreg[module]
-
-
-def sign_reg() -> NnRegAttr[Sign]:
-    "The signature register."
-
-    return NnRegAttr("signature", Sign, nn_reg())

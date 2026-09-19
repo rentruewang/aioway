@@ -10,7 +10,7 @@ from collections import abc as cabc
 from torch import nn
 
 from aioway._utils import Param, Sign, is_nn_type
-from aioway.cc.regs import NnRegAttr, nn_reg
+from aioway.cc.regs import deduction_reg
 from aioway.cc.signs import nn_sign_skeleton
 from aioway.torch import TSpec, TSpecLike, as_tspec, is_tspec_subtype
 
@@ -211,11 +211,10 @@ def _signature_handles(deduction: cabc.Callable, *args, **kwargs) -> bool:
     return True
 
 
-def deduction_reg() -> NnRegAttr[Deduction]:
-    return NnRegAttr("deduction", Deduction, nn_reg())
-
-
-def deduction_for(module: type[nn.Module] | nn.Module) -> Deduction:
+def deduction_for(
+    module: type[nn.Module] | nn.Module,
+    deductions: cabc.MutableMapping[type[nn.Module], Deduction] | None = None,
+) -> Deduction:
     """
     Get the deduction registered for type of `nn.Module`.
     """
@@ -229,9 +228,10 @@ def deduction_for(module: type[nn.Module] | nn.Module) -> Deduction:
             f"Got {type(module)=}."
         )
 
-    dreg = deduction_reg()
+    if deductions is None:
+        deductions = deduction_reg()
 
-    if module not in dreg:
-        dreg[module] = Deduction(module)
+    if module not in deductions:
+        deductions[module] = Deduction(module)
 
-    return dreg[module]
+    return deductions[module]
