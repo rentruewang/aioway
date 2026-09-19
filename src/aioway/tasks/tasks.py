@@ -7,7 +7,7 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway.tensors import TSpecLike
+from aioway.torch import TSpecLike
 
 __all__ = ["Task", "BatchIter"]
 

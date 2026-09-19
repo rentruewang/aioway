@@ -7,7 +7,7 @@ import typing
 import torch
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.tensors import TSpec
+from aioway.torch import TSpec
 
 
 class TaskType(enum.StrEnum):

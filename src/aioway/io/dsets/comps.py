@@ -10,7 +10,7 @@ import tensordict as td
 import torch
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.tensors import TSpecLike
+from aioway.torch import TSpecLike
 
 from .dsets import Dset, IdxDset
 
