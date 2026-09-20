@@ -7,7 +7,7 @@ from collections import abc as cabc
 
 import tensordict as td
 
-from .attrs import Attr, AttrCompat
+from .attrs import Attr
 from .dtypes import DType
 
 __all__ = ["Schema"]
@@ -18,7 +18,7 @@ class Schema(collections.UserDict[str, Attr]):
     `Schema` is a `dict[str, Attr]` with additional utilities.
     """
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(json.dumps({key: val.__getstate__() for key, val in self.items()}))
 
     @property
@@ -77,7 +77,3 @@ class Schema(collections.UserDict[str, Attr]):
     @classmethod
     def parse(cls, mapping: cabc.Mapping[str, typing.Any], /) -> typing.Self:
         return cls({key: Attr.parse(tensor) for key, tensor in mapping.items()})
-
-
-def schema(mapping: cabc.Mapping[str, AttrCompat], /) -> Schema:
-    return Schema.parse(mapping)
