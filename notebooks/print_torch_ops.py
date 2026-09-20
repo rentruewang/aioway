@@ -46,6 +46,9 @@ c
 d = torch.randn_like(c)
 d
 
+# %% [markdown]
+# ## TensorDicts
+
 # %%
 with PrintTorchDisp().activate(), PrintTorchFunc().activate():
     tdict = td.TensorDict({"c": c, "d": d})
@@ -76,3 +79,18 @@ with PrintTorchDisp(rich=True).activate(), PrintTorchFunc().activate():
 #
 # It does translate `torch` calls to weird `_foreach_add` calls for `+`,
 # but `%` seems unoptimized and calls `remainder` multiple times.
+
+# %% [markdown]
+# ## `torch.cond`
+
+# %%
+torch.cond
+
+# %%
+with PrintTorchDisp(rich=True).activate(), PrintTorchFunc().activate():
+    r = torch.cond(1, lambda: a, lambda: b)
+
+r
+
+# %% [markdown]
+# Nothing shows up!
