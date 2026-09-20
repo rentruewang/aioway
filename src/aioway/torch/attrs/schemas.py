@@ -7,7 +7,7 @@ from collections import abc as cabc
 
 import tensordict as td
 
-from .attrs import Attr, AttrLike
+from .attrs import Attr, AttrCompat
 from .dtypes import DType
 
 __all__ = ["Schema"]
@@ -75,9 +75,9 @@ class Schema(collections.UserDict[str, Attr]):
             )
 
     @classmethod
-    def parse(cls, mapping: cabc.Mapping[str, AttrLike], /) -> typing.Self:
+    def parse(cls, mapping: cabc.Mapping[str, typing.Any], /) -> typing.Self:
         return cls({key: Attr.parse(tensor) for key, tensor in mapping.items()})
 
 
-def schema(mapping: cabc.Mapping[str, AttrLike], /) -> Schema:
+def schema(mapping: cabc.Mapping[str, AttrCompat], /) -> Schema:
     return Schema.parse(mapping)
