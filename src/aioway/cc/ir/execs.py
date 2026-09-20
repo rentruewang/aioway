@@ -32,11 +32,3 @@ class FakeThunkResult[F: TorchFuncThunk | TorchDispThunk]:
 
     def inputs(self) -> cabc.Generator[torch.Tensor]:
         yield from self.thunk.inputs()
-
-
-@dcls.dataclass
-class DagNode:
-    "The dag node of the dag."
-
-    input_idxs: cabc.Sequence[int]
-    output_idxs: cabc.Sequence[int]

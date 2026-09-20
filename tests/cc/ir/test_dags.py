@@ -2,18 +2,18 @@
 
 import pytest
 
-from aioway.cc import DagNodeKey, topo_sort
+from aioway.cc import topo_sort_id
 
 
 @pytest.fixture
 def dag():
     nodes = [
-        DagNodeKey(1, []),
-        DagNodeKey(2, [1]),
-        DagNodeKey(3, [1]),
-        DagNodeKey(4, [1, 3]),
+        (1, []),
+        (2, [1]),
+        (3, [1]),
+        (4, [1, 3]),
     ]
-    return topo_sort(nodes)
+    return topo_sort_id(nodes)
 
 
 def test_dag_items(dag: list[int]):

@@ -18,7 +18,7 @@ from aioway.torch import (
     replace_tensors_with_attr,
 )
 
-from .dags import topo_sort
+from .dags import topo_sort_id
 
 
 __all__ = ["Hist", "HistTensorGraph", "TensorInput", "HashableTensorInput"]
@@ -153,7 +153,7 @@ class HistTensorGraph[T: ModeThunk | HashableTensorInput](Hist):
         "Sort the tensor graph topologically."
 
         graph = self._thunk_graph()
-        return topo_sort(graph)
+        return topo_sort_id(graph)
 
     def _thunk_graph(self):
         outs = self.output_to_thunk_list
