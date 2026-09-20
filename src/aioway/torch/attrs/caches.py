@@ -7,7 +7,7 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway.torch import is_real
+from aioway.torch.overrides import is_real
 from aioway.torch._utils import tcol_to_tdict
 
 from .attrs import Attr
@@ -47,6 +47,9 @@ class _FakeAttrSchemaCache:
 
         # Storing tensors to prevent reuse of `id` due to free.
         self._tensors: dict[int, torch.Tensor] = {}
+
+    def __contains__(self, item: object) -> bool:
+        return id(item) in self._tensors
 
     def __len__(self) -> int:
         return len(self._cache)
