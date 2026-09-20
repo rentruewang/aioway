@@ -7,8 +7,8 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway.torch.overrides import is_real
 from aioway.torch._utils import tcol_to_tdict
+from aioway.torch.overrides import is_real
 
 from .attrs import Attr
 from .schemas import Schema
