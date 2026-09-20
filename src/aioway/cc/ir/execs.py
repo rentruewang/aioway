@@ -1,5 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import dataclasses as dcls
 import functools
 import typing
 from collections import abc as cabc
@@ -74,3 +75,15 @@ class DoneTorchThunk[F: cabc.Callable]:
     @functools.cached_property
     def _signature(self) -> Sign:
         return Sign.from_callable(self._func)
+
+
+@dcls.dataclass
+class TorchDagNode:
+    inputs: list[int]
+    outputs: list[int]
+    function: cabc.Callable
+
+
+class TorchDag:
+    def __init__(self, execs):
+        pass
