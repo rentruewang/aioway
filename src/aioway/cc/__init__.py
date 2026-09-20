@@ -1,7 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 from .args import *
-from .deductions import *
 from .emits import *
 from .hashes import *
 from .ir import *

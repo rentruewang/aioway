@@ -4,25 +4,18 @@
 
 import dataclasses as dcls
 import functools
-import typing
 from collections import abc as cabc
 
 from torch import nn
 
 from aioway._utils import Sign, dcls_asdict
 
-if typing.TYPE_CHECKING:
-    from .deductions import Deduction
-
-__all__ = ["NnOp", "NnRegView", "nn_reg", "deduction_reg", "sign_reg"]
+__all__ = ["NnOp", "NnRegView", "nn_reg", "sign_reg"]
 
 type _NnModuleReg[T] = dict[type[nn.Module], T]
 
 _SIGN_REG: _NnModuleReg[Sign] = {}
 "The signature registry for `nn.Module.forward`."
-
-_DEDUCTION_REG: _NnModuleReg[Deduction] = {}
-"The deduction function for each `nn.Module.forward` call."
 
 
 @dcls.dataclass
@@ -37,21 +30,12 @@ class NnOp:
     signature: Sign | None = None
     "The signature of `nn.Module` using `.forward`."
 
-    deduction: Deduction | None = None
-    "The deduction function."
-
     def __bool__(self) -> bool:
         """
         Check if `NnOp` has any attribute defined.
         """
 
         return any(val for val in dcls_asdict(self).values())
-
-
-def deduction_reg() -> dict[type[nn.Module], Deduction]:
-    "The deduction register."
-
-    return _DEDUCTION_REG
 
 
 def sign_reg() -> dict[type[nn.Module], Sign]:
@@ -76,7 +60,6 @@ class NnRegView(cabc.Mapping[type[nn.Module], NnOp]):
     """
 
     def __init__(self) -> None:
-        self._deductions = {**_DEDUCTION_REG}
         self._signs = {**_SIGN_REG}
 
     def __repr__(self) -> str:
@@ -99,14 +82,13 @@ class NnRegView(cabc.Mapping[type[nn.Module], NnOp]):
         if key not in self._keys:
             raise KeyError(key)
 
-        deduction = self._deductions.get(key)
         sign = self._signs.get(key)
 
-        return NnOp(deduction=deduction, signature=sign)
+        return NnOp(signature=sign)
 
     @functools.cached_property
     def _keys(self) -> set[type[nn.Module]]:
-        return _union_of_keys(self._deductions, self._signs)
+        return _union_of_keys(self._signs)
 
 
 def _union_of_keys(*dicts: _NnModuleReg) -> set[type[nn.Module]]:
