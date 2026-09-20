@@ -1,13 +1,17 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from aioway.torch import find_nested_tensors
+import functools
 import typing
 from collections import abc as cabc
 
 import torch
 
-from aioway._utils import decomp_flatten
-from aioway.torch import render_tensor_func_short, replace_tensors_with_attr
+from aioway._utils import Sign
+from aioway.torch import (
+    find_nested_tensors,
+    render_tensor_func_short,
+    replace_tensors_with_attr,
+)
 
 __all__ = ["DoneTorchThunk"]
 
@@ -22,11 +26,17 @@ class DoneTorchThunk[F: cabc.Callable]:
         args: tuple,
         kwargs: dict[str, typing.Any],
         result: typing.Any,
-    ):
-        self.func = func
-        self.args = args
-        self.kwargs = kwargs
-        self.result = result
+    ) -> None:
+        self._func = func
+        self._args = args
+        self._kwargs = kwargs
+        self._result = result
+
+        if not callable(self.func):
+            raise TypeError(f"{self.func} is not callable.")
+
+        # Try binding, if not this would fail with `TypeError`.
+        _ = self._signature.bind(*self.args, **self.kwargs)
 
     @typing.override
     def __repr__(self) -> str:
@@ -44,3 +54,23 @@ class DoneTorchThunk[F: cabc.Callable]:
         "Get the output of the current thunk."
 
         yield from find_nested_tensors(self.result)
+
+    @property
+    def func(self):
+        return self._func
+
+    @property
+    def args(self):
+        return self._args
+
+    @property
+    def kwargs(self):
+        return self._kwargs
+
+    @property
+    def result(self):
+        return self._result
+
+    @functools.cached_property
+    def _signature(self) -> Sign:
+        return Sign.from_callable(self._func)
