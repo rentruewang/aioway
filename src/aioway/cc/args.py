@@ -9,7 +9,7 @@ import torch
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
-from .signs import sign_reg
+from aioway.cc.regs import sign_reg
 
 __all__ = ["ArgsTSpec", "NnArgs"]
 

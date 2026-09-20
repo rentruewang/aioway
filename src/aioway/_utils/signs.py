@@ -216,7 +216,7 @@ class Sign:
         return cls(inspect.signature(func))
 
     @classmethod
-    def from_inputs(cls, names: cabc.Iterable[str]) -> typing.Self:
+    def from_inputs(cls, *names: str) -> typing.Self:
         "Create the signature from input parameters."
         return cls(
             inspect.Signature(
