@@ -62,6 +62,9 @@ class NnRegView(cabc.Mapping[type[nn.Module], NnOp]):
     def __init__(self) -> None:
         self._signs = {**_SIGN_REG}
 
+    def __hash__(self) -> int:
+        return id(self)
+
     def __repr__(self) -> str:
         return repr({key: self[key] for key in self._keys})
 
