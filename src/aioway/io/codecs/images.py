@@ -10,7 +10,7 @@ from PIL import Image as image
 from torchvision import io as vio
 from torchvision.transforms import v2 as tt
 
-from aioway.torch import Attr, AttrLike, is_fake_mode_on, torch_set_fake_mode_func
+from aioway.torch import Attr, is_fake_mode_on, torch_set_fake_mode_func
 
 from ._bases import TorchCompatible
 
@@ -92,7 +92,7 @@ class PillowImageLoader(ImageLoader):
 
     def _fake_load_img(self, fname: str | pathlib.Path, /) -> torch.Tensor:
         with image.open(fname) as img:
-            mapping: AttrLike = {
+            mapping = {
                 "shape": [len(img.mode), img.width, img.height],
                 "dtype": "uint8",
             }

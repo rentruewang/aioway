@@ -134,8 +134,8 @@ class AvAudioLoader(AudioLoader):
 
         # Create a fake tensor of float32 in fake mode.
         if is_fake_mode_on():
-            tensor = Attr.build(
-                shape=[info.num_channels, info.num_frames], dtype=torch.float32
+            tensor = Attr.parse(
+                {"shape": [info.num_channels, info.num_frames], "dtype": torch.float32}
             ).to_fake_tensor()
 
         # Decode frame by frame.

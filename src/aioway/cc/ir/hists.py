@@ -180,19 +180,19 @@ class HistTensorGraph[T: ModeThunk | HashableTensorInput](Hist):
             if is_leaf_has_grad(tensor):
                 yield tensor
 
-    def _all_inputs(self):
+    def _all_inputs(self) -> set[torch.Tensor]:
         def inputs():
             for hist in self.history:
                 yield from hist.thunk.inputs()
 
         return set(inputs())
 
-    def _all_outputs(self):
+    def _all_outputs(self) -> set[torch.Tensor]:
         def outputs():
             for hist in self.history:
                 yield from find_nested_tensors(hist.result)
 
         return set(outputs())
 
-    def _all_tensors(self):
+    def _all_tensors(self) -> set[torch.Tensor]:
         return self._all_inputs() | self._all_outputs()

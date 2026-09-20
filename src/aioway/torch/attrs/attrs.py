@@ -10,21 +10,45 @@ from collections import abc as cabc
 
 import torch
 
+from aioway._utils import dcls_asdict
+
 from .devices import Device, DeviceLike
 from .dtypes import DType, DTypeLike
 from .layouts import Layout, LayoutLike
 from .shapes import Shape, ShapeLike
 
-__all__ = ["Attr", "AttrLike"]
+__all__ = ["Attr", "attr_dcls", "AttrCompat", "attr_from_tensor"]
 
 
 LOGGER = logging.getLogger(__name__)
 
 
-type AttrLike = Attr | AttrLikeDict | torch.Tensor
+type AttrCompat = Attr | AttrLike | AttrLikeDict | torch.Tensor
 
 
-@dcls.dataclass(frozen=True, eq=False)
+@typing.runtime_checkable
+class AttrLike(typing.Protocol):
+    dtype: DType
+    shape: Shape
+    device: Device
+    requires_grad: bool
+    layout: Layout
+
+
+class AttrLikeDict(typing.TypedDict):
+    shape: ShapeLike
+    dtype: DTypeLike
+    device: typing.NotRequired[DeviceLike]
+    requires_grad: typing.NotRequired[bool]
+    layout: typing.NotRequired[LayoutLike]
+
+
+@typing.dataclass_transform(frozen_default=True, eq_default=False)
+def attr_dcls(cls):
+    return dcls.dataclass(frozen=True, eq=False)(cls)
+
+
+@attr_dcls
 class Attr:
     """
     The "type" for a `torch.Tensor`, describing everything we want to know about it.
@@ -34,6 +58,8 @@ class Attr:
 
     The `Attr` type allows these `torch` specific types to work with common types.
     """
+
+    _: dcls.KW_ONLY
 
     dtype: DType
     """
@@ -70,29 +96,23 @@ class Attr:
         if not isinstance(self.shape, Shape):
             raise TypeError(type(self.shape))
 
-    def __bool__(self):
+    def __bool__(self) -> typing.Literal[True]:
         return True
 
     @typing.override
-    @typing.no_type_check
-    def __eq__(self, other: object, /) -> bool:
+    def __eq__(self, other: typing.Any, /) -> bool:
+        # Convert to dictionary for faster comparison.
+        # This is essentially the default comparison of dataclass,
+        # but since we need functionality like try parsing, workaround is needed.
         if isinstance(other, Attr):
-            for func in [
-                lambda x: x.dtype,
-                lambda x: x.shape,
-                lambda x: x.device,
-                lambda x: x.requires_grad,
-                lambda x: x.layout,
-            ]:
-                if not func(self) == func(other):
-                    return False
-            else:
-                return True
+            return dcls_asdict(self) == dcls_asdict(other)
 
-        if parsed := self._try_parse_attr_like_dict(other):
+        try:
+            parsed = self.parse(other)
+        except TypeError:
+            return NotImplemented
+        else:
             return self == parsed
-
-        return NotImplemented
 
     @typing.override
     def __getstate__(self):
@@ -151,88 +171,86 @@ class Attr:
         return self.shape.ndim
 
     @classmethod
-    def build(
-        cls,
-        dtype: DTypeLike,
-        shape: ShapeLike,
-        device: DeviceLike = "cpu",
-        requires_grad: bool = False,
-        layout: LayoutLike = "strided",
-    ) -> typing.Self:
+    def parse(cls, item: typing.Any, /) -> Attr:
         """
-        The convenient constructor for `Attr`.
+        The convenient constructor function for `Attr` to convert from similar types.
 
-        Args:
-            dtype: Things that can be converted to `DType`.
-            shape: Things that can be converted to `Shape`.
-            device: Things that can be converted to `Device`. Default to "cpu".
-            requires_grad: Boolean value. Default to `False`.
-            layout: Things that can be converted to `Layout`. Default to "strided".
-
-        Returns:
-            An attribute instance.
+        Returns `NotImplemented` for unhandled objects.
         """
-
-        return cls(
-            device=Device.parse(device),
-            dtype=DType.parse(dtype),
-            shape=Shape.parse(shape),
-            layout=Layout.parse(layout),
-            requires_grad=requires_grad,
-        )
-
-    @classmethod
-    def parse(cls, item: AttrLike, /) -> Attr:
-        "The convenient constructor function for `Attr` to convert from similar types."
 
         if isinstance(item, Attr):
             return item
 
         if isinstance(item, torch.Tensor):
-            return cls.from_tensor(item)
+            return attr_from_tensor(item)
 
-        if (attr := cls._try_parse_attr_like_dict(item)) is not None:
+        if isinstance(item, dict) and (attr := attr_from_dict(item)):
             return attr
 
-        raise TypeError(
-            f"Do not know how to handle {item=}, {type(item)=}, because it is malformed."
+        return NotImplemented
+
+
+def attr_from_dict(item) -> Attr | None:
+    """
+    Attempt to parse a mapping into an `Attr`.
+
+    If illegal values are encoutered, return `None` (so can be used in `if` `else`).
+    """
+
+    if not isinstance(item, cabc.Mapping):
+        return None
+
+    try:
+        attr = _build_attr(
+            dtype=item["dtype"],
+            shape=item["shape"],
+            device=item.get("device", "cpu"),
+            layout=item.get("layout", torch.strided),
+            requires_grad=item.get("requires_grad", False),
         )
-
-    @classmethod
-    def from_tensor(cls, tensor: torch.Tensor, /) -> typing.Self:
-        "Parse the `torch.Tensor`'s `Attr` representation"
-
-        return cls.build(
-            device=tensor.device,
-            shape=tensor.shape,
-            dtype=tensor.dtype,
-            layout=tensor.layout,
-            requires_grad=tensor.requires_grad,
-        )
-
-    @classmethod
-    def _try_parse_attr_like_dict(cls, item: AttrLikeDict) -> typing.Self | None:
-
-        if not isinstance(item, cabc.Mapping):
-            return None
-
-        try:
-            attr = cls.build(
-                dtype=item["dtype"],
-                shape=item["shape"],
-                device=item.get("device", "cpu"),
-                layout=item.get("layout", torch.strided),
-                requires_grad=item.get("requires_grad", False),
-            )
-        except Exception:
-            return None
-        else:
-            return attr
+    except Exception:
+        return None
+    else:
+        return attr
 
 
-class AttrLikeDict(typing.TypedDict):
-    shape: ShapeLike
-    dtype: DTypeLike
-    device: typing.NotRequired[DeviceLike]
-    requires_grad: typing.NotRequired[bool]
-    layout: typing.NotRequired[LayoutLike]
+def attr_from_tensor(tensor: torch.Tensor, /) -> Attr:
+    "Parse the `torch.Tensor`'s `Attr` representation"
+
+    return _build_attr(
+        device=tensor.device,
+        shape=tensor.shape,
+        dtype=tensor.dtype,
+        layout=tensor.layout,
+        requires_grad=tensor.requires_grad,
+    )
+
+
+def _build_attr(
+    dtype: DTypeLike,
+    shape: ShapeLike,
+    device: DeviceLike,
+    requires_grad: bool,
+    layout: LayoutLike,
+) -> Attr:
+    """
+    The convenient constructor for `Attr`.
+
+    Args:
+        dtype: Things that can be converted to `DType`.
+        shape: Things that can be converted to `Shape`.
+        device: Things that can be converted to `Device`. Default to "cpu".
+        requires_grad: Boolean value. Default to `False`.
+        layout: Things that can be converted to `Layout`. Default to "strided".
+
+    Returns:
+        An attribute instance.
+    """
+
+    return Attr(
+        device=Device.parse(device),
+        dtype=DType.parse(dtype),
+        shape=Shape.parse(shape),
+        layout=Layout.parse(layout),
+        requires_grad=requires_grad,
+    )
