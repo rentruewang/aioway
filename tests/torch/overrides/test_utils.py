@@ -127,7 +127,7 @@ def test_clone_fake_tensor(fake):
     assert is_fake(out)
     assert out is not fake
 
-    assert Attr.from_tensor(out) == Attr.from_tensor(fake)
+    assert Attr.parse(out) == Attr.parse(fake)
 
 
 def test_clone_fake_real_same():

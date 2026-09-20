@@ -53,8 +53,11 @@ class AvVideoLoader(VideoLoader):
 
         # Create a fake tensor of float32 in fake mode.
         if is_fake_mode_on():
-            tensor = Attr.build(
-                shape=[info.num_frames, 3, info.width, info.height], dtype=torch.float32
+            tensor = Attr.parse(
+                {
+                    "shape": [info.num_frames, 3, info.width, info.height],
+                    "dtype": torch.float32,
+                }
             ).to_fake_tensor()
 
         else:
