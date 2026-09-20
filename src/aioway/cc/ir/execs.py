@@ -1,34 +1,46 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import dataclasses as dcls
+from aioway.torch import find_nested_tensors
 import typing
 from collections import abc as cabc
 
 import torch
 
-from aioway.torch import (
-    TorchDispThunk,
-    TorchFuncThunk,
-    replace_tensors_with_attr,
-)
+from aioway._utils import decomp_flatten
+from aioway.torch import render_tensor_func_short, replace_tensors_with_attr
 
-__all__ = []
+__all__ = ["DoneTorchThunk"]
 
 
-@dcls.dataclass(frozen=True)
-class FakeThunkResult[F: TorchFuncThunk | TorchDispThunk]:
+class DoneTorchThunk[F: cabc.Callable]:
     "Stores the thunk and output."
 
-    thunk: F
-    "The `Thunk` that has been called. Only takes in fake tensors."
-
-    result: object
-    "The output that `fn` has produced."
+    def __init__(
+        self,
+        *,
+        func: cabc.Callable,
+        args: tuple,
+        kwargs: dict[str, typing.Any],
+        result: typing.Any,
+    ):
+        self.func = func
+        self.args = args
+        self.kwargs = kwargs
+        self.result = result
 
     @typing.override
     def __repr__(self) -> str:
-        result = replace_tensors_with_attr(self.result)
-        return f"{self.thunk!r} -> {result}"
+        result = str(replace_tensors_with_attr(self.result))
+        thunk = render_tensor_func_short(str(self.func), self.args, self.kwargs)
+        return thunk + " -> " + result
 
-    def inputs(self) -> cabc.Generator[torch.Tensor]:
-        yield from self.thunk.inputs()
+    def upstream(self) -> cabc.Generator[torch.Tensor]:
+        "Get the dependencies of the current thunk."
+
+        yield from find_nested_tensors(self.args)
+        yield from find_nested_tensors(self.kwargs)
+
+    def downstream(self) -> cabc.Generator[torch.Tensor]:
+        "Get the output of the current thunk."
+
+        yield from find_nested_tensors(self.result)
