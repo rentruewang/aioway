@@ -202,7 +202,7 @@ class BuiltModule(nn.Module):
 
     @property
     def _signature(self) -> Sign:
-        return Sign.from_inputs([input.name for input in self.inputs])
+        return Sign.from_inputs(*[input.name for input in self.inputs])
 
     @property
     def inputs(self) -> list[InputBuilderNode]:
