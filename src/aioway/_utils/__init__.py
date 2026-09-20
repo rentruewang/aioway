@@ -2,7 +2,6 @@
 
 "The common utils package."
 
-from .dags import *
 from .decomps import *
 from .hooks import *
 from .platforms import *

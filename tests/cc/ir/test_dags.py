@@ -2,7 +2,7 @@
 
 import pytest
 
-from aioway._utils import DagNodeKey, topo_sort
+from aioway.cc import DagNodeKey, topo_sort
 
 
 @pytest.fixture

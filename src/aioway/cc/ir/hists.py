@@ -10,7 +10,6 @@ from collections import abc as cabc
 import torch
 
 from aioway._thunks import Thunk
-from aioway._utils import TensorInput, topo_sort
 from aioway.torch import (
     Attr,
     ModeThunk,
@@ -19,7 +18,22 @@ from aioway.torch import (
     replace_tensors_with_attr,
 )
 
-__all__ = ["Hist", "HistTensorGraph"]
+from .dags import topo_sort
+
+
+__all__ = ["Hist", "HistTensorGraph", "TensorInput", "HashableTensorInput"]
+
+
+@typing.runtime_checkable
+class TensorInput(typing.Protocol):
+    """
+    `TensorInput` marks a class whose value depend on input tensors for computation.
+    """
+
+    def inputs(self) -> cabc.Iterable[torch.Tensor]:
+        "The tensor operands (inputs to the function)"
+
+        raise NotImplementedError
 
 
 class HashableTensorInput(typing.Hashable, TensorInput, Thunk, typing.Protocol): ...
