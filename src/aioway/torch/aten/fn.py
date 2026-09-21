@@ -57,7 +57,7 @@ class AtenThunk:
 
     @classmethod
     def from_thunk(cls, thunk: TorchDispThunk) -> typing.Self | None:
-        L.logger.debug("Resolving `Aten` object for {}", thunk)
+        L.logger.trace("Resolving `Aten` object for {}", thunk)
 
         # For now, `Aten` only supports aten,
         # because `torchvision`, `torchcodec` rely on real data,
@@ -65,15 +65,15 @@ class AtenThunk:
         # In those operations, real mode is force enabled right now.
         # See aioway#204 issue.
         if not is_aten_op(thunk.func):
-            L.logger.debug("{} is not aten.", thunk)
+            L.logger.trace("{} is not aten.", thunk)
             return None
 
         aten = find_aten(thunk)
 
         if aten is None:
-            L.logger.debug("`Aten` for {} not found.", thunk)
+            L.logger.trace("`Aten` for {} not found.", thunk)
             return None
 
         else:
-            L.logger.debug("`Aten` for {} found: {}.", thunk, aten)
+            L.logger.trace("`Aten` for {} found: {}.", thunk, aten)
             return cls(aten=aten, original=thunk)

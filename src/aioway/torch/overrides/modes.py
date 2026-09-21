@@ -239,8 +239,8 @@ class ModeStack[T: Mode[typing.Any, typing.Any]](Stack[T]):
 
     @on.setter
     def on(self, to: bool | list[bool]) -> None:
-        L.logger.debug("Current stack {}", self)
-        L.logger.debug("Setting to {}", to)
+        L.logger.trace("Current stack {}", self)
+        L.logger.trace("Setting to {}", to)
 
         if isinstance(to, bool):
             to = [to] * len(self)
@@ -251,7 +251,7 @@ class ModeStack[T: Mode[typing.Any, typing.Any]](Stack[T]):
         for frame, val in zip(self, to):
             frame.on = val
 
-        L.logger.debug("Status after setting {}", self)
+        L.logger.trace("Status after setting {}", self)
 
 
 @typing.final

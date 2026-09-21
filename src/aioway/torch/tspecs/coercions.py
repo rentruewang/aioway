@@ -91,13 +91,13 @@ class TSpecCoercion(CoerceRule):
             return left
 
         for [lt, rt], impl in self.tspecs.items():
-            L.logger.debug("Attempting to match {}, {}", lt, rt)
+            L.logger.trace("Attempting to match {}, {}", lt, rt)
 
             if isinstance(left, lt) and isinstance(right, rt):
-                L.logger.debug("Matched. Implementation: {}", impl)
+                L.logger.trace("Matched. Implementation: {}", impl)
                 return impl(left, right)
 
-        L.logger.debug("Failed to match.")
+        L.logger.trace("Failed to match.")
         failed = CoerceSign(type(left), type(right))
         raise KeyError(f"No matching implementation found for {failed}.")
 

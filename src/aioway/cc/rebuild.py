@@ -30,7 +30,7 @@ def _init_buffers(module: nn.Module):
     "Initialize non-learnable buffers in the current module."
 
     for name, buf in list(module.named_buffers(recurse=False)):
-        L.logger.debug("Initalizing {} attribute", name)
+        L.logger.trace("Initalizing {} attribute", name)
         setattr(module, name, _empty_like(buf))
 
 
@@ -38,7 +38,7 @@ def _init_params(module: nn.Module):
     "Initialize learnable parameters in the current module."
 
     for name, param in list(module.named_parameters(recurse=False)):
-        L.logger.debug("Initalizing {} attribute", name)
+        L.logger.trace("Initalizing {} attribute", name)
         new_param = nn.Parameter(
             _empty_like(param),
             requires_grad=param.requires_grad,

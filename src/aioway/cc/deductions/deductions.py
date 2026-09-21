@@ -104,14 +104,14 @@ class Deduction:
         # Check each implementation, if failed, try next one.
         # If all failed, `NotImplemented` is returned.
         for impl in self._registered_rules.values():
-            L.logger.debug("Attempts to call {} for {}", impl.function, type(module))
+            L.logger.trace("Attempts to call {} for {}", impl.function, type(module))
             result = _attempt_call(impl.function, module, *args_list, **kwargs_dict)
 
             if result is NotImplemented:
-                L.logger.debug("{} failed to parse (*{}, **{})", impl, args, kwargs)
+                L.logger.trace("{} failed to parse (*{}, **{})", impl, args, kwargs)
                 continue
 
-            L.logger.debug("{} successfully parsed (*{}, **{})", impl, args, kwargs)
+            L.logger.trace("{} successfully parsed (*{}, **{})", impl, args, kwargs)
             return result
 
         return NotImplemented
