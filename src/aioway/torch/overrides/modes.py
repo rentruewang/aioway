@@ -6,11 +6,11 @@ import abc
 import contextlib as ctxl
 import dataclasses as dcls
 import functools
-import logging
 import typing
 import warnings
 from collections import abc as cabc
 
+import loguru as L
 from torch import _ops, overrides
 from torch.utils import _python_dispatch as pyd
 
@@ -31,8 +31,6 @@ __all__ = [
     "PureTorchDispMode",
     "PureTorchFuncMode",
 ]
-
-LOGGER = logging.getLogger(__name__)
 
 
 @functools.cache
@@ -241,8 +239,8 @@ class ModeStack[T: Mode[typing.Any, typing.Any]](Stack[T]):
 
     @on.setter
     def on(self, to: bool | list[bool]) -> None:
-        LOGGER.debug("Current stack %s", self)
-        LOGGER.debug("Setting to %s", to)
+        L.logger.debug("Current stack %s", self)
+        L.logger.debug("Setting to %s", to)
 
         if isinstance(to, bool):
             to = [to] * len(self)
@@ -253,7 +251,7 @@ class ModeStack[T: Mode[typing.Any, typing.Any]](Stack[T]):
         for frame, val in zip(self, to):
             frame.on = val
 
-        LOGGER.debug("Status after setting %s", self)
+        L.logger.debug("Status after setting %s", self)
 
 
 @typing.final

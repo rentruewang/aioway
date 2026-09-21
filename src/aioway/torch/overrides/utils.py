@@ -4,7 +4,6 @@
 
 import dataclasses as dcls
 import functools
-import logging
 import typing
 from collections import abc as cabc
 
@@ -17,8 +16,6 @@ from aioway.torch._utils import tcol_to_tdict
 from .fake import fake_mode
 
 __all__ = ["is_fake", "is_real", "to_fake", "clone_fake"]
-
-LOGGER = logging.getLogger(__name__)
 
 
 @dcls.dataclass(frozen=True)

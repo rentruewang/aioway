@@ -5,7 +5,7 @@
 groups = ["default", "api", "build", "checks", "debugging", "docs", "faiss", "gym", "networkx", "sklearn", "tests"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.1"
-content_hash = "sha256:b36352ddf64edb2e1be550e15a2b3377cd88003b506d2d3c6d867c9e383c9495"
+content_hash = "sha256:b9edbaab71b0660045e6ef6badc5a27e22358b16aae62578d280ccf9499998ce"
 
 [[metadata.targets]]
 requires_python = ">=3.14,<3.15"
@@ -2289,6 +2289,22 @@ dependencies = [
 files = [
     {file = "lightning_utilities-0.15.3-py3-none-any.whl", hash = "sha256:6c55f1bee70084a1cbeaa41ada96e4b3a0fea5909e844dd335bd80f5a73c5f91"},
     {file = "lightning_utilities-0.15.3.tar.gz", hash = "sha256:792ae0204c79f6859721ac7f386c237a33b0ed06ba775009cb894e010a842033"},
+]
+
+[[package]]
+name = "loguru"
+version = "0.7.3"
+requires_python = "<4.0,>=3.5"
+summary = "Python logging made (stupidly) simple"
+groups = ["default"]
+dependencies = [
+    "aiocontextvars>=0.2.0; python_version < \"3.7\"",
+    "colorama>=0.3.4; sys_platform == \"win32\"",
+    "win32-setctime>=1.0.0; sys_platform == \"win32\"",
+]
+files = [
+    {file = "loguru-0.7.3-py3-none-any.whl", hash = "sha256:31a33c10c8e1e10422bfd431aeb5d351c7cf7fa671e3c4df004162264b28220c"},
+    {file = "loguru-0.7.3.tar.gz", hash = "sha256:19480589e77d47b8d85b2c827ad95d49bf31b0dcde16593892eb51dd18706eb6"},
 ]
 
 [[package]]
@@ -5002,6 +5018,18 @@ groups = ["debugging"]
 files = [
     {file = "widgetsnbextension-4.0.16-py3-none-any.whl", hash = "sha256:a31a8774885b96fe825462f5d6496166f0c7cae111195b6465c801d230eb5a4e"},
     {file = "widgetsnbextension-4.0.16.tar.gz", hash = "sha256:adeea0ae78f0856ee4945f413299801b82a0a01416303301f39a704282a37b73"},
+]
+
+[[package]]
+name = "win32-setctime"
+version = "1.2.0"
+requires_python = ">=3.5"
+summary = "A small Python utility to set file creation time on Windows"
+groups = ["default"]
+marker = "sys_platform == \"win32\""
+files = [
+    {file = "win32_setctime-1.2.0-py3-none-any.whl", hash = "sha256:95d644c4e708aba81dc3704a116d8cbc974d70b3bdb8be1d150e36be6e9d1390"},
+    {file = "win32_setctime-1.2.0.tar.gz", hash = "sha256:ae1fdf948f5640aae05c511ade119313fb6a30d7eabe25fef9764dca5873c4c0"},
 ]
 
 [[package]]

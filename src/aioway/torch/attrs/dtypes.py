@@ -2,7 +2,6 @@
 
 "The implementation for dtypes, supports different backends."
 
-import logging
 import typing
 
 import numpy as np
@@ -12,7 +11,6 @@ from ._bases import TorchAttrBase
 
 __all__ = ["DType", "DTypeLike", "DTypeFamily"]
 
-LOGGER = logging.getLogger(__name__)
 
 type DTypeFamily = typing.Literal["int", "float", "bool", "uint", "complex"]
 

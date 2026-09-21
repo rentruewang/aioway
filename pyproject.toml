@@ -23,6 +23,7 @@ dependencies = [
     "torchrl>=0.13",
     "lightning>=2",
     "captum>=0.9",
+    "loguru>=0.7",
 ]
 
 [project.optional-dependencies]

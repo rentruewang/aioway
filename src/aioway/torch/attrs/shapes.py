@@ -1,6 +1,5 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import logging
 import typing
 from collections import abc as cabc
 
@@ -12,8 +11,6 @@ from aioway._utils import is_list_of, is_tuple_of
 from ._bases import TorchAttrBase
 
 __all__ = ["ShapeLike", "Shape"]
-
-LOGGER = logging.getLogger(__name__)
 
 
 type ShapeLike = int | cabc.Iterable[int] | Shape

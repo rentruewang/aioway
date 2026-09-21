@@ -4,9 +4,9 @@
 
 import dataclasses as dcls
 import functools
-import logging
 from collections import abc as cabc
 
+import loguru as L
 from torch import nn
 
 from aioway._utils import Param, Sign, is_nn_type
@@ -15,8 +15,6 @@ from aioway.cc.signs import nn_sign_skeleton
 from aioway.torch import TSpec, TSpecLike, as_tspec, is_tspec_subtype
 
 __all__ = ["Deduction", "deduction_for", "deduction_reg"]
-
-LOGGER = logging.getLogger(__name__)
 
 
 @dcls.dataclass(frozen=True)
@@ -106,14 +104,14 @@ class Deduction:
         # Check each implementation, if failed, try next one.
         # If all failed, `NotImplemented` is returned.
         for impl in self._registered_rules.values():
-            LOGGER.debug("Attempts to call %s for %s", impl.function, type(module))
+            L.logger.debug("Attempts to call {} for {}", impl.function, type(module))
             result = _attempt_call(impl.function, module, *args_list, **kwargs_dict)
 
             if result is NotImplemented:
-                LOGGER.debug("%s failed to parse (*%s, **%s)", impl, args, kwargs)
+                L.logger.debug("{} failed to parse (*{}, **{})", impl, args, kwargs)
                 continue
 
-            LOGGER.debug("%s successfully parsed (*%s, **%s)", impl, args, kwargs)
+            L.logger.debug("{} successfully parsed (*{}, **{})", impl, args, kwargs)
             return result
 
         return NotImplemented
