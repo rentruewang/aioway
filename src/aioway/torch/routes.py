@@ -51,7 +51,7 @@ def route_aten_thunk(thunk: TorchDispThunk) -> object:
     try:
         return fn()
     except Exception as e:
-        L.logger.error("%r raises an error.", fn)
+        L.logger.error("{} raises an error.", fn)
         raise RuntimeError(f"{fn!r}") from e
 
 
