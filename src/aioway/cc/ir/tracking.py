@@ -1,6 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import dataclasses as dcls
+"Tracking and creating thunks."
+
 import functools
 import typing
 from collections import abc as cabc
@@ -14,8 +15,6 @@ from aioway.torch import (
     replace_tensors_with_attr,
 )
 
-__all__ = ["DoneTorchThunk"]
-
 
 class DoneTorchThunk[F: cabc.Callable]:
     "Stores the thunk and output."
@@ -23,7 +22,7 @@ class DoneTorchThunk[F: cabc.Callable]:
     def __init__(
         self,
         *,
-        func: cabc.Callable,
+        func: F,
         args: tuple,
         kwargs: dict[str, typing.Any],
         result: typing.Any,
@@ -57,33 +56,21 @@ class DoneTorchThunk[F: cabc.Callable]:
         yield from find_nested_tensors(self.result)
 
     @property
-    def func(self):
+    def func(self) -> F:
         return self._func
 
     @property
-    def args(self):
+    def args(self) -> tuple:
         return self._args
 
     @property
-    def kwargs(self):
+    def kwargs(self) -> dict[str, typing.Any]:
         return self._kwargs
 
     @property
-    def result(self):
+    def result(self) -> typing.Any:
         return self._result
 
     @functools.cached_property
     def _signature(self) -> Sign:
         return Sign.from_callable(self._func)
-
-
-@dcls.dataclass
-class TorchDagNode[C: cabc.Callable]:
-    function: C
-    inputs: list[int]
-    outputs: list[int]
-
-
-class TorchDag:
-    def __init__(self, execs):
-        pass

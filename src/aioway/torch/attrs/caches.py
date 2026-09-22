@@ -10,8 +10,7 @@ import torch
 from aioway.torch._utils import tcol_to_tdict
 from aioway.torch.overrides import is_real
 
-from .attrs import Attr
-from .schemas import Schema
+from .attrs import Attr, AttrDict
 
 __all__ = ["fake_cache_schema_attr"]
 
@@ -58,7 +57,7 @@ class _FakeAttrSchemaCache:
     def __call__(self, item: torch.Tensor) -> Attr: ...
 
     @typing.overload
-    def __call__(self, item: td.TensorDictBase) -> Schema: ...
+    def __call__(self, item: td.TensorDictBase) -> AttrDict: ...
 
     @typing.overload
     def __call__(self, item: typing.Any) -> typing.Any: ...
@@ -84,7 +83,7 @@ class _FakeAttrSchemaCache:
 
         return self._cache[tensor_id]
 
-    def schema(self, tcol) -> Schema:
+    def schema(self, tcol) -> AttrDict:
         """
         Convert a fake tensor collection to a `Schema`
         """
@@ -102,4 +101,4 @@ class _FakeAttrSchemaCache:
         for key, tensor in tdict.items():
             result[key] = self(tensor)
 
-        return Schema(result)
+        return AttrDict(result)
