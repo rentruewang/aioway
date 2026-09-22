@@ -11,103 +11,111 @@ def make_attr(dtype: torch.dtype = torch.float32) -> Attr:
     return Attr.parse(torch.zeros(3, dtype=dtype))
 
 
-# Most tests share this two-level schema: {"id": ID, "user": {"name": NAME}}
-ID = make_attr()
-NAME = make_attr()
-USER = Schema({"name": NAME})
-SCHEMA = Schema({"id": ID, "user": USER})
+@pytest.fixture
+def attr() -> Attr:
+    return make_attr()
 
 
-def test_len_counts_top_level_entries():
-    assert len(SCHEMA) == 2
+@pytest.fixture
+def user(attr) -> Schema:
+    return Schema({"name": attr})
+
+
+@pytest.fixture
+def schema(attr, user) -> Schema:
+    return Schema({"id": attr, "user": user})
+
+
+def test_length(schema):
+    assert len(schema) == 2
     assert len(Schema()) == 0
 
 
-def test_getitem_by_name():
-    assert SCHEMA["id"] is ID
-    assert SCHEMA["user"] is USER
+def test_getitem_shallow(schema, attr, user):
+    assert schema["id"] is attr
+    assert schema["user"] is user
 
 
-def test_getitem_by_path():
-    # Same as SCHEMA[("user", "name")].
-    assert SCHEMA["user", "name"] is NAME
+def test_getitem_nested(schema, attr):
+    # Same as schema[("user", "name")].
+    assert schema["user", "name"] is attr
 
 
-def test_getitem_missing_raises_key_error():
+def test_getitem_missing(schema):
     with pytest.raises(KeyError):
-        SCHEMA["nope"]
+        schema["nope"]
 
     with pytest.raises(KeyError):
-        SCHEMA["user", "nope"]
+        schema["user", "nope"]
 
 
-def test_get_returns_value_or_default():
-    assert SCHEMA.get("id") is ID
-    assert SCHEMA.get(("user", "name")) is NAME
-    assert SCHEMA.get("nope") is None
-    assert SCHEMA.get(("user", "nope"), "fallback") == "fallback"
+def test_get_with_item(schema, attr):
+    assert schema.get("id") is attr
+    assert schema.get(("user", "name")) is attr
+    assert schema.get("nope") is None
+    assert schema.get(("user", "nope"), "fallback") == "fallback"
 
 
-def test_contains_by_name():
-    assert "id" in SCHEMA
-    assert "user" in SCHEMA
-    assert "nope" not in SCHEMA
+def test_contains_by_name(schema):
+    assert "id" in schema
+    assert "user" in schema
+    assert "nope" not in schema
 
 
-def test_contains_by_path():
-    assert ("user", "name") in SCHEMA
-    assert ("user", "nope") not in SCHEMA
+def test_contains_nested(schema):
+    assert ("user", "name") in schema
+    assert ("user", "nope") not in schema
 
 
-def test_keys_are_top_level_by_default():
-    assert list(SCHEMA.keys()) == ["id", "user"]
+def test_keys_default(schema):
+    assert list(schema.keys()) == ["id", "user"]
 
 
-def test_keys_leaves_only():
-    assert list(SCHEMA.keys(leaves_only=True)) == ["id"]
+def test_keys_leaves_only(schema):
+    assert list(schema.keys(leaves_only=True)) == ["id"]
 
 
-def test_keys_include_nested_gives_leaf_paths():
-    assert list(SCHEMA.keys(include_nested=True)) == ["id", ("user", "name")]
+def test_keys_includes_nested(schema):
+    assert list(schema.keys(include_nested=True)) == ["id", ("user", "name"), "user"]
 
 
-def test_three_level_nesting():
+def test_more_nesting():
     city = make_attr()
-    schema = Schema({"user": Schema({"address": Schema({"city": city})})})
+    deep = Schema({"user": Schema({"address": Schema({"city": city})})})
 
-    assert schema["user", "address", "city"] is city
+    assert deep["user", "address", "city"] is city
     all_nested_keys = {("user", "address", "city"), ("user", "address"), "user"}
-    assert set(schema.keys(include_nested=True)) == all_nested_keys
+    assert set(deep.keys(include_nested=True)) == all_nested_keys
 
 
-def test_select_keeps_only_requested_entries():
-    picked = SCHEMA.select("user")
+def test_select(schema, user):
+    picked = schema.select("user")
 
     assert len(picked) == 1
-    assert picked["user"] is USER
+    assert picked["user"] is user
 
 
-def test_select_ignores_missing_names_unless_strict():
-    assert len(SCHEMA.select("id", "nope")) == 1
+def test_select_ignores_missing(schema):
+    assert len(schema.select("id", "nope")) == 1
 
     with pytest.raises(KeyError):
-        SCHEMA.select("id", "nope", strict=True)
+        schema.select("id", "nope", strict=True)
 
 
-def test_dtype_is_shared_dtype_or_none():
-    assert SCHEMA.dtype == ID.dtype  # every leaf, nested included, is float32
+def test_dtype_coerce(schema, attr):
+    assert schema.dtype == attr.dtype  # every leaf, nested included, is float32
 
     mixed = Schema({"a": make_attr(torch.float32), "b": make_attr(torch.int64)})
     assert mixed.dtype is None
 
 
-def test_parse_builds_nested_schema():
+def test_parse_nested():
     data = td.TensorDict(
         {"id": torch.zeros(3), "user": td.TensorDict({"name": torch.zeros(3)})},
         batch_size=[3],
     )
-    schema = Schema.parse(data)
+    parsed = Schema.parse(data)
 
-    assert isinstance(schema["id"], Attr)
-    assert isinstance(schema["user"], Schema)
-    assert isinstance(schema["user", "name"], Attr)
+    assert isinstance(parsed["id"], Attr)
+    assert isinstance(parsed["user"], Schema)
+    assert isinstance(parsed["user", "name"], Attr)
