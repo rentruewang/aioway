@@ -9,7 +9,7 @@ import torch
 from torchrl.data import tensor_specs as tspecs
 
 from ._utils import tcol_to_tdict
-from .matches import is_fake
+from .overrides import is_fake
 from .tspecs import TSpec, default_coerce
 
 __all__ = ["batch_tspec", "iter_tspec"]

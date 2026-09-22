@@ -8,7 +8,7 @@ import loguru as L
 import tensordict as td
 
 from aioway._utils import is_tuple_of
-from aioway.torch.matches import TorchMatcher
+from aioway.torch.visitors import TorchVisitor
 
 from .attrs import Attr
 from .dtypes import DType
@@ -174,7 +174,7 @@ class Schema:
     def parse(
         cls, mapping: td.TensorDictBase | cabc.Mapping[str, td.TensorDictBase], /
     ) -> typing.Self:
-        parse_child = TorchMatcher(
+        parse_child = TorchVisitor(
             tensor=Attr.parse,
             tdict=Schema.parse,
             tcls=Schema.parse,
