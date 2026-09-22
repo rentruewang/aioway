@@ -57,7 +57,7 @@ class AvVideoLoader(VideoLoader):
                 "shape": [info.num_frames, 3, info.width, info.height],
                 "dtype": torch.float32,
             }
-            tensor = Attr.parse(mapping).to_fake_tensor()
+            tensor = Attr.parse(mapping).to_fake()
 
         else:
             array = stream.numpy()

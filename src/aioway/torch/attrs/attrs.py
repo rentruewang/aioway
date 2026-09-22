@@ -140,7 +140,7 @@ class Attr:
     def memory(self):
         return self.dtype.itemsize * self.shape.numel()
 
-    def to_fake_tensor(self) -> torch.Tensor:
+    def to_fake(self) -> torch.Tensor:
         """
         Generate a random tensor. This should be used under fake mode.
         """

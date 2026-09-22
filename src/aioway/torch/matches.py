@@ -4,22 +4,24 @@
 
 import dataclasses as dcls
 import functools
+import types
 import typing
 from collections import abc as cabc
 
+import loguru as L
 import tensordict as td
 import torch
 from torch._subclasses import fake_tensor as ft
 
 from aioway.torch._utils import tcol_to_tdict
 
-from .fake import fake_mode
+from .overrides import fake_mode
 
-__all__ = ["is_fake", "is_real", "to_fake", "clone_fake"]
+__all__ = ["TorchMatcher", "is_fake", "is_real", "to_fake", "clone_fake"]
 
 
 @dcls.dataclass(frozen=True)
-class _TorchVisitor[R: typing.Any = typing.Any]:
+class TorchMatcher[R: typing.Any = typing.Any]:
     """
     The visitor type for torch values.
 
@@ -28,41 +30,50 @@ class _TorchVisitor[R: typing.Any = typing.Any]:
 
     _: dcls.KW_ONLY
 
-    tensor: cabc.Callable[[torch.Tensor], R]
+    tensor: cabc.Callable[[torch.Tensor], R] = NotImplemented
     "Tensor values."
 
-    tdict: cabc.Callable[[td.TensorDict], R]
+    tdict: cabc.Callable[[td.TensorDict], R] = NotImplemented
     "TensorDict values."
 
-    tcls: cabc.Callable[[typing.Any], R]
+    tcls: cabc.Callable[[typing.Any], R] = NotImplemented
     "Tensorclass values."
 
-    mapping: cabc.Callable[[cabc.Mapping], R]
+    mapping: cabc.Callable[[cabc.Mapping], R] = NotImplemented
     "Mapping values."
 
-    sequence: cabc.Callable[[cabc.Sequence], R]
+    sequence: cabc.Callable[[cabc.Sequence], R] = NotImplemented
     "Iterable values."
 
-    default: cabc.Callable[[typing.Any], R]
+    default: cabc.Callable[[typing.Any], R] = NotImplemented
     "The default values."
 
     def __call__(self, item):
         if isinstance(item, torch.Tensor):
-            return self.tensor(item)
+            return self._check_and_call(self.tensor)(item)
 
         if isinstance(item, td.TensorDict):
-            return self.tdict(item)
+            return self._check_and_call(self.tdict)(item)
 
         if not isinstance(item, type) and td.is_tensor_collection(item):
-            return self.tcls(item)
+            return self._check_and_call(self.tcls)(item)
 
         if isinstance(item, cabc.Mapping):
-            return self.mapping(item)
+            return self._check_and_call(self.mapping)(item)
 
         if isinstance(item, cabc.Sequence):
-            return self.sequence(item)
+            return self._check_and_call(self.sequence)(item)
 
-        return self.default(item)
+        return self._check_and_call(self.default)(item)
+
+    def _check_and_call[F: types.FunctionType](self, function: F) -> F:
+        if function is not NotImplemented:
+            return function
+
+        name = function.__name__
+
+        L.logger.error("Missing {} implementation for {}", name, self)
+        raise TypeError(f"{self} did not implement {name}.")
 
 
 @functools.cache
@@ -70,7 +81,7 @@ def _to_fake_converter():
     to_fake_tdict = lambda item: td.from_dict(_to_fake_dict(item))
     to_fake_seq = lambda item: [to_fake(elem) for elem in item]
 
-    return _TorchVisitor(
+    return TorchMatcher(
         tensor=_to_fake_tensor,
         tdict=to_fake_tdict,
         tcls=_to_fake_tcls,
@@ -87,8 +98,8 @@ def to_fake[C](item: C) -> C:
 
 
 @functools.cache
-def _is_fake_converter() -> _TorchVisitor[bool]:
-    return _TorchVisitor(
+def _is_fake_converter() -> TorchMatcher[bool]:
+    return TorchMatcher(
         tensor=_is_fake_tensor,
         tdict=_is_fake_tcol,
         tcls=_is_fake_tcol,
@@ -113,9 +124,9 @@ def is_real(item) -> bool:
 
 
 @functools.cache
-def _clone_fake_converter() -> _TorchVisitor:
+def _clone_fake_converter() -> TorchMatcher:
     clone = lambda x: x.clone()
-    return _TorchVisitor(
+    return TorchMatcher(
         tensor=clone,
         tdict=clone,
         tcls=clone,

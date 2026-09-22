@@ -96,7 +96,7 @@ class PillowImageLoader(ImageLoader):
                 "shape": [len(img.mode), img.width, img.height],
                 "dtype": "uint8",
             }
-            return Attr.parse(mapping).to_fake_tensor()
+            return Attr.parse(mapping).to_fake()
 
 
 @dcls.dataclass
