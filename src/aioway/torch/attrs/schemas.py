@@ -142,7 +142,7 @@ class Schema:
         It's `True` if any of the attributes is `True`.
         """
 
-        return any(attr.requires_grad for attr in self.values())
+        return any(child.requires_grad for child in self.values())
 
     def select(self, *cols: str, strict: bool = False) -> typing.Self:
         """
