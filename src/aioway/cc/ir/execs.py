@@ -78,10 +78,10 @@ class DoneTorchThunk[F: cabc.Callable]:
 
 
 @dcls.dataclass
-class TorchDagNode:
+class TorchDagNode[C: cabc.Callable]:
+    function: C
     inputs: list[int]
     outputs: list[int]
-    function: cabc.Callable
 
 
 class TorchDag:
