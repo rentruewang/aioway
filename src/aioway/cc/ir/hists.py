@@ -18,7 +18,7 @@ from aioway.torch import (
     replace_tensors_with_attr,
 )
 
-from .dags import topo_sort_id
+from ._utils import topo_sort_id
 
 __all__ = ["Hist", "HistTensorGraph", "TensorInput", "HashableTensorInput"]
 
