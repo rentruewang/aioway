@@ -12,17 +12,17 @@ import tensordict as td
 import torch
 
 from aioway._utils import dcls_asdict, is_tuple_of
-from aioway.torch.visitors import TorchVisitor
 
 from .devices import Device, DeviceLike
 from .dtypes import DType, DTypeLike
 from .layouts import Layout, LayoutLike
 from .shapes import Shape, ShapeLike
 
-__all__ = ["Attr", "AttrDict", "attr_dcls", "AttrCompat", "attr_from_tensor"]
+__all__ = ["Attr", "AttrDict", "parse_attr"]
 
 
-type AttrCompat = Attr | AttrLike | AttrLikeDict | torch.Tensor
+type AttrCompat = Attr | AttrLike | AttrLikeMapping | torch.Tensor
+type AttrDictCompat = AttrDict | td.TensorDict | td.TensorClass | cabc.Mapping
 
 
 @typing.runtime_checkable
@@ -34,7 +34,7 @@ class AttrLike(typing.Protocol):
     layout: Layout
 
 
-class AttrLikeDict(typing.TypedDict):
+class AttrLikeMapping(typing.TypedDict):
     shape: ShapeLike
     dtype: DTypeLike
     device: typing.NotRequired[DeviceLike]
@@ -42,12 +42,7 @@ class AttrLikeDict(typing.TypedDict):
     layout: typing.NotRequired[LayoutLike]
 
 
-@typing.dataclass_transform(frozen_default=True, eq_default=False)
-def attr_dcls(cls):
-    return dcls.dataclass(frozen=True, eq=False)(cls)
-
-
-@attr_dcls
+@dcls.dataclass(frozen=True, eq=False)
 class Attr:
     """
     The "type" for a `torch.Tensor`, describing everything we want to know about it.
@@ -107,7 +102,7 @@ class Attr:
             return dcls_asdict(self) == dcls_asdict(other)
 
         try:
-            parsed = self.parse(other)
+            parsed = parse_attr(other)
         except TypeError:
             return NotImplemented
         else:
@@ -168,25 +163,6 @@ class Attr:
     @property
     def ndim(self) -> int:
         return self.shape.ndim
-
-    @classmethod
-    def parse(cls, item: typing.Any, /) -> Attr:
-        """
-        The convenient constructor function for `Attr` to convert from similar types.
-
-        Returns `NotImplemented` for unhandled objects.
-        """
-
-        if isinstance(item, Attr):
-            return item
-
-        if isinstance(item, torch.Tensor):
-            return attr_from_tensor(item)
-
-        if isinstance(item, dict) and (attr := attr_from_dict(item)):
-            return attr
-
-        return NotImplemented
 
 
 class AttrDict:
@@ -343,20 +319,56 @@ class AttrDict:
         # Both `Attr` and `Schema` have `to_fake`.
         return td.TensorDict({key: attr.to_fake() for key, attr in self.items()})
 
-    @classmethod
-    def parse(
-        cls, mapping: td.TensorDictBase | cabc.Mapping[str, td.TensorDictBase], /
-    ) -> typing.Self:
-        parse_child = TorchVisitor(
-            tensor=Attr.parse,
-            tdict=AttrDict.parse,
-            tcls=AttrDict.parse,
-            mapping=AttrDict.parse,
-        )
-        return cls({key: parse_child(tensor) for key, tensor in mapping.items()})
+
+def _parse_attr(item: typing.Any, /) -> Attr:
+    """
+    The convenient constructor function for `Attr` to convert from similar types.
+
+    Returns `NotImplemented` for unhandled objects.
+    """
+
+    if isinstance(item, Attr):
+        return item
+
+    if isinstance(item, torch.Tensor):
+        return _attr_from_tensor(item)
+
+    if isinstance(item, dict) and (attr := _attr_from_dict(item)):
+        return attr
+
+    return NotImplemented
 
 
-def attr_from_dict(item) -> Attr | None:
+def _parse_attr_dict(mapping: AttrDictCompat, /) -> AttrDict:
+    if isinstance(mapping, AttrDict):
+        return mapping
+
+    if isinstance(mapping, cabc.Mapping) or td.is_tensor_collection(mapping):
+        mapping = typing.cast(cabc.Mapping, mapping)
+        return AttrDict({key: parse_attr(tensor) for key, tensor in mapping.items()})
+
+    return NotImplemented
+
+
+@typing.overload
+def parse_attr(item: AttrCompat) -> Attr: ...
+
+
+@typing.overload
+def parse_attr(item: AttrDictCompat) -> AttrDict: ...
+
+
+def parse_attr(item):
+    if (attr := _parse_attr(item)) is not NotImplemented:
+        return attr
+
+    if isinstance(item, cabc.Mapping) or td.is_tensor_collection(item):
+        return _parse_attr_dict(item)
+
+    raise TypeError(type(item))
+
+
+def _attr_from_dict(item) -> Attr | None:
     """
     Attempt to parse a mapping into an `Attr`.
 
@@ -380,7 +392,7 @@ def attr_from_dict(item) -> Attr | None:
         return attr
 
 
-def attr_from_tensor(tensor: torch.Tensor, /) -> Attr:
+def _attr_from_tensor(tensor: torch.Tensor, /) -> Attr:
     "Parse the `torch.Tensor`'s `Attr` representation"
 
     return _build_attr(

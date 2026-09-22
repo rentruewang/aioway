@@ -11,10 +11,10 @@ import torch
 
 from aioway._thunks import Thunk
 from aioway.torch import (
-    Attr,
     ModeThunk,
     find_nested_tensors,
     is_leaf_has_grad,
+    parse_attr,
     replace_tensors_with_attr,
 )
 
@@ -183,7 +183,7 @@ class HistTensorGraph[T: ModeThunk | HashableTensorInput](Hist):
 
     def memory(self) -> int:
         "The total memory consumed by the tensors."
-        return sum(Attr.parse(param).memory() for param in self._all_tensors())
+        return sum(parse_attr(param).memory() for param in self._all_tensors())
 
     def parameters(self):
         for tensor in self._all_tensors():

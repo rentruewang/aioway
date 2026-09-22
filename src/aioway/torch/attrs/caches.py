@@ -10,7 +10,7 @@ import torch
 from aioway.torch._utils import tcol_to_tdict
 from aioway.torch.overrides import is_real
 
-from .attrs import Attr, AttrDict
+from .attrs import Attr, AttrDict, parse_attr
 
 __all__ = ["fake_cache_schema_attr"]
 
@@ -78,7 +78,7 @@ class _FakeAttrSchemaCache:
             raise RuntimeError("Only handles fake tensors!")
 
         if (tensor_id := id(tensor)) not in self._cache:
-            self._cache[tensor_id] = Attr.parse(tensor)
+            self._cache[tensor_id] = parse_attr(tensor)
             self._tensors[tensor_id] = tensor
 
         return self._cache[tensor_id]

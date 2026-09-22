@@ -19,7 +19,7 @@ import pickle
 import torch
 
 # %%
-from aioway.torch import Attr
+from aioway.torch import parse_attr
 
 # %%
 
@@ -27,7 +27,7 @@ from aioway.torch import Attr
 t = torch.randn(5, 7, 9).to(torch.float16).requires_grad_()
 
 # %%
-a = Attr.parse(t)
+a = parse_attr(t)
 a
 
 # %%

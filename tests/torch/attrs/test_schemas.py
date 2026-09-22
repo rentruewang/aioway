@@ -4,11 +4,11 @@ import pytest
 import tensordict as td
 import torch
 
-from aioway.torch import Attr, AttrDict
+from aioway.torch import Attr, AttrDict, parse_attr
 
 
 def make_attr(dtype: torch.dtype = torch.float32) -> Attr:
-    return Attr.parse(torch.zeros(3, dtype=dtype))
+    return parse_attr(torch.zeros(3, dtype=dtype))
 
 
 @pytest.fixture
@@ -114,7 +114,7 @@ def test_parse_nested():
         {"id": torch.zeros(3), "user": td.TensorDict({"name": torch.zeros(3)})},
         batch_size=[3],
     )
-    parsed = AttrDict.parse(data)
+    parsed = parse_attr(data)
 
     assert isinstance(parsed["id"], Attr)
     assert isinstance(parsed["user"], AttrDict)
