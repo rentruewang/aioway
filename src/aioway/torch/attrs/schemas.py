@@ -1,6 +1,5 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from urllib3.exceptions import BodyNotHttplibCompatible
 import json
 import typing
 from collections import abc as cabc
@@ -25,18 +24,8 @@ class Schema:
     def __init__(self, mapping: dict[str, typing.Any] | None = None) -> None:
         self._schemas = mapping or {}
 
-    def __contains__(self, key: str | tuple[str, ...]) -> bool:
-        if isinstance(key, str):
-            return key in self._schemas
-
-        assert is_tuple_of(str)(key) and len(key) > 0, key
-        first, *rest = key
-
-        if not rest:
-            return first in self
-
-        else:
-            return tuple(rest) in self
+    def __contains__(self, key) -> bool:
+        return key in self.keys(include_nested=True)
 
     def __eq__(self, other) -> bool:
         if isinstance(other, Schema):
@@ -108,15 +97,19 @@ class Schema:
         if leaves_only:
             return
 
-        if not include_nested:
-            for key, _ in self._items_of_type(Schema):
-                yield key
-
         # This is the branch where it would yield sub-schema keys as tuples.
+        if include_nested:
+            yield from self._nested_keys()
+
+        for key, _ in self._items_of_type(Schema):
+            yield key
+
+    def _nested_keys(self):
         L.logger.trace("Recurse into sub-Schema of {} and yield tuples", self)
+
         for key, val in self._items_of_type(Schema):
             for child_key in val.keys(include_nested=True):
-                child_key = child_key if isinstance(key, tuple) else (child_key,)
+                child_key = child_key if isinstance(child_key, tuple) else (child_key,)
                 assert is_tuple_of(str)(child_key)
                 yield key, *child_key
 
