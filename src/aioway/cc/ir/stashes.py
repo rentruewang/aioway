@@ -1,9 +1,11 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import collections
 from collections import abc as cabc
 
 import torch
 
+from aioway._utils import AnyDict
 from aioway.torch import is_fake, is_real
 
 __all__ = ["DagVarInfo"]
@@ -15,7 +17,7 @@ class DagVarInfo:
     def __init__(self, producer: int, fake: torch.Tensor):
         self._producer = producer
 
-        self._consumers: list[int] = []
+        self._consumers: set[int] = set()
 
         self._fake = fake
 
@@ -26,8 +28,11 @@ class DagVarInfo:
                 f"The fake tensor produced at idx={self.producer} is real."
             )
 
-    def __hash__(self) -> int:
-        return id(self.fake)
+    def add_consumer(self, consumer: int) -> None:
+        if consumer in self.consumers:
+            raise IndexError(f"Attempting to add {consumer=} a second time.")
+
+        self._consumers.add(consumer)
 
     @property
     def producer(self) -> int:
@@ -35,7 +40,7 @@ class DagVarInfo:
         return self._producer
 
     @property
-    def consumers(self) -> cabc.Sequence[int]:
+    def consumers(self) -> cabc.Set[int]:
         "The list of consumers."
         return self._consumers
 
@@ -83,3 +88,48 @@ class DagVarInfo:
     def is_input(self) -> bool:
         "Check if the variable is an input."
         return self._producer < 0
+
+    @property
+    def largest_consumer(self) -> int:
+        "Get the largest consumer."
+        return max(self.consumers)
+
+
+class DagLocals:
+    def __init__(self, variables: cabc.Sequence[DagVarInfo]) -> None:
+        self._variables = variables
+
+        self._fake_index = self._compute_fake_index()
+        "Mapping from id of fake tensor to variable info."
+
+        self._consumers = self._compute_consumers()
+        "Mapping from DAG index of consuming point to corresponding variable info."
+
+    def __len__(self) -> int:
+        return len(self._variables)
+
+    def update(self, fake, real) -> None:
+        pass
+
+    def fill(self, step: int, *args, **kwargs):
+        pass
+
+    def _fill_container(self, step: int, *args, **kwargs):
+        pass
+
+    def _post_fill(self, step: int):
+        pass
+
+    def _compute_fake_index(self) -> dict[int, DagVarInfo]:
+        result = {id(info.fake): info for info in self._variables}
+        assert len(result) == len(self._variables)
+        return result
+
+    def _compute_consumers(self) -> dict[int, list[DagVarInfo]]:
+        result: dict[int, list[DagVarInfo]] = collections.defaultdict(list)
+
+        for var in self._variables:
+            for consumer in var.consumers:
+                result[consumer].append(var)
+
+        return result
