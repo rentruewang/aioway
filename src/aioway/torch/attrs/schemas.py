@@ -6,6 +6,9 @@ import typing
 from collections import abc as cabc
 
 import tensordict as td
+import torch
+
+from aioway.torch.matches import TorchMatcher
 
 from .attrs import Attr
 from .dtypes import DType
@@ -13,13 +16,16 @@ from .dtypes import DType
 __all__ = ["Schema"]
 
 
-class Schema(collections.UserDict[str, Attr]):
+class Schema(collections.UserDict[str, "Attr | Schema"]):
     """
     `Schema` is a `dict[str, Attr]` with additional utilities.
     """
 
+    def __getstate__(self) -> dict[str, typing.Any]:
+        return {key: val.__getstate__() for key, val in self.items()}
+
     def __hash__(self) -> int:
-        return hash(json.dumps({key: val.__getstate__() for key, val in self.items()}))
+        return hash(json.dumps(self.__getstate__(), sort_keys=True))
 
     @property
     def dtype(self) -> DType | None:
@@ -66,14 +72,20 @@ class Schema(collections.UserDict[str, Attr]):
 
         return result
 
-    def to_fake_tdict(self) -> td.TensorDict:
-        from aioway.torch import fake_mode
+    def to_fake(self) -> td.TensorDict:
+        "Convert `Schema` to a fake `td.TensorDict`."
 
-        with fake_mode():
-            return td.TensorDict(
-                {key: attr.to_fake_tensor() for key, attr in self.items()}
-            )
+        # Both `Attr` and `Schema` have `to_fake`.
+        return td.TensorDict({key: attr.to_fake() for key, attr in self.items()})
 
     @classmethod
-    def parse(cls, mapping: cabc.Mapping[str, typing.Any], /) -> typing.Self:
-        return cls({key: Attr.parse(tensor) for key, tensor in mapping.items()})
+    def parse(
+        cls, mapping: td.TensorDictBase | cabc.Mapping[str, td.TensorDictBase], /
+    ) -> typing.Self:
+        parse_child = TorchMatcher(
+            tensor=Attr.parse,
+            tdict=Schema.parse,
+            tcls=Schema.parse,
+            mapping=Schema.parse,
+        )
+        return cls({key: parse_child(tensor) for key, tensor in mapping.items()})
