@@ -1,5 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+from urllib3.exceptions import BodyNotHttplibCompatible
 import json
 import typing
 from collections import abc as cabc
@@ -37,6 +38,15 @@ class Schema:
         else:
             return tuple(rest) in self
 
+    def __eq__(self, other) -> bool:
+        if isinstance(other, Schema):
+            return self._schemas == other._schemas
+
+        if isinstance(other, cabc.Mapping):
+            return self._schemas == dict(other)
+
+        return NotImplemented
+
     def __len__(self) -> int:
         return len(self._schemas)
 
@@ -57,6 +67,7 @@ class Schema:
 
     @typing.overload
     def get[D](self, key: str | tuple[str, ...], default: D) -> Attr | Schema | D: ...
+
     @typing.overload
     def get(self, key: str | tuple[str, ...]) -> Attr | Schema | None: ...
 
