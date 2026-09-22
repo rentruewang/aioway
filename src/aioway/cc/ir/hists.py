@@ -20,7 +20,6 @@ from aioway.torch import (
 
 from .dags import topo_sort_id
 
-
 __all__ = ["Hist", "HistTensorGraph", "TensorInput", "HashableTensorInput"]
 
 
