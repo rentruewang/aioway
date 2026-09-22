@@ -3,15 +3,12 @@
 "Metadata for torch operators / functions."
 
 import functools
-import logging
 import typing
 from collections import abc as cabc
 
 from aioway._utils import render_fcall
 
 __all__ = ["Thunk", "AnyThunk"]
-
-LOGGER = logging.getLogger(__name__)
 
 
 @typing.runtime_checkable

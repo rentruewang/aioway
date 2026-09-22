@@ -4,7 +4,6 @@
 
 import collections
 import dataclasses as dcls
-import logging
 import typing
 from collections import abc as cabc
 
@@ -19,8 +18,6 @@ from aioway.torch import (
     is_leaf_has_grad,
     replace_tensors_with_attr,
 )
-
-LOGGER = logging.getLogger(__name__)
 
 __all__ = ["Hist", "HistTensorGraph"]
 

@@ -1,6 +1,5 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import logging
 
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
@@ -10,8 +9,6 @@ from aioway.torch import LossTSpec
 from .deductions import deduction_for
 
 __all__ = ["symmetric_loss_deduct"]
-
-LOGGER = logging.getLogger(__name__)
 
 
 _LOSS_TSPEC = LossTSpec()

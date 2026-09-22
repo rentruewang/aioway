@@ -3,9 +3,9 @@
 "Some pre-bundled implementations for thunks."
 
 import dataclasses as dcls
-import logging
 import typing
 
+import loguru as L
 import rich
 
 from aioway.torch._utils import replace_tensors
@@ -29,8 +29,6 @@ __all__ = [
     "LogTorchDisp",
 ]
 
-LOGGER = logging.getLogger(__name__)
-
 
 @TorchDispMode.function
 def route_aten_thunk(thunk: TorchDispThunk) -> object:
@@ -53,7 +51,7 @@ def route_aten_thunk(thunk: TorchDispThunk) -> object:
     try:
         return fn()
     except Exception as e:
-        LOGGER.error("%r raises an error.", fn)
+        L.logger.error("{} raises an error.", fn)
         raise RuntimeError(f"{fn!r}") from e
 
 
@@ -116,13 +114,10 @@ class LogTorchFunc(TorchFuncMode):
     level: int
     "The level to log to."
 
-    logger: logging.Logger = LOGGER
-    "The logger to log to. Default to the one in the current module."
-
     @typing.override
     def run(self, thunk: TorchFuncThunk) -> object:
         result = thunk()
-        self.logger.log(self.level, "%s", thunk)
+        L.logger.log(self.level, "{}", thunk)
         return result
 
 
@@ -135,11 +130,8 @@ class LogTorchDisp(TorchDispMode):
     level: int
     "The level to log to."
 
-    logger: logging.Logger = LOGGER
-    "The logger to log to. Default to the one in the current module."
-
     @typing.override
     def run(self, thunk: TorchDispThunk) -> object:
         result = thunk()
-        self.logger.log(self.level, "%s", thunk)
+        L.logger.log(self.level, "{}", thunk)
         return result

@@ -1,6 +1,5 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import logging
 import typing
 
 import torch
@@ -8,8 +7,6 @@ import torch
 from ._bases import TorchAttrBase
 
 __all__ = ["Device", "DeviceLike"]
-
-LOGGER = logging.getLogger(__name__)
 
 
 type DeviceLike = str | torch.device | Device

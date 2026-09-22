@@ -4,7 +4,6 @@
 
 import dataclasses as dcls
 import json
-import logging
 import typing
 from collections import abc as cabc
 
@@ -18,9 +17,6 @@ from .layouts import Layout, LayoutLike
 from .shapes import Shape, ShapeLike
 
 __all__ = ["Attr", "attr_dcls", "AttrCompat", "attr_from_tensor"]
-
-
-LOGGER = logging.getLogger(__name__)
 
 
 type AttrCompat = Attr | AttrLike | AttrLikeDict | torch.Tensor

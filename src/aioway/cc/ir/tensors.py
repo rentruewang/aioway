@@ -4,7 +4,6 @@
 
 import contextlib as ctxl
 import dataclasses as dcls
-import logging
 import typing
 
 from aioway.torch import (
@@ -25,8 +24,6 @@ __all__ = [
     "TrackTorchDispHist",
     "TrackTorchFuncHist",
 ]
-
-LOGGER = logging.getLogger(__name__)
 
 
 @dcls.dataclass
