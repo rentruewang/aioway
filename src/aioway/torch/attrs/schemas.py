@@ -16,13 +16,26 @@ from .dtypes import DType
 __all__ = ["Schema"]
 
 
-class Schema(cabc.Mapping):
+class Schema:
     """
     `Schema` is a `dict[str, Attr]` with additional utilities.
     """
 
     def __init__(self, mapping: dict[str, typing.Any] | None = None) -> None:
         self._schemas = mapping or {}
+
+    def __contains__(self, key: str | tuple[str, ...]) -> bool:
+        if isinstance(key, str):
+            return key in self._schemas
+
+        assert is_tuple_of(str)(key) and len(key) > 0, key
+        first, *rest = key
+
+        if not rest:
+            return first in self
+
+        else:
+            return tuple(rest) in self
 
     def __len__(self) -> int:
         return len(self._schemas)
@@ -36,15 +49,22 @@ class Schema(cabc.Mapping):
         except KeyError, AssertionError:
             raise KeyError(key)
 
-    def __getstate__(self) -> dict[str, typing.Any]:
+    def __getstate__(self) -> dict:
         return {key: val.__getstate__() for key, val in self.items()}
 
     def __hash__(self) -> int:
         return hash(json.dumps(self.__getstate__(), sort_keys=True))
 
-    @typing.no_type_check
-    def __iter__(self) -> cabc.Generator[str]:
-        yield from self._keys()
+    @typing.overload
+    def get[D](self, key: str | tuple[str, ...], default: D) -> Attr | Schema | D: ...
+    @typing.overload
+    def get(self, key: str | tuple[str, ...]) -> Attr | Schema | None: ...
+
+    def get(self, key, default=None):
+        try:
+            return self[key]
+        except KeyError:
+            return default
 
     def _getitem_recurse(self, *key: str):
         assert key
@@ -66,7 +86,7 @@ class Schema(cabc.Mapping):
             assert isinstance(child, Attr)
             return child
 
-    def _keys(self, *, leaves_only: bool = False, include_nested: bool = False):
+    def keys(self, *, leaves_only: bool = False, include_nested: bool = False):
         if include_nested and leaves_only:
             raise ValueError("`leaves_only` and `include_nested` cannot both be true.")
 
@@ -84,10 +104,18 @@ class Schema(cabc.Mapping):
         # This is the branch where it would yield sub-schema keys as tuples.
         L.logger.trace("Recurse into sub-Schema of {} and yield tuples", self)
         for key, val in self._items_of_type(Schema):
-            for child_key in val._keys(include_nested=True):
+            for child_key in val.keys(include_nested=True):
                 child_key = child_key if isinstance(key, tuple) else (child_key,)
                 assert is_tuple_of(str)(child_key)
                 yield key, *child_key
+
+    def values(self, *, leaves_only: bool = False, include_nested: bool = False):
+        for key in self.keys(leaves_only=leaves_only, include_nested=include_nested):
+            yield self[key]
+
+    def items(self, *, leaves_only: bool = False, include_nested: bool = False):
+        for key in self.keys(leaves_only=leaves_only, include_nested=include_nested):
+            yield key, self[key]
 
     def _items_of_type[T](self, typ: type[T]) -> cabc.Generator[tuple[str, T]]:
         for key, child in self._schemas.items():
@@ -115,13 +143,6 @@ class Schema(cabc.Mapping):
         """
 
         return any(attr.requires_grad for attr in self.values())
-
-    def rename(self, **renames: str) -> typing.Self:
-        """
-        Renames the current `Schema`.
-        """
-
-        return type(self)({renames.get(key, key): val for key, val in self.items()})
 
     def select(self, *cols: str, strict: bool = False) -> typing.Self:
         """
