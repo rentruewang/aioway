@@ -1,11 +1,12 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+from collections import abc as cabc
+
 import pytest
 import torch
 
 from aioway.cc import Dag, DoneTorchThunk
 from aioway.torch import fake_mode
-from collections import abc as cabc
 
 
 def add(left: torch.Tensor, right: torch.Tensor) -> torch.Tensor:
