@@ -3,6 +3,7 @@
 "Convolution emitters."
 
 import functools
+import typing
 
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
@@ -119,4 +120,4 @@ class ImageRegressorEmitter(Emitter):
         if isinstance(item, int):
             return [item] * self._size
 
-        raise RuntimeError("Unreachable.")
+        typing.assert_never(item)
