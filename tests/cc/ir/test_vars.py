@@ -108,7 +108,7 @@ def test_update_not_same_structure(local_vars, x_info, y_info):
         local_vars.update([x_info.fake, y_info.fake], [make_real()])
 
 
-def test_update_keeps_real_tensors(local_vars, x_info):
+def test_update_keeps_real(local_vars, x_info):
     const, real = make_real(), make_real()
     local_vars.update([x_info.fake, const], [real, const])
 
@@ -150,7 +150,7 @@ def test_map_to_real(local_vars: LocalVars, x_info: VarInfo, y_info: VarInfo):
     assert mapped["ys"][0] is y
 
 
-def test_map_keeps_real_tensors(local_vars: LocalVars, x_info: VarInfo):
+def test_map_keeps_real(local_vars: LocalVars, x_info: VarInfo):
     real, const = make_real(), make_real()
     local_vars.update(x_info.fake, real)
 
