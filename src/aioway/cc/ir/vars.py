@@ -139,13 +139,7 @@ class LocalVars(cabc.Mapping[torch.Tensor, torch.Tensor]):
         if not is_fake_tensor(tensor):
             return False
 
-        match tensor:
-            case int():
-                return tensor in self._vars
-            case torch.Tensor():
-                return id(tensor) in self._vars
-
-        typing.assert_never(tensor)
+        return self.info(tensor).is_alive
 
     def __iter__(self) -> cabc.Generator[torch.Tensor]:
         for val in self._vars.values():
@@ -177,6 +171,12 @@ class LocalVars(cabc.Mapping[torch.Tensor, torch.Tensor]):
         var_info.tensor = real
 
     def count(self) -> int:
+        """
+        Count the total variables tracked.
+
+        Not equal to `__len__`, which is only counting alive entries.
+        """
+
         return len(self._vars)
 
     def map[T: typing.Any = typing.Any](self, fake: T) -> T:
@@ -218,6 +218,20 @@ class LocalVars(cabc.Mapping[torch.Tensor, torch.Tensor]):
         for var in self._consumers[step]:
             if var.alive_until == step:
                 del var.tensor
+
+    def info(self, tensor: int | torch.Tensor) -> VarInfo:
+        "Check if the tensor is tracked."
+
+        if isinstance(tensor, torch.Tensor):
+            tensor = id(tensor)
+
+        return self._vars[tensor]
+
+    def fakes(self) -> cabc.Generator[torch.Tensor]:
+        "Get all the fake tensors."
+
+        for info in self._vars.values():
+            yield info.fake
 
     def _compute_consumers(self) -> dict[int, list[VarInfo]]:
         result: dict[int, list[VarInfo]] = collections.defaultdict(list)

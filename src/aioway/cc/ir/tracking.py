@@ -79,6 +79,10 @@ class DoneTorchThunk[F: cabc.Callable]:
 
 
 class Dag:
+    """
+    This is the DAG responsible for executing a traced thunk list on real data.
+    """
+
     def __init__(self, thunks: cabc.Sequence[DoneTorchThunk]) -> None:
         if not thunks:
             raise ValueError("DAG is empty.")
