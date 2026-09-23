@@ -150,7 +150,7 @@ class LocalVars:
         # Store the real tensor onto the info.
         var_info.tensor = real
 
-    def map(self, fake) -> typing.Any:
+    def map[T: typing.Any = typing.Any](self, fake: T) -> T:
         """
         Map the values in `fake` to real values.
 
@@ -159,7 +159,7 @@ class LocalVars:
 
         return pytree.tree_map_only(torch.Tensor, func=self._map_maybe_fake, tree=fake)
 
-    def update(self, fake, real) -> None:
+    def update[T: typing.Any = typing.Any](self, fake: T, real: T) -> None:
         """
         Update the fake values to their corresponding real values.
 
