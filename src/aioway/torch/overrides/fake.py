@@ -1,122 +1,157 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"A bunch of context managers controlling the fake mode."
+"Some fake mode guards."
 
-import contextlib as ctxl
+import functools
+import typing
 from collections import abc as cabc
 
+import tensordict as td
+import torch
 from torch._subclasses import fake_tensor as ft
 
+from aioway.torch._utils import tcol_to_tdict
+from aioway.torch.visitors import TorchVisitor
+
+from .contexts import fake_mode
+
 __all__ = [
-    "fake_mode",
-    "real_mode",
-    "torch_set_fake_mode",
-    "torch_set_fake_mode_func",
-    "is_fake_mode_on",
-    "is_real_mode_on",
-    "active_fake_mode",
+    "is_fake",
+    "is_fake_tensor",
+    "is_real",
+    "is_real_tensor",
+    "to_fake",
+    "clone_fake",
 ]
 
 
-_FAKE_MODE = ft.FakeTensorMode(allow_non_fake_inputs=True)
-_fake_mode_is_active: bool = False
+@functools.cache
+def _to_fake_converter():
+    to_fake_tdict = lambda item: td.from_dict(_to_fake_dict(item))
+    to_fake_seq = lambda item: [to_fake(elem) for elem in item]
+
+    return TorchVisitor(
+        tensor=_to_fake_tensor,
+        tdict=to_fake_tdict,
+        tcls=_to_fake_tcls,
+        mapping=_to_fake_dict,
+        sequence=to_fake_seq,
+        default=lambda item: item,
+    )
 
 
-def is_fake_mode_on() -> bool:
+def to_fake[C](item: C) -> C:
+    "Convert an item to its fake counterpart."
+
+    return _to_fake_converter()(item)
+
+
+@functools.cache
+def _is_fake_converter() -> TorchVisitor[bool]:
+    return TorchVisitor(
+        tensor=is_fake_tensor,
+        tdict=_is_fake_tcol,
+        tcls=_is_fake_tcol,
+        mapping=lambda item: _is_fake_iter(item.values()),
+        sequence=_is_fake_iter,
+        default=lambda _: False,
+    )
+
+
+def is_fake(item) -> bool:
     """
-    Check if we are running under a `fake_mode` context.
-    """
-
-    return _fake_mode_is_active
-
-
-def is_real_mode_on() -> bool:
-    """
-    Check if fake mode is turned off.
-    """
-
-    return not _fake_mode_is_active
-
-
-def active_fake_mode() -> ft.FakeTensorMode | None:
-    """
-    Get the fake mode if it is active, or `None` if no fake mode is active.
-    """
-
-    if _fake_mode_is_active:
-        return _FAKE_MODE
-    else:
-        return None
-
-
-@ctxl.contextmanager
-def fake_mode():
-    """
-    Enable `torch`'s fake mode s.t. we can do symbolic processing easily.
-
-    Since fake mode doesn't nest (it seems), if fake mode is already on, yield that.
-    """
-
-    with _FAKE_MODE, _set_fake_mode_flag(True):
-        yield _FAKE_MODE
-
-
-@ctxl.contextmanager
-def real_mode():
-    """
-    Disable `torch`'s fake mode temporarily.
-
-    Yields:
-        The context manager that is pushed to torch's dispatch stack.
+    Check if the item is fake.
     """
 
-    with ft.unset_fake_temporarily() as mode, _set_fake_mode_flag(False):
-        yield mode
+    return _is_fake_converter()(item)
 
 
-def torch_set_fake_mode(yes: bool, /):
+def is_real(item) -> bool:
+    "Check if the item is a real one."
+
+    return is_fake(item) != True
+
+
+def is_real_tensor(item) -> bool:
+    return isinstance(item, torch.Tensor) and not is_fake_tensor(item)
+
+
+@functools.cache
+def _clone_fake_converter() -> TorchVisitor:
+    clone = lambda x: x.clone()
+    return TorchVisitor(
+        tensor=clone,
+        tdict=clone,
+        tcls=clone,
+        mapping=lambda item: {key: clone_fake(val) for key, val in item.items()},
+        sequence=lambda item: [clone_fake(val) for val in item],
+        default=lambda item: item,
+    )
+
+
+def clone_fake[T](item: T) -> T:
     """
-    Context manager to set the fake mode if `True` or `False` to set to the real mode.
+    Call `.clone()` on `torch` / `tensordict` fake values.
+
+    This is useful in changing the `id` of fake values for uniqueness analysis.
     """
 
-    if yes:
-        return fake_mode()
-    else:
-        return real_mode()
+    if not is_fake(item):
+        return item
+
+    return _clone_fake(item)
 
 
-@ctxl.contextmanager
-def _set_fake_mode_flag(to: bool):
-    global _fake_mode_is_active
+def _clone_fake(obj: typing.Any) -> typing.Any:
+    if isinstance(obj, torch.Tensor):
+        return obj.clone()
 
-    before = _fake_mode_is_active
-    _fake_mode_is_active = to
-    try:
-        yield _fake_mode_is_active
-    finally:
-        _fake_mode_is_active = before
+    if td.is_tensor_collection(obj):
+        return obj.clone()
 
+    if isinstance(obj, cabc.Mapping):
+        return {key: clone_fake(val) for key, val in obj.items()}
 
-def torch_set_fake_mode_func(to: bool, /):
-    def decorator[**P, T](func: cabc.Callable[P, T]) -> cabc.Callable[P, T]:
-        """
-        Decorator on a function, s.t. when the function is being called, fake mode is enabled.
-        """
+    if isinstance(obj, cabc.Iterable):
+        return [clone_fake(elem) for elem in obj]
 
-        def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-            with torch_set_fake_mode(to):
-                return func(*args, **kwargs)
-
-        _set_wrapper_func(wrapper, func)
-        return wrapper
-
-    return decorator
+    raise TypeError(f"Unknown type: {type(obj)=}.")
 
 
-def _set_wrapper_func[**P, T](
-    wrapper: cabc.Callable[P, T], func: cabc.Callable[P, T]
-) -> None:
-    wrapper.__qualname__ = func.__qualname__
-    wrapper.__name__ = func.__name__
-    wrapper.__module__ = func.__module__
-    wrapper.__doc__ = func.__doc__
+def _is_fake_tcol(item) -> bool:
+    tdict = tcol_to_tdict(item)
+    return _is_fake_iter(tdict.values())
+
+
+def _is_fake_iter(item: cabc.Iterable):
+    return any(is_fake(val) for val in item)
+
+
+def _to_fake_tcls(item):
+    tdict = tcol_to_tdict(item)
+    mapping = _to_fake_dict(tdict)
+    return type(item)(**mapping)
+
+
+def _to_fake_tensor(tensor: torch.Tensor) -> ft.FakeTensor:
+    """
+    Move a possibly real tensor to a fake torch.Tensor
+    """
+
+    if is_fake_tensor(tensor):
+        return tensor
+
+    with fake_mode() as mode:
+        converter = mode.fake_tensor_converter
+        return converter.from_real_tensor(mode, tensor)
+
+
+def is_fake_tensor(tensor: torch.Tensor) -> typing.TypeIs[ft.FakeTensor]:
+    # All fake tensors are of this type.
+    return isinstance(tensor, ft.FakeTensor)
+
+
+def _to_fake_dict(
+    tdict: cabc.Mapping[str, typing.Any],
+) -> dict[str, typing.Any]:
+    return {key: to_fake(val) for key, val in tdict.items()}

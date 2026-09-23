@@ -10,16 +10,29 @@ from collections import abc as cabc
 import torch
 
 from aioway._thunks import Thunk
-from aioway._utils import TensorInput, topo_sort
 from aioway.torch import (
-    Attr,
     ModeThunk,
     find_nested_tensors,
     is_leaf_has_grad,
+    parse_attr,
     replace_tensors_with_attr,
 )
 
-__all__ = ["Hist", "HistTensorGraph"]
+from ._utils import topo_sort_id
+
+__all__ = ["Hist", "HistTensorGraph", "TensorInput", "HashableTensorInput"]
+
+
+@typing.runtime_checkable
+class TensorInput(typing.Protocol):
+    """
+    `TensorInput` marks a class whose value depend on input tensors for computation.
+    """
+
+    def inputs(self) -> cabc.Iterable[torch.Tensor]:
+        "The tensor operands (inputs to the function)"
+
+        raise NotImplementedError
 
 
 class HashableTensorInput(typing.Hashable, TensorInput, Thunk, typing.Protocol): ...
@@ -139,7 +152,7 @@ class HistTensorGraph[T: ModeThunk | HashableTensorInput](Hist):
         "Sort the tensor graph topologically."
 
         graph = self._thunk_graph()
-        return topo_sort(graph)
+        return topo_sort_id(graph)
 
     def _thunk_graph(self):
         outs = self.output_to_thunk_list
@@ -170,7 +183,7 @@ class HistTensorGraph[T: ModeThunk | HashableTensorInput](Hist):
 
     def memory(self) -> int:
         "The total memory consumed by the tensors."
-        return sum(Attr.parse(param).memory() for param in self._all_tensors())
+        return sum(parse_attr(param).memory() for param in self._all_tensors())
 
     def parameters(self):
         for tensor in self._all_tensors():

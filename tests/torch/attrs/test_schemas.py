@@ -4,11 +4,11 @@ import pytest
 import tensordict as td
 import torch
 
-from aioway.torch import Attr, Schema
+from aioway.torch import Attr, AttrDict, parse_attr
 
 
 def make_attr(dtype: torch.dtype = torch.float32) -> Attr:
-    return Attr.parse(torch.zeros(3, dtype=dtype))
+    return parse_attr(torch.zeros(3, dtype=dtype))
 
 
 @pytest.fixture
@@ -17,18 +17,18 @@ def attr() -> Attr:
 
 
 @pytest.fixture
-def user(attr) -> Schema:
-    return Schema({"name": attr})
+def user(attr) -> AttrDict:
+    return AttrDict({"name": attr})
 
 
 @pytest.fixture
-def schema(attr, user) -> Schema:
-    return Schema({"id": attr, "user": user})
+def schema(attr, user) -> AttrDict:
+    return AttrDict({"id": attr, "user": user})
 
 
 def test_length(schema):
     assert len(schema) == 2
-    assert len(Schema()) == 0
+    assert len(AttrDict()) == 0
 
 
 def test_getitem_shallow(schema, attr, user):
@@ -81,7 +81,7 @@ def test_keys_includes_nested(schema):
 
 def test_more_nesting():
     city = make_attr()
-    deep = Schema({"user": Schema({"address": Schema({"city": city})})})
+    deep = AttrDict({"user": AttrDict({"address": AttrDict({"city": city})})})
 
     assert deep["user", "address", "city"] is city
     all_nested_keys = {("user", "address", "city"), ("user", "address"), "user"}
@@ -105,7 +105,7 @@ def test_select_ignores_missing(schema):
 def test_dtype_coerce(schema, attr):
     assert schema.dtype == attr.dtype  # every leaf, nested included, is float32
 
-    mixed = Schema({"a": make_attr(torch.float32), "b": make_attr(torch.int64)})
+    mixed = AttrDict({"a": make_attr(torch.float32), "b": make_attr(torch.int64)})
     assert mixed.dtype is None
 
 
@@ -114,8 +114,8 @@ def test_parse_nested():
         {"id": torch.zeros(3), "user": td.TensorDict({"name": torch.zeros(3)})},
         batch_size=[3],
     )
-    parsed = Schema.parse(data)
+    parsed = parse_attr(data)
 
     assert isinstance(parsed["id"], Attr)
-    assert isinstance(parsed["user"], Schema)
+    assert isinstance(parsed["user"], AttrDict)
     assert isinstance(parsed["user", "name"], Attr)

@@ -8,7 +8,7 @@ import typing
 import torch
 from torch.utils import data as dutils
 
-from aioway.torch import Attr, is_fake_mode_on, torch_set_fake_mode_func
+from aioway.torch import is_fake_mode_on, parse_attr, torch_set_fake_mode_func
 
 from ._av import AudioStream
 from ._bases import TorchCompatible
@@ -134,7 +134,7 @@ class AvAudioLoader(AudioLoader):
 
         # Create a fake tensor of float32 in fake mode.
         if is_fake_mode_on():
-            tensor = Attr.parse(
+            tensor = parse_attr(
                 {"shape": [info.num_channels, info.num_frames], "dtype": torch.float32}
             ).to_fake()
 

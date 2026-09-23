@@ -9,7 +9,7 @@ import tensordict as td
 import torch
 from torch._subclasses import fake_tensor as ft
 
-from aioway.torch import Attr, clone_fake, fake_mode, is_fake, is_real, to_fake
+from aioway.torch import clone_fake, fake_mode, is_fake, is_real, parse_attr, to_fake
 
 
 @td.tensorclass
@@ -127,7 +127,7 @@ def test_clone_fake_tensor(fake):
     assert is_fake(out)
     assert out is not fake
 
-    assert Attr.parse(out) == Attr.parse(fake)
+    assert parse_attr(out) == parse_attr(fake)
 
 
 def test_clone_fake_real_same():

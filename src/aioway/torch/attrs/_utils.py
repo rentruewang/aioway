@@ -10,7 +10,7 @@ import torch
 from aioway._utils import decomp_flatten, render_fcall, render_torch_func_name
 from aioway.torch._utils import replace_tensors
 
-from .attrs import Attr
+from .attrs import parse_attr
 
 __all__ = [
     "render_tensor_func_short",
@@ -40,7 +40,7 @@ def render_function_body_prefix(
 
 
 def replace_tensors_with_attr[T](obj: T) -> T:
-    result: typing.Any = replace_tensors(obj, Attr.parse)
+    result: typing.Any = replace_tensors(obj, parse_attr)
     return result
 
 
