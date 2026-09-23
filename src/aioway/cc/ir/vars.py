@@ -5,6 +5,7 @@ from collections import abc as cabc
 
 import loguru as L
 import torch
+from IPython.core.guarded_eval import typing
 from torch.utils import _pytree as pytree
 
 from aioway.torch import is_fake, is_fake_tensor, is_real, is_real_tensor
@@ -136,6 +137,26 @@ class DagLocalVars:
         except AttributeError:
             raise KeyError("The tensor is not set for this key.")
 
+    def __setitem__(self, fake: torch.Tensor, real: torch.Tensor) -> None:
+        if not is_fake_tensor(fake):
+            raise KeyError(f"Key: {type(fake)=} is not fake tensor.")
+
+        if not is_real_tensor(real):
+            raise ValueError(f"Value: {type(real)=} is not real tensor.")
+
+        var_info = self._fake_index[id(fake)]
+        assert not var_info.is_alive
+
+        # Store the real tensor onto the info.
+        var_info.tensor = real
+
+    def map(self, fake) -> typing.Any:
+        """
+        Map the values in `fake` to real values.
+        """
+
+        return pytree.tree_map_only(torch.Tensor, self.__getitem__, fake)
+
     def update(self, fake, real) -> None:
         """
         Update the fake values to their corresponding real values.
@@ -155,11 +176,7 @@ class DagLocalVars:
         assert len(fake_list) == len(real_list)
 
         for fake_tensor, real_tensor in zip(fake_list, real_list):
-            var_info = self._fake_index[id(fake_tensor)]
-            assert not var_info.is_alive
-
-            # Store the real tensor onto the info.
-            var_info.tensor = real_tensor
+            self[fake_tensor] = real_tensor
 
     def expire(self, step: int) -> None:
         """

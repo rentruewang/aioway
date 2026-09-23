@@ -130,3 +130,28 @@ def test_expire_free(local_vars: DagLocalVars, x_info: DagVarInfo, y_info: DagVa
     local_vars.expire(1)
     assert not x_info.is_alive
     assert not y_info.is_alive
+
+
+def test_map_to_real(local_vars, x_info, y_info):
+    x, y = make_real(), make_real()
+    local_vars.update([x_info.fake, y_info.fake], [x, y])
+
+    mapped = local_vars.map({"x": x_info.fake, "ys": [y_info.fake]})
+
+    assert mapped["x"] is x
+    assert mapped["ys"][0] is y
+
+
+def test_map_keeps_non_tensors(local_vars, x_info):
+    real = make_real()
+    local_vars.update(x_info.fake, real)
+
+    mapped = local_vars.map({"t": x_info.fake, "n": 3, "s": "hi"})
+
+    assert mapped["t"] is real
+    assert mapped == {"t": real, "n": 3, "s": "hi"}
+
+
+def test_map_missing_real(local_vars, x_info):
+    with pytest.raises(KeyError):
+        local_vars.map([x_info.fake])
