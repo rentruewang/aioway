@@ -15,7 +15,14 @@ from aioway.torch.visitors import TorchVisitor
 
 from .contexts import fake_mode
 
-__all__ = ["is_fake", "is_real", "to_fake", "clone_fake"]
+__all__ = [
+    "is_fake",
+    "is_fake_tensor",
+    "is_real",
+    "is_real_tensor",
+    "to_fake",
+    "clone_fake",
+]
 
 
 @functools.cache
@@ -42,7 +49,7 @@ def to_fake[C](item: C) -> C:
 @functools.cache
 def _is_fake_converter() -> TorchVisitor[bool]:
     return TorchVisitor(
-        tensor=_is_fake_tensor,
+        tensor=is_fake_tensor,
         tdict=_is_fake_tcol,
         tcls=_is_fake_tcol,
         mapping=lambda item: _is_fake_iter(item.values()),
@@ -63,6 +70,10 @@ def is_real(item) -> bool:
     "Check if the item is a real one."
 
     return is_fake(item) != True
+
+
+def is_real_tensor(item) -> bool:
+    return isinstance(item, torch.Tensor) and not is_fake_tensor(item)
 
 
 @functools.cache
@@ -127,7 +138,7 @@ def _to_fake_tensor(tensor: torch.Tensor) -> ft.FakeTensor:
     Move a possibly real tensor to a fake torch.Tensor
     """
 
-    if _is_fake_tensor(tensor):
+    if is_fake_tensor(tensor):
         return tensor
 
     with fake_mode() as mode:
@@ -135,7 +146,7 @@ def _to_fake_tensor(tensor: torch.Tensor) -> ft.FakeTensor:
         return converter.from_real_tensor(mode, tensor)
 
 
-def _is_fake_tensor(tensor: torch.Tensor) -> typing.TypeIs[ft.FakeTensor]:
+def is_fake_tensor(tensor: torch.Tensor) -> typing.TypeIs[ft.FakeTensor]:
     # All fake tensors are of this type.
     return isinstance(tensor, ft.FakeTensor)
 

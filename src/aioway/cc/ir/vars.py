@@ -4,11 +4,11 @@ import collections
 from collections import abc as cabc
 
 import torch
+from torch.utils import _pytree as pytree
 
-from aioway._utils import AnyDict
-from aioway.torch import is_fake, is_real
+from aioway.torch import is_fake, is_fake_tensor, is_real, is_real_tensor
 
-__all__ = ["DagVarInfo"]
+__all__ = ["DagVarInfo", "DagLocalVars"]
 
 
 class DagVarInfo:
@@ -75,7 +75,7 @@ class DagVarInfo:
         "Free the current tensor."
 
         if not self.is_alive:
-            raise RuntimeError("Tensor is already dead. Cannot remove again.")
+            raise AttributeError("Tensor is already dead. Cannot remove again.")
 
         self._tensor = None
 
@@ -90,12 +90,20 @@ class DagVarInfo:
         return self._producer < 0
 
     @property
+    def alive_until(self) -> int:
+        "Get the last step where the variable is alive."
+
+        return max(self.consumers)
+
+    @property
     def largest_consumer(self) -> int:
         "Get the largest consumer."
         return max(self.consumers)
 
 
-class DagLocals:
+class DagLocalVars:
+    "The locals stash, storing all the local variables."
+
     def __init__(self, variables: cabc.Sequence[DagVarInfo]) -> None:
         self._variables = variables
 
@@ -108,21 +116,58 @@ class DagLocals:
     def __len__(self) -> int:
         return len(self._variables)
 
+    def __getitem__(self, fake: torch.Tensor) -> torch.Tensor:
+        if not is_fake_tensor(fake):
+            raise KeyError("Input is not fake.")
+
+        info = self._fake_index[id(fake)]
+
+        try:
+            return info.tensor
+        except AttributeError:
+            raise KeyError("The tensor is not set for this key.")
+
     def update(self, fake, real) -> None:
-        pass
+        """
+        Update the fake values to their corresponding real values.
 
-    def fill(self, step: int, *args, **kwargs):
-        pass
+        Both are guaranteed to have the same structure.
+        """
 
-    def _fill_container(self, step: int, *args, **kwargs):
-        pass
+        fake_list, fake_struct = pytree.tree_flatten(fake, is_leaf=is_fake_tensor)
+        real_list, real_struct = pytree.tree_flatten(real, is_leaf=is_real_tensor)
 
-    def _post_fill(self, step: int):
-        pass
+        if fake_struct != real_struct:
+            raise ValueError(
+                "The real and fake provided does not have the same structure."
+            )
+
+        # Since having same structure.
+        assert len(fake_list) == len(real_list)
+
+        for fake_tensor, real_tensor in zip(fake_list, real_list):
+            var_info = self._fake_index[id(fake_tensor)]
+            assert not var_info.is_alive
+
+            # Store the real tensor onto the info.
+            var_info.tensor = real_tensor
+
+    def expire(self, step: int) -> None:
+        """
+        Expire those variables whose step = `step` (`step` must be positive).
+        """
+
+        for var in self._consumers[step]:
+            if var.alive_until == step:
+                del var.tensor
 
     def _compute_fake_index(self) -> dict[int, DagVarInfo]:
+        # Since fake tensors have 1 single producer, the producer is unique.
         result = {id(info.fake): info for info in self._variables}
-        assert len(result) == len(self._variables)
+
+        if len(result) != len(self._variables):
+            raise ValueError("The producer for the variable list is not unique.")
+
         return result
 
     def _compute_consumers(self) -> dict[int, list[DagVarInfo]]:
