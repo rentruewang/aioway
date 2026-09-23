@@ -89,42 +89,60 @@ class Dag:
 
         self._thunks = tuple(thunks)
         self._locals = self._compute_local_vars()
+        self._inputs = tuple(self._input_vars())
 
     def __len__(self) -> int:
         return len(self._thunks)
 
-    def _compute_local_vars(self) -> LocalVars:
-        unique_vars: dict[int, VarInfo] = {}
-        dag_inputs: set[int] = set()
+    def __call__(self, *inputs: torch.Tensor) -> typing.Any:
+        self._locals.update(self._inputs, inputs)
 
         for idx, thunk in enumerate(self._thunks):
-            self._add_inputs(idx, thunk, unique_vars, dag_inputs)
+            args, kwargs = self._locals.map([thunk.args, thunk.kwargs])
+            real = thunk.func(*args, **kwargs)
+            self._locals.update(thunk.result, real)
+            self._locals.expire(idx)
+
+        return self._locals.map(self._thunks[-1])
+
+    def inputs(self) -> tuple[torch.Tensor, ...]:
+        "The fake tensor inputs, from order or definition."
+
+        return self._inputs
+
+    def _input_vars(self) -> cabc.Generator[torch.Tensor]:
+        for var in self._locals.tracked():
+            if self._locals.info(var).is_input:
+                yield var
+
+    def _compute_local_vars(self) -> LocalVars:
+        unique_vars: dict[int, VarInfo] = {}
+
+        for idx, thunk in enumerate(self._thunks):
+            self._add_inputs(idx, thunk, unique_vars)
             self._add_output(idx, thunk, unique_vars)
 
         return LocalVars(unique_vars)
 
     def _add_inputs(
-        self,
-        idx: int,
-        thunk: DoneTorchThunk,
-        locals: dict[int, VarInfo],
-        input_ids: set[int],
+        self, idx: int, thunk: DoneTorchThunk, locals: dict[int, VarInfo]
     ) -> None:
         for input in thunk.upstream():
             if (input_id := id(input)) not in locals:
-                info = VarInfo(producer=-1, fake=input)
-                input_ids.add(input_id)
-            else:
-                info = locals[input_id]
+                info = VarInfo.input_var(input)
+                locals[input_id] = info
 
+            info = locals[input_id]
             info.add_consumers(idx)
 
     def _add_output(
-        self, idx: int, thunk: DoneTorchThunk, var_infos: dict[int, VarInfo]
+        self, idx: int, thunk: DoneTorchThunk, locals: dict[int, VarInfo]
     ) -> None:
         # Output must be unique.
         for output in thunk.downstream():
             info = VarInfo(producer=idx, fake=output)
 
-            if id(info.fake) in var_infos:
+            if id(info.fake) in locals:
                 raise KeyError(f"Output produced is not unique.")
+
+            locals[id(output)] = info

@@ -18,11 +18,9 @@ class VarInfo:
 
     def __init__(self, producer: int, fake: torch.Tensor):
         self._producer = producer
-
-        self._consumers: set[int] = set()
-
         self._fake = fake
 
+        self._consumers: set[int] = set()
         self._tensor: torch.Tensor | None = None
 
         if not isinstance(fake, torch.Tensor) or is_real(fake):
@@ -104,10 +102,19 @@ class VarInfo:
         return self._producer < 0
 
     @property
+    def is_output(self) -> bool:
+        "Check if the variable is an output."
+        return not self.consumers
+
+    @property
     def alive_until(self) -> int:
         "Get the last step where the variable is alive."
 
         return max(self.consumers)
+
+    @classmethod
+    def input_var(cls, fake: torch.Tensor) -> typing.Self:
+        return cls(producer=-1, fake=fake)
 
 
 class LocalVars(cabc.Mapping[torch.Tensor, torch.Tensor]):
@@ -227,8 +234,8 @@ class LocalVars(cabc.Mapping[torch.Tensor, torch.Tensor]):
 
         return self._vars[tensor]
 
-    def fakes(self) -> cabc.Generator[torch.Tensor]:
-        "Get all the fake tensors."
+    def tracked(self) -> cabc.Generator[torch.Tensor]:
+        "Get all the fake tensors tracked."
 
         for info in self._vars.values():
             yield info.fake
