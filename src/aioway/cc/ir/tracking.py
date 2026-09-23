@@ -15,6 +15,8 @@ from aioway.torch import (
     replace_tensors_with_attr,
 )
 
+from .vars import LocalVars, VarInfo
+
 
 class DoneTorchThunk[F: cabc.Callable]:
     "Stores the thunk and output."
@@ -23,7 +25,7 @@ class DoneTorchThunk[F: cabc.Callable]:
         self,
         *,
         func: F,
-        args: tuple,
+        args: tuple[typing.Any, ...],
         kwargs: dict[str, typing.Any],
         result: typing.Any,
     ) -> None:
@@ -74,3 +76,51 @@ class DoneTorchThunk[F: cabc.Callable]:
     @functools.cached_property
     def _signature(self) -> Sign:
         return Sign.from_callable(self._func)
+
+
+class Dag:
+    def __init__(self, thunks: cabc.Sequence[DoneTorchThunk]) -> None:
+        if not thunks:
+            raise ValueError("DAG is empty.")
+
+        self._thunks = tuple(thunks)
+        self._locals = self._compute_local_vars()
+
+    def __len__(self) -> int:
+        return len(self._thunks)
+
+    def _compute_local_vars(self) -> LocalVars:
+        unique_vars: dict[int, VarInfo] = {}
+        dag_inputs: set[int] = set()
+
+        for idx, thunk in enumerate(self._thunks):
+            self._add_inputs(idx, thunk, unique_vars, dag_inputs)
+            self._add_output(idx, thunk, unique_vars)
+
+        return LocalVars(unique_vars)
+
+    def _add_inputs(
+        self,
+        idx: int,
+        thunk: DoneTorchThunk,
+        locals: dict[int, VarInfo],
+        input_ids: set[int],
+    ) -> None:
+        for input in thunk.upstream():
+            if (input_id := id(input)) not in locals:
+                info = VarInfo(producer=-1, fake=input)
+                input_ids.add(input_id)
+            else:
+                info = locals[input_id]
+
+            info.add_consumers(idx)
+
+    def _add_output(
+        self, idx: int, thunk: DoneTorchThunk, var_infos: dict[int, VarInfo]
+    ) -> None:
+        # Output must be unique.
+        for output in thunk.downstream():
+            info = VarInfo(producer=idx, fake=output)
+
+            if id(info.fake) in var_infos:
+                raise KeyError(f"Output produced is not unique.")

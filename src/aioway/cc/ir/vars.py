@@ -30,6 +30,9 @@ class VarInfo:
                 f"The fake tensor produced at idx={self.producer} is real."
             )
 
+    def __hash__(self) -> int:
+        return id(self.fake)
+
     def add_consumers(self, *consumers: int) -> None:
         "Add consumers for the info."
 
@@ -107,30 +110,53 @@ class VarInfo:
         return max(self.consumers)
 
 
-class LocalVars:
-    "The locals stash, storing all the local variables."
+class LocalVars(cabc.Mapping[torch.Tensor, torch.Tensor]):
+    """
+    Stores all the local vars that the DAG executes, by their fake tensors.
+    It stores the real tensors associated with the fakes in a `VarInfo`,
+    and manage the lifetime of fake tensors by `update` / `expire`.
 
-    def __init__(self, variables: cabc.Sequence[VarInfo]) -> None:
-        self._variables = variables
+    When an info `is_alive`, the tensor is currently in scope.
+
+    It acts as a mapping of "in scope" fake tensor -> real tensor.
+    """
+
+    def __init__(self, vars: cabc.Mapping[int, VarInfo]) -> None:
+        self._vars = vars
+        "Mapping from id of fake tensor to variable info."
 
         L.logger.opt(lazy=True).trace(
-            "Attempting to create a stash of {} local vars", self._variables.__len__
+            "Attempting to create a stash of {} local vars", self._vars.__len__
         )
-
-        self._fake_index = self._compute_fake_index()
-        "Mapping from id of fake tensor to variable info."
 
         self._consumers = self._compute_consumers()
         "Mapping from DAG index of consuming point to corresponding variable info."
 
     def __len__(self) -> int:
-        return len(self._variables)
+        return sum(1 for _ in self)
+
+    def __contains__(self, tensor) -> bool:
+        if not is_fake_tensor(tensor):
+            return False
+
+        match tensor:
+            case int():
+                return tensor in self._vars
+            case torch.Tensor():
+                return id(tensor) in self._vars
+
+        typing.assert_never(tensor)
+
+    def __iter__(self) -> cabc.Generator[torch.Tensor]:
+        for val in self._vars.values():
+            if val.is_alive:
+                yield val.fake
 
     def __getitem__(self, fake: torch.Tensor) -> torch.Tensor:
         if not is_fake_tensor(fake):
             raise KeyError("Input is not fake.")
 
-        info = self._fake_index[id(fake)]
+        info = self._vars[id(fake)]
 
         try:
             return info.tensor
@@ -144,11 +170,14 @@ class LocalVars:
         if not is_real_tensor(real):
             raise ValueError(f"Value: {type(real)=} is not real tensor.")
 
-        var_info = self._fake_index[id(fake)]
+        var_info = self._vars[id(fake)]
         assert not var_info.is_alive
 
         # Store the real tensor onto the info.
         var_info.tensor = real
+
+    def count(self) -> int:
+        return len(self._vars)
 
     def map[T: typing.Any = typing.Any](self, fake: T) -> T:
         """
@@ -190,19 +219,10 @@ class LocalVars:
             if var.alive_until == step:
                 del var.tensor
 
-    def _compute_fake_index(self) -> dict[int, VarInfo]:
-        # Since fake tensors have 1 single producer, the producer is unique.
-        result = {id(info.fake): info for info in self._variables}
-
-        if len(result) != len(self._variables):
-            raise ValueError("The producer for the variable list is not unique.")
-
-        return result
-
     def _compute_consumers(self) -> dict[int, list[VarInfo]]:
         result: dict[int, list[VarInfo]] = collections.defaultdict(list)
 
-        for var in self._variables:
+        for var in self._vars.values():
             for consumer in var.consumers:
                 result[consumer].append(var)
 
@@ -221,3 +241,13 @@ class LocalVars:
 
         if fake_tensor is not real_tensor:
             raise ValueError("Real tensor in `fake` paired with a different value.")
+
+    @classmethod
+    def from_infos(cls, *infos: VarInfo) -> typing.Self:
+        # Since fake tensors have 1 single producer, the producer is unique.
+        variables = {id(info.fake): info for info in infos}
+
+        if len(variables) != len(infos):
+            raise ValueError("The producer for the variable list is not unique.")
+
+        return cls(variables)
