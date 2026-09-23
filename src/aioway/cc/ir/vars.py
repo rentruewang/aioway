@@ -157,13 +157,7 @@ class LocalVars:
         This tolerates real tensors in the input.
         """
 
-        def lookup_tensor(item: torch.Tensor) -> torch.Tensor:
-            if is_real_tensor(item):
-                return item
-
-            return self[item]
-
-        return pytree.tree_map_only(torch.Tensor, func=lookup_tensor, tree=fake)
+        return pytree.tree_map_only(torch.Tensor, func=self._map_maybe_fake, tree=fake)
 
     def update(self, fake, real) -> None:
         """
@@ -185,10 +179,7 @@ class LocalVars:
 
         # Update every reference. If real tensor exists in `fake_list`, skip.
         for fake_tensor, real_tensor in zip(fake_list, real_list):
-            if is_real_tensor(fake_tensor):
-                continue
-
-            self[fake_tensor] = real_tensor
+            self._update_maybe_fake(fake_tensor, real_tensor)
 
     def expire(self, step: int) -> None:
         """
@@ -216,3 +207,17 @@ class LocalVars:
                 result[consumer].append(var)
 
         return result
+
+    def _map_maybe_fake(self, item: torch.Tensor) -> torch.Tensor:
+        if is_real_tensor(item):
+            return item
+
+        return self[item]
+
+    def _update_maybe_fake(self, fake_tensor: torch.Tensor, real_tensor: torch.Tensor):
+        if is_fake_tensor(fake_tensor):
+            self[fake_tensor] = real_tensor
+            return
+
+        if fake_tensor is not real_tensor:
+            raise ValueError("Real tensor in `fake` paired with a different value.")
