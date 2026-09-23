@@ -7,15 +7,19 @@ import typing
 from collections import abc as cabc
 
 import torch
+from torch import nn
 
 from aioway._utils import Sign
 from aioway.torch import (
     find_nested_tensors,
+    is_aten_op,
     render_tensor_func_short,
     replace_tensors_with_attr,
 )
 
 from .vars import LocalVars, VarInfo
+
+__all__ = ["DoneTorchThunk", "Dag", "ModuleDag", "TorchFuncDag", "TorchDispDag"]
 
 
 class DoneTorchThunk[F: cabc.Callable]:
@@ -78,12 +82,12 @@ class DoneTorchThunk[F: cabc.Callable]:
         return Sign.from_callable(self._func)
 
 
-class Dag:
+class Dag[F: cabc.Callable = typing.Any](cabc.Sequence[DoneTorchThunk[F]]):
     """
     This is the DAG responsible for executing a traced thunk list on real data.
     """
 
-    def __init__(self, thunks: cabc.Sequence[DoneTorchThunk]) -> None:
+    def __init__(self, thunks: cabc.Sequence[DoneTorchThunk[F]]) -> None:
         if not thunks:
             raise ValueError("DAG is empty.")
 
@@ -94,6 +98,22 @@ class Dag:
     def __len__(self) -> int:
         return len(self._thunks)
 
+    @typing.overload
+    def __getitem__(self, idx: int) -> DoneTorchThunk[F]: ...
+
+    @typing.overload
+    def __getitem__(self, idx: slice) -> typing.Self: ...
+
+    def __getitem__(self, idx):
+        match idx:
+            case int():
+                return self._thunks[idx]
+            case slice():
+                return type(self)(self._thunks[idx])
+
+    def __iter__(self) -> cabc.Generator[DoneTorchThunk[F]]:
+        yield from self._thunks
+
     def __call__(self, *inputs: torch.Tensor) -> typing.Any:
         self._locals.update(self._inputs, inputs)
 
@@ -103,7 +123,7 @@ class Dag:
             self._locals.update(thunk.result, real)
             self._locals.expire(idx)
 
-        return self._locals.map(self._thunks[-1])
+        return self._locals.map(self._thunks[-1].result)
 
     def inputs(self) -> tuple[torch.Tensor, ...]:
         "The fake tensor inputs, from order or definition."
@@ -146,3 +166,31 @@ class Dag:
                 raise KeyError(f"Output produced is not unique.")
 
             locals[id(output)] = info
+
+
+class ModuleDag(nn.Module):
+    def __init__(self, dag: Dag[nn.Module]) -> None:
+        super().__init__()
+
+        # Automatically register the modules.
+        self.module_list = nn.ModuleList([node.func for node in dag])
+
+        self._dag = dag
+
+    @classmethod
+    def from_thunks(cls, *thunks: DoneTorchThunk[nn.Module]) -> typing.Self:
+        return cls(Dag(thunks))
+
+
+class TorchFuncDag:
+    def __init__(self, dag: Dag) -> None:
+        self._dag = dag
+
+
+class TorchDispDag:
+    def __init__(self, dag: Dag) -> None:
+        for node in dag:
+            if not is_aten_op(node.func):
+                raise TypeError("Input node not aten.")
+
+        self._dag = dag
