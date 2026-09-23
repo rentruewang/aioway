@@ -226,6 +226,15 @@ class LocalVars(cabc.Mapping[torch.Tensor, torch.Tensor]):
             if var.alive_until == step:
                 del var.tensor
 
+    def clear(self) -> None:
+        """
+        Clear all the temporary storage for the next run.
+        """
+
+        for var in self._vars.values():
+            if var.is_alive:
+                del var.tensor
+
     def info(self, tensor: int | torch.Tensor) -> VarInfo:
         "Check if the tensor is tracked."
 

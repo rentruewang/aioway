@@ -115,7 +115,10 @@ class Dag[F: cabc.Callable = typing.Any](cabc.Sequence[DoneTorchThunk[F]]):
         yield from self._thunks
 
     def __call__(self, *inputs: torch.Tensor) -> typing.Any:
-        self._locals.update(self._inputs, inputs)
+        try:
+            self._locals.update(self._inputs, inputs)
+        except ValueError as err:
+            raise TypeError from err
 
         for idx, thunk in enumerate(self._thunks):
             args, kwargs = self._locals.map([thunk.args, thunk.kwargs])
@@ -123,7 +126,9 @@ class Dag[F: cabc.Callable = typing.Any](cabc.Sequence[DoneTorchThunk[F]]):
             self._locals.update(thunk.result, real)
             self._locals.expire(idx)
 
-        return self._locals.map(self._thunks[-1].result)
+        result = self._locals.map(self._thunks[-1].result)
+        self._locals.clear()
+        return result
 
     def inputs(self) -> tuple[torch.Tensor, ...]:
         "The fake tensor inputs, from order or definition."
@@ -158,7 +163,7 @@ class Dag[F: cabc.Callable = typing.Any](cabc.Sequence[DoneTorchThunk[F]]):
     def _add_output(
         self, idx: int, thunk: DoneTorchThunk, locals: dict[int, VarInfo]
     ) -> None:
-        # Output must be unique.
+        # Output must be unique, so it's always new.
         for output in thunk.downstream():
             info = VarInfo(producer=idx, fake=output)
 
