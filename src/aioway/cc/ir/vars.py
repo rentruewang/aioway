@@ -10,10 +10,10 @@ from torch.utils import _pytree as pytree
 
 from aioway.torch import is_fake, is_fake_tensor, is_real, is_real_tensor
 
-__all__ = ["DagVarInfo", "DagLocalVars"]
+__all__ = ["VarInfo", "LocalVars"]
 
 
-class DagVarInfo:
+class VarInfo:
     "Variable information in the DAG."
 
     def __init__(self, producer: int, fake: torch.Tensor):
@@ -107,10 +107,10 @@ class DagVarInfo:
         return max(self.consumers)
 
 
-class DagLocalVars:
+class LocalVars:
     "The locals stash, storing all the local variables."
 
-    def __init__(self, variables: cabc.Sequence[DagVarInfo]) -> None:
+    def __init__(self, variables: cabc.Sequence[VarInfo]) -> None:
         self._variables = variables
 
         L.logger.opt(lazy=True).trace(
@@ -153,9 +153,17 @@ class DagLocalVars:
     def map(self, fake) -> typing.Any:
         """
         Map the values in `fake` to real values.
+
+        This tolerates real tensors in the input.
         """
 
-        return pytree.tree_map_only(torch.Tensor, self.__getitem__, fake)
+        def lookup_tensor(item: torch.Tensor) -> torch.Tensor:
+            if is_real_tensor(item):
+                return item
+
+            return self[item]
+
+        return pytree.tree_map_only(torch.Tensor, func=lookup_tensor, tree=fake)
 
     def update(self, fake, real) -> None:
         """
@@ -175,7 +183,11 @@ class DagLocalVars:
         # Since having same structure.
         assert len(fake_list) == len(real_list)
 
+        # Update every reference. If real tensor exists in `fake_list`, skip.
         for fake_tensor, real_tensor in zip(fake_list, real_list):
+            if is_real_tensor(fake_tensor):
+                continue
+
             self[fake_tensor] = real_tensor
 
     def expire(self, step: int) -> None:
@@ -187,7 +199,7 @@ class DagLocalVars:
             if var.alive_until == step:
                 del var.tensor
 
-    def _compute_fake_index(self) -> dict[int, DagVarInfo]:
+    def _compute_fake_index(self) -> dict[int, VarInfo]:
         # Since fake tensors have 1 single producer, the producer is unique.
         result = {id(info.fake): info for info in self._variables}
 
@@ -196,8 +208,8 @@ class DagLocalVars:
 
         return result
 
-    def _compute_consumers(self) -> dict[int, list[DagVarInfo]]:
-        result: dict[int, list[DagVarInfo]] = collections.defaultdict(list)
+    def _compute_consumers(self) -> dict[int, list[VarInfo]]:
+        result: dict[int, list[VarInfo]] = collections.defaultdict(list)
 
         for var in self._variables:
             for consumer in var.consumers:
