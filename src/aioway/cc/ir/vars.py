@@ -1,11 +1,11 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import collections
+import typing
 from collections import abc as cabc
 
 import loguru as L
 import torch
-from IPython.core.guarded_eval import typing
 from torch.utils import _pytree as pytree
 
 from aioway.torch import is_fake, is_fake_tensor, is_real, is_real_tensor
