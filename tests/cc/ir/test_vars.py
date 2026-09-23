@@ -32,7 +32,7 @@ def y_info() -> VarInfo:
 
 @pytest.fixture
 def local_vars(x_info, y_info) -> LocalVars:
-    return LocalVars([x_info, y_info])
+    return LocalVars.from_infos(x_info, y_info)
 
 
 def test_no_real_tensor_allowed():
@@ -78,13 +78,13 @@ def test_var_tensor_real(y_info):
         y_info.tensor = make_fake()
 
 
-def test_len_locals(local_vars):
-    assert len(local_vars) == 2
+def test_len_locals(local_vars: LocalVars):
+    assert local_vars.count() == 2
 
 
 def test_no_dup_vars(x_info):
     with pytest.raises(ValueError):
-        LocalVars([x_info, x_info])
+        LocalVars.from_infos(x_info, x_info)
 
 
 def test_update_to_real(local_vars, x_info):
@@ -108,12 +108,12 @@ def test_update_not_same_structure(local_vars, x_info, y_info):
         local_vars.update([x_info.fake, y_info.fake], [make_real()])
 
 
-def test_update_keeps_real(local_vars, x_info):
+def test_update_keeps_real(local_vars: LocalVars, x_info):
     const, real = make_real(), make_real()
     local_vars.update([x_info.fake, const], [real, const])
 
     assert local_vars[x_info.fake] is real
-    assert not local_vars._fake_index.get(id(const))
+    assert const not in local_vars
 
 
 def test_getitem_be_fake(local_vars):
