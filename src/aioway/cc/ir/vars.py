@@ -3,6 +3,7 @@
 import collections
 from collections import abc as cabc
 
+import loguru as L
 import torch
 from torch.utils import _pytree as pytree
 
@@ -28,7 +29,16 @@ class DagVarInfo:
                 f"The fake tensor produced at idx={self.producer} is real."
             )
 
-    def add_consumer(self, consumer: int) -> None:
+    def add_consumers(self, *consumers: int) -> None:
+        "Add consumers for the info."
+
+        if len(set(consumers)) != len(consumers):
+            raise ValueError("Duplicate values in consumers.")
+
+        for consumer in consumers:
+            self._add_consumer(consumer)
+
+    def _add_consumer(self, consumer: int) -> None:
         if consumer in self.consumers:
             raise IndexError(f"Attempting to add {consumer=} a second time.")
 
@@ -54,7 +64,7 @@ class DagVarInfo:
         "The tensor. `self.is_alive` must be true, or `RuntimeError` is raised."
 
         if self._tensor is None:
-            raise RuntimeError("No tensor set.")
+            raise AttributeError("No tensor set.")
 
         return self._tensor
 
@@ -95,17 +105,16 @@ class DagVarInfo:
 
         return max(self.consumers)
 
-    @property
-    def largest_consumer(self) -> int:
-        "Get the largest consumer."
-        return max(self.consumers)
-
 
 class DagLocalVars:
     "The locals stash, storing all the local variables."
 
     def __init__(self, variables: cabc.Sequence[DagVarInfo]) -> None:
         self._variables = variables
+
+        L.logger.opt(lazy=True).trace(
+            "Attempting to create a stash of {} local vars", self._variables.__len__
+        )
 
         self._fake_index = self._compute_fake_index()
         "Mapping from id of fake tensor to variable info."
