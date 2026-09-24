@@ -2,6 +2,7 @@
 
 "Extension of `pytree` from `torch`."
 
+import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
@@ -15,7 +16,20 @@ __all__ = [
     "tree_map_memo",
     "find_nested_tensors",
     "replace_tensors",
+    "register_pytree_dcls",
 ]
+
+
+def register_pytree_dcls[T: type](cls: T) -> T:
+    """
+    Decorator to register the dataclass into `pytree`.
+    """
+
+    if not isinstance(cls, type) or not dcls.is_dataclass(cls):
+        raise TypeError("The decorator can only be used on dataclasses.")
+
+    pytree.register_dataclass(cls)
+    return cls
 
 
 def tree_map_memo(
@@ -36,7 +50,7 @@ def tree_map_memo(
             this is s.t. don't replace the same item with different ones.
     """
 
-    memo = memo or AnyDict()
+    memo = memo if memo is not None else AnyDict()
 
     def replace_cached(item):
         if item not in memo:
@@ -78,7 +92,7 @@ def find_nested_tensors(
 
 def replace_tensors(
     obj: object, replace: cabc.Callable[[torch.Tensor], object]
-) -> object:
+) -> typing.Any:
     """
     Replace tensors whenever encountered with the given function.
 
