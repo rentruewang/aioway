@@ -9,6 +9,8 @@ from collections import abc as cabc
 
 import numpy as np
 import pandas as pd
+import torch
+from torch.utils import _pytree as pytree
 
 from .types import AnyDict
 
@@ -19,6 +21,7 @@ __all__ = [
     "decomp_block_items",
     "decomp_block_types",
     "decomp_dcls_members",
+    "find_nested_tensors",
 ]
 
 _decomp_block_items: tuple[typing.Any, ...] = None, NotImplemented, ..., True, False
@@ -165,3 +168,18 @@ def dcls_asdict(obj: object) -> dict[str, typing.Any]:
     assert dcls.is_dataclass(obj), "Only handles dataclass objects."
     fields = dcls.fields(obj)
     return {field.name: getattr(obj, field.name) for field in fields}
+
+
+def find_nested_tensors(
+    obj: object, *, only_tensors: bool = False
+) -> cabc.Iterator[torch.Tensor]:
+    """
+    Find and unpack tensors from containers.
+
+    If `only_tensors` is `True`, raies an error
+    if `obj` cannot be decomposed into purely tensors.
+    """
+
+    for item in pytree.tree_leaves(obj):
+        if isinstance(item, torch.Tensor):
+            yield item

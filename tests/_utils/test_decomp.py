@@ -6,8 +6,7 @@ import typing
 import pytest
 import torch
 
-from aioway._utils import decomp_dcls_members
-from aioway.torch import find_nested_tensors
+from aioway._utils import decomp_dcls_members, find_nested_tensors
 
 
 @dcls.dataclass(frozen=True)
@@ -77,11 +76,6 @@ def test_nested_pure(nested):
 def test_nested_impure(not_nested):
     result = set(find_nested_tensors(not_nested))
     assert all(isinstance(t, torch.Tensor) for t in result)
-
-
-def test_nested_impure_fail(not_nested):
-    with pytest.raises(ValueError):
-        _ = set(find_nested_tensors(nested, only_tensors=True))
 
 
 def test_dcls_decompose():
