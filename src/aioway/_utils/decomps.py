@@ -14,15 +14,7 @@ from torch.utils import _pytree as pytree
 
 from .types import AnyDict
 
-__all__ = [
-    "decomp_flatten",
-    "decomp_replace",
-    "dcls_asdict",
-    "decomp_block_items",
-    "decomp_block_types",
-    "decomp_dcls_members",
-    "find_nested_tensors",
-]
+__all__ = ["tree_leaves_typed", "tree_map_memo", "dcls_asdict", "find_nested_tensors"]
 
 _decomp_block_items: tuple[typing.Any, ...] = None, NotImplemented, ..., True, False
 "The default instances to block. You could modify this."
@@ -62,7 +54,7 @@ def stop_decompose(obj: object) -> bool:
     return isinstance(obj, tuple(_decomp_block_types))
 
 
-def decomp_replace(
+def tree_map_memo(
     obj,
     replace: cabc.Callable[..., object],
     memo: AnyDict[typing.Any, typing.Any] | None = None,
@@ -81,83 +73,30 @@ def decomp_replace(
     """
 
     memo = memo or AnyDict()
-    return _decomp_replace(obj, replace, memo)
+
+    def replace_cached(item):
+        if item not in memo:
+            result = replace(item)
+
+            # If it is `NotImplemented`, no replacement is made.
+            if result is NotImplemented:
+                result = item
+
+            memo[item] = result
+
+        return memo[item]
+
+    return pytree.tree_map(replace_cached, obj)
 
 
-def _decomp_replace(
-    obj,
-    replace: cabc.Callable[..., object],
-    memo: AnyDict[typing.Any, typing.Any],
-) -> typing.Any:
-
-    # If it returns a proper value, it will be replaced (if not in `memo`).
-    # Things in `memo` are prioritized.
-    if (replaced := replace(obj)) is not NotImplemented:
-        if obj not in memo:
-            memo[obj] = replaced
-
-        return memo[obj]
-
-    if stop_decompose(obj):
-        return obj
-
-    if isinstance(obj, cabc.Sequence):
-        return [_decomp_replace(elem, replace, memo) for elem in obj]
-
-    if isinstance(obj, cabc.Mapping):
-        return {key: _decomp_replace(elem, replace, memo) for key, elem in obj.items()}
-
-    if not isinstance(obj, type) and dcls.is_dataclass(obj):
-        obj_type: typing.Any = type(obj)
-        fields = dcls_asdict(obj)
-        fields = _decomp_replace(fields, replace, memo)
-        return obj_type(**fields)
-
-    return obj
-
-
-def decomp_dcls_members(
-    obj, types: type | tuple[type, ...]
-) -> cabc.Iterator[typing.Any]:
-    """
-    Decompose dataclass members, 1 layer deep.
-    Using this still handles e.g. type `A` having `list[A]` as members.
-    """
-
-    if not dcls.is_dataclass(obj):
-        raise TypeError(f"The input {obj} should be a dataclass object.")
-
-    yield from decomp_flatten(dcls_asdict(obj), types)
-
-
-def decomp_flatten(obj, types: type | tuple[type, ...], /) -> cabc.Iterator[typing.Any]:
+def tree_leaves_typed(obj, *types: type) -> cabc.Iterator[typing.Any]:
     "Decompose the object based on the desired type."
 
-    if isinstance(obj, types):
-        yield obj
-        return
+    found = lambda item: isinstance(item, types)
 
-    if stop_decompose(obj):
-        return
-
-    if isinstance(obj, cabc.Sequence):
-        for item in obj:
-            yield from decomp_flatten(item, types)
-        return
-
-    if isinstance(obj, cabc.Mapping):
-        for val in obj.values():
-            yield from decomp_flatten(val, types)
-        return
-
-    if dcls.is_dataclass(obj):
-        obj = dcls_asdict(obj)
-        yield from decomp_flatten(obj, types)
-        return
-
-    # Only unhandled input would reach here. If `.strict`, raise `ValueError`.
-    if strict:
-        raise ValueError(f"The object {obj=} is not handled.")
+    for elem in pytree.tree_leaves(obj, is_leaf=found):
+        if found(elem):
+            yield elem
 
 
 def dcls_asdict(obj: object) -> dict[str, typing.Any]:

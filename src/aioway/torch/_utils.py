@@ -6,7 +6,7 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway._utils import dcls_asdict, decomp_replace
+from aioway._utils import dcls_asdict, tree_map_memo
 
 __all__ = ["tcol_to_tdict"]
 
@@ -48,4 +48,4 @@ def replace_tensors(
         return replace(item)
 
     with mode_off():
-        return decomp_replace(obj, maybe_replace)
+        return tree_map_memo(obj, maybe_replace)
