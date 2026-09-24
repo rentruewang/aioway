@@ -5,7 +5,7 @@ from collections import abc as cabc
 import pytest
 import torch
 
-from aioway.cc import Dag, DoneTorchThunk
+from aioway.cc import Dag, DoneThunk
 from aioway.torch import fake_mode
 
 
@@ -24,7 +24,7 @@ def fakes() -> tuple[torch.Tensor, torch.Tensor]:
 
 
 @pytest.fixture
-def thunks(fakes) -> tuple[DoneTorchThunk, ...]:
+def thunks(fakes) -> tuple[DoneThunk, ...]:
     x0, x1 = fakes
 
     with fake_mode():
@@ -32,8 +32,8 @@ def thunks(fakes) -> tuple[DoneTorchThunk, ...]:
         z = scale(y, factor=2)
 
     return (
-        DoneTorchThunk(func=add, args=(x0, x1), kwargs={}, result=y),
-        DoneTorchThunk(func=scale, args=(y,), kwargs={"factor": 2}, result=z),
+        DoneThunk(func=add, args=(x0, x1), kwargs={}, result=y),
+        DoneThunk(func=scale, args=(y,), kwargs={"factor": 2}, result=z),
     )
 
 
