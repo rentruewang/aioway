@@ -8,7 +8,8 @@ from collections import abc as cabc
 
 from torch import nn
 
-from aioway._utils import AnyDict, Sign, decomp_flatten, decomp_replace, render_fcall
+from aioway._utils import AnyDict, Sign, render_fcall
+from aioway.torch import tree_leaves_typed, tree_map_memo
 
 __all__ = ["CompoundBuilder", "BuilderNode", "BuiltModule"]
 
@@ -159,14 +160,14 @@ class ThunkBuilderNode(BuilderNode):
             node(node_vals) if isinstance(node, BuilderNode) else NotImplemented
         )
 
-        args = decomp_replace(self.args, compute_node)
-        kwargs = decomp_replace(self.kwargs, compute_node)
+        args = tree_map_memo(self.args, compute_node)
+        kwargs = tree_map_memo(self.kwargs, compute_node)
 
         return self.module(*args, **kwargs)
 
     def deps(self):
-        yield from decomp_flatten(self.args, BuilderNode)
-        yield from decomp_flatten(self.kwargs, BuilderNode)
+        yield from tree_leaves_typed(self.args, BuilderNode)
+        yield from tree_leaves_typed(self.kwargs, BuilderNode)
 
 
 class BuiltModule(nn.Module):

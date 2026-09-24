@@ -11,7 +11,7 @@ import loguru as L
 import tensordict as td
 import torch
 
-from aioway._utils import dcls_asdict, is_tuple_of
+from aioway._utils import is_tuple_of
 
 from .devices import Device, DeviceLike
 from .dtypes import DType, DTypeLike
@@ -99,7 +99,7 @@ class Attr:
         # This is essentially the default comparison of dataclass,
         # but since we need functionality like try parsing, workaround is needed.
         if isinstance(other, Attr):
-            return dcls_asdict(self) == dcls_asdict(other)
+            return dcls.asdict(self) == dcls.asdict(other)
 
         try:
             parsed = parse_attr(other)

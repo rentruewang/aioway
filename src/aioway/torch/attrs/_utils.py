@@ -5,10 +5,8 @@
 import typing
 from collections import abc as cabc
 
-import torch
-
-from aioway._utils import decomp_flatten, render_fcall, render_torch_func_name
-from aioway.torch._utils import replace_tensors
+from aioway._utils import render_fcall, render_torch_func_name
+from aioway.torch.nested import replace_tensors
 
 from .attrs import parse_attr
 
@@ -16,7 +14,6 @@ __all__ = [
     "render_tensor_func_short",
     "render_function_body_prefix",
     "replace_tensors_with_attr",
-    "find_nested_tensors",
 ]
 
 
@@ -42,16 +39,3 @@ def render_function_body_prefix(
 def replace_tensors_with_attr[T](obj: T) -> T:
     result: typing.Any = replace_tensors(obj, parse_attr)
     return result
-
-
-def find_nested_tensors(
-    obj: object, *, only_tensors: bool = False
-) -> cabc.Iterator[torch.Tensor]:
-    """
-    Find and unpack tensors from containers.
-
-    If `only_tensors` is `True`, raies an error
-    if `obj` cannot be decomposed into purely tensors.
-    """
-
-    yield from decomp_flatten(obj, torch.Tensor, strict=only_tensors)

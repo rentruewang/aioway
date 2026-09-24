@@ -15,7 +15,8 @@ from torch import _ops, overrides
 from torch.utils import _python_dispatch as pyd
 
 from aioway._utils import Stack
-from aioway.torch.attrs import find_nested_tensors, render_function_body_prefix
+from aioway.torch.attrs import render_function_body_prefix
+from aioway.torch.nested import find_nested_tensors
 
 __all__ = [
     "Mode",
