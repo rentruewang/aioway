@@ -1,57 +1,17 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"Decomposing objects for inspection and debugging."
+"Extension of `pytree` from `torch`."
 
-import contextlib as ctxl
 import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-import numpy as np
-import pandas as pd
 import torch
 from torch.utils import _pytree as pytree
 
 from .types import AnyDict
 
 __all__ = ["tree_leaves_typed", "tree_map_memo", "dcls_asdict", "find_nested_tensors"]
-
-_decomp_block_items: tuple[typing.Any, ...] = None, NotImplemented, ..., True, False
-"The default instances to block. You could modify this."
-
-_decomp_block_types: tuple[type, ...] = int, float, bool, str, np.ndarray, pd.DataFrame
-"The default types to block. You could modify this."
-
-
-@ctxl.contextmanager
-def decomp_block_items(*items: typing.Any):
-    global _decomp_block_items
-    prev = _decomp_block_items
-    _decomp_block_items = items
-    try:
-        yield
-    finally:
-        _decomp_block_items = prev
-
-
-@ctxl.contextmanager
-def decomp_block_types(*types: type):
-    global _decomp_block_types
-    prev = _decomp_block_types
-    _decomp_block_types = types
-    try:
-        yield
-    finally:
-        _decomp_block_types = prev
-
-
-def stop_decompose(obj: object) -> bool:
-    # Check if it's those primitives.
-    for item in _decomp_block_items:
-        if obj is item:
-            return True
-
-    return isinstance(obj, tuple(_decomp_block_types))
 
 
 def tree_map_memo(
