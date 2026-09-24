@@ -40,10 +40,8 @@ def tree_map_memo(
 
     def replace_cached(item):
         if item not in memo:
-            result = replace(item)
-
             # If it is `NotImplemented`, no replacement is made.
-            if result is NotImplemented:
+            if (result := replace(item)) is NotImplemented:
                 result = item
 
             memo[item] = result
