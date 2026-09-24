@@ -4,5 +4,5 @@ from ._utils import *
 from .dags import *
 from .hists import *
 from .modules import *
-from .tensors import *
+from .old_tensors import *
 from .vars import *
