@@ -81,7 +81,7 @@ def test_nested_impure(not_nested):
     assert all(isinstance(t, torch.Tensor) for t in result)
 
 
-def test_find_order_and_identity():
+def test_find_order_and_id():
     a, b, c = torch.tensor(1), torch.tensor(2), torch.tensor(3)
     result = list(find_nested_tensors([a, (b,), {"c": c}]))
     assert len(result) == 3
@@ -95,7 +95,7 @@ def test_find_skips_non_tensors():
     assert result[0] is a
 
 
-def test_find_keeps_duplicates():
+def test_find_keeps_dups():
     a = torch.tensor(1)
     assert len(list(find_nested_tensors([a, a]))) == 2
 
@@ -109,30 +109,30 @@ def test_leaves_typed_filters():
     assert list(tree_leaves_typed([1, "a", [2, "b"]], int)) == [1, 2]
 
 
-def test_leaves_typed_multiple_types():
+def test_leaves_typed_multi():
     assert list(tree_leaves_typed([1, "a", 2.0], int, str)) == [1, "a"]
 
 
-def test_leaves_typed_stops_at_container_type():
+def test_leaves_typed_container():
     # Matching a container type yields the container itself, not its contents.
     assert list(tree_leaves_typed([(1, 2), 3], tuple)) == [(1, 2)]
 
 
-def _times_ten(x):
+def _mult_int_ten(x):
     return x * 10 if isinstance(x, int) else NotImplemented
 
 
 def test_map_memo_replaces():
-    assert tree_map_memo([1, "a", {"k": 2}], _times_ten) == [10, "a", {"k": 20}]
+    assert tree_map_memo([1, "a", {"k": 2}], _mult_int_ten) == [10, "a", {"k": 20}]
 
 
 def test_map_memo_keeps_structure():
-    result = tree_map_memo((1, [2]), _times_ten)
+    result = tree_map_memo((1, [2]), _mult_int_ten)
     assert result == (10, [20])
     assert isinstance(result, tuple)
 
 
-def test_map_memo_calls_once_per_item():
+def test_map_memo_only_once():
     calls = []
 
     def replace(x):
@@ -143,9 +143,9 @@ def test_map_memo_calls_once_per_item():
     assert calls == [1, 2]
 
 
-def test_map_memo_uses_given_memo():
+def test_map_memo_custom_memo():
     memo = AnyDict()
-    tree_map_memo([1], _times_ten, memo)
+    tree_map_memo([1], _mult_int_ten, memo)
     assert memo[1] == 10
 
 
@@ -156,7 +156,7 @@ def test_replace_tensors():
     assert result["n"] == 3
 
 
-def test_replace_same_tensor_once():
+def test_replace_same_tensor():
     a = torch.tensor(1)
     result = replace_tensors([a, a], lambda t: t.clone())
     assert result[0] is result[1]

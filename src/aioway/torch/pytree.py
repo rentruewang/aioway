@@ -75,19 +75,12 @@ def tree_leaves_typed(obj, *types: type) -> cabc.Iterator[typing.Any]:
             yield elem
 
 
-def find_nested_tensors(
-    obj: object, *, only_tensors: bool = False
-) -> cabc.Iterator[torch.Tensor]:
+def find_nested_tensors(obj: object) -> cabc.Iterator[torch.Tensor]:
     """
     Find and unpack tensors from containers.
-
-    If `only_tensors` is `True`, raies an error
-    if `obj` cannot be decomposed into purely tensors.
     """
 
-    for item in pytree.tree_leaves(obj):
-        if isinstance(item, torch.Tensor):
-            yield item
+    yield from tree_leaves_typed(obj, torch.Tensor)
 
 
 def replace_tensors(
