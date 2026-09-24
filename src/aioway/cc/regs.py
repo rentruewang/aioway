@@ -10,7 +10,6 @@ from collections import abc as cabc
 from torch import nn
 
 from aioway._utils import Sign
-from aioway.torch import dcls_asdict
 
 if typing.TYPE_CHECKING:
     from .deductions import Deduction
@@ -46,7 +45,7 @@ class NnOp:
         Check if `NnOp` has any attribute defined.
         """
 
-        return any(val for val in dcls_asdict(self).values())
+        return any(val for val in dcls.asdict(self).values())
 
 
 def deduction_reg() -> dict[type[nn.Module], Deduction]:

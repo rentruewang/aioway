@@ -13,7 +13,6 @@ from captum import attr
 from torch import nn
 
 from aioway._utils import is_seq_of
-from aioway.torch import dcls_asdict
 
 __all__ = ["Expl", "expl_dcls"]
 
@@ -87,7 +86,7 @@ class Expl(abc.ABC):
         The signature of this class can change anytime, as support broadens.
         """
 
-        return dcls_asdict(self)
+        return dcls.asdict(self)
 
 
 def _is_abstract_explainer(cls: type) -> bool:

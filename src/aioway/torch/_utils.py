@@ -5,7 +5,7 @@ import typing
 
 import tensordict as td
 
-__all__ = ["tcol_to_tdict", "dcls_asdict"]
+__all__ = ["tcol_to_tdict"]
 
 
 def tcol_to_tdict(item) -> td.TensorDict:
@@ -18,15 +18,7 @@ def tcol_to_tdict(item) -> td.TensorDict:
         return item
 
     assert dcls.is_dataclass(item)
-    attrs = dcls_asdict(item)
+    attrs = dcls.asdict(item)
     result = td.from_dict(attrs)
     assert isinstance(result, td.TensorDict)
     return result
-
-
-def dcls_asdict(obj: object) -> dict[str, typing.Any]:
-    "Official `asdict` fail with some custom `__getstate__`s."
-
-    assert dcls.is_dataclass(obj), "Only handles dataclass objects."
-    fields = dcls.fields(obj)
-    return {field.name: getattr(obj, field.name) for field in fields}
