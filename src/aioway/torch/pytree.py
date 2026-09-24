@@ -2,16 +2,20 @@
 
 "Extension of `pytree` from `torch`."
 
-import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
 import torch
 from torch.utils import _pytree as pytree
 
-from .types import AnyDict
+from aioway._utils import AnyDict
 
-__all__ = ["tree_leaves_typed", "tree_map_memo", "dcls_asdict", "find_nested_tensors"]
+__all__ = [
+    "tree_leaves_typed",
+    "tree_map_memo",
+    "find_nested_tensors",
+    "replace_tensors",
+]
 
 
 def tree_map_memo(
@@ -59,14 +63,6 @@ def tree_leaves_typed(obj, *types: type) -> cabc.Iterator[typing.Any]:
             yield elem
 
 
-def dcls_asdict(obj: object) -> dict[str, typing.Any]:
-    "Official `asdict` fail with some custom `__getstate__`s."
-
-    assert dcls.is_dataclass(obj), "Only handles dataclass objects."
-    fields = dcls.fields(obj)
-    return {field.name: getattr(obj, field.name) for field in fields}
-
-
 def find_nested_tensors(
     obj: object, *, only_tensors: bool = False
 ) -> cabc.Iterator[torch.Tensor]:
@@ -80,3 +76,27 @@ def find_nested_tensors(
     for item in pytree.tree_leaves(obj):
         if isinstance(item, torch.Tensor):
             yield item
+
+
+def replace_tensors(
+    obj: object, replace: cabc.Callable[[torch.Tensor], object]
+) -> object:
+    """
+    Replace tensors whenever encountered with the given function.
+
+    This function has the `__torch_function__` disabled in the scope of the rendering,
+    because it can mess with attribute access, which oftentimes means that
+    this function fails also during debugging if `__torch_function__` is not disabled.
+    Caused by `.device` / `.shape` / `.dtype` calls, which is used in `replace_tensors`.
+    """
+
+    from .overrides import mode_off
+
+    def maybe_replace(item):
+        if not isinstance(item, torch.Tensor):
+            return NotImplemented
+
+        return replace(item)
+
+    with mode_off():
+        return tree_map_memo(obj, maybe_replace)

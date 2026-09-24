@@ -9,8 +9,13 @@ from collections import abc as cabc
 import torch
 from torch import nn
 
-from aioway._utils import Sign, find_nested_tensors
-from aioway.torch import is_aten_op, render_tensor_func_short, replace_tensors_with_attr
+from aioway._utils import Sign
+from aioway.torch import (
+    find_nested_tensors,
+    is_aten_op,
+    render_tensor_func_short,
+    replace_tensors_with_attr,
+)
 
 from .vars import LocalVars, VarInfo
 

@@ -12,7 +12,8 @@ import torch
 from captum import attr
 from torch import nn
 
-from aioway._utils import dcls_asdict, is_seq_of
+from aioway._utils import is_seq_of
+from aioway.torch import dcls_asdict
 
 __all__ = ["Expl", "expl_dcls"]
 

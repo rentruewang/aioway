@@ -11,7 +11,8 @@ import loguru as L
 import tensordict as td
 import torch
 
-from aioway._utils import dcls_asdict, is_tuple_of
+from aioway._utils import is_tuple_of
+from aioway.torch._utils import dcls_asdict
 
 from .devices import Device, DeviceLike
 from .dtypes import DType, DTypeLike

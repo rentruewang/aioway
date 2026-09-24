@@ -8,8 +8,14 @@ from collections import abc as cabc
 import torch
 from torch import nn
 
-from aioway._utils import AnyDict, find_nested_tensors, register_module_forward_hook
-from aioway.torch import clone_in_fake_mode, fake_mode, route_aten_thunk
+from aioway._utils import AnyDict
+from aioway.torch import (
+    clone_in_fake_mode,
+    fake_mode,
+    find_nested_tensors,
+    register_module_forward_hook,
+    route_aten_thunk,
+)
 
 __all__ = ["capture_module_hist", "ModuleInOutThunk", "ModuleInOutHist"]
 

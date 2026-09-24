@@ -1,14 +1,11 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import dataclasses as dcls
-from collections import abc as cabc
+import typing
 
 import tensordict as td
-import torch
 
-from aioway._utils import dcls_asdict, tree_map_memo
-
-__all__ = ["tcol_to_tdict"]
+__all__ = ["tcol_to_tdict", "dcls_asdict"]
 
 
 def tcol_to_tdict(item) -> td.TensorDict:
@@ -27,25 +24,9 @@ def tcol_to_tdict(item) -> td.TensorDict:
     return result
 
 
-def replace_tensors(
-    obj: object, replace: cabc.Callable[[torch.Tensor], object]
-) -> object:
-    """
-    Replace tensors whenever encountered with the given function.
+def dcls_asdict(obj: object) -> dict[str, typing.Any]:
+    "Official `asdict` fail with some custom `__getstate__`s."
 
-    This function has the `__torch_function__` disabled in the scope of the rendering,
-    because it can mess with attribute access, which oftentimes means that
-    this function fails also during debugging if `__torch_function__` is not disabled.
-    Caused by `.device` / `.shape` / `.dtype` calls, which is used in `replace_tensors`.
-    """
-
-    from .overrides import mode_off
-
-    def maybe_replace(item):
-        if not isinstance(item, torch.Tensor):
-            return NotImplemented
-
-        return replace(item)
-
-    with mode_off():
-        return tree_map_memo(obj, maybe_replace)
+    assert dcls.is_dataclass(obj), "Only handles dataclass objects."
+    fields = dcls.fields(obj)
+    return {field.name: getattr(obj, field.name) for field in fields}

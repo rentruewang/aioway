@@ -6,7 +6,7 @@ import typing
 import pytest
 import torch
 
-from aioway._utils import find_nested_tensors
+from aioway.torch import find_nested_tensors
 
 
 @dcls.dataclass(frozen=True)
