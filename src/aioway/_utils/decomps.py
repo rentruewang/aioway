@@ -130,9 +130,7 @@ def decomp_dcls_members(
     yield from decomp_flatten(dcls_asdict(obj), types)
 
 
-def decomp_flatten(
-    obj, types: type | tuple[type, ...], /, strict: bool = False
-) -> cabc.Iterator[typing.Any]:
+def decomp_flatten(obj, types: type | tuple[type, ...], /) -> cabc.Iterator[typing.Any]:
     "Decompose the object based on the desired type."
 
     if isinstance(obj, types):
@@ -144,17 +142,17 @@ def decomp_flatten(
 
     if isinstance(obj, cabc.Sequence):
         for item in obj:
-            yield from decomp_flatten(item, types, strict=strict)
+            yield from decomp_flatten(item, types)
         return
 
     if isinstance(obj, cabc.Mapping):
         for val in obj.values():
-            yield from decomp_flatten(val, types, strict=strict)
+            yield from decomp_flatten(val, types)
         return
 
     if dcls.is_dataclass(obj):
         obj = dcls_asdict(obj)
-        yield from decomp_flatten(obj, types, strict=strict)
+        yield from decomp_flatten(obj, types)
         return
 
     # Only unhandled input would reach here. If `.strict`, raise `ValueError`.
