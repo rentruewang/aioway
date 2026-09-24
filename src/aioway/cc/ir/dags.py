@@ -2,6 +2,7 @@
 
 "Tracking and creating thunks."
 
+import dataclasses as dcls
 import functools
 import typing
 from collections import abc as cabc
@@ -16,7 +17,6 @@ from aioway.torch import (
 )
 
 from .vars import LocalVars, VarInfo
-import dataclasses as dcls
 
 __all__ = ["DoneThunk", "Dag"]
 

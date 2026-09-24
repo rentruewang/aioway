@@ -79,7 +79,7 @@ def test_var_tensor_real(y_info):
 
 
 def test_len_locals(local_vars: LocalVars):
-    assert local_vars.count() == 2
+    assert len(local_vars) == 2
 
 
 def test_no_dup_vars(x_info):
@@ -121,9 +121,8 @@ def test_getitem_be_fake(local_vars):
         local_vars[make_real()]
 
 
-def test_getitem_missing_fake(local_vars, x_info):
-    with pytest.raises(KeyError):
-        local_vars[x_info.fake]
+def test_getitem_missing_fake(local_vars: LocalVars, x_info):
+    assert local_vars[x_info.fake] is None
 
 
 def test_expire_free(local_vars: LocalVars, x_info: VarInfo, y_info: VarInfo):
@@ -171,6 +170,5 @@ def test_map_keeps_non_tensors(local_vars: LocalVars, x_info: VarInfo):
     assert mapped["s"] == "hi"
 
 
-def test_map_missing_real(local_vars: LocalVars, x_info: VarInfo):
-    with pytest.raises(KeyError):
-        local_vars.map([x_info.fake])
+def test_map_allow_missing(local_vars: LocalVars, x_info: VarInfo):
+    local_vars.map([x_info.fake])
