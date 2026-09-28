@@ -5,12 +5,7 @@ import torch
 from torch import nn
 
 from aioway._utils import Stack
-from aioway.cc import (
-    ModuleHist,
-    ModuleThunk,
-    ModuleTracker,
-    capture_module_hist,
-)
+from aioway.cc import ModuleHist, ModuleThunk, ModuleTracker
 
 
 class Double(nn.Module):
@@ -140,35 +135,6 @@ def test_forward_hook_appends_thunk(hist: ModuleHist, module: nn.Module) -> None
     assert recorded.parents == ()
 
 
-# --- hook registration --------------------------------------------------------
-
-
-def test_register_yields_self(hist: ModuleHist) -> None:
-    with hist.register_module_forward_hook() as yielded:
-        assert yielded is hist
-
-
-def test_forwards_inside_context_are_recorded(
-    hist: ModuleHist, module: nn.Module
-) -> None:
-    with hist.register_module_forward_hook():
-        module(torch.ones(3))
-
-    assert len(hist) == 1
-    assert hist[0].func is module
-
-
-def test_forwards_outside_context_are_not_recorded(
-    hist: ModuleHist, module: nn.Module
-) -> None:
-    with hist.register_module_forward_hook():
-        pass
-
-    module(torch.ones(3))
-
-    assert len(hist) == 0
-
-
 # --- ModuleTracker ------------------------------------------------------------
 
 
@@ -195,6 +161,17 @@ def test_tracker_records_parent_stack(tracker: ModuleTracker, hist: ModuleHist) 
     assert hist[0].parents[0] == model
 
 
+def test_tracker_records_shapes(tracker: ModuleTracker, hist: ModuleHist) -> None:
+    model = nn.Sequential(nn.Linear(4, 2))
+
+    with tracker():
+        model(torch.ones(3, 4))
+
+    (thunk,) = hist.history
+    assert next(thunk.upstream()).shape == (3, 4)
+    assert next(thunk.downstream()).shape == (3, 2)
+
+
 def test_tracker_unwinds_its_stack(tracker: ModuleTracker) -> None:
     with tracker():
         Wrapped()(torch.ones(3))
@@ -202,24 +179,12 @@ def test_tracker_unwinds_its_stack(tracker: ModuleTracker) -> None:
     assert list(tracker.stack) == []
 
 
-# --- capture_module_hist ------------------------------------------------------
+def test_tracker_stops_recording_after_exit(
+    tracker: ModuleTracker, hist: ModuleHist
+) -> None:
+    with tracker():
+        pass
 
+    Wrapped()(torch.ones(3))
 
-def test_capture_records_children_before_parent() -> None:
-    model = Wrapped()
-
-    with capture_module_hist() as hist:
-        model(torch.ones(3))
-
-    assert [t.func for t in hist.history] == [model.inner, model]
-
-
-def test_capture_preserves_shapes() -> None:
-    model = nn.Linear(4, 2)
-
-    with capture_module_hist() as hist:
-        model(torch.ones(3, 4))
-
-    (thunk,) = hist.history
-    assert next(thunk.upstream()).shape == (3, 4)
-    assert next(thunk.downstream()).shape == (3, 2)
+    assert len(hist) == 0
