@@ -13,7 +13,7 @@ from aioway.torch import (
     register_module_forward_pre_hook,
 )
 
-from .dags import DoneThunk
+from .execs import DoneThunk
 
 __all__ = ["ModuleThunk", "ModuleTracker", "ModuleHist"]
 
