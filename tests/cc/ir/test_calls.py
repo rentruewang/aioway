@@ -1,3 +1,5 @@
+# Copyright (c) AIoWay Authors - All Rights Reserved
+
 import torch
 from torch import ops
 

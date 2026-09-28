@@ -100,6 +100,7 @@ class Dag[F: cabc.Callable = typing.Any](cabc.Sequence[DoneThunk[F]]):
         except ValueError as err:
             raise TypeError from err
 
+        # Execute the steps one by one in topo sorted order.
         for idx, thunk in enumerate(self._thunks):
             args, kwargs = self._locals.map([thunk.args, thunk.kwargs])
             real = thunk.func(*args, **kwargs)
