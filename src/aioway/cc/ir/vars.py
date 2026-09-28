@@ -81,30 +81,6 @@ class VarInfo:
         return cls(producer=-1, fake=fake)
 
 
-class VarIndex:
-    def __init__(self, vars: cabc.Mapping[int, VarInfo]) -> None:
-        self._vars = vars
-        "Mapping from id of fake tensor to variable info."
-
-        self._consumers = self._compute_consumers()
-        "Mapping from DAG index of consuming point to corresponding variable info."
-
-    def __len__(self) -> int:
-        return len(self._vars)
-
-    def consumers(self, step: int) -> list[VarInfo]:
-        return self._consumers[step]
-
-    def _compute_consumers(self) -> dict[int, list[VarInfo]]:
-        result: dict[int, list[VarInfo]] = collections.defaultdict(list)
-
-        for var in self._vars.values():
-            for consumer in var.consumers:
-                result[consumer].append(var)
-
-        return result
-
-
 class VarScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
     """
     Stores all the local vars that the DAG executes, by their fake tensors.
@@ -124,7 +100,7 @@ class VarScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
             "Attempting to create a stash of {} local vars", self._vars.__len__
         )
 
-        self._consumers = VarIndex(vars)
+        self._consumer_by_step = self._compute_consumers_by_step()
         "The graph part of the variables."
 
         self._alive: dict[int, torch.Tensor] = {}
@@ -189,7 +165,7 @@ class VarScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
         Expire those variables whose step = `step` (`step` must be positive).
         """
 
-        for var in self._consumers.consumers(step):
+        for var in self._consumer_by_step[step]:
             if var.alive_until == step:
                 self.drop(var.fake)
 
@@ -270,6 +246,15 @@ class VarScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
 
         if fake_tensor is not real_tensor:
             raise ValueError("Real tensor in `fake` paired with a different value.")
+
+    def _compute_consumers_by_step(self) -> dict[int, list[VarInfo]]:
+        result: dict[int, list[VarInfo]] = collections.defaultdict(list)
+
+        for var in self._vars.values():
+            for consumer in var.consumers:
+                result[consumer].append(var)
+
+        return result
 
     @classmethod
     def from_infos(cls, *infos: VarInfo) -> typing.Self:
