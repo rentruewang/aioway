@@ -14,7 +14,7 @@ from numpy import random as npr
 from rich import traceback
 from torch import cuda
 
-from aioway.cc import track_torch_fake_thunks, track_torch_thunks
+from aioway.torch import fake_mode, real_mode, route_aten_thunk
 
 _PROJECT_ROOT = pathlib.Path(__file__).parent.parent.resolve()
 _REPO = git.Repo(_PROJECT_ROOT)
@@ -188,17 +188,17 @@ def batch_size(request: pytest.FixtureRequest) -> int:
 
 
 @pytest.fixture
-def fake_mode():
-    with track_torch_fake_thunks():
+def fake_mode_on():
+    with fake_mode(), route_aten_thunk.activate():
         yield
 
 
 @pytest.fixture
-def real_mode():
-    with track_torch_thunks():
+def real_mode_on():
+    with real_mode():
         yield
 
 
-@pytest.fixture(params=[fake_mode.name, real_mode.name])
-def maybe_fake_mode(request: pytest.FixtureRequest):
+@pytest.fixture(params=[fake_mode_on.name, real_mode_on.name])
+def maybe_fake_mode_on(request: pytest.FixtureRequest):
     yield request.getfixturevalue(request.param)

@@ -16,6 +16,7 @@ __all__ = [
     "is_float_tensor",
     "is_int_tensor",
     "is_bool_tensor",
+    "is_op_overload",
     "is_aten_op",
     "is_prim_op",
     "is_torchvision_op",
@@ -56,12 +57,19 @@ def is_sparse_tensor(t: torch.Tensor) -> bool:
     return t.is_sparse
 
 
-def is_aten_op(op: _ops.OpOverload) -> bool:
-    return _dispatch_name(op, _ATEN_OPS)
+def is_op_overload(op) -> typing.TypeIs[_ops.OpOverload]:
+    "Check if something is from `torch.ops.*` and packed by `torch`."
+    return isinstance(op, _ops.OpOverload)
 
 
-def is_prim_op(op: _ops.OpOverload) -> bool:
-    return _dispatch_name(op, _PRIM_OPS)
+def is_aten_op(op) -> bool:
+    "Check if it's `torch.ops.*` and if its an aten op."
+    return is_op_overload(op) and _dispatch_name(op, _ATEN_OPS)
+
+
+def is_prim_op(op) -> bool:
+    "Check if it's `torch.ops.*` and if its a prim op."
+    return is_op_overload(op) and _dispatch_name(op, _PRIM_OPS)
 
 
 def is_torchvision_op(op: _ops.OpOverload) -> bool:

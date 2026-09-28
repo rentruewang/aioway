@@ -7,7 +7,7 @@ from aioway.cc import hash_module_state_dict
 
 
 @pytest.fixture(autouse=True)
-def use_fake_mode(fake_mode):
+def use_fake_mode(fake_mode_on):
     yield
 
 

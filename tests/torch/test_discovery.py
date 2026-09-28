@@ -29,12 +29,14 @@ def unbounded(request: pytest.FixtureRequest) -> tspecs.Unbounded:
     return request.getfixturevalue(request.param)
 
 
-def test_batch_tspec(unbounded: tspecs.Unbounded, fake_mode):
+def test_batch_tspec(unbounded: tspecs.Unbounded, fake_mode_on):
     sampled = unbounded.sample(torch.Size([10]))
 
     assert batch_tspec(sampled) == unbounded
 
 
-def test_iter_tspec(unbounded: tspecs.Unbounded, shuffled_ints: list[int], fake_mode):
+def test_iter_tspec(
+    unbounded: tspecs.Unbounded, shuffled_ints: list[int], fake_mode_on
+):
     sampled = [unbounded.sample(torch.Size([i])) for i in shuffled_ints]
     assert iter_tspec(sampled) == unbounded

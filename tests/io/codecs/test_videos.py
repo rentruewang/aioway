@@ -32,6 +32,8 @@ def _read_video(video: pathlib.Path, loader: VideoLoader):
     return result.to_tensor()
 
 
-def test_read_video(example_video: pathlib.Path, loader: VideoLoader, maybe_fake_mode):
+def test_read_video(
+    example_video: pathlib.Path, loader: VideoLoader, maybe_fake_mode_on
+):
     video = _read_video(example_video, loader)
     assert isinstance(video, torch.Tensor)

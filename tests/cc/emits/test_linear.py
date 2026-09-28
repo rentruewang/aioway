@@ -77,7 +77,7 @@ def test_just_linear(input_shape_tspec: TSpec, output_tspec: TSpec, consider_lin
 
 
 def test_mlp_emitter(
-    input_shape_tspec: TSpec, output_tspec: TSpec, consider_mlp, fake_mode
+    input_shape_tspec: TSpec, output_tspec: TSpec, consider_mlp, fake_mode_on
 ):
     input = torch.randn(13, 3, 4, 6)
 

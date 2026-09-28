@@ -11,7 +11,7 @@ from aioway.torch import is_fake, is_real, real_mode
 
 
 @pytest.fixture
-def fake_module(fake_mode) -> nn.Module:
+def fake_module(fake_mode_on) -> nn.Module:
     return _linear()
 
 

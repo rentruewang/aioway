@@ -22,13 +22,15 @@ def _read_audio(audio: pathlib.Path, loader: AudioLoader):
     return result.to_tensor()
 
 
-def test_read_audio(example_audio: pathlib.Path, loader: AudioLoader, maybe_fake_mode):
+def test_read_audio(
+    example_audio: pathlib.Path, loader: AudioLoader, maybe_fake_mode_on
+):
     audio = _read_audio(example_audio, loader)
     assert isinstance(audio, torch.Tensor)
 
 
 def test_read_audio_stft(
-    example_audio: pathlib.Path, loader: AudioLoader, maybe_fake_mode
+    example_audio: pathlib.Path, loader: AudioLoader, maybe_fake_mode_on
 ):
     audio = _read_audio(example_audio, loader)
     stft = encode_with_stft(audio, 20)
