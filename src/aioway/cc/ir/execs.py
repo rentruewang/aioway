@@ -14,7 +14,7 @@ from aioway.torch import (
     replace_tensors_with_attr,
 )
 
-from .vars import VarScope, VarInfo
+from .vars import VarInfo, VarScope
 
 __all__ = ["DoneThunk", "Exec"]
 

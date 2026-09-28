@@ -81,6 +81,30 @@ class VarInfo:
         return cls(producer=-1, fake=fake)
 
 
+class VarIndex:
+    def __init__(self, vars: cabc.Mapping[int, VarInfo]) -> None:
+        self._vars = vars
+        "Mapping from id of fake tensor to variable info."
+
+        self._consumers = self._compute_consumers()
+        "Mapping from DAG index of consuming point to corresponding variable info."
+
+    def __len__(self) -> int:
+        return len(self._vars)
+
+    def consumers(self, step: int) -> list[VarInfo]:
+        return self._consumers[step]
+
+    def _compute_consumers(self) -> dict[int, list[VarInfo]]:
+        result: dict[int, list[VarInfo]] = collections.defaultdict(list)
+
+        for var in self._vars.values():
+            for consumer in var.consumers:
+                result[consumer].append(var)
+
+        return result
+
+
 class VarScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
     """
     Stores all the local vars that the DAG executes, by their fake tensors.
@@ -95,14 +119,13 @@ class VarScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
 
     def __init__(self, vars: cabc.Mapping[int, VarInfo]) -> None:
         self._vars = vars
-        "Mapping from id of fake tensor to variable info."
 
         L.logger.opt(lazy=True).trace(
             "Attempting to create a stash of {} local vars", self._vars.__len__
         )
 
-        self._consumers = self._compute_consumers()
-        "Mapping from DAG index of consuming point to corresponding variable info."
+        self._consumers = VarIndex(vars)
+        "The graph part of the variables."
 
         self._alive: dict[int, torch.Tensor] = {}
         "The tensor that is alive, indexed by their fake tensors' ids."
@@ -166,7 +189,7 @@ class VarScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
         Expire those variables whose step = `step` (`step` must be positive).
         """
 
-        for var in self._consumers[step]:
+        for var in self._consumers.consumers(step):
             if var.alive_until == step:
                 self.drop(var.fake)
 
@@ -196,27 +219,27 @@ class VarScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
             )
 
         # Store the real tensor in scope.
-        self._alive[self._get_fake_id(fake)] = real
+        self._alive[_get_fake_id(fake)] = real
 
     def drop(self, fake: torch.Tensor) -> None:
         """
         Drop a tensor that is currently in scope.
         """
 
-        del self._alive[self._get_fake_id(fake)]
+        del self._alive[_get_fake_id(fake)]
 
     def value(self, fake: torch.Tensor) -> torch.Tensor:
         """
         Get the real value of the fake tensor.
         """
 
-        return self._alive[self._get_fake_id(fake)]
+        return self._alive[_get_fake_id(fake)]
 
     def is_alive(self, obj: torch.Tensor | VarInfo, /) -> bool:
         if isinstance(obj, VarInfo):
             obj = obj.fake
 
-        return self._get_fake_id(obj) in self._alive
+        return _get_fake_id(obj) in self._alive
 
     def tracked(self) -> cabc.Generator[torch.Tensor]:
         "Get all the fake tensors tracked."
@@ -237,7 +260,7 @@ class VarScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
             return item
 
         # Allow some fake tensors not to be mapped.
-        fake_id = self._get_fake_id(item)
+        fake_id = _get_fake_id(item)
         return self._alive.get(fake_id, item)
 
     def _update_maybe_fake(self, fake_tensor: torch.Tensor, real_tensor: torch.Tensor):
@@ -248,30 +271,6 @@ class VarScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
         if fake_tensor is not real_tensor:
             raise ValueError("Real tensor in `fake` paired with a different value.")
 
-    def _compute_consumers(self) -> dict[int, list[VarInfo]]:
-        result: dict[int, list[VarInfo]] = collections.defaultdict(list)
-
-        for var in self._vars.values():
-            for consumer in var.consumers:
-                result[consumer].append(var)
-
-        return result
-
-    def _get_id(self, tensor: torch.Tensor | int, /) -> int:
-        match tensor:
-            case torch.Tensor():
-                return id(tensor)
-            case int():
-                return tensor
-
-        typing.assert_never(tensor)
-
-    def _get_fake_id(self, fake: torch.Tensor | int, /) -> int:
-        if isinstance(fake, torch.Tensor):
-            assert is_fake(fake)
-
-        return self._get_id(fake)
-
     @classmethod
     def from_infos(cls, *infos: VarInfo) -> typing.Self:
         # Since fake tensors have 1 single producer, the producer is unique.
@@ -281,3 +280,20 @@ class VarScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
             raise ValueError("The producer for the variable list is not unique.")
 
         return cls(variables)
+
+
+def _get_id(tensor: torch.Tensor | int, /) -> int:
+    match tensor:
+        case torch.Tensor():
+            return id(tensor)
+        case int():
+            return tensor
+
+    typing.assert_never(tensor)
+
+
+def _get_fake_id(fake: torch.Tensor | int, /) -> int:
+    if isinstance(fake, torch.Tensor):
+        assert is_fake(fake)
+
+    return _get_id(fake)
