@@ -1,11 +1,11 @@
 import torch
 from torch import ops
-from torch._subclasses.fake_tensor import FakeTensor
 
 from aioway.cc import Dag, TorchFuncDag, fake_aten_dag
+from aioway.torch import is_fake
 
 
-def test_torch_func_dag_records_a_call():
+def test_torch_func_dag_data():
     a = torch.ones(3)
     b = torch.ones(3)
     dag = TorchFuncDag()
@@ -18,7 +18,7 @@ def test_torch_func_dag_records_a_call():
     assert torch.equal(dag.thunks[0].result, torch.full((3,), 2.0))
 
 
-def test_torch_func_dag_returns_the_real_result():
+def test_torch_func_dag_returns():
     a = torch.ones(3)
     b = torch.ones(3)
     dag = TorchFuncDag()
@@ -29,7 +29,7 @@ def test_torch_func_dag_returns_the_real_result():
     assert torch.equal(out, torch.full((3,), 2.0))
 
 
-def test_torch_func_dag_records_calls_in_order():
+def test_torch_func_calls_funcs():
     a = torch.ones(3)
     dag = TorchFuncDag()
 
@@ -40,7 +40,7 @@ def test_torch_func_dag_records_calls_in_order():
     assert [t.func for t in dag.thunks] == [torch.add, torch.mul]
 
 
-def test_indexing_and_len():
+def test_seq_like_api():
     a = torch.ones(3)
     dag = TorchFuncDag()
 
@@ -51,20 +51,20 @@ def test_indexing_and_len():
     assert dag[0] is dag.thunks[0]
 
 
-def test_dag_property_returns_a_dag():
+def test_dag_property():
     dag = TorchFuncDag()
 
     assert isinstance(dag.dag, Dag)
 
 
-def test_fake_aten_dag_produces_fake_tensors():
+def test_fake_aten_dag_tensor():
     with fake_aten_dag():
         out = torch.ones(3) + torch.ones(3)
 
-    assert isinstance(out, FakeTensor)
+    assert isinstance(out, torch.Tensor) and is_fake(out)
 
 
-def test_fake_aten_dag_records_ops():
+def test_fake_aten_dag_ops():
     with fake_aten_dag() as dag:
         torch.ones(3) + torch.ones(3)
 
