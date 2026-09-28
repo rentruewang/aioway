@@ -26,7 +26,7 @@ from aioway.cc import ClfLogitHead, linear_regression
 from aioway.contrib.mnist import MnistDataset
 from aioway.io import DatasetIdxDset, Dset, InputTarget
 from aioway.tasks import StaticTrainer, TrainCfg
-from aioway.torch import as_tspec
+from aioway.t import as_tspec
 
 
 # %%

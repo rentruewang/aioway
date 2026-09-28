@@ -8,7 +8,7 @@ import torch
 from torch import nn
 
 from aioway._utils import AnyDict, Stack
-from aioway.torch import (
+from aioway.t import (
     register_module_forward_hook,
     register_module_forward_pre_hook,
 )

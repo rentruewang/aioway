@@ -2,7 +2,7 @@
 
 from torch import nn
 
-from aioway.torch import TSpec
+from aioway.t import TSpec
 
 from .deductions import deduction_for
 

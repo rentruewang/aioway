@@ -4,7 +4,7 @@ import torch
 from torch import ops
 
 from aioway.cc import Exec, TorchFuncDag, fake_aten_dag
-from aioway.torch import is_fake
+from aioway.t import is_fake
 
 
 def test_torch_func_dag_data():

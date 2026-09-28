@@ -17,7 +17,7 @@ import tensordict as td
 import torch
 
 # %%
-from aioway.torch import PrintTorchDisp, PrintTorchFunc, fake_mode
+from aioway.t import PrintTorchDisp, PrintTorchFunc, fake_mode
 
 # %%
 a = torch.randn(3, 4)

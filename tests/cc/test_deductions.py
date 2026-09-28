@@ -8,7 +8,7 @@ from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
 from aioway.cc import deduction_for
-from aioway.torch import LossTSpec
+from aioway.t import LossTSpec
 
 
 def _wrong_function():
