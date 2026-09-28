@@ -27,7 +27,7 @@ class _TorchCallDag(abc.ABC):
     "The thunk storage."
 
     def __len__(self) -> int:
-        return len(self)
+        return len(self.thunks)
 
     def __getitem__(self, idx: int) -> DoneThunk:
         return self.thunks[idx]
@@ -63,7 +63,7 @@ class TorchFuncDag(_TorchCallDag, TorchFuncMode):
     The DAG for `__torch_function__` calls.
     """
 
-    def _track_thunk(self, func):
+    def _track_thunk(self, func) -> bool:
         return is_torch_function(func)
 
 
@@ -76,7 +76,7 @@ class _AtenDag(_TorchCallDag, TorchDispMode):
     Will only track `aten` ops, others are discarded.
     """
 
-    def _track_thunk(self, func):
+    def _track_thunk(self, func) -> bool:
         return is_aten_op(func)
 
 

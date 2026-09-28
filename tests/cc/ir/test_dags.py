@@ -46,11 +46,6 @@ def test_dag_len_is_thunks(dag):
     assert len(dag) == 2
 
 
-def test_dag_not_empty():
-    with pytest.raises(ValueError):
-        Dag([])
-
-
 def test_inputs_are_fakes(dag: Dag, fakes: cabc.Sequence[torch.Tensor]):
     assert len(dag.inputs()) == 2
     assert all(got is want for got, want in zip(dag.inputs(), fakes))

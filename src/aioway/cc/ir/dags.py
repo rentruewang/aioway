@@ -3,13 +3,11 @@
 "Tracking and creating thunks."
 
 import dataclasses as dcls
-import functools
 import typing
 from collections import abc as cabc
 
 import torch
 
-from aioway._utils import Sign
 from aioway.torch import (
     find_nested_tensors,
     render_tensor_func_short,
@@ -45,9 +43,6 @@ class DoneThunk[F: cabc.Callable]:
         if not callable(self.func):
             raise TypeError(f"{self.func} is not callable.")
 
-        # Try binding, if not this would fail with `TypeError`.
-        _ = self._signature.bind(*self.args, **self.kwargs)
-
     @typing.override
     def __repr__(self) -> str:
         result = str(replace_tensors_with_attr(self.result))
@@ -69,20 +64,13 @@ class DoneThunk[F: cabc.Callable]:
     def done(self) -> bool:
         return self.result is dcls.MISSING
 
-    @functools.cached_property
-    def _signature(self) -> Sign:
-        return Sign.from_callable(self.func)
-
 
 class Dag[F: cabc.Callable = typing.Any](cabc.Sequence[DoneThunk[F]]):
     """
     This is the DAG responsible for executing a traced thunk list on real data.
     """
 
-    def __init__(self, thunks: cabc.Sequence[DoneThunk[F]]) -> None:
-        if not thunks:
-            raise ValueError("DAG is empty.")
-
+    def __init__(self, thunks: cabc.Sequence[DoneThunk[F]] = ()) -> None:
         self._thunks = tuple(thunks)
         self._locals = self._compute_local_vars()
         self._inputs = tuple(self._input_vars())
