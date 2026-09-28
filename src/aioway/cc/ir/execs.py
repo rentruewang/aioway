@@ -14,7 +14,7 @@ from aioway.torch import (
     replace_tensors_with_attr,
 )
 
-from .vars import LocalVars, VarInfo
+from .dags import LocalVars, VarInfo
 
 __all__ = ["DoneThunk", "Dag"]
 
