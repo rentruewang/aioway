@@ -56,7 +56,7 @@ def test_seq_like_api():
 def test_dag_property():
     dag = TorchFuncDag()
 
-    assert isinstance(dag.dag, Exec)
+    assert isinstance(dag.exec(), Exec)
 
 
 def test_fake_aten_dag_tensor():

@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from aioway.cc import VarInfo, VarScope, VarList
+from aioway.cc import VarInfo, VarList, VarScope
 from aioway.torch import fake_mode
 
 
