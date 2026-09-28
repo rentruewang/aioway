@@ -4,7 +4,8 @@ import pytest
 import torch
 from torch import nn
 
-from aioway.cc import ModuleInOutHist, ModuleInOutThunk, capture_module_hist
+from aioway._utils import Stack
+from aioway.cc import ModuleHist, ModuleThunk, ModuleTracker
 
 
 class Double(nn.Module):
@@ -12,7 +13,9 @@ class Double(nn.Module):
         return x * 2
 
 
-class AddOne(nn.Module):
+class Wrapped(nn.Module):
+    """A parent whose output is a fresh tensor, not its child's."""
+
     def __init__(self) -> None:
         super().__init__()
         self.inner = Double()
@@ -21,129 +24,156 @@ class AddOne(nn.Module):
         return self.inner(x) + 1
 
 
+def _make_thunk(
+    module: nn.Module,
+    *args: torch.Tensor,
+    result: object = None,
+    parents: tuple[nn.Module, ...] = (),
+) -> ModuleThunk:
+    return ModuleThunk(
+        func=module,
+        args=args,
+        kwargs={},
+        result=module(*args) if result is None else result,
+        parents=parents,
+    )
+
+
 @pytest.fixture
 def module() -> nn.Module:
     return Double()
 
 
 @pytest.fixture
-def thunk(module: nn.Module) -> ModuleInOutThunk:
-    x = torch.ones(3)
-    return ModuleInOutThunk(module=module, input=(x,), output=module(x))
+def thunk(module: nn.Module) -> ModuleThunk:
+    return _make_thunk(module, torch.ones(3))
 
 
 @pytest.fixture
-def hist() -> ModuleInOutHist:
-    return ModuleInOutHist()
+def hist() -> ModuleHist:
+    return ModuleHist()
 
 
-def test_thunk_inputs(module: nn.Module) -> None:
+@pytest.fixture
+def tracker(hist: ModuleHist) -> ModuleTracker:
+    return ModuleTracker(stack=Stack(), hist=hist)
+
+
+def test_thunk_keeps_parents(module: nn.Module) -> None:
+    parent = Wrapped()
+    thunk = _make_thunk(module, torch.ones(3), parents=(parent,))
+
+    assert thunk.parents == (parent,)
+
+
+def test_thunk_upstream_yields(module: nn.Module) -> None:
     x, y = torch.ones(3), torch.zeros(3)
-    thunk = ModuleInOutThunk(module=module, input=(x, y), output=x)
-    assert _ids_set(*thunk.inputs()) == _ids_set(x, y)
+    thunk = _make_thunk(module, x, y, result=x)
+
+    assert list(thunk.upstream()) == [x, y]
 
 
-def test_thunk_nested_inputs(module: nn.Module) -> None:
-    x, y = torch.ones(3), torch.zeros(3)
-    thunk = ModuleInOutThunk(module=module, input=(x, (y,)), output=x)
-    assert _ids_set(*thunk.inputs()) == _ids_set(x, y)
+def test_thunk_downstream_yields(thunk: ModuleThunk) -> None:
+    assert list(thunk.downstream()) == [thunk.result]
 
 
-def test_thunk_outputs(module: nn.Module) -> None:
-    x, y = torch.ones(3), torch.zeros(3)
-    thunk = ModuleInOutThunk(module=module, input=(), output=(x, y))
-
-    assert _ids_set(*thunk.outputs()) == _ids_set(x, y)
-
-
-def test_hist_starts_empty(hist: ModuleInOutHist) -> None:
+def test_hist_starts_empty(hist: ModuleHist) -> None:
     assert len(hist) == 0
 
 
-def test_hist_append(hist: ModuleInOutHist, thunk: ModuleInOutThunk) -> None:
+def test_append_stores_thunk(hist: ModuleHist, thunk: ModuleThunk) -> None:
     hist.append(thunk)
 
     assert len(hist) == 1
     assert hist[0] is thunk
 
 
-def test_thunk_by_output(hist: ModuleInOutHist, thunk: ModuleInOutThunk) -> None:
+def test_thunk_looks_up(hist: ModuleHist, thunk: ModuleThunk) -> None:
     hist.append(thunk)
 
-    for out in thunk.outputs():
-        assert hist.thunk_of(out) is thunk
+    assert hist.thunk_of(next(thunk.downstream())) is thunk
 
 
-def test_append_by_output_multi(hist: ModuleInOutHist, module: nn.Module) -> None:
+def test_append_index_all_outputs(hist: ModuleHist, module: nn.Module) -> None:
     x, y = torch.ones(3), torch.zeros(3)
-    thunk = ModuleInOutThunk(module=module, input=(), output=(x, y))
+    thunk = _make_thunk(module, result=(x, y))
 
     hist.append(thunk)
 
-    for out in thunk.outputs():
-        assert hist.thunk_of(out) is thunk
+    assert hist.thunk_of(x) is thunk
+    assert hist.thunk_of(y) is thunk
 
 
-def test_no_append_twice(hist: ModuleInOutHist, thunk: ModuleInOutThunk) -> None:
+def test_append_fail_dups(hist: ModuleHist, thunk: ModuleThunk) -> None:
     hist.append(thunk)
 
     with pytest.raises(KeyError):
         hist.append(thunk)
 
 
-def test_missing_thunk_lookup(hist: ModuleInOutHist, thunk: ModuleInOutThunk) -> None:
+def test_thunk_of_unknown_fail(hist: ModuleHist, thunk: ModuleThunk) -> None:
     with pytest.raises(KeyError):
-        hist.thunk_of(next(thunk.outputs()))
+        hist.thunk_of(next(thunk.downstream()))
 
 
-def test_forward_hook_appends(hist: ModuleInOutHist, module: nn.Module) -> None:
+def test_hook_appends_thunk(hist: ModuleHist, module: nn.Module) -> None:
     x = torch.ones(3)
     y = module(x)
 
     hist.module_forward_hook(module, (x,), y)
 
-    [recorded] = hist.history
-    assert recorded.module is module
-    assert list(recorded.inputs()) == [x]
-    assert list(recorded.outputs()) == [y]
+    (recorded,) = hist.history
+    assert recorded.func is module
+    assert list(recorded.upstream()) == [x]
+    assert list(recorded.downstream()) == [y]
+    assert recorded.parents == ()
 
 
-def test_track_with_register(hist: ModuleInOutHist, module: nn.Module) -> None:
-    with hist.register_module_forward_hook():
-        module(ones := torch.ones(3))
-
-    assert len(hist) == 1
-    assert hist[0].module is module
-    assert list(hist[0].inputs()) == [ones]
+def test_tracker_yield(tracker: ModuleTracker) -> None:
+    with tracker() as yielded:
+        assert yielded is tracker
 
 
-def test_no_track_outside_register(hist: ModuleInOutHist, module: nn.Module) -> None:
-    with hist.register_module_forward_hook():
-        pass
+def test_tracker_records_leaves(tracker: ModuleTracker, hist: ModuleHist) -> None:
+    model = Wrapped()
 
-    module(torch.ones(3))
-    assert len(hist) == 0
-
-
-def test_capture_nested() -> None:
-    model = AddOne()
-
-    with capture_module_hist() as hist:
+    with tracker():
         model(torch.ones(3))
 
-    assert [t.module for t in hist.history] == [model.inner, model]
+    assert [t.func for t in hist.history] == [model.inner]
 
 
-def test_capture_keeps_shape() -> None:
-    model = nn.Linear(4, 2)
+def test_tracker_records_parents(tracker: ModuleTracker, hist: ModuleHist) -> None:
+    model = Wrapped()
 
-    with capture_module_hist() as hist:
+    with tracker():
+        model(torch.ones(3))
+
+    assert hist[0].parents[0] == model
+
+
+def test_tracker_records_shapes(tracker: ModuleTracker, hist: ModuleHist) -> None:
+    model = nn.Sequential(nn.Linear(4, 2))
+
+    with tracker():
         model(torch.ones(3, 4))
 
     (thunk,) = hist.history
-    assert {t.shape for t in thunk.inputs()} == {(3, 4)}
-    assert {t.shape for t in thunk.outputs()} == {(3, 2)}
+    assert next(thunk.upstream()).shape == (3, 4)
+    assert next(thunk.downstream()).shape == (3, 2)
 
 
-def _ids_set(*tensors: torch.Tensor) -> set[int]:
-    return {id(t) for t in tensors}
+def test_tracker_empty_stack(tracker: ModuleTracker) -> None:
+    with tracker():
+        Wrapped()(torch.ones(3))
+
+    assert not tracker.stack
+
+
+def test_tracker_active_only_context(tracker: ModuleTracker, hist: ModuleHist) -> None:
+    with tracker():
+        pass
+
+    Wrapped()(torch.ones(3))
+
+    assert len(hist) == 0

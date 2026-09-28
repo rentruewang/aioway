@@ -3,46 +3,113 @@
 import contextlib as ctxl
 import dataclasses as dcls
 import typing
-from collections import abc as cabc
 
 import torch
 from torch import nn
 
-from aioway._utils import AnyDict
+from aioway._utils import AnyDict, Stack
 from aioway.torch import (
-    clone_in_fake_mode,
-    fake_mode,
-    find_nested_tensors,
     register_module_forward_hook,
-    route_aten_thunk,
+    register_module_forward_pre_hook,
 )
 
-__all__ = ["capture_module_hist", "ModuleInOutThunk", "ModuleInOutHist"]
+from .dags import DoneThunk
+
+__all__ = ["ModuleThunk", "ModuleTracker", "ModuleHist"]
 
 
 @dcls.dataclass(frozen=True)
-class ModuleInOutThunk:
+class ModuleThunk(DoneThunk):
+    """
+    Module thunk is a thunk tracking inputs, outputs, and which module calls it.
+    """
+
+    _: dcls.KW_ONLY
+
+    parents: tuple[nn.Module, ...]
+    "The parent modules that calls this current thunk. It's a stack."
+
+
+@ctxl.contextmanager
+def track_module_thunks():
+    yield
+
+
+class _ModuleInput(typing.NamedTuple):
     module: nn.Module
-
     input: typing.Any
-    output: typing.Any
-
-    def inputs(self) -> cabc.Generator[torch.Tensor]:
-        yield from find_nested_tensors(self.input)
-
-    def outputs(self) -> cabc.Generator[torch.Tensor]:
-        yield from find_nested_tensors(self.output)
 
 
 @dcls.dataclass(frozen=True)
-class ModuleInOutHist:
+class ModuleTracker:
+    stack: Stack[_ModuleInput]
+    "The current stack of modules."
+
+    hist: ModuleHist
+    "The history of modules execution (only leaves are tracked)."
+
+    @ctxl.contextmanager
+    def __call__(self):
+        with ctxl.ExitStack() as c:
+            c.enter_context(register_module_forward_hook(self._fwd_post))
+            c.enter_context(register_module_forward_pre_hook(self._fwd_pre))
+
+            yield self
+
+    def _fwd_pre(self, module: nn.Module, input) -> None:
+        "The forward pre-hook."
+        self.stack.append(_ModuleInput(module, input))
+
+    def _fwd_post(self, module: nn.Module, input, output) -> None:
+        "The forward hook (this executes after)."
+
+        self._fwd_post_hist(module, input, output)
+        self._fwd_post_stack(module, input)
+
+    def _fwd_post_hist(self, module: nn.Module, input, output):
+        """
+        Update the history. This executes "before" the stack is popped,
+        which means that `module` does exist in `self.stack`.
+
+        Only append "leaf" modules, which means modules without parents,
+        to prevent double counting.
+        """
+
+        assert isinstance(input, tuple)
+        assert self.stack.top().module is module
+
+        if not _is_leaf_module(module):
+            return
+
+        self.hist.append(
+            ModuleThunk(
+                func=module,
+                args=input,
+                kwargs={},
+                result=output,
+                parents=tuple(module for module, _ in self.stack),
+            )
+        )
+
+    def _fwd_post_stack(self, module: nn.Module, input):
+        module_input = self.stack.top()
+
+        # Sanity check to ensure that the modules and inputs are the right ones.
+        assert module is module_input.module
+        assert input is module_input.input
+
+        self.stack.pop()
+
+
+@dcls.dataclass(frozen=True)
+class ModuleHist:
     """
     The history to track input and output of a `nn.Module` during running.
 
     Will need to integrate with `Hist` in the future.
     """
 
-    history: list[ModuleInOutThunk] = dcls.field(default_factory=list)
+    history: list[ModuleThunk] = dcls.field(default_factory=list)
     """
     The history encountered.
     """
@@ -57,11 +124,11 @@ class ModuleInOutHist:
     def __len__(self) -> int:
         return len(self.history)
 
-    def __getitem__(self, idx: int) -> ModuleInOutThunk:
+    def __getitem__(self, idx: int) -> ModuleThunk:
         return self.history[idx]
 
-    def append(self, thunk: ModuleInOutThunk) -> None:
-        outputs = tuple(thunk.outputs())
+    def append(self, thunk: ModuleThunk) -> None:
+        outputs = tuple(thunk.downstream())
 
         # Check if the keys already exists,
         # should be unique due to cloning in fake mode.
@@ -74,31 +141,18 @@ class ModuleInOutHist:
         for output in outputs:
             self.output_index[output] = length
 
-    def thunk_of(self, output: torch.Tensor) -> ModuleInOutThunk:
+    def thunk_of(self, output: torch.Tensor) -> ModuleThunk:
         idx = self.output_index[output]
         return self[idx]
 
     def module_forward_hook(
         self, module: nn.Module, input: tuple[torch.Tensor, ...], output: torch.Tensor
     ) -> None:
-        thunk = ModuleInOutThunk(module=module, input=input, output=output)
+        thunk = ModuleThunk(
+            func=module, args=input, kwargs={}, result=output, parents=()
+        )
         self.append(thunk)
 
-    @ctxl.contextmanager
-    def register_module_forward_hook(self) -> cabc.Generator[typing.Self]:
-        with register_module_forward_hook(self.module_forward_hook):
-            yield self
 
-
-@ctxl.contextmanager
-def capture_module_hist() -> cabc.Generator[ModuleInOutHist]:
-    with ctxl.ExitStack() as stack:
-        for mode in [
-            fake_mode(),
-            clone_in_fake_mode.activate(),
-            route_aten_thunk.activate(),
-            (hist := ModuleInOutHist()).register_module_forward_hook(),
-        ]:
-            stack.enter_context(mode)
-
-        yield hist
+def _is_leaf_module(module: nn.Module) -> bool:
+    return not list(module.children())
