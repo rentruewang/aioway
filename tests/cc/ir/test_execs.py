@@ -5,7 +5,7 @@ from collections import abc as cabc
 import pytest
 import torch
 
-from aioway.cc import Dag, DoneThunk
+from aioway.cc import DoneThunk, Exec
 from aioway.torch import fake_mode
 
 
@@ -38,37 +38,37 @@ def thunks(fakes) -> tuple[DoneThunk, ...]:
 
 
 @pytest.fixture
-def dag(thunks) -> Dag:
-    return Dag(thunks)
+def dag(thunks) -> Exec:
+    return Exec(thunks)
 
 
 def test_dag_len_is_thunks(dag):
     assert len(dag) == 2
 
 
-def test_inputs_are_fakes(dag: Dag, fakes: cabc.Sequence[torch.Tensor]):
+def test_inputs_are_fakes(dag: Exec, fakes: cabc.Sequence[torch.Tensor]):
     assert len(dag.inputs()) == 2
     assert all(got is want for got, want in zip(dag.inputs(), fakes))
 
 
-def test_call_runs(dag: Dag):
+def test_call_runs(dag: Exec):
     real = dag(torch.ones(3), torch.full((3,), 2.0))
 
     assert torch.equal(real, torch.full((3,), 6.0))
 
 
-def test_call_twice(dag: Dag):
+def test_call_twice(dag: Exec):
     first = dag(torch.ones(3), torch.ones(3))
     second = dag(torch.ones(3), torch.ones(3))
 
     assert torch.equal(first, second)
 
 
-def test_wrong_number_of_inputs(dag: Dag):
+def test_wrong_number_of_inputs(dag: Exec):
     with pytest.raises(TypeError):
         dag(torch.ones(3))
 
 
 def test_output_unique(thunks):
     with pytest.raises(KeyError):
-        Dag([thunks[0], thunks[0]])
+        Exec([thunks[0], thunks[0]])
