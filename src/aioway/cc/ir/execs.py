@@ -18,8 +18,8 @@ class Exec[F: cabc.Callable = typing.Any](cabc.Sequence[DoneThunk[F]]):
     This is the DAG executor responsible for executing a traced thunk list on real data.
     """
 
-    def __init__(self, thunks: cabc.Sequence[DoneThunk[F]] = ()) -> None:
-        self._dag = Dag(thunks)
+    def __init__(self, dag: Dag) -> None:
+        self._dag = dag
         self._scope = VarScope(self._dag.var_list())
 
     def __len__(self) -> int:

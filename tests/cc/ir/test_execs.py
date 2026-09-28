@@ -3,12 +3,12 @@
 import pytest
 import torch
 
-from aioway.cc import Exec
+from aioway.cc import Dag, Exec
 
 
 @pytest.fixture
 def exec(thunks) -> Exec:
-    return Exec(thunks)
+    return Exec(Dag(thunks))
 
 
 def test_len(exec: Exec) -> None:

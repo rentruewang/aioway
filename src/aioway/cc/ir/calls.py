@@ -14,7 +14,7 @@ from aioway.torch import (
 )
 from aioway.torch.guards import is_torch_function
 
-from .dags import DoneThunk
+from .dags import Dag, DoneThunk
 from .execs import Exec
 
 __all__ = ["TorchFuncDag", "fake_aten_dag"]
@@ -37,7 +37,7 @@ class _TorchCallDag(abc.ABC):
         self.thunks.append(thunk)
 
     def exec(self) -> Exec:
-        return Exec(self.thunks)
+        return Exec(Dag(self.thunks))
 
     def run(self, thunk):
         result = thunk()
