@@ -54,30 +54,6 @@ def test_var_alive_until(x_info: VarInfo):
     assert x_info.alive_until == 1
 
 
-def test_var_tensor_life(y_info):
-    real = make_real()
-
-    assert not y_info.is_alive
-
-    with pytest.raises(AttributeError):
-        y_info.tensor
-
-    y_info.tensor = real
-    assert y_info.is_alive
-    assert y_info.tensor is real
-
-    del y_info.tensor
-    assert not y_info.is_alive
-
-    with pytest.raises(AttributeError):
-        del y_info.tensor
-
-
-def test_var_tensor_real(y_info):
-    with pytest.raises(ValueError):
-        y_info.tensor = make_fake()
-
-
 def test_len_locals(local_vars: LocalVars):
     assert len(local_vars) == 2
 
@@ -92,7 +68,7 @@ def test_update_to_real(local_vars, x_info):
     local_vars.update(x_info.fake, real)
 
     assert local_vars[x_info.fake] is real
-    assert x_info.tensor is real
+    assert local_vars.value(x_info.fake) is real
 
 
 def test_update_to_real_containers(local_vars, x_info, y_info):
@@ -131,12 +107,12 @@ def test_expire_free(local_vars: LocalVars, x_info: VarInfo, y_info: VarInfo):
     local_vars.update([x_info.fake, y_info.fake], [make_real(), make_real()])
 
     local_vars.expire(0)
-    assert x_info.is_alive
-    assert y_info.is_alive
+    assert local_vars.is_alive(x_info)
+    assert local_vars.is_alive(y_info)
 
     local_vars.expire(1)
-    assert not x_info.is_alive
-    assert not y_info.is_alive
+    assert not local_vars.is_alive(x_info)
+    assert not local_vars.is_alive(y_info)
 
 
 def test_map_to_real(local_vars: LocalVars, x_info: VarInfo, y_info: VarInfo):

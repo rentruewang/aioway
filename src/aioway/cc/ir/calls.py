@@ -14,7 +14,7 @@ from aioway.torch import (
 )
 from aioway.torch.guards import is_torch_function
 
-from .execs import Exec, DoneThunk
+from .execs import DoneThunk, Exec
 
 __all__ = ["TorchFuncDag", "fake_aten_dag"]
 

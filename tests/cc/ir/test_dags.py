@@ -5,7 +5,7 @@ from collections import abc as cabc
 import pytest
 import torch
 
-from aioway.cc import Exec, DoneThunk
+from aioway.cc import DoneThunk, Exec
 from aioway.torch import fake_mode
 
 
