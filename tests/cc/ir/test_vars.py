@@ -36,8 +36,8 @@ def var_list(x_info, y_info) -> VarList:
 
 
 @pytest.fixture
-def var_scope(x_info, y_info) -> VarScope:
-    return VarScope([x_info, y_info])
+def var_scope(var_list: VarList) -> VarScope:
+    return VarScope(var_list)
 
 
 def test_no_real_tensor_allowed():
@@ -65,7 +65,7 @@ def test_len_locals(var_scope: VarScope):
 
 def test_no_dup_vars(x_info):
     with pytest.raises(ValueError):
-        VarScope([x_info, x_info])
+        VarScope(VarList([x_info, x_info]))
 
 
 def test_update_to_real(var_scope, x_info):

@@ -151,12 +151,9 @@ class VarScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
     Tracks the currently in scope tensors.
     """
 
-    def __init__(self, vars: cabc.Iterable[VarInfo]) -> None:
-        self._vars = VarList(vars)
-
-        L.logger.opt(lazy=True).trace(
-            "Attempting to create a stash of {} local vars", self._vars.__len__
-        )
+    def __init__(self, vars: VarList) -> None:
+        self._vars = vars
+        "The variable list."
 
         self._alive: dict[int, torch.Tensor] = {}
         "The tensor that is alive, indexed by their fake tensors' ids."

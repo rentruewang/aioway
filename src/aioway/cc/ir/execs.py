@@ -8,7 +8,7 @@ from collections import abc as cabc
 import torch
 
 from .dags import DoneThunk
-from .vars import VarInfo, VarScope
+from .vars import VarInfo, VarList, VarScope
 
 __all__ = ["Exec"]
 
@@ -76,7 +76,7 @@ class Exec[F: cabc.Callable = typing.Any](cabc.Sequence[DoneThunk[F]]):
             self._add_inputs(idx, thunk, unique_vars)
             self._add_output(idx, thunk, unique_vars)
 
-        return VarScope(unique_vars.values())
+        return VarScope(VarList(unique_vars.values()))
 
     def _add_inputs(
         self, idx: int, thunk: DoneThunk, locals: dict[int, VarInfo]
