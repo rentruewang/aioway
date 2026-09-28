@@ -10,7 +10,7 @@ from torch.utils import _pytree as pytree
 
 from aioway.torch import is_fake, is_fake_tensor, is_real, is_real_tensor, parse_attr
 
-__all__ = ["VarInfo", "LocalVars"]
+__all__ = ["VarInfo", "VarScope"]
 
 
 class VarInfo:
@@ -81,7 +81,7 @@ class VarInfo:
         return cls(producer=-1, fake=fake)
 
 
-class LocalVars(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
+class VarScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
     """
     Stores all the local vars that the DAG executes, by their fake tensors.
     It stores the real tensors associated with the fakes in a `VarInfo`,

@@ -14,7 +14,7 @@ from aioway.torch import (
     replace_tensors_with_attr,
 )
 
-from .vars import LocalVars, VarInfo
+from .vars import VarScope, VarInfo
 
 __all__ = ["DoneThunk", "Exec"]
 
@@ -121,14 +121,14 @@ class Exec[F: cabc.Callable = typing.Any](cabc.Sequence[DoneThunk[F]]):
             if self._locals.info(var).is_input:
                 yield var
 
-    def _compute_local_vars(self) -> LocalVars:
+    def _compute_local_vars(self) -> VarScope:
         unique_vars: dict[int, VarInfo] = {}
 
         for idx, thunk in enumerate(self._thunks):
             self._add_inputs(idx, thunk, unique_vars)
             self._add_output(idx, thunk, unique_vars)
 
-        return LocalVars(unique_vars)
+        return VarScope(unique_vars)
 
     def _add_inputs(
         self, idx: int, thunk: DoneThunk, locals: dict[int, VarInfo]
