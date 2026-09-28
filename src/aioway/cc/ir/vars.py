@@ -1,6 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import collections
+import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
@@ -81,6 +82,63 @@ class VarInfo:
         return cls(producer=-1, fake=fake)
 
 
+@dcls.dataclass(frozen=True)
+class _ByStep:
+    producers: list[VarInfo] = dcls.field(default_factory=list)
+    consumers: list[VarInfo] = dcls.field(default_factory=list)
+
+
+class VarList:
+    """
+    The set of variable infos. Almost a mapping but does not support iteration.
+    """
+
+    def __init__(self, vars: cabc.Iterable[VarInfo]) -> None:
+        vars = tuple(vars)
+
+        L.logger.trace("Attempting to create a stash of {} local vars", len(vars))
+
+        self._vars = {_get_fake_id(var.fake): var for var in vars}
+
+        if len(vars) != len(self._vars):
+            raise ValueError("The fake tensors are not unique.")
+
+        self._by_step = self._compute_consumers_by_step()
+        "The graph part of the variables."
+
+    def __len__(self) -> int:
+        return len(self._vars)
+
+    def __contains__(self, fake: torch.Tensor | int) -> bool:
+        return _get_id(fake) in self._vars
+
+    def __iter__(self) -> cabc.Iterator[int]:
+        return iter(self._vars)
+
+    def __getitem__(self, fake: torch.Tensor | int) -> VarInfo:
+        return self._vars[_get_fake_id(fake)]
+
+    def values(self):
+        return self._vars.values()
+
+    def consumers(self, step: int) -> list[VarInfo]:
+        return self._by_step[step].consumers
+
+    def producers(self, step: int) -> list[VarInfo]:
+        return self._by_step[step].producers
+
+    def _compute_consumers_by_step(self) -> dict[int, _ByStep]:
+        result: dict[int, _ByStep] = collections.defaultdict(_ByStep)
+
+        for var in self.values():
+            result[var.producer].producers.append(var)
+
+            for consumer in var.consumers:
+                result[consumer].consumers.append(var)
+
+        return result
+
+
 class VarScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
     """
     Stores all the local vars that the DAG executes, by their fake tensors.
@@ -93,15 +151,12 @@ class VarScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
     Tracks the currently in scope tensors.
     """
 
-    def __init__(self, vars: cabc.Mapping[int, VarInfo]) -> None:
-        self._vars = vars
+    def __init__(self, vars: cabc.Iterable[VarInfo]) -> None:
+        self._vars = VarList(vars)
 
         L.logger.opt(lazy=True).trace(
             "Attempting to create a stash of {} local vars", self._vars.__len__
         )
-
-        self._consumer_by_step = self._compute_consumers_by_step()
-        "The graph part of the variables."
 
         self._alive: dict[int, torch.Tensor] = {}
         "The tensor that is alive, indexed by their fake tensors' ids."
@@ -165,7 +220,7 @@ class VarScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
         Expire those variables whose step = `step` (`step` must be positive).
         """
 
-        for var in self._consumer_by_step[step]:
+        for var in self._vars.consumers(step):
             if var.alive_until == step:
                 self.drop(var.fake)
 
@@ -255,16 +310,6 @@ class VarScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
                 result[consumer].append(var)
 
         return result
-
-    @classmethod
-    def from_infos(cls, *infos: VarInfo) -> typing.Self:
-        # Since fake tensors have 1 single producer, the producer is unique.
-        variables = {id(info.fake): info for info in infos}
-
-        if len(variables) != len(infos):
-            raise ValueError("The producer for the variable list is not unique.")
-
-        return cls(variables)
 
 
 def _get_id(tensor: torch.Tensor | int, /) -> int:

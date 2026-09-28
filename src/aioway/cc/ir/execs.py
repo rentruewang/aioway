@@ -128,7 +128,7 @@ class Exec[F: cabc.Callable = typing.Any](cabc.Sequence[DoneThunk[F]]):
             self._add_inputs(idx, thunk, unique_vars)
             self._add_output(idx, thunk, unique_vars)
 
-        return VarScope(unique_vars)
+        return VarScope(unique_vars.values())
 
     def _add_inputs(
         self, idx: int, thunk: DoneThunk, locals: dict[int, VarInfo]
