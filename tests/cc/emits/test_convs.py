@@ -5,7 +5,7 @@ from torch import nn
 
 from aioway.cc import emit_one
 from aioway.cc.emits.convs import ImageRegressorEmitter
-from aioway.torch import (
+from aioway.t import (
     Shape,
     TSpec,
     float_image_tspec,

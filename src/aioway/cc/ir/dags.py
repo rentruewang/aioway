@@ -8,7 +8,7 @@ from collections import abc as cabc
 
 import torch
 
-from aioway.torch import (
+from aioway.t import (
     find_nested_tensors,
     render_tensor_func_short,
     replace_tensors_with_attr,

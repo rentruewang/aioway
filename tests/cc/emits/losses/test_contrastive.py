@@ -10,7 +10,7 @@ from aioway.cc import (
     emit_one,
     linear_regression,
 )
-from aioway.torch import Shape, unbounded_box_tspec
+from aioway.t import Shape, unbounded_box_tspec
 
 
 @pytest.fixture

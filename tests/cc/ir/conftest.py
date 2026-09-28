@@ -4,7 +4,7 @@ import pytest
 import torch
 
 from aioway.cc import DoneThunk
-from aioway.torch import fake_mode
+from aioway.t import fake_mode
 
 
 def add(left: torch.Tensor, right: torch.Tensor) -> torch.Tensor:

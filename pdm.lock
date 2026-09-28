@@ -5,7 +5,7 @@
 groups = ["default", "api", "build", "checks", "debugging", "docs", "faiss", "gym", "networkx", "sklearn", "tests"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.1"
-content_hash = "sha256:b9edbaab71b0660045e6ef6badc5a27e22358b16aae62578d280ccf9499998ce"
+content_hash = "sha256:3bc275c3a96db3bf8cd4f991672151c36658ab5b370323fd7aea2d8abe351d85"
 
 [[metadata.targets]]
 requires_python = ">=3.14,<3.15"

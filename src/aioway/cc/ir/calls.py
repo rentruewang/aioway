@@ -5,14 +5,14 @@ import contextlib as ctxl
 import dataclasses as dcls
 import typing
 
-from aioway.torch import (
+from aioway.t import (
     TorchDispMode,
     TorchFuncMode,
     fake_mode,
     is_aten_op,
     route_aten_thunk,
 )
-from aioway.torch.guards import is_torch_function
+from aioway.t.guards import is_torch_function
 
 from .dags import Dag, DoneThunk
 from .execs import Exec

@@ -17,7 +17,7 @@ import contextlib as ctxl
 # %%
 import torch
 
-from aioway.torch import PrintTorchDisp, PrintTorchFunc, fake_mode, route_aten_thunk
+from aioway.t import PrintTorchDisp, PrintTorchFunc, fake_mode, route_aten_thunk
 
 
 # %%

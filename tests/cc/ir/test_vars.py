@@ -4,7 +4,7 @@ import pytest
 import torch
 
 from aioway.cc import VarInfo, VarList, VarScope
-from aioway.torch import fake_mode
+from aioway.t import fake_mode
 
 
 def _make_fake() -> torch.Tensor:

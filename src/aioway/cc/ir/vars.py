@@ -9,7 +9,7 @@ import loguru as L
 import torch
 from torch.utils import _pytree as pytree
 
-from aioway.torch import is_fake, is_fake_tensor, is_real, is_real_tensor, parse_attr
+from aioway.t import is_fake, is_fake_tensor, is_real, is_real_tensor, parse_attr
 
 __all__ = ["VarInfo", "VarList", "VarScope"]
 
