@@ -20,7 +20,7 @@ from aioway.torch import (
 )
 from .dags import DoneThunk
 
-__all__ = ["capture_module_hist", "ModuleThunk", "ModuleInOutHist"]
+__all__ = ["capture_module_hist", "ModuleThunk", "ModuleTracker", "ModuleHist"]
 
 
 @dcls.dataclass(frozen=True)
@@ -50,8 +50,8 @@ class ModuleTracker:
     stack: Stack[_ModuleInput]
     "The current stack of modules."
 
-    hist: list[ModuleThunk]
-    "The history of modules."
+    hist: ModuleHist
+    "The history of modules execution (only leaves are tracked)."
 
     @ctxl.contextmanager
     def __call__(self):
@@ -107,7 +107,7 @@ class ModuleTracker:
 
 
 @dcls.dataclass(frozen=True)
-class ModuleInOutHist:
+class ModuleHist:
     """
     The history to track input and output of a `nn.Module` during running.
 
@@ -165,13 +165,13 @@ class ModuleInOutHist:
 
 
 @ctxl.contextmanager
-def capture_module_hist() -> cabc.Generator[ModuleInOutHist]:
+def capture_module_hist() -> cabc.Generator[ModuleHist]:
     with ctxl.ExitStack() as stack:
         for mode in [
             fake_mode(),
             clone_in_fake_mode.activate(),
             route_aten_thunk.activate(),
-            (hist := ModuleInOutHist()).register_module_forward_hook(),
+            (hist := ModuleHist()).register_module_forward_hook(),
         ]:
             stack.enter_context(mode)
 
