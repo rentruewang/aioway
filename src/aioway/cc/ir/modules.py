@@ -3,23 +3,19 @@
 import contextlib as ctxl
 import dataclasses as dcls
 import typing
-from collections import abc as cabc
 
 import torch
 from torch import nn
 
 from aioway._utils import AnyDict, Stack
 from aioway.torch import (
-    clone_in_fake_mode,
-    fake_mode,
     register_module_forward_hook,
     register_module_forward_pre_hook,
-    route_aten_thunk,
 )
 
 from .dags import DoneThunk
 
-__all__ = ["capture_module_hist", "ModuleThunk", "ModuleTracker", "ModuleHist"]
+__all__ = ["ModuleThunk", "ModuleTracker", "ModuleHist"]
 
 
 @dcls.dataclass(frozen=True)
@@ -156,25 +152,6 @@ class ModuleHist:
             func=module, args=input, kwargs={}, result=output, parents=()
         )
         self.append(thunk)
-
-    @ctxl.contextmanager
-    def register_module_forward_hook(self) -> cabc.Generator[typing.Self]:
-        with register_module_forward_hook(self.module_forward_hook):
-            yield self
-
-
-@ctxl.contextmanager
-def capture_module_hist() -> cabc.Generator[ModuleHist]:
-    with ctxl.ExitStack() as stack:
-        for mode in [
-            fake_mode(),
-            clone_in_fake_mode.activate(),
-            route_aten_thunk.activate(),
-            (hist := ModuleHist()).register_module_forward_hook(),
-        ]:
-            stack.enter_context(mode)
-
-        yield hist
 
 
 def _is_leaf_module(module: nn.Module) -> bool:
