@@ -3,11 +3,11 @@
 import pytest
 import torch
 
-from aioway.cc import VarInfo, VarScope
+from aioway.cc import VarInfo, VarScope, VarList
 from aioway.torch import fake_mode
 
 
-def make_fake() -> torch.Tensor:
+def _make_fake() -> torch.Tensor:
     with fake_mode():
         return torch.zeros(3)
 
@@ -18,16 +18,21 @@ def make_real() -> torch.Tensor:
 
 @pytest.fixture
 def x_info() -> VarInfo:
-    info = VarInfo(producer=-1, fake=make_fake())
+    info = VarInfo(producer=-1, fake=_make_fake())
     info.add_consumers(0, 1)
     return info
 
 
 @pytest.fixture
 def y_info() -> VarInfo:
-    info = VarInfo(producer=0, fake=make_fake())
+    info = VarInfo(producer=0, fake=_make_fake())
     info.add_consumers(1)
     return info
+
+
+@pytest.fixture
+def var_list(x_info, y_info) -> VarList:
+    return VarList([x_info, y_info])
 
 
 @pytest.fixture
@@ -148,3 +153,41 @@ def test_map_keeps_non_tensors(var_scope: VarScope, x_info: VarInfo):
 
 def test_map_allow_missing(var_scope: VarScope, x_info: VarInfo):
     var_scope.map([x_info.fake])
+
+
+def test_var_list_len(var_list: VarList):
+    assert len(var_list) == 2
+
+
+def test_var_list_no_dup(x_info: VarInfo):
+    with pytest.raises(ValueError):
+        VarList([x_info, x_info])
+
+
+def test_var_list_contains(var_list: VarList, x_info: VarInfo, y_info: VarInfo):
+    assert x_info.fake in var_list
+    assert id(y_info.fake) in var_list
+    assert _make_fake() not in var_list
+
+
+def test_var_list_getitem(var_list: VarList, x_info: VarInfo, y_info: VarInfo):
+    assert var_list[x_info.fake] is x_info
+    assert var_list[id(y_info.fake)] is y_info
+
+
+def test_var_list_iter(var_list: VarList, x_info: VarInfo, y_info: VarInfo):
+    assert set(var_list) == {id(x_info.fake), id(y_info.fake)}
+
+
+def test_var_list_values(var_list: VarList, x_info: VarInfo, y_info: VarInfo):
+    assert list(var_list.values()) == [x_info, y_info]
+
+
+def test_var_list_producers(var_list: VarList, x_info: VarInfo, y_info: VarInfo):
+    assert list(var_list.producers(-1)) == [x_info]
+    assert list(var_list.producers(0)) == [y_info]
+
+
+def test_var_list_consumers(var_list: VarList, x_info: VarInfo, y_info: VarInfo):
+    assert list(var_list.consumers(0)) == [x_info]
+    assert list(var_list.consumers(1)) == [x_info, y_info]

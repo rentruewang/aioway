@@ -121,10 +121,10 @@ class VarList:
     def values(self):
         return self._vars.values()
 
-    def consumers(self, step: int) -> list[VarInfo]:
+    def consumers(self, step: int) -> cabc.Sequence[VarInfo]:
         return self._by_step[step].consumers
 
-    def producers(self, step: int) -> list[VarInfo]:
+    def producers(self, step: int) -> cabc.Sequence[VarInfo]:
         return self._by_step[step].producers
 
     def _compute_consumers_by_step(self) -> dict[int, _ByStep]:
