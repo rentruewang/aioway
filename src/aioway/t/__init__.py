@@ -1,5 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+"A package of ephermeral, tensor related data."
+
 from ._utils import *
 from .aten import *
 from .attrs import *
