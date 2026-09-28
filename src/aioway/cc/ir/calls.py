@@ -7,16 +7,16 @@ import typing
 
 from aioway.torch import (
     TorchDispMode,
-    TorchDispThunk,
     TorchFuncMode,
-    TorchFuncThunk,
     fake_mode,
     is_aten_op,
+    route_aten_thunk,
 )
+from aioway.torch.guards import is_torch_function
 
 from .dags import Dag, DoneThunk
 
-__all__ = ["TorchFuncDag", "AtenDag", "fake_aten_dag"]
+__all__ = ["TorchFuncDag", "fake_aten_dag"]
 
 
 @dcls.dataclass
@@ -39,6 +39,22 @@ class _TorchCallDag(abc.ABC):
     def dag(self) -> Dag:
         return Dag(self.thunks)
 
+    def run(self, thunk):
+        result = thunk()
+
+        # Only track the function if it is point of interest.
+        if self._track_thunk(thunk.func):
+            thunk_with_output = DoneThunk(
+                func=thunk.func, args=thunk.args, kwargs=thunk.kwargs, result=result
+            )
+            self.thunks.append(thunk_with_output)
+
+        return result
+
+    @abc.abstractmethod
+    def _track_thunk(self, func) -> bool:
+        raise NotImplementedError
+
 
 @typing.final
 @dcls.dataclass
@@ -47,51 +63,30 @@ class TorchFuncDag(_TorchCallDag, TorchFuncMode):
     The DAG for `__torch_function__` calls.
     """
 
-    @typing.override
-    def run(self, thunk: TorchFuncThunk):
-        result = thunk()
-
-        self.thunks.append(
-            DoneThunk(
-                func=thunk.func, args=thunk.args, kwargs=thunk.kwargs, result=result
-            )
-        )
-
-        return result
+    def _track_thunk(self, func):
+        return is_torch_function(func)
 
 
 @typing.final
 @dcls.dataclass
-class AtenDag(_TorchCallDag, TorchDispMode):
+class _AtenDag(_TorchCallDag, TorchDispMode):
     """
     The DAG for `__torch_dispatch__` calls.
 
     Will only track `aten` ops, others are discarded.
     """
 
-    @typing.override
-    def append(self, thunk: DoneThunk) -> None:
-        if not is_aten_op(thunk.func):
-            return
-
-        super().append(thunk)
-
-    @typing.override
-    def run(self, thunk: TorchDispThunk):
-        result = thunk()
-
-        self.thunks.append(
-            DoneThunk(
-                func=thunk.func, args=thunk.args, kwargs=thunk.kwargs, result=result
-            )
-        )
-
-        return result
+    def _track_thunk(self, func):
+        return is_aten_op(func)
 
 
 @ctxl.contextmanager
 def fake_aten_dag():
-    dag = AtenDag()
+    """
+    Test the DAG made from aten overrides.
+    """
 
-    with fake_mode(), dag.activate():
+    dag = _AtenDag()
+
+    with fake_mode(), route_aten_thunk.activate(), dag.activate():
         yield dag

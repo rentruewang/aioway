@@ -10,7 +10,8 @@ from collections import abc as cabc
 
 from torch import _ops
 
-from aioway._utils import camel_to_snake, render_fcall
+from aioway._utils import render_fcall
+from aioway.torch._utils import camel_to_snake
 from aioway.torch.nested import find_nested_tensors
 from aioway.torch.sessions import Cost
 

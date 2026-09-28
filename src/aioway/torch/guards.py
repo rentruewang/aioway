@@ -17,10 +17,13 @@ __all__ = [
     "is_int_tensor",
     "is_bool_tensor",
     "is_op_overload",
+    "is_op_overload_packet",
     "is_aten_op",
     "is_prim_op",
     "is_torchvision_op",
     "is_torchcodec_op",
+    "is_torch_function",
+    "is_tensor_method",
 ]
 
 _ATEN_OPS = re.compile("aten::.+")
@@ -57,9 +60,24 @@ def is_sparse_tensor(t: torch.Tensor) -> bool:
     return t.is_sparse
 
 
+def is_torch_function(obj) -> bool:
+    "Check if it's `torch.*`."
+    return callable(obj) and getattr(torch, obj.__name__, None) is obj
+
+
+def is_tensor_method(method) -> bool:
+    "Check if it's `torch.Tensor.*`."
+    return callable(method) and getattr(torch.Tensor, method.__name__, None) is method
+
+
 def is_op_overload(op) -> typing.TypeIs[_ops.OpOverload]:
-    "Check if something is from `torch.ops.*` and packed by `torch`."
+    "Check if something is a `torch._ops.OpOverload`."
     return isinstance(op, _ops.OpOverload)
+
+
+def is_op_overload_packet(op) -> typing.TypeIs[_ops.OpOverloadPacket]:
+    "Check if something is a `torch._ops.OpOverloadPacket`."
+    return isinstance(op, _ops.OpOverloadPacket)
 
 
 def is_aten_op(op) -> bool:
