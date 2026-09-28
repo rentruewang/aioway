@@ -7,8 +7,9 @@ import typing
 
 import loguru as L
 
+from aioway.torch.guards import is_aten_op
+
 from .aten import Aten, find_aten
-from .guards import is_aten_op
 
 if typing.TYPE_CHECKING:
     from aioway.torch import TorchDispThunk

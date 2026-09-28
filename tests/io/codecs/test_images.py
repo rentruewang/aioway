@@ -25,5 +25,7 @@ def _read_image(example_image: pathlib.Path, loader: ImageLoader) -> torch.Tenso
     return image
 
 
-def test_read_image(example_image: pathlib.Path, loader: ImageLoader, maybe_fake_mode):
+def test_read_image(
+    example_image: pathlib.Path, loader: ImageLoader, maybe_fake_mode_on
+):
     _ = _read_image(example_image, loader)

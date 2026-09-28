@@ -12,11 +12,20 @@
 #     name: python3
 # ---
 
+import contextlib as ctxl
+
 # %%
 import torch
 
-from aioway.cc import track_torch_fake_thunks
-from aioway.torch import PrintTorchDisp, PrintTorchFunc, fake_mode
+from aioway.torch import PrintTorchDisp, PrintTorchFunc, fake_mode, route_aten_thunk
+
+
+# %%
+@ctxl.contextmanager
+def track_torch_fake_thunks():
+    with fake_mode(), route_aten_thunk.activate():
+        yield
+
 
 # %%
 dispatch_print = PrintTorchDisp()
@@ -28,18 +37,17 @@ with fake_mode():
     b = torch.randn(3, 4)
 
 # %%
-with track_torch_fake_thunks() as hists, dispatch_print.activate():
+with track_torch_fake_thunks(), dispatch_print.activate():
     a + b
 
 # %%
-with track_torch_fake_thunks() as hists, dispatch_print.activate():
+with track_torch_fake_thunks(), dispatch_print.activate():
     c = a + b
     d = a + c
     e = a + d
     f = d + b
     g = e + f
 
-hists.dispatch
 
 # %%
 with track_torch_fake_thunks(), dispatch_print.activate():

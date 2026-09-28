@@ -8,7 +8,7 @@ import loguru as L
 import torch
 from torch.utils import _pytree as pytree
 
-from aioway.torch import is_fake, is_fake_tensor, is_real, is_real_tensor
+from aioway.torch import is_fake, is_fake_tensor, is_real, is_real_tensor, parse_attr
 
 __all__ = ["VarInfo", "LocalVars"]
 
@@ -117,7 +117,7 @@ class VarInfo:
         return cls(producer=-1, fake=fake)
 
 
-class LocalVars(cabc.Mapping[torch.Tensor, torch.Tensor]):
+class LocalVars(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
     """
     Stores all the local vars that the DAG executes, by their fake tensors.
     It stores the real tensors associated with the fakes in a `VarInfo`,
@@ -125,7 +125,8 @@ class LocalVars(cabc.Mapping[torch.Tensor, torch.Tensor]):
 
     When an info `is_alive`, the tensor is currently in scope.
 
-    It acts as a mapping of "in scope" fake tensor -> real tensor.
+    It acts as a mapping of all fake tensors in the scope,
+    but `__getitem__` would be `None` if the tensor is not alive.
     """
 
     def __init__(self, vars: cabc.Mapping[int, VarInfo]) -> None:
@@ -140,51 +141,50 @@ class LocalVars(cabc.Mapping[torch.Tensor, torch.Tensor]):
         "Mapping from DAG index of consuming point to corresponding variable info."
 
     def __len__(self) -> int:
-        return sum(1 for _ in self)
+        """
+        Count the total variables tracked.
+        """
+
+        return len(self._vars)
 
     def __contains__(self, tensor) -> bool:
         if not is_fake_tensor(tensor):
             return False
 
-        return self.info(tensor).is_alive
+        return id(tensor) in self._vars
 
     def __iter__(self) -> cabc.Generator[torch.Tensor]:
         for val in self._vars.values():
-            if val.is_alive:
-                yield val.fake
+            yield val.fake
 
-    def __getitem__(self, fake: torch.Tensor) -> torch.Tensor:
+    def __getitem__(self, fake: torch.Tensor) -> torch.Tensor | None:
         if not is_fake_tensor(fake):
             raise KeyError("Input is not fake.")
 
-        info = self._vars[id(fake)]
+        info = self.info(fake)
+        return info.tensor if info.is_alive else None
 
-        try:
-            return info.tensor
-        except AttributeError:
-            raise KeyError("The tensor is not set for this key.")
+    def attach(self, fake: torch.Tensor, real: torch.Tensor) -> None:
+        """
+        Associate the real tensor with the fake tensor.
+        """
 
-    def __setitem__(self, fake: torch.Tensor, real: torch.Tensor) -> None:
         if not is_fake_tensor(fake):
             raise KeyError(f"Key: {type(fake)=} is not fake tensor.")
 
         if not is_real_tensor(real):
             raise ValueError(f"Value: {type(real)=} is not real tensor.")
 
+        if (fake_attr := parse_attr(fake)) != (real_attr := parse_attr(real)):
+            raise ValueError(
+                f"Fake {fake_attr} and real {real_attr} have different `Attr` (incompatible)."
+            )
+
         var_info = self._vars[id(fake)]
         assert not var_info.is_alive
 
         # Store the real tensor onto the info.
         var_info.tensor = real
-
-    def count(self) -> int:
-        """
-        Count the total variables tracked.
-
-        Not equal to `__len__`, which is only counting alive entries.
-        """
-
-        return len(self._vars)
 
     def map[T: typing.Any = typing.Any](self, fake: T) -> T:
         """
@@ -262,11 +262,12 @@ class LocalVars(cabc.Mapping[torch.Tensor, torch.Tensor]):
         if is_real_tensor(item):
             return item
 
-        return self[item]
+        info = self.info(item)
+        return info.tensor if info.is_alive else item
 
     def _update_maybe_fake(self, fake_tensor: torch.Tensor, real_tensor: torch.Tensor):
         if is_fake_tensor(fake_tensor):
-            self[fake_tensor] = real_tensor
+            self.attach(fake_tensor, real_tensor)
             return
 
         if fake_tensor is not real_tensor:
