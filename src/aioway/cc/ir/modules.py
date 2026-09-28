@@ -1,6 +1,5 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from aioway._utils import Stack
 import contextlib as ctxl
 import dataclasses as dcls
 import typing
@@ -9,15 +8,15 @@ from collections import abc as cabc
 import torch
 from torch import nn
 
-from aioway._utils import AnyDict
+from aioway._utils import AnyDict, Stack
 from aioway.torch import (
     clone_in_fake_mode,
     fake_mode,
-    find_nested_tensors,
     register_module_forward_hook,
     register_module_forward_pre_hook,
     route_aten_thunk,
 )
+
 from .dags import DoneThunk
 
 __all__ = ["capture_module_hist", "ModuleThunk", "ModuleTracker", "ModuleHist"]
@@ -68,20 +67,20 @@ class ModuleTracker:
     def _fwd_post(self, module: nn.Module, input, output) -> None:
         "The forward hook (this executes after)."
 
-        self._fwd_post_stack(module, input)
         self._fwd_post_hist(module, input, output)
+        self._fwd_post_stack(module, input)
 
     def _fwd_post_hist(self, module: nn.Module, input, output):
         """
-        Update the history. This executes after the stack is popped,
-        which means that `module` does not exist in `self.stack`.
+        Update the history. This executes "before" the stack is popped,
+        which means that `module` does exist in `self.stack`.
 
         Only append "leaf" modules, which means modules without parents,
         to prevent double counting.
         """
 
         assert isinstance(input, tuple)
-        assert self.stack.top().module is not module
+        assert self.stack.top().module is module
 
         if not _is_leaf_module(module):
             return
