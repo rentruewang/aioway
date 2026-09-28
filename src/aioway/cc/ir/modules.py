@@ -50,10 +50,13 @@ class ModuleTracker:
     stack: Stack[_ModuleInput]
     "The current stack of modules."
 
+    hist: list[ModuleThunk]
+    "The history of modules."
+
     @ctxl.contextmanager
     def __call__(self):
         with ctxl.ExitStack() as c:
-            c.enter_context(register_module_forward_hook(self._fwd))
+            c.enter_context(register_module_forward_hook(self._fwd_post))
             c.enter_context(register_module_forward_pre_hook(self._fwd_pre))
 
             yield self
@@ -62,8 +65,38 @@ class ModuleTracker:
         "The forward pre-hook."
         self.stack.append(_ModuleInput(module, input))
 
-    def _fwd(self, module: nn.Module, input, output) -> None:
-        "The forward hook."
+    def _fwd_post(self, module: nn.Module, input, output) -> None:
+        "The forward hook (this executes after)."
+
+        self._fwd_post_stack(module, input)
+        self._fwd_post_hist(module, input, output)
+
+    def _fwd_post_hist(self, module: nn.Module, input, output):
+        """
+        Update the history. This executes after the stack is popped,
+        which means that `module` does not exist in `self.stack`.
+
+        Only append "leaf" modules, which means modules without parents,
+        to prevent double counting.
+        """
+
+        assert isinstance(input, tuple)
+        assert self.stack.top().module is not module
+
+        if not _is_leaf_module(module):
+            return
+
+        self.hist.append(
+            ModuleThunk(
+                func=module,
+                args=input,
+                kwargs={},
+                result=output,
+                parents=tuple(module for module, _ in self.stack),
+            )
+        )
+
+    def _fwd_post_stack(self, module: nn.Module, input):
         module_input = self.stack.top()
 
         # Sanity check to ensure that the modules and inputs are the right ones.
