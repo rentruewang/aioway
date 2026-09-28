@@ -16,7 +16,7 @@ from aioway.torch import (
 
 from .dags import LocalVars, VarInfo
 
-__all__ = ["DoneThunk", "Dag"]
+__all__ = ["DoneThunk", "Exec"]
 
 
 @dcls.dataclass(frozen=True)
@@ -65,9 +65,9 @@ class DoneThunk[F: cabc.Callable]:
         return self.result is dcls.MISSING
 
 
-class Dag[F: cabc.Callable = typing.Any](cabc.Sequence[DoneThunk[F]]):
+class Exec[F: cabc.Callable = typing.Any](cabc.Sequence[DoneThunk[F]]):
     """
-    This is the DAG responsible for executing a traced thunk list on real data.
+    This is the DAG executor responsible for executing a traced thunk list on real data.
     """
 
     def __init__(self, thunks: cabc.Sequence[DoneThunk[F]] = ()) -> None:

@@ -3,7 +3,7 @@
 import torch
 from torch import ops
 
-from aioway.cc import Dag, TorchFuncDag, fake_aten_dag
+from aioway.cc import Exec, TorchFuncDag, fake_aten_dag
 from aioway.torch import is_fake
 
 
@@ -56,7 +56,7 @@ def test_seq_like_api():
 def test_dag_property():
     dag = TorchFuncDag()
 
-    assert isinstance(dag.dag, Dag)
+    assert isinstance(dag.dag, Exec)
 
 
 def test_fake_aten_dag_tensor():
