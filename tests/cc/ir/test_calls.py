@@ -210,3 +210,17 @@ def _fake_tensor_eq(left: torch.Tensor, right: torch.Tensor):
     assert is_fake(left)
     assert is_fake(right)
     return parse_attr(left) == parse_attr(right)
+
+
+def test_dag_inputs_many_same_step():
+    tracer = TorchFuncDag()
+
+    with fake_mode():
+        xs = [torch.zeros(3) for _ in range(6)]
+
+        with tracer.activate():
+            torch.stack(xs)
+
+    dag = Dag.from_thunk_list(tracer.thunks)
+
+    assert all(got is want for got, want in zip(dag.inputs, xs))

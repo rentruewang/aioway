@@ -59,11 +59,6 @@ def test_dag_steps(dag: Dag, fakes, thunks):
     assert dag.last_use(z) == len(dag)
 
 
-def test_dag_func_step_index(dag: Dag, thunks):
-    assert dag.func_step_index(thunks[0].func) == 0
-    assert dag.func_step_index(thunks[1].func) == 1
-
-
 def test_dag_output_unique(thunks, fakes):
     with pytest.raises(ValueError):
         Dag([thunks[0], thunks[0]], inputs=fakes, outputs=[thunks[0].result])
