@@ -284,7 +284,7 @@ class Dag[F: cabc.Callable]:
             for input in thunk.inputs:
                 inputs[input] = False
 
-            for output in thunk.downstreams:
+            for output in thunk.outputs:
                 outputs[output] = False
 
         return cls(
