@@ -13,13 +13,13 @@ from aioway.t import (
     register_module_forward_pre_hook,
 )
 
-from .dags import DoneThunk
+from .dags import ThunkNode
 
 __all__ = ["ModuleThunk", "ModuleTracker", "ModuleHist"]
 
 
 @dcls.dataclass(frozen=True)
-class ModuleThunk(DoneThunk):
+class ModuleThunk(ThunkNode):
     """
     Module thunk is a thunk tracking inputs, outputs, and which module calls it.
     """

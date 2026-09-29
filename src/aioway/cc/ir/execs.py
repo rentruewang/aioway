@@ -7,13 +7,13 @@ from collections import abc as cabc
 
 import torch
 
-from .dags import Dag, DoneThunk
+from .dags import Dag, ThunkNode
 from .vars import VarScope
 
 __all__ = ["Exec"]
 
 
-class Exec[F: cabc.Callable = typing.Any](cabc.Sequence[DoneThunk[F]]):
+class Exec[F: cabc.Callable = typing.Any](cabc.Sequence[ThunkNode[F]]):
     """
     This is the DAG executor responsible for executing a traced thunk list on real data.
     """
@@ -26,7 +26,7 @@ class Exec[F: cabc.Callable = typing.Any](cabc.Sequence[DoneThunk[F]]):
         return len(self._dag)
 
     @typing.overload
-    def __getitem__(self, idx: int) -> DoneThunk[F]: ...
+    def __getitem__(self, idx: int) -> ThunkNode[F]: ...
 
     @typing.overload
     def __getitem__(self, idx: slice) -> typing.Self: ...
@@ -38,7 +38,7 @@ class Exec[F: cabc.Callable = typing.Any](cabc.Sequence[DoneThunk[F]]):
             case slice():
                 return type(self)(self._dag[idx])
 
-    def __iter__(self) -> cabc.Generator[DoneThunk[F]]:
+    def __iter__(self) -> cabc.Generator[ThunkNode[F]]:
         yield from self._dag
 
     def __call__(self, *inputs: torch.Tensor) -> typing.Any:

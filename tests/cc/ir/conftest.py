@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from aioway.cc import DoneThunk
+from aioway.cc import ThunkNode
 from aioway.t import fake_mode
 
 
@@ -22,7 +22,7 @@ def fakes() -> tuple[torch.Tensor, torch.Tensor]:
 
 
 @pytest.fixture
-def thunks(fakes) -> tuple[DoneThunk, ...]:
+def thunks(fakes) -> tuple[ThunkNode, ...]:
     x0, x1 = fakes
 
     with fake_mode():
@@ -30,6 +30,6 @@ def thunks(fakes) -> tuple[DoneThunk, ...]:
         z = scale(y, factor=2)
 
     return (
-        DoneThunk(func=add, args=(x0, x1), kwargs={}, result=y),
-        DoneThunk(func=scale, args=(y,), kwargs={"factor": 2}, result=z),
+        ThunkNode(func=add, args=(x0, x1), kwargs={}, result=y),
+        ThunkNode(func=scale, args=(y,), kwargs={"factor": 2}, result=z),
     )

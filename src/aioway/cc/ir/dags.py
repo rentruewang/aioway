@@ -18,13 +18,15 @@ from aioway.t import (
 
 from .vars import VarInfo, VarList
 
-__all__ = ["DoneThunk", "Dag"]
+__all__ = ["ThunkNode", "Dag"]
 
 
 @dcls.dataclass(frozen=True)
-class DoneThunk[F: cabc.Callable]:
+class ThunkNode[F: cabc.Callable]:
     """
     Stores the thunk's arguments, function, and output.
+
+    This is the node type for the dag.
     """
 
     _: dcls.KW_ONLY
@@ -81,12 +83,12 @@ class FuncNode:
     """
 
 
-class Dag[F: cabc.Callable](cabc.Sequence[DoneThunk[F]]):
+class Dag[F: cabc.Callable](cabc.Sequence[ThunkNode[F]]):
     """
     A dag is a sequence of callables, that are linked by fake tensors.
     """
 
-    def __init__(self, thunks: cabc.Iterable[DoneThunk[F]]) -> None:
+    def __init__(self, thunks: cabc.Iterable[ThunkNode[F]]) -> None:
         self._thunks = tuple(thunks)
         self._var_list = self._compute_local_vars()
         self._inputs = tuple(self._input_fake_vars())
@@ -95,7 +97,7 @@ class Dag[F: cabc.Callable](cabc.Sequence[DoneThunk[F]]):
         return len(self._thunks)
 
     @typing.overload
-    def __getitem__(self, idx: int) -> DoneThunk[F]: ...
+    def __getitem__(self, idx: int) -> ThunkNode[F]: ...
 
     @typing.overload
     def __getitem__(self, idx: slice) -> typing.Self: ...
@@ -110,10 +112,10 @@ class Dag[F: cabc.Callable](cabc.Sequence[DoneThunk[F]]):
     def _getitem_slice(self, idx: slice) -> typing.Self:
         return type(self)(self._thunks[idx])
 
-    def _getitem_int(self, idx: int) -> DoneThunk[F]:
+    def _getitem_int(self, idx: int) -> ThunkNode[F]:
         return self._thunks[idx]
 
-    def __iter__(self) -> cabc.Iterator[DoneThunk[F]]:
+    def __iter__(self) -> cabc.Iterator[ThunkNode[F]]:
         return iter(self._thunks)
 
     def inputs(self) -> tuple[torch.Tensor, ...]:
@@ -139,7 +141,7 @@ class Dag[F: cabc.Callable](cabc.Sequence[DoneThunk[F]]):
         return VarList(unique_vars.values())
 
     def _add_inputs(
-        self, idx: int, thunk: DoneThunk, locals: dict[int, VarInfo]
+        self, idx: int, thunk: ThunkNode, locals: dict[int, VarInfo]
     ) -> None:
         for input in thunk.upstreams:
             if (input_id := id(input)) not in locals:
@@ -150,7 +152,7 @@ class Dag[F: cabc.Callable](cabc.Sequence[DoneThunk[F]]):
             info.add_consumers(idx)
 
     def _add_output(
-        self, idx: int, thunk: DoneThunk, locals: dict[int, VarInfo]
+        self, idx: int, thunk: ThunkNode, locals: dict[int, VarInfo]
     ) -> None:
         # Output must be unique, so it's always new.
         for output in thunk.downstreams:

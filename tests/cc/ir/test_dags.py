@@ -5,7 +5,7 @@ from collections import abc as cabc
 
 import pytest
 
-from aioway.cc import Dag, DoneThunk
+from aioway.cc import Dag, ThunkNode
 
 
 @pytest.fixture
@@ -16,15 +16,15 @@ def dag(thunks) -> Dag:
 @typing.no_type_check
 def test_thunk_not_callable():
     with pytest.raises(TypeError):
-        DoneThunk(func=3, args=(), kwargs={})
+        ThunkNode(func=3, args=(), kwargs={})
 
 
-def test_thunk_upstream(thunks: cabc.Sequence[DoneThunk], fakes):
+def test_thunk_upstream(thunks: cabc.Sequence[ThunkNode], fakes):
     x0, x1 = fakes
     assert list(thunks[0].upstreams) == [x0, x1]
 
 
-def test_thunk_downstream(thunks: cabc.Sequence[DoneThunk]):
+def test_thunk_downstream(thunks: cabc.Sequence[ThunkNode]):
     assert list(thunks[0].downstreams) == [thunks[0].result]
 
 
