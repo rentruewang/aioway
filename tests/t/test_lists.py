@@ -63,17 +63,17 @@ def test_tlist_index_missing(tlist: TList):
         tlist.index(_make_fake())
 
 
-def test_tlist_eq_ignores_order(x, y):
+def test_tlist_eq(x, y):
     assert TList([x, y]) == TList([y, x])
     assert hash(TList([x, y])) == hash(TList([y, x]))
 
 
-def test_tlist_all_fake(tlist: TList):
+def test_tlist_fake_check_all(tlist: TList):
     assert tlist.all_fake
     assert tlist.any_fake
 
 
-def test_tlist_mixed_fake(x):
+def test_tlist_fake_check_mixed(x):
     mixed = TList([x, _make_real()])
 
     assert mixed.any_fake
