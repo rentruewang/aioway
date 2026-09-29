@@ -52,10 +52,10 @@ def test_dag_steps(dag: Dag, fakes, thunks):
     y, z = thunks[0].result, thunks[1].result
 
     assert list(dag.input_to_step(x0)) == [0]
-    assert dag.output_by_step(y) == 0
+    assert dag.output_of_step(y) == 0
     assert list(dag.input_to_step(y)) == [1]
     assert dag.alive_until(y) == 1
-    assert dag.output_by_step(z) == 1
+    assert dag.output_of_step(z) == 1
     assert dag.alive_until(z) == len(dag)
 
 

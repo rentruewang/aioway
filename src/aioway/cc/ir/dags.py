@@ -87,7 +87,7 @@ class TensorRef[T: cabc.Callable = cabc.Callable]:
     we can assume there is only 1 single producer.
     """
 
-    def __init__(self, producer: T, fake: torch.Tensor):
+    def __init__(self, producer: T | None, fake: torch.Tensor):
         self._producer = producer
         self._fake = fake
         self._consumers: set[cabc.Callable] = set()
@@ -101,23 +101,16 @@ class TensorRef[T: cabc.Callable = cabc.Callable]:
         return id(self.fake)
 
     def add_consumers(self, *consumers: cabc.Callable) -> None:
-        "Add consumers for the info."
-
-        if len(set(consumers)) != len(consumers):
-            raise ValueError("Duplicate values in consumers.")
+        "Add consumers for the info. Allow duplication."
 
         for consumer in consumers:
-            self._add_consumer(consumer)
-
-    def _add_consumer(self, consumer: cabc.Callable) -> None:
-        if consumer in self.consumers:
-            raise IndexError(f"Attempting to add {consumer=} a second time.")
-
-        self._consumers.add(consumer)
+            self._consumers.add(consumer)
 
     @property
     def producer(self) -> T:
         "The producer index."
+        if self._producer is None:
+            raise AttributeError("The variable is not free.")
         return self._producer
 
     @property
@@ -129,6 +122,11 @@ class TensorRef[T: cabc.Callable = cabc.Callable]:
     def fake(self) -> torch.Tensor:
         "Return the fake tensor."
         return self._fake
+
+    @property
+    def is_free(self) -> bool:
+        "Check if the tensor is a free value."
+        return self._producer is None
 
 
 class Dag[F: cabc.Callable]:
@@ -150,8 +148,8 @@ class Dag[F: cabc.Callable]:
         self._func_index = {thunk.func: i for i, thunk in enumerate(self._thunks)}
         "Mapping from function to step."
 
-        self._produced_by_step = self._step_output_mapping()
-        "The mapping from tensor id to step count."
+        self._tensors = self._build_tensor_refs()
+        "Mapping from tensors to refs (linking functions)."
 
         self._inputs_to_step = self._step_input_mapping()
         "The mapping from tensor id to step that uses it."
@@ -192,8 +190,20 @@ class Dag[F: cabc.Callable]:
     def func_step_index(self, func: F) -> int:
         return self._func_index[func]
 
-    def output_by_step(self, tensor: torch.Tensor) -> int:
-        return self._produced_by_step[id(tensor)]
+    def output_of_step(self, tensor: torch.Tensor) -> int:
+        """
+        Get the step number of step that produced output.
+
+        If not set (producer is None), return -1.
+        """
+
+        ref = self._tensors[id(tensor)]
+        func = ref.producer
+
+        if func is None:
+            return -1
+        else:
+            return self._func_index[func]
 
     def input_to_step(self, tensor: torch.Tensor) -> cabc.Sequence[int]:
         return self._inputs_to_step[id(tensor)]
@@ -232,9 +242,9 @@ class Dag[F: cabc.Callable]:
 
     def _validate_input_output(self) -> None:
         for input in self._inputs:
-            # Input should not be produced anywhere.
-            if id(input) in self._produced_by_step:
-                raise ValueError("Input not discovered.")
+            # Input should not have a producer.
+            if not self._tensors[id(input)].is_free:
+                raise ValueError("Input is not a free variable.")
 
             # Input should be used.
             if id(input) not in self._inputs_to_step:
@@ -242,7 +252,7 @@ class Dag[F: cabc.Callable]:
 
         for output in self._outputs:
             # Output is not produced.
-            if id(output) not in self._produced_by_step:
+            if id(output) not in self._tensors:
                 raise ValueError("Output not discovered.")
 
         if set(self._inputs) & set(self._outputs):
@@ -268,6 +278,29 @@ class Dag[F: cabc.Callable]:
     @functools.cached_property
     def _output_ids(self) -> frozenset[int]:
         return frozenset(id(t) for t in self._outputs)
+
+    def _build_tensor_refs(self) -> dict[int, TensorRef[F]]:
+        mapping: dict[int, TensorRef[F]] = {}
+
+        # Register all inputs.
+        for input in self.inputs:
+            mapping[id(input)] = TensorRef(producer=None, fake=input)
+
+        # Register all outputs of thunks.
+        for thunk in self._thunks:
+            for output in thunk.outputs:
+                if id(output) in mapping:
+                    raise ValueError("The output fake tensor is not unique.")
+
+                mapping[id(output)] = TensorRef(producer=thunk.func, fake=output)
+
+        # Register each thunk's input.
+        for thunk in self._thunks:
+            for input in thunk.inputs:
+                assert id(input) in mapping
+                mapping[id(input)].add_consumers(thunk.func)
+
+        return mapping
 
     @classmethod
     def from_thunk_list(cls, thunks: cabc.Sequence[ThunkNode[F]]) -> typing.Self:
