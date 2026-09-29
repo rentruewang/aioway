@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from aioway.cc import ThunkNode
+from aioway.cc import Dag, ThunkNode
 from aioway.t import fake_mode
 
 
@@ -33,3 +33,8 @@ def thunks(fakes) -> tuple[ThunkNode, ...]:
         ThunkNode(func=add, args=(x0, x1), kwargs={}, result=y),
         ThunkNode(func=scale, args=(y,), kwargs={"factor": 2}, result=z),
     )
+
+
+@pytest.fixture
+def dag(thunks, fakes) -> Dag:
+    return Dag(thunks, inputs=fakes, outputs=[thunks[-1].result])
