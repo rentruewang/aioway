@@ -163,8 +163,8 @@ def reals() -> Fakes:
 
 @pytest.mark.parametrize("trace", TRACERS)
 @pytest.mark.parametrize("fn", FUNCS)
-@pytest.mark.xfail("Fail for now")
 def test_traced_matches_eager(trace, fn):
+    pytest.xfail("Fail for now")
     exec, _ = trace(fn)
     x, y = reals()
 
