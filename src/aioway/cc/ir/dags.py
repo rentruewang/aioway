@@ -54,12 +54,12 @@ class ThunkNode[F: cabc.Callable]:
         return thunk + " -> " + result
 
     @functools.cached_property
-    def upstreams(self) -> TList:
+    def inputs(self) -> TList:
         "Get the (unique) dependencies of the current thunk."
         return TList(self._upstream())
 
     @functools.cached_property
-    def downstreams(self) -> TList:
+    def outputs(self) -> TList:
         "Get the output list of (unique) tensors of the current thunk."
         return TList(self._downstream())
 
@@ -199,7 +199,7 @@ class Dag[F: cabc.Callable]:
 
     def __get_all_tensors_produced(self):
         for i, thunk in enumerate(self._thunks):
-            for tensor in thunk.downstreams:
+            for tensor in thunk.outputs:
                 yield i, tensor
 
     def _step_output_mapping(self) -> dict[int, int]:
@@ -224,7 +224,7 @@ class Dag[F: cabc.Callable]:
         result: dict[int, list[int]] = collections.defaultdict(list)
 
         for i, thunk in enumerate(self._thunks):
-            for tensor in thunk.upstreams:
+            for tensor in thunk.inputs:
                 result[id(tensor)].append(i)
 
         return result
@@ -281,7 +281,7 @@ class Dag[F: cabc.Callable]:
         outputs = inputs.copy()
 
         for thunk in thunks:
-            for input in thunk.upstreams:
+            for input in thunk.inputs:
                 inputs[input] = False
 
             for output in thunk.downstreams:
@@ -296,5 +296,5 @@ class Dag[F: cabc.Callable]:
 
 def _all_thunk_tensors(thunks: cabc.Sequence[ThunkNode]):
     for thunk in thunks:
-        yield from thunk.upstreams
-        yield from thunk.downstreams
+        yield from thunk.inputs
+        yield from thunk.outputs

@@ -15,11 +15,11 @@ def test_thunk_not_callable():
 
 
 def test_thunk_upstream(thunks: cabc.Sequence[ThunkNode], fakes):
-    assert set(thunks[0].upstreams) == set(fakes)
+    assert set(thunks[0].inputs) == set(fakes)
 
 
 def test_thunk_downstream(thunks: cabc.Sequence[ThunkNode]):
-    assert list(thunks[0].downstreams) == [thunks[0].result]
+    assert list(thunks[0].outputs) == [thunks[0].result]
 
 
 def test_dag_len(dag: Dag):
