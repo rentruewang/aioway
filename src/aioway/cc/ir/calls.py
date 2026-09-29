@@ -1,5 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+from aioway.t import is_tensor_method
 import abc
 import contextlib as ctxl
 import dataclasses as dcls
@@ -64,7 +65,7 @@ class TorchFuncDag(_TorchCallDag, TorchFuncMode):
     """
 
     def _track_thunk(self, func) -> bool:
-        return is_torch_function(func)
+        return is_torch_function(func) or is_tensor_method(func)
 
 
 @typing.final

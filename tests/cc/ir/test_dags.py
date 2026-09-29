@@ -54,9 +54,9 @@ def test_dag_steps(dag: Dag, fakes, thunks):
     assert list(dag.input_to_step(x0)) == [0]
     assert dag.output_of_step(y) == 0
     assert list(dag.input_to_step(y)) == [1]
-    assert dag.alive_until(y) == 1
+    assert dag.last_use(y) == 1
     assert dag.output_of_step(z) == 1
-    assert dag.alive_until(z) == len(dag)
+    assert dag.last_use(z) == len(dag)
 
 
 def test_dag_func_step_index(dag: Dag, thunks):

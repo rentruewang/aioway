@@ -95,7 +95,7 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
         thunk = self._dag[step]
 
         for input in thunk.inputs:
-            if self._dag.alive_until(input) == step:
+            if self._dag.last_use(input) == step:
                 self.drop(input)
 
     def clear(self) -> None:

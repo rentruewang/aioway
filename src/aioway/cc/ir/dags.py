@@ -73,7 +73,7 @@ class ThunkNode[F: cabc.Callable]:
 
     @property
     def done(self) -> bool:
-        return self.result is dcls.MISSING
+        return self.result is not dcls.MISSING
 
 
 class TensorRef[T: cabc.Callable = cabc.Callable]:
@@ -149,6 +149,9 @@ class Dag[F: cabc.Callable]:
         self._func_index = {thunk.func: i for i, thunk in enumerate(self._thunks)}
         "Mapping from function to step."
 
+        if len(self._func_index) != len(self._thunks):
+            raise ValueError("The function list in thunks is not unique.")
+
         self._tensors = self._build_tensor_refs()
         "Mapping from tensors to refs (linking functions)."
 
@@ -170,10 +173,10 @@ class Dag[F: cabc.Callable]:
     def __getitem__(self, idx: int):
         return self._thunks[idx]
 
-    def born_at(self, tensor: torch.Tensor) -> int:
+    def first_use(self, tensor: torch.Tensor) -> int:
         return self.__get_tensor_life(tensor, min)
 
-    def alive_until(self, tensor: torch.Tensor) -> int:
+    def last_use(self, tensor: torch.Tensor) -> int:
         return self.__get_tensor_life(tensor, max)
 
     @property
