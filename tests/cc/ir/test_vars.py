@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from aioway.cc import VarInfo, VarList, VarScope
+from aioway.cc import LocalScope, VarInfo, VarList
 from aioway.t import fake_mode
 
 
@@ -36,8 +36,8 @@ def var_list(x_info, y_info) -> VarList:
 
 
 @pytest.fixture
-def var_scope(var_list: VarList) -> VarScope:
-    return VarScope(var_list)
+def var_scope(var_list: VarList) -> LocalScope:
+    return LocalScope(var_list)
 
 
 def test_no_real_tensor_allowed():
@@ -59,13 +59,13 @@ def test_var_alive_until(x_info: VarInfo):
     assert x_info.alive_until == 1
 
 
-def test_len_locals(var_scope: VarScope):
+def test_len_locals(var_scope: LocalScope):
     assert len(var_scope) == 2
 
 
 def test_no_dup_vars(x_info):
     with pytest.raises(ValueError):
-        VarScope(VarList([x_info, x_info]))
+        LocalScope(VarList([x_info, x_info]))
 
 
 def test_update_to_real(var_scope, x_info):
@@ -89,7 +89,7 @@ def test_update_not_same_structure(var_scope, x_info, y_info):
         var_scope.update([x_info.fake, y_info.fake], [make_real()])
 
 
-def test_update_keeps_real(var_scope: VarScope, x_info):
+def test_update_keeps_real(var_scope: LocalScope, x_info):
     const, real = make_real(), make_real()
     var_scope.update([x_info.fake, const], [real, const])
 
@@ -102,11 +102,11 @@ def test_getitem_be_fake(var_scope):
         var_scope[make_real()]
 
 
-def test_getitem_missing_fake(var_scope: VarScope, x_info):
+def test_getitem_missing_fake(var_scope: LocalScope, x_info):
     assert var_scope[x_info.fake] is None
 
 
-def test_expire_free(var_scope: VarScope, x_info: VarInfo, y_info: VarInfo):
+def test_expire_free(var_scope: LocalScope, x_info: VarInfo, y_info: VarInfo):
     assert x_info.consumers == {0, 1}
     assert y_info.consumers == {1}
     var_scope.update([x_info.fake, y_info.fake], [make_real(), make_real()])
@@ -120,7 +120,7 @@ def test_expire_free(var_scope: VarScope, x_info: VarInfo, y_info: VarInfo):
     assert not var_scope.is_alive(y_info)
 
 
-def test_map_to_real(var_scope: VarScope, x_info: VarInfo, y_info: VarInfo):
+def test_map_to_real(var_scope: LocalScope, x_info: VarInfo, y_info: VarInfo):
     x, y = make_real(), make_real()
     var_scope.update([x_info.fake, y_info.fake], [x, y])
 
@@ -130,7 +130,7 @@ def test_map_to_real(var_scope: VarScope, x_info: VarInfo, y_info: VarInfo):
     assert mapped["ys"][0] is y
 
 
-def test_map_keeps_real(var_scope: VarScope, x_info: VarInfo):
+def test_map_keeps_real(var_scope: LocalScope, x_info: VarInfo):
     real, const = make_real(), make_real()
     var_scope.update(x_info.fake, real)
 
@@ -140,7 +140,7 @@ def test_map_keeps_real(var_scope: VarScope, x_info: VarInfo):
     assert mapped[1] is const
 
 
-def test_map_keeps_non_tensors(var_scope: VarScope, x_info: VarInfo):
+def test_map_keeps_non_tensors(var_scope: LocalScope, x_info: VarInfo):
     real = make_real()
     var_scope.update(x_info.fake, real)
 
@@ -151,7 +151,7 @@ def test_map_keeps_non_tensors(var_scope: VarScope, x_info: VarInfo):
     assert mapped["s"] == "hi"
 
 
-def test_map_allow_missing(var_scope: VarScope, x_info: VarInfo):
+def test_map_allow_missing(var_scope: LocalScope, x_info: VarInfo):
     var_scope.map([x_info.fake])
 
 

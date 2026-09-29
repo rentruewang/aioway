@@ -8,7 +8,7 @@ from collections import abc as cabc
 import torch
 
 from .dags import Dag, ThunkNode
-from .vars import VarScope
+from .vars import LocalScope
 
 __all__ = ["Exec"]
 
@@ -20,7 +20,7 @@ class Exec[F: cabc.Callable = typing.Any](cabc.Sequence[ThunkNode[F]]):
 
     def __init__(self, dag: Dag) -> None:
         self._dag = dag
-        self._scope = VarScope(self._dag.var_list())
+        self._scope = LocalScope(self._dag.var_list())
 
     def __len__(self) -> int:
         return len(self._dag)
