@@ -94,7 +94,7 @@ class TensorRef[T: cabc.Callable = cabc.Callable]:
 
         if not isinstance(fake, torch.Tensor) or is_real(fake):
             raise ValueError(
-                f"The fake tensor produced at idx={self.producer} is real."
+                f"The fake tensor produced at idx={self._producer} is real."
             )
 
     def __hash__(self) -> int:
@@ -110,7 +110,8 @@ class TensorRef[T: cabc.Callable = cabc.Callable]:
     def producer(self) -> T:
         "The producer index."
         if self._producer is None:
-            raise AttributeError("The variable is not free.")
+            raise AttributeError("The variable is a free variable.")
+
         return self._producer
 
     @property
@@ -198,9 +199,10 @@ class Dag[F: cabc.Callable]:
         """
 
         ref = self._tensors[id(tensor)]
-        func = ref.producer
 
-        if func is None:
+        try:
+            func = ref.producer
+        except AttributeError:
             return -1
         else:
             return self._func_index[func]
