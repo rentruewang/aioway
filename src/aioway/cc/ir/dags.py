@@ -72,10 +72,10 @@ class ThunkNode[F: cabc.Callable]:
 
     @property
     def done(self) -> bool:
-        return self.result is dcls.MISSING
+        return self.result is not dcls.MISSING
 
 
-class TensorRef[T: cabc.Callable = cabc.Callable]:
+class TensorRef:
     """
     A data structure holding tensor information in the DAG.
 
@@ -86,41 +86,35 @@ class TensorRef[T: cabc.Callable = cabc.Callable]:
     we can assume there is only 1 single producer.
     """
 
-    def __init__(self, producer: T, fake: torch.Tensor):
+    def __init__(self, producer: int | None, fake: torch.Tensor):
         self._producer = producer
         self._fake = fake
-        self._consumers: set[cabc.Callable] = set()
+        self._consumers: set[int] = set()
 
         if not isinstance(fake, torch.Tensor) or is_real(fake):
             raise ValueError(
-                f"The fake tensor produced at idx={self.producer} is real."
+                f"The fake tensor produced at idx={self._producer} is real."
             )
 
     def __hash__(self) -> int:
         return id(self.fake)
 
-    def add_consumers(self, *consumers: cabc.Callable) -> None:
-        "Add consumers for the info."
-
-        if len(set(consumers)) != len(consumers):
-            raise ValueError("Duplicate values in consumers.")
+    def add_consumers(self, *consumers: int) -> None:
+        "Add consumers for the info. Allow duplication."
 
         for consumer in consumers:
-            self._add_consumer(consumer)
-
-    def _add_consumer(self, consumer: cabc.Callable) -> None:
-        if consumer in self.consumers:
-            raise IndexError(f"Attempting to add {consumer=} a second time.")
-
-        self._consumers.add(consumer)
+            self._consumers.add(consumer)
 
     @property
-    def producer(self) -> T:
+    def producer(self) -> int:
         "The producer index."
-        return self._producer
+        if self._producer is None:
+            raise AttributeError("The variable is a free variable.")
+        else:
+            return self._producer
 
     @property
-    def consumers(self) -> cabc.Set[cabc.Callable]:
+    def consumers(self) -> cabc.Set[int]:
         "The list of consumers."
         return self._consumers
 
@@ -128,6 +122,11 @@ class TensorRef[T: cabc.Callable = cabc.Callable]:
     def fake(self) -> torch.Tensor:
         "Return the fake tensor."
         return self._fake
+
+    @property
+    def is_free(self) -> bool:
+        "Check if the tensor is a free value."
+        return self._producer is None
 
 
 class Dag[F: cabc.Callable]:
@@ -146,13 +145,10 @@ class Dag[F: cabc.Callable]:
         self._inputs = tuple(inputs)
         self._outputs = tuple(outputs)
 
-        self._func_index = {thunk.func: i for i, thunk in enumerate(self._thunks)}
-        "Mapping from function to step."
+        self._tensors = _build_tensor_refs(self._thunks, self._inputs)
+        "Mapping from tensors to refs (linking functions)."
 
-        self._produced_by_step = self._step_output_mapping()
-        "The mapping from tensor id to step count."
-
-        self._inputs_to_step = self._step_input_mapping()
+        self._inputs_to_step = _step_input_mapping(self._thunks)
         "The mapping from tensor id to step that uses it."
 
         # Validate if the inputs and outputs are valid.
@@ -170,10 +166,10 @@ class Dag[F: cabc.Callable]:
     def __getitem__(self, idx: int):
         return self._thunks[idx]
 
-    def born_at(self, tensor: torch.Tensor) -> int:
+    def first_use(self, tensor: torch.Tensor) -> int:
         return self.__get_tensor_life(tensor, min)
 
-    def alive_until(self, tensor: torch.Tensor) -> int:
+    def last_use(self, tensor: torch.Tensor) -> int:
         return self.__get_tensor_life(tensor, max)
 
     @property
@@ -186,54 +182,31 @@ class Dag[F: cabc.Callable]:
 
     @functools.cached_property
     def tensors(self) -> TList:
-        return TList(self._all_tenors())
+        return TList(self._all_tensors())
 
-    def func_step_index(self, func: F) -> int:
-        return self._func_index[func]
+    def output_of_step(self, tensor: torch.Tensor) -> int:
+        """
+        Get the step number of step that produced output.
 
-    def output_by_step(self, tensor: torch.Tensor) -> int:
-        return self._produced_by_step[id(tensor)]
+        If not set (producer is None), return -1.
+        """
+
+        return self._tensors[id(tensor)].producer
 
     def input_to_step(self, tensor: torch.Tensor) -> cabc.Sequence[int]:
         return self._inputs_to_step[id(tensor)]
 
-    def __get_all_tensors_produced(self):
-        for i, thunk in enumerate(self._thunks):
-            for tensor in thunk.outputs:
-                yield i, tensor
-
-    def _step_output_mapping(self) -> dict[int, int]:
-        idx_to_tensors = list(self.__get_all_tensors_produced())
-
-        result = {}
-        for i, tensor in idx_to_tensors:
-            result[id(tensor)] = i
-
-        if len(result) != len(idx_to_tensors):
-            raise ValueError("Output tensors of thunks are not unique.")
-
-        return result
-
-    def _all_tenors(self):
+    def _all_tensors(self):
         yield from self._inputs
         yield from self._outputs
 
         yield from _all_thunk_tensors(self._thunks)
 
-    def _step_input_mapping(self) -> dict[int, list[int]]:
-        result: dict[int, list[int]] = collections.defaultdict(list)
-
-        for i, thunk in enumerate(self._thunks):
-            for tensor in thunk.inputs:
-                result[id(tensor)].append(i)
-
-        return result
-
     def _validate_input_output(self) -> None:
         for input in self._inputs:
-            # Input should not be produced anywhere.
-            if id(input) in self._produced_by_step:
-                raise ValueError("Input not discovered.")
+            # Input should not have a producer.
+            if not self._tensors[id(input)].is_free:
+                raise ValueError("Input is not a free variable.")
 
             # Input should be used.
             if id(input) not in self._inputs_to_step:
@@ -241,7 +214,7 @@ class Dag[F: cabc.Callable]:
 
         for output in self._outputs:
             # Output is not produced.
-            if id(output) not in self._produced_by_step:
+            if id(output) not in self._tensors:
                 raise ValueError("Output not discovered.")
 
         if set(self._inputs) & set(self._outputs):
@@ -275,26 +248,86 @@ class Dag[F: cabc.Callable]:
 
         Inputs = unproduced tensors that exists in graph.
         Outputs = unused tensors in graph.
+
+        Both are in order of first appearance, which decides the signature.
         """
 
-        inputs = collections.OrderedDict((t, True) for t in _all_thunk_tensors(thunks))
-        outputs = inputs.copy()
+        uses = _step_input_mapping(thunks)
+        tensors = TList(_all_thunk_tensors(thunks))
 
+        # Output refs that is fully linked.
+        outputs: dict[int, torch.Tensor] = {}
         for thunk in thunks:
-            for input in thunk.inputs:
-                inputs[input] = False
+            for o in thunk.outputs:
+                assert id(o) not in outputs
+                outputs[id(o)] = o
 
-            for output in thunk.outputs:
-                outputs[output] = False
+        input_only = uses.keys() - outputs.keys()
+        output_only = outputs.keys() - uses.keys()
 
-        return cls(
-            thunks,
-            [t for t, keep in inputs if keep],
-            [t for t, keep in outputs if keep],
-        )
+        # Walk `tensors` rather than the sets: set order is not insertion order.
+        input_tensors = [t for t in tensors if id(t) in input_only]
+        output_tensors = [t for t in tensors if id(t) in output_only]
+
+        return cls(thunks, input_tensors, output_tensors)
 
 
 def _all_thunk_tensors(thunks: cabc.Sequence[ThunkNode]):
     for thunk in thunks:
         yield from thunk.inputs
         yield from thunk.outputs
+
+
+def _step_input_mapping(thunks: cabc.Sequence[ThunkNode]) -> dict[int, list[int]]:
+    result: dict[int, list[int]] = collections.defaultdict(list)
+
+    for i, thunk in enumerate(thunks):
+        for tensor in thunk.inputs:
+            result[id(tensor)].append(i)
+
+    return result
+
+
+def _build_tensor_refs(
+    thunks: cabc.Sequence[ThunkNode], inputs: cabc.Sequence[torch.Tensor]
+) -> dict[int, TensorRef]:
+
+    # Register all inputs.
+    mapping = _tensor_refs_inputs(inputs)
+
+    # Register all outputs of thunks.
+    mapping |= _tensor_refs_outputs(thunks)
+
+    # Register each thunk's input.
+    _link_inputs_for_mapping(mapping, thunks)
+
+    return mapping
+
+
+def _tensor_refs_inputs(inputs: cabc.Sequence[torch.Tensor]) -> dict[int, TensorRef]:
+    mapping: dict[int, TensorRef] = {}
+
+    for input in inputs:
+        mapping[id(input)] = TensorRef(producer=None, fake=input)
+
+    return mapping
+
+
+def _tensor_refs_outputs(thunks: cabc.Sequence[ThunkNode]) -> dict[int, TensorRef]:
+    mapping: dict[int, TensorRef] = {}
+    for idx, thunk in enumerate(thunks):
+        for output in thunk.outputs:
+            if id(output) in mapping:
+                raise ValueError("The output fake tensor is not unique.")
+
+            mapping[id(output)] = TensorRef(producer=idx, fake=output)
+    return mapping
+
+
+def _link_inputs_for_mapping(
+    mapping: dict[int, TensorRef], thunks: cabc.Sequence[ThunkNode]
+) -> None:
+    for idx, thunk in enumerate(thunks):
+        for input in thunk.inputs:
+            assert id(input) in mapping
+            mapping[id(input)].add_consumers(idx)

@@ -52,16 +52,11 @@ def test_dag_steps(dag: Dag, fakes, thunks):
     y, z = thunks[0].result, thunks[1].result
 
     assert list(dag.input_to_step(x0)) == [0]
-    assert dag.output_by_step(y) == 0
+    assert dag.output_of_step(y) == 0
     assert list(dag.input_to_step(y)) == [1]
-    assert dag.alive_until(y) == 1
-    assert dag.output_by_step(z) == 1
-    assert dag.alive_until(z) == len(dag)
-
-
-def test_dag_func_step_index(dag: Dag, thunks):
-    assert dag.func_step_index(thunks[0].func) == 0
-    assert dag.func_step_index(thunks[1].func) == 1
+    assert dag.last_use(y) == 1
+    assert dag.output_of_step(z) == 1
+    assert dag.last_use(z) == len(dag)
 
 
 def test_dag_output_unique(thunks, fakes):

@@ -10,6 +10,7 @@ from aioway.t import (
     TorchFuncMode,
     fake_mode,
     is_aten_op,
+    is_tensor_method,
     route_aten_thunk,
 )
 from aioway.t.guards import is_torch_function
@@ -64,7 +65,7 @@ class TorchFuncDag(_TorchCallDag, TorchFuncMode):
     """
 
     def _track_thunk(self, func) -> bool:
-        return is_torch_function(func)
+        return is_torch_function(func) or is_tensor_method(func)
 
 
 @typing.final
