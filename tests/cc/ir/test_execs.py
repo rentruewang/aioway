@@ -7,8 +7,8 @@ from aioway.cc import Dag, Exec
 
 
 @pytest.fixture
-def exec(thunks) -> Exec:
-    return Exec(Dag(thunks))
+def exec(dag: Dag) -> Exec:
+    return Exec(dag)
 
 
 def test_len(exec: Exec) -> None:
@@ -23,15 +23,8 @@ def test_iter(exec: Exec, thunks):
     assert list(exec) == list(thunks)
 
 
-def test_slice_is_exec(exec: Exec):
-    sliced = exec[1:]
-
-    assert isinstance(sliced, Exec)
-    assert len(sliced) == 1
-
-
 def test_inputs_are_fakes(exec: Exec, fakes):
-    assert exec.inputs() == fakes
+    assert set(exec.inputs) == set(fakes)
 
 
 def test_call_runs(exec: Exec):
@@ -45,12 +38,6 @@ def test_call_twice(exec: Exec):
     second = exec(torch.ones(3), torch.ones(3))
 
     assert torch.equal(first, second)
-
-
-def test_call_slice(exec: Exec):
-    real = exec[1:](torch.ones(3))
-
-    assert torch.equal(real, torch.full((3,), 2.0))
 
 
 def test_wrong_input_signature(exec: Exec):

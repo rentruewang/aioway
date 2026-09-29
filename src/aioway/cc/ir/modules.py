@@ -13,13 +13,13 @@ from aioway.t import (
     register_module_forward_pre_hook,
 )
 
-from .dags import DoneThunk
+from .dags import ThunkNode
 
 __all__ = ["ModuleThunk", "ModuleTracker", "ModuleHist"]
 
 
 @dcls.dataclass(frozen=True)
-class ModuleThunk(DoneThunk):
+class ModuleThunk(ThunkNode):
     """
     Module thunk is a thunk tracking inputs, outputs, and which module calls it.
     """
@@ -128,7 +128,7 @@ class ModuleHist:
         return self.history[idx]
 
     def append(self, thunk: ModuleThunk) -> None:
-        outputs = tuple(thunk.downstream())
+        outputs = tuple(thunk.outputs)
 
         # Check if the keys already exists,
         # should be unique due to cloning in fake mode.
