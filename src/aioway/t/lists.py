@@ -4,15 +4,19 @@
 
 import collections
 import functools
+import typing
 from collections import abc as cabc
 
 import torch
+
+from aioway._utils import is_seq_of
 
 from .overrides import is_fake
 
 __all__ = ["TList"]
 
 
+@typing.final
 class TList:
     """
     This is an immutable list of tensors, supporting fast lookups.
@@ -35,6 +39,15 @@ class TList:
             return tensor_id in self.__indexed
 
         return False
+
+    def __eq__(self, other) -> bool:
+        if isinstance(other, TList):
+            return self.__indexed.keys() == other.__indexed.keys()
+
+        if is_seq_of(torch.Tensor):
+            return sorted(self.__indexed) == sorted(id(t) for t in other)
+
+        return NotImplemented
 
     def __len__(self) -> int:
         return len(self.__indexed)

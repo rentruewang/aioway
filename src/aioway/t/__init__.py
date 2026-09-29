@@ -8,6 +8,7 @@ from .attrs import *
 from .discovery import *
 from .guards import *
 from .hooks import *
+from .lists import *
 from .nested import *
 from .overrides import *
 from .routes import *

@@ -128,7 +128,7 @@ class ModuleHist:
         return self.history[idx]
 
     def append(self, thunk: ModuleThunk) -> None:
-        outputs = tuple(thunk.downstream())
+        outputs = tuple(thunk.downstreams)
 
         # Check if the keys already exists,
         # should be unique due to cloning in fake mode.

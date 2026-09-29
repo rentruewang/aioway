@@ -3,12 +3,14 @@
 "The DAG that supports analysis."
 
 import dataclasses as dcls
+import functools
 import typing
 from collections import abc as cabc
 
 import torch
 
 from aioway.t import (
+    TList,
     find_nested_tensors,
     render_tensor_func_short,
     replace_tensors_with_attr,
@@ -49,20 +51,34 @@ class DoneThunk[F: cabc.Callable]:
         thunk = render_tensor_func_short(str(self.func), self.args, self.kwargs)
         return thunk + " -> " + result
 
-    def upstream(self) -> cabc.Generator[torch.Tensor]:
-        "Get the dependencies of the current thunk."
+    @functools.cached_property
+    def upstreams(self) -> TList:
+        "Get the (unique) dependencies of the current thunk."
+        return TList(self._upstream())
 
+    @functools.cached_property
+    def downstreams(self) -> TList:
+        "Get the output list of (unique) tensors of the current thunk."
+        return TList(self._downstream())
+
+    def _upstream(self) -> cabc.Generator[torch.Tensor]:
         yield from find_nested_tensors(self.args)
         yield from find_nested_tensors(self.kwargs)
 
-    def downstream(self) -> cabc.Generator[torch.Tensor]:
-        "Get the output of the current thunk."
-
+    def _downstream(self) -> cabc.Generator[torch.Tensor]:
         yield from find_nested_tensors(self.result)
 
     @property
     def done(self) -> bool:
         return self.result is dcls.MISSING
+
+
+@dcls.dataclass(frozen=True)
+class FuncNode:
+    func: cabc.Callable
+    """
+    The callable for the function.
+    """
 
 
 class Dag[F: cabc.Callable](cabc.Sequence[DoneThunk[F]]):
@@ -125,7 +141,7 @@ class Dag[F: cabc.Callable](cabc.Sequence[DoneThunk[F]]):
     def _add_inputs(
         self, idx: int, thunk: DoneThunk, locals: dict[int, VarInfo]
     ) -> None:
-        for input in thunk.upstream():
+        for input in thunk.upstreams:
             if (input_id := id(input)) not in locals:
                 info = VarInfo.input_var(input)
                 locals[input_id] = info
@@ -137,7 +153,7 @@ class Dag[F: cabc.Callable](cabc.Sequence[DoneThunk[F]]):
         self, idx: int, thunk: DoneThunk, locals: dict[int, VarInfo]
     ) -> None:
         # Output must be unique, so it's always new.
-        for output in thunk.downstream():
+        for output in thunk.downstreams:
             info = VarInfo(producer=idx, fake=output)
 
             if id(info.fake) in locals:

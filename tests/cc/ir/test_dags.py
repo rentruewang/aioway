@@ -1,6 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import typing
+from collections import abc as cabc
 
 import pytest
 
@@ -18,13 +19,13 @@ def test_thunk_not_callable():
         DoneThunk(func=3, args=(), kwargs={})
 
 
-def test_thunk_upstream(thunks, fakes):
+def test_thunk_upstream(thunks: cabc.Sequence[DoneThunk], fakes):
     x0, x1 = fakes
-    assert list(thunks[0].upstream()) == [x0, x1]
+    assert list(thunks[0].upstreams) == [x0, x1]
 
 
-def test_thunk_downstream(thunks):
-    assert list(thunks[0].downstream()) == [thunks[0].result]
+def test_thunk_downstream(thunks: cabc.Sequence[DoneThunk]):
+    assert list(thunks[0].downstreams) == [thunks[0].result]
 
 
 def test_dag_len(dag: Dag):

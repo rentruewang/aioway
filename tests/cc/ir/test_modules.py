@@ -70,11 +70,11 @@ def test_thunk_upstream_yields(module: nn.Module) -> None:
     x, y = torch.ones(3), torch.zeros(3)
     thunk = _make_thunk(module, x, y, result=x)
 
-    assert list(thunk.upstream()) == [x, y]
+    assert list(thunk.upstreams) == [x, y]
 
 
 def test_thunk_downstream_yields(thunk: ModuleThunk) -> None:
-    assert list(thunk.downstream()) == [thunk.result]
+    assert list(thunk.downstreams) == [thunk.result]
 
 
 def test_hist_starts_empty(hist: ModuleHist) -> None:
@@ -91,7 +91,7 @@ def test_append_stores_thunk(hist: ModuleHist, thunk: ModuleThunk) -> None:
 def test_thunk_looks_up(hist: ModuleHist, thunk: ModuleThunk) -> None:
     hist.append(thunk)
 
-    assert hist.thunk_of(next(thunk.downstream())) is thunk
+    assert hist.thunk_of(thunk.downstreams[0]) is thunk
 
 
 def test_append_index_all_outputs(hist: ModuleHist, module: nn.Module) -> None:
@@ -113,7 +113,7 @@ def test_append_fail_dups(hist: ModuleHist, thunk: ModuleThunk) -> None:
 
 def test_thunk_of_unknown_fail(hist: ModuleHist, thunk: ModuleThunk) -> None:
     with pytest.raises(KeyError):
-        hist.thunk_of(next(thunk.downstream()))
+        hist.thunk_of(thunk.downstreams[0])
 
 
 def test_hook_appends_thunk(hist: ModuleHist, module: nn.Module) -> None:
@@ -124,8 +124,8 @@ def test_hook_appends_thunk(hist: ModuleHist, module: nn.Module) -> None:
 
     (recorded,) = hist.history
     assert recorded.func is module
-    assert list(recorded.upstream()) == [x]
-    assert list(recorded.downstream()) == [y]
+    assert list(recorded.upstreams) == [x]
+    assert list(recorded.downstreams) == [y]
     assert recorded.parents == ()
 
 
@@ -159,8 +159,8 @@ def test_tracker_records_shapes(tracker: ModuleTracker, hist: ModuleHist) -> Non
         model(torch.ones(3, 4))
 
     (thunk,) = hist.history
-    assert next(thunk.upstream()).shape == (3, 4)
-    assert next(thunk.downstream()).shape == (3, 2)
+    assert thunk.upstreams[0].shape == (3, 4)
+    assert thunk.downstreams[0].shape == (3, 2)
 
 
 def test_tracker_empty_stack(tracker: ModuleTracker) -> None:
