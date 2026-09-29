@@ -2,7 +2,6 @@
 
 "Executing the DAG with new data."
 
-import collections
 import typing
 from collections import abc as cabc
 
@@ -11,8 +10,7 @@ from torch.utils import _pytree as pytree
 
 from aioway.t import is_fake, is_fake_tensor, is_real_tensor, parse_attr
 
-from .dags import Dag0, ThunkNode
-from .vars import VarInfo, VarList
+from .dags import Dag, ThunkNode
 
 __all__ = ["Exec", "LocalScope"]
 
@@ -29,8 +27,8 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
     Tracks the currently in scope tensors.
     """
 
-    def __init__(self, vars: VarList) -> None:
-        self._vars = vars
+    def __init__(self, dag: Dag) -> None:
+        self._dag = dag
         "The variable list."
 
         self._alive: dict[int, torch.Tensor] = {}
@@ -41,17 +39,16 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
         Count the total variables tracked.
         """
 
-        return len(self._vars)
+        return len(self._dag)
 
     def __contains__(self, tensor) -> bool:
         if not is_fake_tensor(tensor):
             return False
 
-        return id(tensor) in self._vars
+        return tensor in self._dag.tensors
 
     def __iter__(self) -> cabc.Generator[torch.Tensor]:
-        for val in self._vars.values():
-            yield val.fake
+        yield from self._dag.tensors
 
     def __getitem__(self, fake: torch.Tensor) -> torch.Tensor | None:
         if not is_fake_tensor(fake):
@@ -92,21 +89,21 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
 
     def expire(self, step: int) -> None:
         """
-        Expire those variables whose step = `step` (`step` must be positive).
+        Expire those variables that is not used after step = `step`.
         """
 
-        for var in self._vars.consumers(step):
-            if var.alive_until == step:
-                self.drop(var.fake)
+        thunk = self._dag[step]
+
+        for input in thunk.upstreams:
+            if self._dag.alive_until(input) == step:
+                self.drop(input)
 
     def clear(self) -> None:
         """
         Clear all the temporary storage for the next run.
         """
 
-        for var in self._vars.values():
-            if self.is_alive(var.fake):
-                self.drop(var.fake)
+        self._alive = {}
 
     def attach(self, fake: torch.Tensor, real: torch.Tensor) -> None:
         """
@@ -141,25 +138,8 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
 
         return self._alive[_get_fake_id(fake)]
 
-    def is_alive(self, obj: torch.Tensor | VarInfo, /) -> bool:
-        if isinstance(obj, VarInfo):
-            obj = obj.fake
-
+    def is_alive(self, obj: torch.Tensor, /) -> bool:
         return _get_fake_id(obj) in self._alive
-
-    def tracked(self) -> cabc.Generator[torch.Tensor]:
-        "Get all the fake tensors tracked."
-
-        for info in self._vars.values():
-            yield info.fake
-
-    def info(self, tensor: int | torch.Tensor) -> VarInfo:
-        "Check if the tensor is tracked."
-
-        if isinstance(tensor, torch.Tensor):
-            tensor = id(tensor)
-
-        return self._vars[tensor]
 
     def _map_maybe_fake(self, item: torch.Tensor) -> torch.Tensor:
         if is_real_tensor(item):
@@ -177,47 +157,28 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
         if fake_tensor is not real_tensor:
             raise ValueError("Real tensor in `fake` paired with a different value.")
 
-    def _compute_consumers_by_step(self) -> dict[int, list[VarInfo]]:
-        result: dict[int, list[VarInfo]] = collections.defaultdict(list)
 
-        for var in self._vars.values():
-            for consumer in var.consumers:
-                result[consumer].append(var)
-
-        return result
-
-
-class Exec[F: cabc.Callable = typing.Any](cabc.Sequence[ThunkNode[F]]):
+class Exec[F: cabc.Callable = typing.Any]:
     """
     This is the DAG executor responsible for executing a traced thunk list on real data.
     """
 
-    def __init__(self, dag: Dag0) -> None:
+    def __init__(self, dag: Dag) -> None:
         self._dag = dag
-        self._scope = LocalScope(self._dag.var_list())
+        self._scope = LocalScope(self._dag)
 
     def __len__(self) -> int:
         return len(self._dag)
 
-    @typing.overload
-    def __getitem__(self, idx: int) -> ThunkNode[F]: ...
-
-    @typing.overload
-    def __getitem__(self, idx: slice) -> typing.Self: ...
-
-    def __getitem__(self, idx):
-        match idx:
-            case int():
-                return self._dag[idx]
-            case slice():
-                return type(self)(self._dag[idx])
+    def __getitem__(self, idx: int) -> ThunkNode[F]:
+        return self._dag[idx]
 
     def __iter__(self) -> cabc.Generator[ThunkNode[F]]:
         yield from self._dag
 
     def __call__(self, *inputs: torch.Tensor) -> typing.Any:
         try:
-            self._scope.update(self.inputs(), inputs)
+            self._scope.update(self.inputs, inputs)
         except ValueError as err:
             raise TypeError from err
 
@@ -232,8 +193,9 @@ class Exec[F: cabc.Callable = typing.Any](cabc.Sequence[ThunkNode[F]]):
         self._scope.clear()
         return result
 
+    @property
     def inputs(self):
-        return self._dag.inputs()
+        return self._dag.inputs
 
 
 def _get_fake_id(fake: torch.Tensor | int, /) -> int:

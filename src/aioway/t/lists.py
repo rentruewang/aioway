@@ -11,6 +11,7 @@ import numpy as np
 import torch
 
 from aioway._utils import is_seq_of
+from aioway.t import parse_attr
 
 from .overrides import is_fake
 
@@ -33,6 +34,10 @@ class TList:
         self.__ids = tuple(self.__indexed)
 
         assert len(self.__indexed) == len(self.__ids)
+
+    def __repr__(self) -> str:
+        body = ",".join(map(str, (parse_attr(t) for t in self)))
+        return f"[{body}]"
 
     def __hash__(self) -> int:
         return hash(self.__ids)
@@ -73,14 +78,12 @@ class TList:
     @functools.cached_property
     def any_fake(self) -> bool:
         "Check if this contains any fake items."
-
         return any(is_fake(t) for t in self)
 
     @functools.cached_property
     def all_fake(self) -> bool:
         "Check if all items are fake."
-
-        return any(is_fake(t) for t in self)
+        return all(is_fake(t) for t in self)
 
 
 def _get_id(tensor: torch.Tensor | int, /) -> int:
