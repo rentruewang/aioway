@@ -196,23 +196,6 @@ class Dag[F: cabc.Callable]:
     def input_to_step(self, tensor: torch.Tensor) -> cabc.Sequence[int]:
         return self._inputs_to_step[id(tensor)]
 
-    def __get_all_tensors_produced(self):
-        for i, thunk in enumerate(self._thunks):
-            for tensor in thunk.outputs:
-                yield i, tensor
-
-    def _step_output_mapping(self) -> dict[int, int]:
-        idx_to_tensors = list(self.__get_all_tensors_produced())
-
-        result = {}
-        for i, tensor in idx_to_tensors:
-            result[id(tensor)] = i
-
-        if len(result) != len(idx_to_tensors):
-            raise ValueError("Output tensors of thunks are not unique.")
-
-        return result
-
     def _all_tensors(self):
         yield from self._inputs
         yield from self._outputs
