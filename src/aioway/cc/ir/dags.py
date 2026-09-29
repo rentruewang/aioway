@@ -5,6 +5,7 @@
 import collections
 import dataclasses as dcls
 import functools
+import itertools
 import typing
 from collections import abc as cabc
 
@@ -277,21 +278,31 @@ class Dag[F: cabc.Callable]:
         Outputs = unused tensors in graph.
         """
 
-        inputs = collections.OrderedDict((t, True) for t in _all_thunk_tensors(thunks))
-        outputs = inputs.copy()
+        # Using ordered dicts to preserve insertion order, which affects signature.
+        inputs: dict[int, _TensorStamp] = {}
+        outputs: dict[int, _TensorStamp] = {}
+
+        counter = itertools.count()
 
         for thunk in thunks:
-            for input in thunk.inputs:
-                inputs[input] = False
+            for i in thunk.inputs:
+                inputs[id(i)] = _TensorStamp(next(counter), i)
 
-            for output in thunk.outputs:
-                outputs[output] = False
+            for o in thunk.outputs:
+                outputs[id(o)] = _TensorStamp(next(counter), o)
 
-        return cls(
-            thunks,
-            [t for t, keep in inputs if keep],
-            [t for t, keep in outputs if keep],
-        )
+        input_only = inputs.keys() - outputs.keys()
+        output_only = outputs.keys() - inputs.keys()
+
+        input_tensors = tuple(t for _, t in sorted(inputs[k] for k in input_only))
+        output_tensors = tuple(t for _, t in sorted(outputs[k] for k in output_only))
+
+        return cls(thunks, input_tensors, output_tensors)
+
+
+class _TensorStamp(typing.NamedTuple):
+    stamp: int
+    tensor: torch.Tensor
 
 
 def _all_thunk_tensors(thunks: cabc.Sequence[ThunkNode]):

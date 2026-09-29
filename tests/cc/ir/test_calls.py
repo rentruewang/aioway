@@ -1,10 +1,9 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import torch
-from torch import ops
 
-from aioway.cc import Exec, TorchFuncDag, fake_aten_dag
-from aioway.t import is_fake
+from aioway.cc import Dag, Exec, TorchFuncDag
+from aioway.t import fake_mode
 
 
 def test_torch_func_dag_data():
@@ -59,16 +58,20 @@ def test_dag_property():
     assert isinstance(dag.exec(), Exec)
 
 
-def test_fake_aten_dag_tensor():
-    with fake_aten_dag():
-        out = torch.ones(3) + torch.ones(3)
+def test_dag_from_trace():
+    tracer = TorchFuncDag()
 
-    assert isinstance(out, torch.Tensor) and is_fake(out)
+    with fake_mode():
+        x, y = torch.zeros(3), torch.zeros(3)
 
+        with tracer.activate():
+            z = torch.add(x, y)
 
-def test_fake_aten_dag_ops():
-    with fake_aten_dag() as dag:
-        torch.ones(3) + torch.ones(3)
+    dag = Dag.from_thunk_list(tracer.thunks)
 
-    funcs = [t.func for t in dag.thunks]
-    assert ops.aten.add.Tensor in funcs
+    assert len(dag) == 1
+    assert len(dag.inputs) == 2
+    assert dag.inputs[0] is x
+    assert dag.inputs[1] is y
+    assert len(dag.outputs) == 1
+    assert dag.outputs[0] is z
