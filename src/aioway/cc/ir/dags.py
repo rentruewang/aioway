@@ -12,13 +12,14 @@ import torch
 from aioway.t import (
     TList,
     find_nested_tensors,
+    is_real,
     render_tensor_func_short,
     replace_tensors_with_attr,
 )
 
 from .vars import VarInfo, VarList
 
-__all__ = ["ThunkNode", "Dag"]
+__all__ = ["ThunkNode", "TensorRef", "Dag0"]
 
 
 @dcls.dataclass(frozen=True)
@@ -75,15 +76,62 @@ class ThunkNode[F: cabc.Callable]:
         return self.result is dcls.MISSING
 
 
-@dcls.dataclass(frozen=True)
-class FuncNode:
-    func: cabc.Callable
+class TensorRef[T: cabc.Callable = cabc.Callable]:
     """
-    The callable for the function.
+    A data structure holding tensor information in the DAG.
+
+    It holds the reference to the fake tensor,
+    the callable that produces it, and the downstream consumer (function).
+
+    Since in the DAG the tensor are never reused by the function,
+    we can assume there is only 1 single producer.
     """
 
+    def __init__(self, producer: T, fake: torch.Tensor):
+        self._producer = producer
+        self._fake = fake
+        self._consumers: set[cabc.Callable] = set()
 
-class Dag[F: cabc.Callable](cabc.Sequence[ThunkNode[F]]):
+        if not isinstance(fake, torch.Tensor) or is_real(fake):
+            raise ValueError(
+                f"The fake tensor produced at idx={self.producer} is real."
+            )
+
+    def __hash__(self) -> int:
+        return id(self.fake)
+
+    def add_consumers(self, *consumers: cabc.Callable) -> None:
+        "Add consumers for the info."
+
+        if len(set(consumers)) != len(consumers):
+            raise ValueError("Duplicate values in consumers.")
+
+        for consumer in consumers:
+            self._add_consumer(consumer)
+
+    def _add_consumer(self, consumer: cabc.Callable) -> None:
+        if consumer in self.consumers:
+            raise IndexError(f"Attempting to add {consumer=} a second time.")
+
+        self._consumers.add(consumer)
+
+    @property
+    def producer(self) -> T:
+        "The producer index."
+        return self._producer
+
+    @property
+    def consumers(self) -> cabc.Set[cabc.Callable]:
+        "The list of consumers."
+        return self._consumers
+
+    @property
+    def fake(self) -> torch.Tensor:
+        "Return the fake tensor."
+        return self._fake
+
+
+class Dag0[F: cabc.Callable](cabc.Sequence[ThunkNode[F]]):
     """
     A dag is a sequence of callables, that are linked by fake tensors.
     """

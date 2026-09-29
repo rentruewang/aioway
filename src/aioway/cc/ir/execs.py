@@ -11,7 +11,7 @@ from torch.utils import _pytree as pytree
 
 from aioway.t import is_fake, is_fake_tensor, is_real_tensor, parse_attr
 
-from .dags import Dag, ThunkNode
+from .dags import Dag0, ThunkNode
 from .vars import VarInfo, VarList
 
 __all__ = ["Exec", "LocalScope"]
@@ -192,7 +192,7 @@ class Exec[F: cabc.Callable = typing.Any](cabc.Sequence[ThunkNode[F]]):
     This is the DAG executor responsible for executing a traced thunk list on real data.
     """
 
-    def __init__(self, dag: Dag) -> None:
+    def __init__(self, dag: Dag0) -> None:
         self._dag = dag
         self._scope = LocalScope(self._dag.var_list())
 

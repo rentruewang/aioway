@@ -5,12 +5,12 @@ from collections import abc as cabc
 
 import pytest
 
-from aioway.cc import Dag, ThunkNode
+from aioway.cc import Dag0, ThunkNode
 
 
 @pytest.fixture
-def dag(thunks) -> Dag:
-    return Dag(thunks)
+def dag(thunks) -> Dag0:
+    return Dag0(thunks)
 
 
 @typing.no_type_check
@@ -28,38 +28,38 @@ def test_thunk_downstream(thunks: cabc.Sequence[ThunkNode]):
     assert list(thunks[0].downstreams) == [thunks[0].result]
 
 
-def test_dag_len(dag: Dag):
+def test_dag_len(dag: Dag0):
     assert len(dag) == 2
 
 
-def test_dag_getitem(dag: Dag, thunks):
+def test_dag_getitem(dag: Dag0, thunks):
     assert dag[0] is thunks[0]
     assert dag[-1] is thunks[1]
 
 
-def test_dag_iter(dag: Dag, thunks):
+def test_dag_iter(dag: Dag0, thunks):
     assert list(dag) == list(thunks)
 
 
-def test_dag_slice(dag: Dag, thunks):
+def test_dag_slice(dag: Dag0, thunks):
     sliced = dag[1:]
 
-    assert isinstance(sliced, Dag)
+    assert isinstance(sliced, Dag0)
     assert len(sliced) == 1
     assert sliced[0] is thunks[1]
 
 
-def test_dag_inputs(dag: Dag, fakes):
+def test_dag_inputs(dag: Dag0, fakes):
     x0, x1 = fakes
     assert dag.inputs() == (x0, x1)
 
 
-def test_dag_slice_inputs(dag: Dag, thunks):
+def test_dag_slice_inputs(dag: Dag0, thunks):
     y = thunks[0].result
     assert dag[1:].inputs() == (y,)
 
 
-def test_dag_var_list(dag: Dag, fakes, thunks):
+def test_dag_var_list(dag: Dag0, fakes, thunks):
     x0, x1 = fakes
     y, z = thunks[0].result, thunks[1].result
     var_list = dag.var_list()
@@ -73,4 +73,4 @@ def test_dag_var_list(dag: Dag, fakes, thunks):
 
 def test_dag_output_unique(thunks):
     with pytest.raises(KeyError):
-        Dag([thunks[0], thunks[0]])
+        Dag0([thunks[0], thunks[0]])
