@@ -85,6 +85,11 @@ class TList:
         "Check if all items are fake."
         return all(is_fake(t) for t in self)
 
+    @property
+    def ids(self) -> tuple[int, ...]:
+        "Expose the tensor ids of the tensor list."
+        return self.__ids
+
 
 def _get_id(tensor: torch.Tensor | int, /) -> int:
     match tensor:

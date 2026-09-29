@@ -1,6 +1,5 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from aioway.t import is_tensor_method
 import abc
 import contextlib as ctxl
 import dataclasses as dcls
@@ -11,6 +10,7 @@ from aioway.t import (
     TorchFuncMode,
     fake_mode,
     is_aten_op,
+    is_tensor_method,
     route_aten_thunk,
 )
 from aioway.t.guards import is_torch_function
