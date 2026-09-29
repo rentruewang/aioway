@@ -207,12 +207,6 @@ def test_aten_records_only_aten_ops():
     assert all(is_aten_op(thunk.func) for thunk in exec)
 
 
-def _fake_tensor_eq(left: torch.Tensor, right: torch.Tensor):
-    assert is_fake(left)
-    assert is_fake(right)
-    return parse_attr(left) == parse_attr(right)
-
-
 def test_dag_inputs_many_same_step():
     tracer = TorchFuncDag()
 
@@ -224,4 +218,10 @@ def test_dag_inputs_many_same_step():
 
     dag = Dag.from_thunk_list(tracer.thunks)
 
-    assert all(got is want for got, want in zip(dag.inputs, xs))
+    assert all(_fake_tensor_eq(got, want) for got, want in zip(dag.inputs, xs))
+
+
+def _fake_tensor_eq(left: torch.Tensor, right: torch.Tensor):
+    assert is_fake(left)
+    assert is_fake(right)
+    return parse_attr(left) == parse_attr(right)
