@@ -92,7 +92,7 @@ class TList:
         return self.__ids
 
 
-# Util functions.
+# Utility functions. ====
 
 
 def _get_id(tensor: torch.Tensor | int, /) -> int:
@@ -105,7 +105,7 @@ def _get_id(tensor: torch.Tensor | int, /) -> int:
     raise TypeError(type(tensor))
 
 
-# Register for pytree.
+# Register for pytree. ====
 
 
 def _flatten_tlist(tlist: TList):
