@@ -14,6 +14,7 @@ from aioway.t import (
     TList,
     find_nested_tensors,
     is_real,
+    parse_attr,
     render_tensor_func_short,
     replace_tensors_with_attr,
 )
@@ -107,6 +108,10 @@ class TensorRef:
             raise ValueError(
                 f"The fake tensor produced at idx={self._producer} is real."
             )
+
+    def __repr__(self) -> str:
+        attr = parse_attr(self.tensor)
+        return f"TRef({attr!s}, {self.producer})"
 
     def add_consumers(self, *consumers: ThunkNode) -> None:
         "Add consumers for the info. Allow duplication."

@@ -9,7 +9,7 @@ from collections import abc as cabc
 
 import torch
 
-from aioway._utils import AnyDict, AnySet, any_dict, any_set
+from aioway._utils import AnyDict, any_dict, any_set
 from aioway.t import TList
 
 from .nodes import TensorRef, ThunkNode
@@ -41,7 +41,7 @@ class Dag[F: cabc.Callable]:
         "Mapping from tensors to refs (linking functions)."
 
         self._inputs_to_thunk_index = _tensor_is_input_to_thunk(self._thunks)
-        "The mapping from tensor id to thunk's id that uses it."
+        "The mapping from tensor to thunk's that uses it."
 
         # Validate if the inputs and outputs are valid.
         self._validate_input_output()
@@ -59,6 +59,13 @@ class Dag[F: cabc.Callable]:
         return self._thunks[idx]
 
     def life(self, t: torch.Tensor, /) -> TensorLifetime:
+        """
+        Compute the lifetime of a tensor.
+
+        birth = at which point we start keeping track of it.
+        death = at which point it is no longer needed.
+        """
+
         birth = self.output_of_step(t) if t not in self.inputs else -1
         death = max(self.input_to_step(t)) if t not in self.outputs else len(self)
         return TensorLifetime(birth=birth, death=death)
@@ -82,13 +89,12 @@ class Dag[F: cabc.Callable]:
         If not set (producer is None), return -1.
         """
 
-        thunk = self._tensor_links[tensor].producer
-        return self._thunk_to_step[thunk]
+        thunk = self._thunk_producing(tensor)
+        return self._thunk_to_step[thunk] if thunk is not None else -1
 
     def input_to_step(self, tensor: torch.Tensor) -> cabc.Sequence[int]:
-
-        thunks: AnySet[ThunkNode[F]] = self._tensor_links[tensor].consumers
-        return [self._thunk_to_step[thunk] for thunk in thunks]
+        consuming = self._thunk_consuming(tensor)
+        return [self._thunk_to_step[thunk] for thunk in consuming]
 
     def _all_tensors(self):
         yield from self._inputs
@@ -114,13 +120,22 @@ class Dag[F: cabc.Callable]:
         if set(self._inputs) & set(self._outputs):
             raise ValueError("Inputs are in the outputs. Not allowed yet.")
 
-    @functools.cached_property
-    def _input_ids(self) -> frozenset[int]:
-        return frozenset(id(t) for t in self._inputs)
+    def _thunk_producing(self, tensor: torch.Tensor, /) -> ThunkNode[F] | None:
+        """
+        Get the thunk that produces the producer.
 
-    @functools.cached_property
-    def _output_ids(self) -> frozenset[int]:
-        return frozenset(id(t) for t in self._outputs)
+        If it's from the input, return `None`.
+        """
+
+        if tensor in self.inputs:
+            return None
+
+        else:
+            return self._tensor_links[tensor].producer
+
+    def _thunk_consuming(self, tensor: torch.Tensor, /) -> cabc.Generator[ThunkNode[F]]:
+        ref = self._tensor_links[tensor]
+        yield from ref.consumers
 
     @classmethod
     def from_thunk_list(cls, thunks: cabc.Sequence[ThunkNode[F]]) -> typing.Self:
@@ -153,7 +168,7 @@ class Dag[F: cabc.Callable]:
         return cls(thunks, input_tensors, output_tensors)
 
 
-# Helper functions ====
+# Helper functions for dag ====
 
 
 def _all_thunk_tensors(thunks: cabc.Sequence[ThunkNode]):
