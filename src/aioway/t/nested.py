@@ -9,7 +9,7 @@ from collections import abc as cabc
 import torch
 from torch.utils import _pytree as pytree
 
-from aioway._utils import AnyDict
+from aioway._utils import AnyDict, any_dict
 
 __all__ = [
     "tree_leaves_typed",
@@ -33,9 +33,7 @@ def register_pytree_dcls[T: type](cls: T) -> T:
 
 
 def tree_map_memo(
-    obj,
-    replace: cabc.Callable[..., object],
-    memo: AnyDict[typing.Any, typing.Any] | None = None,
+    obj, replace: cabc.Callable[..., object], memo: AnyDict | None = None
 ) -> typing.Any:
     """
     Decompose and replace. When this is called, `replace(obj)` is directly invoked.
@@ -50,7 +48,7 @@ def tree_map_memo(
             this is s.t. don't replace the same item with different ones.
     """
 
-    memo = memo if memo is not None else AnyDict()
+    memo = memo if memo is not None else any_dict()
 
     def replace_cached(item):
         if item not in memo:

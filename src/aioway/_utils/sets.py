@@ -3,9 +3,71 @@
 import typing
 from collections import abc as cabc
 
-__all__ = ["AnySet", "AnyDict"]
+__all__ = ["any_set", "AnySet", "any_dict", "AnyDict"]
 
 type AnyId = int
+
+
+@typing.overload
+def any_set() -> AnySet: ...
+
+
+@typing.overload
+def any_set[T](base: type[T], /) -> AnySet[T]: ...
+
+
+@typing.overload
+def any_set[T](base: tuple[type, ...], /) -> AnySet: ...
+
+
+@typing.overload
+def any_set[T](base: typing.Any, /, *default: T) -> AnySet[T]: ...
+
+
+@typing.overload
+def any_set(base, /, *default) -> AnySet: ...
+
+
+def any_set(base=object, /, *default) -> AnySet:
+    aset = AnySet(base, {})
+
+    # Add all the default values.
+    for key in default:
+        aset.add(key)
+
+    return aset
+
+
+@typing.overload
+def any_dict() -> AnyDict[typing.Any, typing.Any]: ...
+
+
+@typing.overload
+def any_dict[T](base: type[T], /) -> AnyDict[T, typing.Any]: ...
+
+
+@typing.overload
+def any_dict(base: tuple[type, ...], /) -> AnyDict[typing.Any, typing.Any]: ...
+
+
+@typing.overload
+def any_dict[K, V](base: typing.Any, /, *default: tuple[K, V]) -> AnyDict[K, V]: ...
+
+
+@typing.overload
+def any_dict(base, /, *default) -> AnyDict: ...
+
+
+def any_dict[K = typing.Any, V = typing.Any](
+    base: type | tuple[type, ...] = object, /, *default: tuple[K, V]
+):
+    adict = AnyDict(base, {}, {})
+
+    # Add all default values.
+    for key, val in default:
+        adict[key] = val
+
+    return adict
 
 
 class AnySet[K = typing.Any]:
@@ -13,45 +75,59 @@ class AnySet[K = typing.Any]:
     `AnySet` allows to store a set of items, using their `id` or `hash` to compare equality.
     """
 
-    def __init__(self, base: type | tuple[type, ...] = object, *default: K) -> None:
-        self.__keys: dict[AnyId, K] = {}
+    def __init__(self, base: type | tuple[type, ...], keys: dict[AnyId, K]) -> None:
+        self._keys: dict[AnyId, K] = keys
         """
         The keys that has been stored in the `AnyDict`.
         Using `dict` to avoid actually dereference `id`.
         """
 
-        self.__type = base
-        "Store the type for `isinstance` checks."
-
-        # Add all the default values.
-        for val in default:
-            self.add(val)
+        self._type = base
+        """
+        Store the type for `isinstance` checks.
+        """
 
     def __repr__(self) -> str:
-        return "{" + ", ".join(map(repr, self.__keys.values())) + "}"
+        return "{" + ", ".join(map(repr, self._keys.values())) + "}"
 
     def __bool__(self) -> bool:
         return bool(len(self))
 
     def __len__(self) -> int:
-        return len(self.__keys)
+        return len(self._keys)
 
     def __contains__(self, key: object, /) -> bool:
-        if isinstance(key, self.__type):
+        if isinstance(key, self._type):
             key_id = _hash_or_id(key)
-            return key_id in self.__keys
+            return key_id in self._keys
 
-        raise TypeError(f"{type(key)=} is not `{self.__type}`.")
+        raise TypeError(f"{type(key)=} is not `{self._type}`.")
 
     def __iter__(self) -> cabc.Iterator[K]:
-        yield from self.__keys.values()
+        return iter(self._keys.values())
+
+    def __sub__(self, other: AnySet[K]) -> AnySet[K]:
+        copied = self.copy()
+        copied -= other
+        return copied
+
+    def __isub__(self, other: AnySet[K]) -> AnySet[K]:
+        for item in other:
+            self.discard(item)
+        return self
+
+    def isdisjoint(self, other: cabc.Iterable[K]) -> bool:
+        return all(_hash_or_id(item) not in self._keys for item in other)
 
     def add(self, key: K) -> None:
-        self.__keys[_hash_or_id(key)] = key
+        self._keys[_hash_or_id(key)] = key
 
     def discard(self, key: K) -> None:
-        if (key_hash := _hash_or_id(key)) in self.__keys:
-            del self.__keys[key_hash]
+        if (key_hash := _hash_or_id(key)) in self._keys:
+            del self._keys[key_hash]
+
+    def copy(self) -> typing.Self:
+        return type(self)(self._type, self._keys.copy())
 
 
 class AnyDict[K = typing.Any, V = typing.Any](AnySet[K]):
@@ -61,17 +137,14 @@ class AnyDict[K = typing.Any, V = typing.Any](AnySet[K]):
     """
 
     def __init__(
-        self, base: type | tuple[type, ...] = object, *default: tuple[K, V]
+        self, base: type | tuple[type, ...], keys: dict[AnyId, K], vals: dict[AnyId, V]
     ) -> None:
-        super().__init__(base)
+        super().__init__(base, keys)
 
-        self.__vals: dict[int, V] = {}
+        self._vals: dict[AnyId, V] = vals
         """
         The values refered to by the `key`, using `id` as key.
         """
-
-        for key, val in default:
-            self[key] = val
 
     def __repr__(self) -> str:
         return "{" + ", ".join(f"{k}:{self[k]}" for k in self) + "}"
@@ -80,13 +153,13 @@ class AnyDict[K = typing.Any, V = typing.Any](AnySet[K]):
         if key not in self:
             raise KeyError(f"{key=} is not found in `AnyDict`.")
 
-        return self.__vals[_hash_or_id(key)]
+        return self._vals[_hash_or_id(key)]
 
     def __setitem__(self, key: K, val: V, /) -> None:
         self.__assert_same_length()
 
         super().add(key)
-        self.__vals[_hash_or_id(key)] = val
+        self._vals[_hash_or_id(key)] = val
 
     def __delitem__(self, key: K, /) -> None:
         self.__assert_same_length()
@@ -95,16 +168,28 @@ class AnyDict[K = typing.Any, V = typing.Any](AnySet[K]):
             raise KeyError(f"{key=} is not in `AnyDict`.")
 
         super().discard(key)
-        del self.__vals[_hash_or_id(key)]
+        del self._vals[_hash_or_id(key)]
 
-    def keys(self) -> cabc.KeysView[K]:
-        return cabc.KeysView(self)
+    def __or__(self, other: typing.Self) -> typing.Self:
+        copied = self.copy()
+        copied |= other
+        return copied
 
-    def values(self) -> cabc.ValuesView[V]:
-        return cabc.ValuesView(self)
+    def __ior__(self, other: typing.Self) -> typing.Self:
+        for k, v in other.items():
+            self[k] = v
+        return self
 
-    def items(self) -> cabc.ItemsView[K, V]:
-        return cabc.ItemsView(self)
+    def keys(self) -> AnySet[K]:
+        return AnySet(self._type, self._keys.copy())
+
+    def values(self) -> cabc.Iterable[V]:
+        for key in self.keys():
+            yield self[key]
+
+    def items(self) -> cabc.Iterable[tuple[K, V]]:
+        for key in self.keys():
+            yield key, self[key]
 
     @typing.overload
     def get(self, key: K) -> V | None: ...
@@ -118,8 +203,11 @@ class AnyDict[K = typing.Any, V = typing.Any](AnySet[K]):
         else:
             return default
 
+    def copy(self) -> typing.Self:
+        return type(self)(self._type, self._keys.copy(), self._vals.copy())
+
     def __assert_same_length(self) -> None:
-        assert super().__len__() == len(self.__vals)
+        assert super().__len__() == len(self._vals)
 
     # Delete these methods.
     add = discard = typing.cast(typing.Any, None)
@@ -127,4 +215,8 @@ class AnyDict[K = typing.Any, V = typing.Any](AnySet[K]):
 
 def _hash_or_id(obj) -> AnyId:
     "Get the hash or id values."
-    return hash(obj) if isinstance(obj, cabc.Hashable) else id(obj)
+
+    try:
+        return hash(obj)
+    except TypeError:
+        return id(obj)

@@ -6,7 +6,7 @@ import typing
 import pytest
 import torch
 
-from aioway._utils import AnyDict
+from aioway._utils import any_dict
 from aioway.t import (
     find_nested_tensors,
     register_pytree_dcls,
@@ -144,7 +144,7 @@ def test_map_memo_only_once():
 
 
 def test_map_memo_custom_memo():
-    memo = AnyDict()
+    memo = any_dict()
     tree_map_memo([1], _mult_int_ten, memo)
     assert memo[1] == 10
 

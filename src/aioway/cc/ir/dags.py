@@ -2,7 +2,6 @@
 
 "The DAG that supports analysis."
 
-import collections
 import functools
 import typing
 from collections import abc as cabc
@@ -10,7 +9,8 @@ from collections import abc as cabc
 import pytest
 import torch
 
-from aioway.t import TensorId, TList
+from aioway._utils import AnyDict, any_dict, any_set
+from aioway.t import TList
 
 from .nodes import TensorRef, ThunkNode
 
@@ -33,10 +33,10 @@ class Dag[F: cabc.Callable]:
         self._inputs = tuple(inputs)
         self._outputs = tuple(outputs)
 
-        self._tensors = _build_tensor_refs(self._thunks, self._inputs)
+        self._tensor_links = _build_tensor_refs(self._thunks, self._inputs)
         "Mapping from tensors to refs (linking functions)."
 
-        self._inputs_to_step = _tensor_is_input_to_thunk(self._thunks)
+        self._inputs_to_thunk_index = _tensor_is_input_to_thunk(self._thunks)
         "The mapping from tensor id to thunk's id that uses it."
 
         # Validate if the inputs and outputs are valid.
@@ -51,7 +51,7 @@ class Dag[F: cabc.Callable]:
     def __iter__(self) -> cabc.Iterator[ThunkNode[F]]:
         return iter(self._thunks)
 
-    def __getitem__(self, idx: int):
+    def __getitem__(self, idx: int) -> ThunkNode[F]:
         return self._thunks[idx]
 
     def first_use(self, tensor: torch.Tensor) -> int:
@@ -95,16 +95,16 @@ class Dag[F: cabc.Callable]:
     def _validate_input_output(self) -> None:
         for input in self._inputs:
             # Input should not have a producer.
-            if not self._tensors[TensorId.from_tensor(input)].is_free:
+            if not self._tensor_links[input].is_free:
                 raise ValueError("Input is not a free variable.")
 
             # Input should be used.
-            if id(input) not in self._inputs_to_step:
+            if input not in self._inputs_to_thunk_index:
                 raise ValueError("Input is not used.")
 
         for output in self._outputs:
             # Output is not produced.
-            if id(output) not in self._tensors:
+            if output not in self._tensor_links:
                 raise ValueError("Output not discovered.")
 
         if set(self._inputs) & set(self._outputs):
@@ -146,19 +146,19 @@ class Dag[F: cabc.Callable]:
         uses = _tensor_is_input_to_thunk(thunks)
         tensors = TList(_all_thunk_tensors(thunks))
 
-        # Output refs that is fully linked.
-        outputs: dict[int, torch.Tensor] = {}
+        # Output observed in the list of thunks.
+        tensor_out_list = any_set(torch.Tensor)
         for thunk in thunks:
             for o in thunk.outputs:
-                assert id(o) not in outputs
-                outputs[id(o)] = o
+                assert o not in tensor_out_list
+                tensor_out_list.add(o)
 
-        input_only = uses.keys() - outputs.keys()
-        output_only = outputs.keys() - uses.keys()
+        input_only = uses.keys() - tensor_out_list
+        output_only = tensor_out_list - uses.keys()
 
         # Walk `tensors` rather than the sets: set order is not insertion order.
-        input_tensors = [t for t in tensors if id(t) in input_only]
-        output_tensors = [t for t in tensors if id(t) in output_only]
+        input_tensors = [t for t in tensors if t in input_only]
+        output_tensors = [t for t in tensors if t in output_only]
 
         return cls(thunks, input_tensors, output_tensors)
 
@@ -171,23 +171,26 @@ def _all_thunk_tensors(thunks: cabc.Sequence[ThunkNode]):
 
 def _tensor_is_input_to_thunk(
     thunks: cabc.Sequence[ThunkNode],
-) -> dict[TensorId, list[ThunkNode]]:
-    result: dict[TensorId, list[ThunkNode]] = collections.defaultdict(list)
+) -> AnyDict[torch.Tensor, list[ThunkNode]]:
+    result: AnyDict[torch.Tensor, list[ThunkNode]] = any_dict(torch.Tensor)
 
     for thunk in thunks:
         for tensor in thunk.inputs:
-            result[TensorId.from_tensor(tensor)].append(thunk)
+            if tensor not in result:
+                result[tensor] = []
+
+            result[tensor].append(thunk)
 
     return result
 
 
 def _build_tensor_refs(
     thunks: cabc.Sequence[ThunkNode], inputs: cabc.Sequence[torch.Tensor]
-) -> dict[TensorId, TensorRef]:
+) -> AnyDict[torch.Tensor, TensorRef]:
     "Get the mapping from id of `torch.Tensor` to corresponding tensor ref."
 
     # Register all inputs.
-    mapping: dict[TensorId, TensorRef] = _tensor_refs_inputs(inputs)
+    mapping: AnyDict[torch.Tensor, TensorRef] = _tensor_refs_inputs(inputs)
 
     # Register all outputs of thunks.
     mapping |= _tensor_refs_outputs(thunks)
@@ -200,33 +203,35 @@ def _build_tensor_refs(
 
 def _tensor_refs_inputs(
     inputs: cabc.Sequence[torch.Tensor],
-) -> dict[TensorId, TensorRef]:
-    mapping: dict[TensorId, TensorRef] = {}
+) -> AnyDict[torch.Tensor, TensorRef]:
+    mapping: AnyDict[torch.Tensor, TensorRef] = any_dict(torch.Tensor)
 
     for input in inputs:
         ref = TensorRef(producer=None, tensor=input)
-        mapping[ref.__tensor__id__] = ref
+        mapping[ref.tensor] = ref
 
     return mapping
 
 
-def _tensor_refs_outputs(thunks: cabc.Sequence[ThunkNode]) -> dict[TensorId, TensorRef]:
-    mapping: dict[TensorId, TensorRef] = {}
+def _tensor_refs_outputs(
+    thunks: cabc.Sequence[ThunkNode],
+) -> AnyDict[torch.Tensor, TensorRef]:
+    mapping: AnyDict[torch.Tensor, TensorRef] = any_dict(torch.Tensor)
 
     for thunk in thunks:
         for output in thunk.outputs:
-            if id(output) in mapping:
+            if output in mapping:
                 raise ValueError("The output fake tensor is not unique.")
 
-            ref = TensorRef(producer=thunk.__id__, tensor=output)
-            mapping[ref.__tensor__id__] = ref
+            ref = TensorRef(producer=thunk, tensor=output)
+            mapping[ref.tensor] = ref
     return mapping
 
 
 def _link_inputs_for_mapping(
-    mapping: dict[TensorId, TensorRef], thunks: cabc.Sequence[ThunkNode]
+    mapping: AnyDict[torch.Tensor, TensorRef], thunks: cabc.Sequence[ThunkNode]
 ) -> None:
     for thunk in thunks:
         for input in thunk.inputs:
-            assert id(input) in mapping
-            mapping[TensorId.from_tensor(input)].add_consumers(thunk.__id__)
+            assert input in mapping
+            mapping[input].add_consumers(thunk)

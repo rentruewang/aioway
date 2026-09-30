@@ -9,8 +9,8 @@ from collections import abc as cabc
 
 import torch
 
+from aioway._utils import AnySet, any_set
 from aioway.t import (
-    TensorId,
     TList,
     find_nested_tensors,
     is_real,
@@ -18,19 +18,7 @@ from aioway.t import (
     replace_tensors_with_attr,
 )
 
-__all__ = ["ThunkNode", "TensorRef", "ThunkNodeId", "TensorRefId"]
-
-
-class ThunkNodeId(int):
-    """
-    The id type for thunk.
-    """
-
-    __slots__ = ()
-
-    @classmethod
-    def from_thunks(cls, thunk: ThunkNode) -> typing.Self:
-        return cls(id(thunk))
+__all__ = ["ThunkNode", "TensorRef"]
 
 
 @dcls.dataclass(frozen=True, eq=False)
@@ -71,12 +59,6 @@ class ThunkNode[F: cabc.Callable]:
         thunk = render_tensor_func_short(str(self.func), self.args, self.kwargs)
         return thunk + " -> " + result
 
-    @property
-    def __id__(self) -> ThunkNodeId:
-        "The unique id for thunks."
-
-        return ThunkNodeId.from_thunks(self)
-
     @functools.cached_property
     def inputs(self) -> TList:
         "Get the (unique) dependencies of the current thunk."
@@ -99,18 +81,6 @@ class ThunkNode[F: cabc.Callable]:
         return self.result is not dcls.MISSING
 
 
-class TensorRefId(int):
-    """
-    The tensor reference's id type.
-    """
-
-    __slots__ = ()
-
-    @classmethod
-    def from_ref(cls, ref: TensorRef) -> typing.Self:
-        return cls(id(ref))
-
-
 class TensorRef:
     """
     A data structure holding tensor information in the DAG.
@@ -122,7 +92,7 @@ class TensorRef:
     we can assume there is only 1 single producer.
     """
 
-    def __init__(self, producer: ThunkNodeId | None, tensor: torch.Tensor) -> None:
+    def __init__(self, producer: ThunkNode | None, tensor: torch.Tensor) -> None:
         """
         Args:
             producer: The thunk's id, or `None` if it's a free variable.
@@ -131,29 +101,21 @@ class TensorRef:
 
         self._producer = producer
         self._tensor = tensor
-        self._consumers: set[ThunkNodeId] = set()
+        self._consumers = any_set(ThunkNode)
 
         if not isinstance(tensor, torch.Tensor) or is_real(tensor):
             raise ValueError(
                 f"The fake tensor produced at idx={self._producer} is real."
             )
 
-    @property
-    def __id__(self) -> TensorRefId:
-        return TensorRefId.from_ref(self)
-
-    @property
-    def __tensor__id__(self) -> TensorId:
-        return TensorId.from_tensor(self.fake)
-
-    def add_consumers(self, *consumers: ThunkNodeId) -> None:
+    def add_consumers(self, *consumers: ThunkNode) -> None:
         "Add consumers for the info. Allow duplication."
 
         for consumer in consumers:
             self._consumers.add(consumer)
 
     @property
-    def producer(self) -> ThunkNodeId:
+    def producer(self) -> ThunkNode:
         "The producer index."
 
         if self._producer is None:
@@ -162,12 +124,12 @@ class TensorRef:
             return self._producer
 
     @property
-    def consumers(self) -> cabc.Set[int]:
+    def consumers(self) -> AnySet[ThunkNode]:
         "The list of consumers."
         return self._consumers
 
     @property
-    def fake(self) -> torch.Tensor:
+    def tensor(self) -> torch.Tensor:
         "Return the fake tensor."
         return self._tensor
 
