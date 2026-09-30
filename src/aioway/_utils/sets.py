@@ -7,7 +7,7 @@ __all__ = ["any_set", "AnySet", "any_dict", "AnyDict"]
 
 type AnyId = int
 
-# The convenient constructors, that are public.
+# The convenient constructors, public ====
 
 
 @typing.overload
@@ -72,7 +72,7 @@ def any_dict[K = typing.Any, V = typing.Any](
     return adict
 
 
-# Class definitions, private. Exposed to `__all__` for type hints.
+# Class definitions, private. Exposed to `__all__` for type hints. ====
 
 
 class AnySet[K = typing.Any]:
