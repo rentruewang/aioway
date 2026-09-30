@@ -1,5 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+
 import pytest
 
 from aioway import api
@@ -9,9 +10,11 @@ from aioway._api import route_fastapi
 @pytest.fixture(autouse=True)
 def skip_if_no_fastapi():
     try:
-        pass
+        import fastapi
     except ImportError:
-        pytest.xfail()
+        pytest.skip("FastAPI not installed.")
+    else:
+        return fastapi
 
 
 def test_register_fastapi():

@@ -9,7 +9,7 @@ from collections import abc as cabc
 import pytest
 import torch
 
-from aioway._utils import AnyDict, any_dict, any_set
+from aioway._utils import AnyDict, AnySet, any_dict, any_set
 from aioway.t import TList
 
 from .nodes import TensorRef, ThunkNode
@@ -32,6 +32,10 @@ class Dag[F: cabc.Callable]:
 
         self._inputs = tuple(inputs)
         self._outputs = tuple(outputs)
+
+        self._thunk_to_step: AnyDict[ThunkNode[F], int] = any_dict(
+            ThunkNode, *((thunk, idx) for idx, thunk in enumerate(self._thunks))
+        )
 
         self._tensor_links = _build_tensor_refs(self._thunks, self._inputs)
         "Mapping from tensors to refs (linking functions)."
@@ -79,12 +83,13 @@ class Dag[F: cabc.Callable]:
         If not set (producer is None), return -1.
         """
 
-        pytest.xfail("Fail because this should be changed to actually produce step.")
-        # return self._tensors[TensorId.from_tensor(tensor)].producer
+        thunk = self._tensor_links[tensor].producer
+        return self._thunk_to_step[thunk]
 
     def input_to_step(self, tensor: torch.Tensor) -> cabc.Sequence[int]:
-        pytest.xfail("Fail because this should be changed to actually produce step.")
-        # return self._inputs_to_step[id(tensor)]
+
+        thunks: AnySet[ThunkNode[F]] = self._tensor_links[tensor].consumers
+        return [self._thunk_to_step[thunk] for thunk in thunks]
 
     def _all_tensors(self):
         yield from self._inputs
