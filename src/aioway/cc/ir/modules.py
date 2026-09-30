@@ -32,73 +32,13 @@ class ModuleThunk(ThunkNode):
 
 @ctxl.contextmanager
 def track_module_thunks():
+    tracker = ModuleTracker()
     yield
 
 
 class _ModuleInput(typing.NamedTuple):
     module: nn.Module
     input: typing.Any
-
-
-@dcls.dataclass(frozen=True)
-class ModuleTracker:
-    stack: Stack[_ModuleInput]
-    "The current stack of modules."
-
-    hist: ModuleHist
-    "The history of modules execution (only leaves are tracked)."
-
-    @ctxl.contextmanager
-    def __call__(self):
-        with ctxl.ExitStack() as c:
-            c.enter_context(register_module_forward_hook(self._fwd_post))
-            c.enter_context(register_module_forward_pre_hook(self._fwd_pre))
-
-            yield self
-
-    def _fwd_pre(self, module: nn.Module, input) -> None:
-        "The forward pre-hook."
-        self.stack.append(_ModuleInput(module, input))
-
-    def _fwd_post(self, module: nn.Module, input, output) -> None:
-        "The forward hook (this executes after)."
-
-        self._fwd_post_hist(module, input, output)
-        self._fwd_post_stack(module, input)
-
-    def _fwd_post_hist(self, module: nn.Module, input, output):
-        """
-        Update the history. This executes "before" the stack is popped,
-        which means that `module` does exist in `self.stack`.
-
-        Only append "leaf" modules, which means modules without parents,
-        to prevent double counting.
-        """
-
-        assert isinstance(input, tuple)
-        assert self.stack.top().module is module
-
-        if not _is_leaf_module(module):
-            return
-
-        self.hist.append(
-            ModuleThunk(
-                func=module,
-                args=input,
-                kwargs={},
-                result=output,
-                parents=tuple(module for module, _ in self.stack),
-            )
-        )
-
-    def _fwd_post_stack(self, module: nn.Module, input):
-        module_input = self.stack.top()
-
-        # Sanity check to ensure that the modules and inputs are the right ones.
-        assert module is module_input.module
-        assert input is module_input.input
-
-        self.stack.pop()
 
 
 @dcls.dataclass(frozen=True)
@@ -152,6 +92,67 @@ class ModuleHist:
             func=module, args=input, kwargs={}, result=output, parents=()
         )
         self.append(thunk)
+
+
+@dcls.dataclass(frozen=True)
+class ModuleTracker:
+    stack: Stack[_ModuleInput] = dcls.field(default_factory=Stack)
+    "The current stack of modules."
+
+    hist: ModuleHist = dcls.field(default_factory=ModuleHist)
+    "The history of modules execution (only leaves are tracked)."
+
+    @ctxl.contextmanager
+    def __call__(self):
+        with ctxl.ExitStack() as c:
+            c.enter_context(register_module_forward_hook(self._fwd_post))
+            c.enter_context(register_module_forward_pre_hook(self._fwd_pre))
+
+            yield self
+
+    def _fwd_pre(self, module: nn.Module, input) -> None:
+        "The forward pre-hook."
+        self.stack.append(_ModuleInput(module, input))
+
+    def _fwd_post(self, module: nn.Module, input, output) -> None:
+        "The forward hook (this executes after)."
+
+        self._fwd_post_hist(module, input, output)
+        self._fwd_post_stack(module, input)
+
+    def _fwd_post_hist(self, module: nn.Module, input, output):
+        """
+        Update the history. This executes "before" the stack is popped,
+        which means that `module` does exist in `self.stack`.
+
+        Only append "leaf" modules, which means modules without parents,
+        to prevent double counting.
+        """
+
+        assert isinstance(input, tuple)
+        assert self.stack.top().module is module
+
+        if not _is_leaf_module(module):
+            return
+
+        self.hist.append(
+            ModuleThunk(
+                func=module,
+                args=input,
+                kwargs={},
+                result=output,
+                parents=tuple(module for module, _ in self.stack),
+            )
+        )
+
+    def _fwd_post_stack(self, module: nn.Module, input):
+        module_input = self.stack.top()
+
+        # Sanity check to ensure that the modules and inputs are the right ones.
+        assert module is module_input.module
+        assert input is module_input.input
+
+        self.stack.pop()
 
 
 def _is_leaf_module(module: nn.Module) -> bool:
