@@ -10,7 +10,8 @@ import time
 import typing
 from collections import abc as cabc
 
-from .types import AnyDict, Stack
+from .sets import AnyDict
+from .types import Stack
 
 __all__ = ["Profiler", "ProfilerStack", "CallerProfiler", "ProfilerCollection"]
 
