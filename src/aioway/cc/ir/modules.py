@@ -14,7 +14,7 @@ from aioway.t import (
     register_module_forward_pre_hook,
 )
 
-from .dags import ThunkNode
+from .dags import Dag, ThunkNode
 
 __all__ = ["ModuleThunk", "ModuleTracker", "ModuleHist", "track_module_thunks"]
 
@@ -98,6 +98,9 @@ class ModuleHist:
             func=module, args=input, kwargs={}, result=output, parents=()
         )
         self.append(thunk)
+
+    def dag(self) -> Dag[ModuleThunk]:
+        return Dag.from_thunk_list(self.history)
 
 
 @dcls.dataclass(frozen=True)

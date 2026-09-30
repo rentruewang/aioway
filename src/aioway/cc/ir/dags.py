@@ -84,7 +84,7 @@ class ThunkNode[F: cabc.Callable]:
         return self.result is not dcls.MISSING
 
 
-class TensorRef:
+class TensorRef[T: ThunkNode]:
     """
     A data structure holding tensor information in the DAG.
 
@@ -95,7 +95,7 @@ class TensorRef:
     we can assume there is only 1 single producer.
     """
 
-    def __init__(self, producer: ThunkNode | None, tensor: torch.Tensor) -> None:
+    def __init__(self, producer: T | None, tensor: torch.Tensor) -> None:
         """
         Args:
             producer: The thunk's id, or `None` if it's a free variable.
@@ -104,7 +104,7 @@ class TensorRef:
 
         self._producer = producer
         self._tensor = tensor
-        self._consumers = any_set(ThunkNode)
+        self._consumers: AnySet[T] = typing.cast(typing.Any, any_set(ThunkNode))
 
         if not isinstance(tensor, torch.Tensor) or is_real(tensor):
             raise ValueError(
@@ -115,14 +115,14 @@ class TensorRef:
         attr = parse_attr(self.tensor)
         return f"TRef({attr!s}, {self.producer})"
 
-    def add_consumers(self, *consumers: ThunkNode) -> None:
+    def add_consumers(self, *consumers: T) -> None:
         "Add consumers for the info. Allow duplication."
 
         for consumer in consumers:
             self._consumers.add(consumer)
 
     @property
-    def producer(self) -> ThunkNode:
+    def producer(self) -> T:
         "The producer index."
 
         if self._producer is None:
@@ -131,7 +131,7 @@ class TensorRef:
             return self._producer
 
     @property
-    def consumers(self) -> AnySet[ThunkNode]:
+    def consumers(self) -> AnySet[T]:
         "The list of consumers."
         return self._consumers
 
@@ -147,14 +147,16 @@ class TensorRef:
 
 
 # The DAG class ====
-class Dag[F: cabc.Callable]:
+
+
+class Dag[T: ThunkNode]:
     """
     A dag is a sequence of callables, that are linked by fake tensors.
     """
 
     def __init__(
         self,
-        thunks: cabc.Iterable[ThunkNode[F]],
+        thunks: cabc.Iterable[T],
         inputs: cabc.Iterable[torch.Tensor],
         outputs: cabc.Iterable[torch.Tensor],
     ) -> None:
@@ -163,7 +165,7 @@ class Dag[F: cabc.Callable]:
         self._inputs = TList(inputs)
         self._outputs = TList(outputs)
 
-        self._thunk_to_step: AnyDict[ThunkNode[F], int] = any_dict(
+        self._thunk_to_step: AnyDict[T, int] = any_dict(
             ThunkNode, *((thunk, idx) for idx, thunk in enumerate(self._thunks))
         )
 
@@ -179,14 +181,36 @@ class Dag[F: cabc.Callable]:
         if not self.tensors.all_fake:
             raise ValueError("Contains non fake tensors.")
 
+    def __repr__(self) -> str:
+        return repr(list(self._thunks))
+
     def __len__(self) -> int:
         return len(self._thunks)
 
-    def __iter__(self) -> cabc.Iterator[ThunkNode[F]]:
+    def __iter__(self) -> cabc.Iterator[T]:
         return iter(self._thunks)
 
-    def __getitem__(self, idx: int) -> ThunkNode[F]:
+    def __getitem__(self, idx: int) -> T:
         return self._thunks[idx]
+
+    def parents(self, thunk: T) -> AnySet[T]:
+        return any_set(T, *self._parents(thunk))
+
+    def children(self, thunk: T) -> AnySet[T]:
+        return any_set(T, *self._children(thunk))
+
+    def _parents(self, thunk: T) -> cabc.Generator[T]:
+        for input in thunk.inputs:
+            ref = self._tensor_links[input]
+
+            # Check if it is a free variable.
+            if not ref.is_free:
+                yield ref.producer
+
+    def _children(self, thunk: T) -> cabc.Generator[T]:
+        for output in thunk.outputs:
+            ref = self._tensor_links[output]
+            yield from ref.consumers
 
     def life(self, t: torch.Tensor, /) -> TensorLifetime:
         """
@@ -250,7 +274,7 @@ class Dag[F: cabc.Callable]:
         if set(self._inputs) & set(self._outputs):
             raise ValueError("Inputs are in the outputs. Not allowed yet.")
 
-    def _thunk_producing(self, tensor: torch.Tensor, /) -> ThunkNode[F] | None:
+    def _thunk_producing(self, tensor: torch.Tensor, /) -> T | None:
         """
         Get the thunk that produces the producer.
 
@@ -263,12 +287,12 @@ class Dag[F: cabc.Callable]:
         else:
             return self._tensor_links[tensor].producer
 
-    def _thunk_consuming(self, tensor: torch.Tensor, /) -> cabc.Generator[ThunkNode[F]]:
+    def _thunk_consuming(self, tensor: torch.Tensor, /) -> cabc.Generator[T]:
         ref = self._tensor_links[tensor]
         yield from ref.consumers
 
     @classmethod
-    def from_thunk_list(cls, thunks: cabc.Sequence[ThunkNode[F]]) -> typing.Self:
+    def from_thunk_list(cls, thunks: cabc.Sequence[T]) -> typing.Self:
         """
         Given only the thunk list, construct a DAG, auto discover inputs and outputs.
 

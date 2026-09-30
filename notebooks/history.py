@@ -28,11 +28,11 @@ from aioway.t import fake_mode
 # %%
 with fake_mode():
     module = nn.Sequential(
-        nn.Linear(3, 5),
-        nn.ReLU(),
-        nn.Sequential(
-            nn.Linear(5, 7),
-            nn.Linear(7, 9),
+        linear1 := nn.Linear(3, 5),
+        relu := nn.ReLU(),
+        seq2 := nn.Sequential(
+            linear3 := nn.Linear(5, 7),
+            linear4 := nn.Linear(7, 9),
         ),
     )
     input = torch.randn(100, 3)
@@ -42,3 +42,8 @@ with track_module_thunks() as hist:
     output = module(input)
 
 hist
+
+# %%
+hist.dag()
+
+# %%
