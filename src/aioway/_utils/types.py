@@ -170,10 +170,10 @@ class AnySet[K = typing.Any]:
         self.__type = base
         "Store the type for `isinstance` checks."
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "{" + ", ".join(map(repr, self.__keys.values())) + "}"
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return bool(len(self))
 
     def __len__(self) -> int:
@@ -181,7 +181,7 @@ class AnySet[K = typing.Any]:
 
     def __contains__(self, key: object, /) -> bool:
         if isinstance(key, self.__type):
-            key_id = id(key)
+            key_id = _hash_or_id(key)
             return key_id in self.__keys
 
         raise TypeError(f"{type(key)=} is not `{self.__type}`.")
@@ -190,11 +190,11 @@ class AnySet[K = typing.Any]:
         yield from self.__keys.values()
 
     def add(self, key: K) -> None:
-        self.__keys[id(key)] = key
+        self.__keys[_hash_or_id(key)] = key
 
     def discard(self, key: K) -> None:
-        if id(key) in self.__keys:
-            del self.__keys[id(key)]
+        if (key_hash := _hash_or_id(key)) in self.__keys:
+            del self.__keys[key_hash]
 
 
 class AnyDict[K = typing.Any, V = typing.Any](AnySet[K]):
@@ -218,13 +218,13 @@ class AnyDict[K = typing.Any, V = typing.Any](AnySet[K]):
         if key not in self:
             raise KeyError(f"{key=} is not found in `AnyDict`.")
 
-        return self.__vals[id(key)]
+        return self.__vals[_hash_or_id(key)]
 
     def __setitem__(self, key: K, val: V, /) -> None:
         self.__assert_same_length()
 
         super().add(key)
-        self.__vals[id(key)] = val
+        self.__vals[_hash_or_id(key)] = val
 
     def __delitem__(self, key: K, /) -> None:
         self.__assert_same_length()
@@ -233,7 +233,7 @@ class AnyDict[K = typing.Any, V = typing.Any](AnySet[K]):
             raise KeyError(f"{key=} is not in `AnyDict`.")
 
         super().discard(key)
-        del self.__vals[id(key)]
+        del self.__vals[_hash_or_id(key)]
 
     def keys(self) -> cabc.KeysView[K]:
         return cabc.KeysView(self)
@@ -261,3 +261,8 @@ class AnyDict[K = typing.Any, V = typing.Any](AnySet[K]):
 
     # Delete these methods.
     add = discard = typing.cast(typing.Any, None)
+
+
+def _hash_or_id(obj) -> int:
+    "Get the hash or id values."
+    return hash(obj) if isinstance(obj, cabc.Hashable) else id(obj)

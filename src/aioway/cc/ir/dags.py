@@ -10,12 +10,9 @@ from collections import abc as cabc
 import pytest
 import torch
 
-from aioway.t import (
-    TensorId,
-    TList,
-)
+from aioway.t import TensorId, TList
 
-from .nodes import TensorRef, ThunkNode
+from .nodes import TensorRef, ThunkNode, ThunkNodeId
 
 __all__ = ["Dag"]
 
@@ -39,7 +36,7 @@ class Dag[F: cabc.Callable]:
         self._tensors = _build_tensor_refs(self._thunks, self._inputs)
         "Mapping from tensors to refs (linking functions)."
 
-        self._inputs_to_step = _step_input_mapping(self._thunks)
+        self._inputs_to_step = _tensor_is_input_to_thunk(self._thunks)
         "The mapping from tensor id to thunk's id that uses it."
 
         # Validate if the inputs and outputs are valid.
@@ -124,7 +121,7 @@ class Dag[F: cabc.Callable]:
         if id(tensor) in self._output_ids:
             return len(self)
 
-        return func(self._inputs_to_step[id(tensor)])
+        return func(self._inputs_to_step[TensorId.from_tensor(tensor)])
 
     @functools.cached_property
     def _input_ids(self) -> frozenset[int]:
@@ -145,7 +142,7 @@ class Dag[F: cabc.Callable]:
         Both are in order of first appearance, which decides the signature.
         """
 
-        uses = _step_input_mapping(thunks)
+        uses = _tensor_is_input_to_thunk(thunks)
         tensors = TList(_all_thunk_tensors(thunks))
 
         # Output refs that is fully linked.
@@ -171,12 +168,14 @@ def _all_thunk_tensors(thunks: cabc.Sequence[ThunkNode]):
         yield from thunk.outputs
 
 
-def _step_input_mapping(thunks: cabc.Sequence[ThunkNode]) -> dict[int, list[int]]:
-    result: dict[int, list[int]] = collections.defaultdict(list)
+def _tensor_is_input_to_thunk(
+    thunks: cabc.Sequence[ThunkNode],
+) -> dict[TensorId, list[ThunkNode]]:
+    result: dict[TensorId, list[ThunkNode]] = collections.defaultdict(list)
 
-    for i, thunk in enumerate(thunks):
+    for thunk in thunks:
         for tensor in thunk.inputs:
-            result[id(tensor)].append(i)
+            result[TensorId.from_tensor(tensor)].append(thunk)
 
     return result
 
