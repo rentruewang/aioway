@@ -23,6 +23,7 @@ pretty.install()
 
 # %%
 from aioway.cc import track_module_thunks
+from aioway.cc.ir.queries import IndexQuery
 from aioway.t import fake_mode
 
 # %%
@@ -44,6 +45,7 @@ with track_module_thunks() as hist:
 hist
 
 # %%
-hist.dag()
+list(hist.dag())
 
 # %%
+list(IndexQuery([0, 1, 2])(hist.dag()))
