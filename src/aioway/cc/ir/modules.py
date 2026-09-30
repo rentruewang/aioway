@@ -3,6 +3,7 @@
 import contextlib as ctxl
 import dataclasses as dcls
 import typing
+from collections import abc as cabc
 
 import torch
 from torch import nn
@@ -15,7 +16,7 @@ from aioway.t import (
 
 from .dags import ThunkNode
 
-__all__ = ["ModuleThunk", "ModuleTracker", "ModuleHist"]
+__all__ = ["ModuleThunk", "ModuleTracker", "ModuleHist", "track_module_thunks"]
 
 
 @dcls.dataclass(frozen=True)
@@ -29,11 +30,16 @@ class ModuleThunk(ThunkNode):
     parents: tuple[nn.Module, ...]
     "The parent modules that calls this current thunk. It's a stack."
 
+    def __repr__(self) -> str:
+        return super().__repr__() + f" [{len(self.parents)} parents]"
+
 
 @ctxl.contextmanager
-def track_module_thunks():
+def track_module_thunks() -> cabc.Generator[ModuleHist]:
     tracker = ModuleTracker()
-    yield
+
+    with tracker():
+        yield tracker.hist
 
 
 class _ModuleInput(typing.NamedTuple):

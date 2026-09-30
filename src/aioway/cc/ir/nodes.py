@@ -21,7 +21,7 @@ from aioway.t import (
 __all__ = ["ThunkNode", "TensorRef"]
 
 
-@dcls.dataclass(frozen=True, eq=False)
+@dcls.dataclass(frozen=True, eq=False,repr=False)
 class ThunkNode[F: cabc.Callable]:
     """
     Stores the thunk's arguments, function, and output.
