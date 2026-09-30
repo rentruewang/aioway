@@ -71,6 +71,19 @@ def test_any_dict_empty():
     assert not d
 
 
+def test_obj_isdisjoint():
+    a = object()
+    b = object()
+    c = object()
+
+    s = any_set(object, a, b)
+
+    assert s.isdisjoint([c])
+    assert not s.isdisjoint([a])
+    assert not s.isdisjoint([b])
+    assert not s.isdisjoint([a, c])
+
+
 def test_any_dict_with_defaults():
     d = any_dict(str, ("a", 1), ("b", 2))
     assert d["a"] == 1
