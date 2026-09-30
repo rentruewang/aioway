@@ -99,6 +99,17 @@ def test_isdisjoint_torch():
     assert s.isdisjoint([b])
 
 
+def test_isdisjoint_no_mutation():
+    a = object()
+    b = object()
+
+    s = any_set(object, a)
+
+    assert s.isdisjoint([b])
+    assert len(s) == 1
+    assert a in s
+
+
 def test_any_dict_with_defaults():
     d = any_dict(str, ("a", 1), ("b", 2))
     assert d["a"] == 1
