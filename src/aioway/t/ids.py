@@ -13,6 +13,8 @@ class TensorId(int):
     The id for `torch.Tensor`. Added for type safety.
     """
 
+    __slots__ = ()
+
     @classmethod
     def from_tensor(cls, tensor: torch.Tensor, /) -> typing.Self:
         if not isinstance(tensor, torch.Tensor):
@@ -25,6 +27,8 @@ class TdictId(int):
     """
     The id for `TensorDict`'s tensor collection. Added for type safety.
     """
+
+    __slots__ = ()
 
     @classmethod
     def from_tdict(cls, t: td.TensorDictBase, /) -> typing.Self:
