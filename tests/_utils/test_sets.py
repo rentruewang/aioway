@@ -71,7 +71,7 @@ def test_any_dict_empty():
     assert not d
 
 
-def test_obj_isdisjoint():
+def test_isdisjoint_object():
     a = object()
     b = object()
     c = object()
@@ -82,6 +82,21 @@ def test_obj_isdisjoint():
     assert not s.isdisjoint([a])
     assert not s.isdisjoint([b])
     assert not s.isdisjoint([a, c])
+
+
+def test_isdisjoint_torch():
+    import torch
+
+    a = torch.tensor([1, 2])
+    b = torch.tensor([1, 2])
+
+    s = any_set(torch.Tensor, a)
+
+    # Same object -> not disjoint.
+    assert not s.isdisjoint([a])
+
+    # Different tensor, despite == producing an elementwise tensor -> disjoint.
+    assert s.isdisjoint([b])
 
 
 def test_any_dict_with_defaults():
