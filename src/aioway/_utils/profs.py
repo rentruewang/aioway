@@ -10,7 +10,8 @@ import time
 import typing
 from collections import abc as cabc
 
-from .types import AnyDict, Stack
+from .sets import AnyDict, any_dict
+from .types import Stack
 
 __all__ = ["Profiler", "ProfilerStack", "CallerProfiler", "ProfilerCollection"]
 
@@ -66,7 +67,7 @@ class ProfilerStack:
         The global profiler stack, cached.
         """
 
-        stack_dict = AnyDict(Profiler)
+        stack_dict = any_dict(Profiler)
         return cls(stack_dict)
 
 
@@ -89,7 +90,7 @@ class CallerProfiler(Profiler):
     The `Profiler` that track calls.
     """
 
-    stats: AnyDict[typing.Any, _CallStat] = dcls.field(default_factory=AnyDict)
+    stats: AnyDict[typing.Any, _CallStat] = dcls.field(default_factory=any_dict)
 
     @typing.override
     @ctxl.contextmanager

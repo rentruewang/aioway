@@ -7,7 +7,7 @@ import typing
 import torch
 from torch import nn
 
-from aioway._utils import AnyDict, Stack
+from aioway._utils import AnyDict, Stack, any_dict
 from aioway.t import (
     register_module_forward_hook,
     register_module_forward_pre_hook,
@@ -114,7 +114,7 @@ class ModuleHist:
     The history encountered.
     """
 
-    output_index: AnyDict[torch.Tensor, int] = dcls.field(default_factory=AnyDict)
+    output_index: AnyDict[torch.Tensor, int] = dcls.field(default_factory=any_dict)
     """
     The index of each tensor where `thunk.output = tensor`.
 

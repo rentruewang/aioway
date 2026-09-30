@@ -8,7 +8,7 @@ from collections import abc as cabc
 
 from torch import nn
 
-from aioway._utils import AnySet
+from aioway._utils import AnySet, any_set
 from aioway.t import TSpec
 
 __all__ = [
@@ -22,7 +22,7 @@ __all__ = [
     "emitters_in_scope",
 ]
 
-_EMITTERS: AnySet[Emitter] = AnySet()
+_EMITTERS: AnySet[Emitter] = any_set()
 "The emitters that are considered."
 
 

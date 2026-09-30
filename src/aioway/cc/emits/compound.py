@@ -8,7 +8,7 @@ from collections import abc as cabc
 
 from torch import nn
 
-from aioway._utils import AnyDict, Sign, render_fcall
+from aioway._utils import AnyDict, Sign, any_dict, render_fcall
 from aioway.t import tree_leaves_typed, tree_map_memo
 
 __all__ = ["CompoundBuilder", "BuilderNode", "BuiltModule"]
@@ -25,7 +25,7 @@ class CompoundBuilder:
         self.nodes: list[BuilderNode] = []
         "The nodes corresponding to the variables."
 
-        self._module_names: AnyDict[nn.Module, str] = AnyDict()
+        self._module_names: AnyDict[nn.Module, str] = any_dict()
         "The names of the modules currently in scope."
 
         self._type_count: dict[type[nn.Module], int] = collections.defaultdict(int)
@@ -195,7 +195,7 @@ class BuiltModule(nn.Module):
             )
 
         mapping_to_inputs = self._input_names
-        node_vals = AnyDict[BuilderNode, typing.Any]()
+        node_vals: AnyDict[BuilderNode, typing.Any] = any_dict()
         for key, val in all_kwargs.items():
             node_vals[mapping_to_inputs[key]] = val
 
