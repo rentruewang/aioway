@@ -9,6 +9,7 @@ from collections import abc as cabc
 
 import numpy as np
 import torch
+from torch.utils import _pytree as pytree
 
 from aioway._utils import is_seq_of
 from aioway.t import parse_attr
@@ -91,6 +92,9 @@ class TList:
         return self.__ids
 
 
+# Util functions.
+
+
 def _get_id(tensor: torch.Tensor | int, /) -> int:
     match tensor:
         case torch.Tensor():
@@ -99,3 +103,17 @@ def _get_id(tensor: torch.Tensor | int, /) -> int:
             return tensor
 
     raise TypeError(type(tensor))
+
+
+# Register for pytree.
+
+
+def _flatten_tlist(tlist: TList):
+    return list(tlist), None
+
+
+def _unflatten_tlist(tlist: cabc.Iterable[torch.Tensor], _: None):
+    return TList(tlist)
+
+
+pytree.register_pytree_node(TList, _flatten_tlist, _unflatten_tlist)

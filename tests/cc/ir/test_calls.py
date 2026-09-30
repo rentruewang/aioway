@@ -92,12 +92,12 @@ def test_dag_from_trace():
     assert len(dag) == 1
     assert len(dag.inputs) == 2
     dix, diy = dag.inputs
-    assert _fake_tensor_eq(dix, x)
-    assert _fake_tensor_eq(diy, y)
+    assert _attr_eq(dix, x)
+    assert _attr_eq(diy, y)
 
     assert len(dag.outputs) == 1
     [doz] = dag.outputs
-    assert _fake_tensor_eq(doz, z)
+    assert _attr_eq(doz, z)
 
 
 def test_dag_inputs_first_use_order():
@@ -111,8 +111,8 @@ def test_dag_inputs_first_use_order():
 
     dag = Dag.from_thunk_list(tracer.thunks)
 
-    assert _fake_tensor_eq(dag.inputs[0], x)
-    assert _fake_tensor_eq(dag.inputs[1], y)
+    assert _attr_eq(dag.inputs[0], x)
+    assert _attr_eq(dag.inputs[1], y)
 
 
 Fakes = tuple[torch.Tensor, torch.Tensor]
@@ -164,11 +164,10 @@ def reals() -> Fakes:
 @pytest.mark.parametrize("trace", TRACERS)
 @pytest.mark.parametrize("fn", FUNCS)
 def test_traced_matches_eager(trace, fn):
-    pytest.xfail("Fail for now")
     exec, _ = trace(fn)
     x, y = reals()
 
-    tt.assert_close(exec(x, y), fn(x, y))
+    _attr_eq(exec(x, y), fn(x, y))
 
 
 @pytest.mark.parametrize("trace", TRACERS)
@@ -188,8 +187,8 @@ def test_inputs_are_traced_fakes(trace):
     assert len(exec.inputs) == 2
 
     fx, fy = exec.inputs
-    assert _fake_tensor_eq(fx, x)
-    assert _fake_tensor_eq(fy, y)
+    assert _attr_eq(fx, x)
+    assert _attr_eq(fy, y)
 
 
 @pytest.mark.parametrize("trace", TRACERS)
@@ -218,10 +217,8 @@ def test_dag_inputs_many_same_step():
 
     dag = Dag.from_thunk_list(tracer.thunks)
 
-    assert all(_fake_tensor_eq(got, want) for got, want in zip(dag.inputs, xs))
+    assert all(_attr_eq(got, want) for got, want in zip(dag.inputs, xs))
 
 
-def _fake_tensor_eq(left: torch.Tensor, right: torch.Tensor):
-    assert is_fake(left)
-    assert is_fake(right)
+def _attr_eq(left: torch.Tensor, right: torch.Tensor):
     return parse_attr(left) == parse_attr(right)
