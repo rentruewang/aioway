@@ -72,16 +72,16 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
         Both are guaranteed to have the same structure.
         """
 
-        fake_list, fake_struct = pytree.tree_flatten(fake, is_leaf=is_fake_tensor)
-        real_list, real_struct = pytree.tree_flatten(real, is_leaf=is_real_tensor)
+        fake_list = pytree.tree_leaves(fake, is_leaf=is_fake_tensor)
+        real_list = pytree.tree_leaves(real, is_leaf=is_real_tensor)
 
-        if fake_struct != real_struct:
+        if len(fake_list) != len(real_list):
             raise ValueError(
                 "The real and fake provided does not have the same structure."
             )
 
-        # Since having same structure.
-        assert len(fake_list) == len(real_list)
+        if any(parse_attr(f) != parse_attr(t) for f, t in zip(fake_list, real_list)):
+            raise ValueError("The parsed lists are not really compatible.")
 
         # Update every reference. If real tensor exists in `fake_list`, skip.
         for fake_tensor, real_tensor in zip(fake_list, real_list):
@@ -95,7 +95,7 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
         thunk = self._dag[step]
 
         for input in thunk.inputs:
-            if self._dag.last_use(input) == step:
+            if self._dag.life(input).death == step:
                 self.drop(input)
 
     def clear(self) -> None:

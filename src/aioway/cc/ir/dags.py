@@ -2,11 +2,11 @@
 
 "The DAG that supports analysis."
 
+import dataclasses as dcls
 import functools
 import typing
 from collections import abc as cabc
 
-import pytest
 import torch
 
 from aioway._utils import AnyDict, AnySet, any_dict, any_set
@@ -14,7 +14,7 @@ from aioway.t import TList
 
 from .nodes import TensorRef, ThunkNode
 
-__all__ = ["Dag"]
+__all__ = ["Dag", "TensorLifetime"]
 
 
 class Dag[F: cabc.Callable]:
@@ -30,14 +30,14 @@ class Dag[F: cabc.Callable]:
     ) -> None:
         self._thunks = tuple(thunks)
 
-        self._inputs = tuple(inputs)
-        self._outputs = tuple(outputs)
+        self._inputs = TList(inputs)
+        self._outputs = TList(outputs)
 
         self._thunk_to_step: AnyDict[ThunkNode[F], int] = any_dict(
             ThunkNode, *((thunk, idx) for idx, thunk in enumerate(self._thunks))
         )
 
-        self._tensor_links = _build_tensor_refs(self._thunks, self._inputs)
+        self._tensor_links = _build_tensor_refs(self._thunks, list(self._inputs))
         "Mapping from tensors to refs (linking functions)."
 
         self._inputs_to_thunk_index = _tensor_is_input_to_thunk(self._thunks)
@@ -58,18 +58,17 @@ class Dag[F: cabc.Callable]:
     def __getitem__(self, idx: int) -> ThunkNode[F]:
         return self._thunks[idx]
 
-    def first_use(self, tensor: torch.Tensor) -> int:
-        return self.__get_tensor_life(tensor, min)
-
-    def last_use(self, tensor: torch.Tensor) -> int:
-        return self.__get_tensor_life(tensor, max)
+    def life(self, t: torch.Tensor, /) -> TensorLifetime:
+        birth = self.output_of_step(t) if t not in self.inputs else -1
+        death = max(self.input_to_step(t)) if t not in self.outputs else len(self)
+        return TensorLifetime(birth=birth, death=death)
 
     @property
-    def inputs(self):
+    def inputs(self) -> TList:
         return self._inputs
 
     @property
-    def outputs(self):
+    def outputs(self) -> TList:
         return self._outputs
 
     @functools.cached_property
@@ -114,20 +113,6 @@ class Dag[F: cabc.Callable]:
 
         if set(self._inputs) & set(self._outputs):
             raise ValueError("Inputs are in the outputs. Not allowed yet.")
-
-    def __get_tensor_life(
-        self, tensor: torch.Tensor, func: cabc.Callable[[cabc.Iterable[int]], int]
-    ) -> int:
-        pytest.xfail("Lifetime is broken now.")
-        # Use the ids to check because tensor `==` compares by element.
-
-        # if id(tensor) in self._input_ids:
-        #     return -1
-
-        # if id(tensor) in self._output_ids:
-        #     return len(self)
-
-        # return func(self._inputs_to_step[TensorId.from_tensor(tensor)])
 
     @functools.cached_property
     def _input_ids(self) -> frozenset[int]:
@@ -240,3 +225,21 @@ def _link_inputs_for_mapping(
         for input in thunk.inputs:
             assert input in mapping
             mapping[input].add_consumers(thunk)
+
+
+@dcls.dataclass(frozen=True)
+class TensorLifetime:
+    "Report the steps that the tensor is produced and last used."
+
+    birth: int
+    "The brith time. Inputs are -1, others are all positive."
+
+    death: int
+    "The death time. Outputs are `len(dag)`, of course it depends on which DAG."
+
+    def __post_init__(self) -> None:
+        if self.birth < -1:
+            raise ValueError("Only -1 or positive numbers.")
+
+        if self.death < self.birth:
+            raise ValueError("Death before birth for lifetime.")
