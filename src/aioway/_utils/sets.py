@@ -7,6 +7,8 @@ __all__ = ["any_set", "AnySet", "any_dict", "AnyDict"]
 
 type AnyId = int
 
+# The convenient constructors, that are public.
+
 
 @typing.overload
 def any_set() -> AnySet: ...
@@ -68,6 +70,9 @@ def any_dict[K = typing.Any, V = typing.Any](
         adict[key] = val
 
     return adict
+
+
+# Class definitions, private. Exposed to `__all__` for type hints.
 
 
 class AnySet[K = typing.Any]:
