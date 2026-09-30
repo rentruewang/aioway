@@ -21,7 +21,7 @@ from aioway.t import (
 __all__ = ["ThunkNode", "TensorRef"]
 
 
-@dcls.dataclass(frozen=True, eq=False,repr=False)
+@dcls.dataclass(frozen=True, eq=False, repr=False)
 class ThunkNode[F: cabc.Callable]:
     """
     Stores the thunk's arguments, function, and output.
@@ -62,18 +62,18 @@ class ThunkNode[F: cabc.Callable]:
     @functools.cached_property
     def inputs(self) -> TList:
         "Get the (unique) dependencies of the current thunk."
-        return TList(self._upstream())
+        return TList(self._in_tensors())
 
     @functools.cached_property
     def outputs(self) -> TList:
         "Get the output list of (unique) tensors of the current thunk."
-        return TList(self._downstream())
+        return TList(self._out_tensors())
 
-    def _upstream(self) -> cabc.Generator[torch.Tensor]:
+    def _in_tensors(self) -> cabc.Generator[torch.Tensor]:
         yield from find_nested_tensors(self.args)
         yield from find_nested_tensors(self.kwargs)
 
-    def _downstream(self) -> cabc.Generator[torch.Tensor]:
+    def _out_tensors(self) -> cabc.Generator[torch.Tensor]:
         yield from find_nested_tensors(self.result)
 
     @property

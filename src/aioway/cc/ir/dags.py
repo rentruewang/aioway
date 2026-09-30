@@ -153,6 +153,9 @@ class Dag[F: cabc.Callable]:
         return cls(thunks, input_tensors, output_tensors)
 
 
+# Helper functions ----
+
+
 def _all_thunk_tensors(thunks: cabc.Sequence[ThunkNode]):
     for thunk in thunks:
         yield from thunk.inputs
@@ -225,6 +228,9 @@ def _link_inputs_for_mapping(
         for input in thunk.inputs:
             assert input in mapping
             mapping[input].add_consumers(thunk)
+
+
+# Helper classes ----
 
 
 @dcls.dataclass(frozen=True)
