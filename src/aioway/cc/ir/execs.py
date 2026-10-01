@@ -10,7 +10,7 @@ from torch.utils import _pytree as pytree
 
 from aioway.t import is_fake, is_fake_tensor, is_real_tensor, parse_attr
 
-from .sets import Dag, FCallInstr
+from .sets import Dag, FCall
 
 __all__ = ["Exec", "LocalScope"]
 
@@ -170,10 +170,10 @@ class Exec[F: cabc.Callable = typing.Any]:
     def __len__(self) -> int:
         return len(self._dag)
 
-    def __getitem__(self, idx: int) -> FCallInstr[F]:
+    def __getitem__(self, idx: int) -> FCall[F]:
         return self._dag[idx]
 
-    def __iter__(self) -> cabc.Generator[FCallInstr[F]]:
+    def __iter__(self) -> cabc.Generator[FCall[F]]:
         yield from self._dag
 
     def __call__(self, *inputs: torch.Tensor) -> typing.Any:

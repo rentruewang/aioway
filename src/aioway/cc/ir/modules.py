@@ -14,13 +14,13 @@ from aioway.t import (
     register_module_forward_pre_hook,
 )
 
-from .sets import Dag, FCallInstr
+from .sets import Dag, FCall
 
 __all__ = ["ModuleThunk", "ModuleTracker", "ModuleHist", "track_module_thunks"]
 
 
 @dcls.dataclass(frozen=True)
-class ModuleThunk(FCallInstr):
+class ModuleThunk(FCall):
     """
     Module thunk is a thunk tracking inputs, outputs, and which module calls it.
     """

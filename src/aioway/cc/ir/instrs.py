@@ -16,11 +16,11 @@ from aioway.t import (
     replace_tensors_with_attr,
 )
 
-__all__ = ["FCallInstr"]
+__all__ = ["FCall"]
 
 
 @dcls.dataclass(frozen=True, eq=False, repr=False)
-class FCallInstr[F: cabc.Callable]:
+class FCall[F: cabc.Callable]:
     """
     An instruction representing a function call.
     """
