@@ -12,144 +12,18 @@ import torch
 from aioway._utils import AnyDict, AnySet, any_dict, any_set
 from aioway.t import (
     TList,
-    find_nested_tensors,
     is_real,
     parse_attr,
-    render_tensor_func_short,
-    replace_tensors_with_attr,
 )
 
-__all__ = ["ThunkNode", "TensorRef", "Dag", "TensorLifetime"]
+from .instrs import FCall
 
-# The node classes ====
-
-
-@dcls.dataclass(frozen=True, eq=False, repr=False)
-class ThunkNode[F: cabc.Callable]:
-    """
-    Stores the thunk's arguments, function, and output.
-
-    This is the node type for the dag.
-    """
-
-    _: dcls.KW_ONLY
-
-    func: F
-    "The callable that the thunk calls."
-
-    args: tuple[typing.Any, ...]
-    "The arguments fed to the function."
-
-    kwargs: dict[str, typing.Any]
-    "The keyword arguments fed to the function."
-
-    result: typing.Any = dcls.MISSING
-    "The result. If `dcls.MISSING`, the thunk is not called yet."
-
-    def __post_init__(self) -> None:
-        if not callable(self.func):
-            raise TypeError(f"{self.func} is not callable.")
-
-    def __eq__(self, other) -> bool:
-        """
-        `ThunkNode` will not implement `__eq__`.
-        """
-        return NotImplemented
-
-    @typing.override
-    def __repr__(self) -> str:
-        result = str(replace_tensors_with_attr(self.result))
-        thunk = render_tensor_func_short(str(self.func), self.args, self.kwargs)
-        return thunk + " -> " + result
-
-    @functools.cached_property
-    def inputs(self) -> TList:
-        "Get the (unique) dependencies of the current thunk."
-        return TList(self._in_tensors())
-
-    @functools.cached_property
-    def outputs(self) -> TList:
-        "Get the output list of (unique) tensors of the current thunk."
-        return TList(self._out_tensors())
-
-    def _in_tensors(self) -> cabc.Generator[torch.Tensor]:
-        yield from find_nested_tensors(self.args)
-        yield from find_nested_tensors(self.kwargs)
-
-    def _out_tensors(self) -> cabc.Generator[torch.Tensor]:
-        yield from find_nested_tensors(self.result)
-
-    @property
-    def done(self) -> bool:
-        return self.result is not dcls.MISSING
-
-
-class TensorRef[T: ThunkNode]:
-    """
-    A data structure holding tensor information in the DAG.
-
-    It holds the reference to the fake tensor,
-    the callable that produces it, and the downstream consumer (function).
-
-    Since in the DAG the tensor are never reused by the function,
-    we can assume there is only 1 single producer.
-    """
-
-    def __init__(self, producer: T | None, tensor: torch.Tensor) -> None:
-        """
-        Args:
-            producer: The thunk's id, or `None` if it's a free variable.
-            tensor: The tensor this reference tracks. Must be fake.
-        """
-
-        self._producer = producer
-        self._tensor = tensor
-        self._consumers: AnySet[T] = typing.cast(typing.Any, any_set(ThunkNode))
-
-        if not isinstance(tensor, torch.Tensor) or is_real(tensor):
-            raise ValueError(
-                f"The fake tensor produced at idx={self._producer} is real."
-            )
-
-    def __repr__(self) -> str:
-        attr = parse_attr(self.tensor)
-        return f"TRef({attr!s}, {self.producer})"
-
-    def add_consumers(self, *consumers: T) -> None:
-        "Add consumers for the info. Allow duplication."
-
-        for consumer in consumers:
-            self._consumers.add(consumer)
-
-    @property
-    def producer(self) -> T:
-        "The producer index."
-
-        if self._producer is None:
-            raise AttributeError("The variable is a free variable.")
-        else:
-            return self._producer
-
-    @property
-    def consumers(self) -> AnySet[T]:
-        "The list of consumers."
-        return self._consumers
-
-    @property
-    def tensor(self) -> torch.Tensor:
-        "Return the fake tensor."
-        return self._tensor
-
-    @property
-    def is_free(self) -> bool:
-        "Check if the tensor is a free value."
-        return self._producer is None
-
+__all__ = ["TensorRef", "InstrSet", "TensorLifetime"]
 
 # The DAG class ====
 
 
-class Dag[T: ThunkNode]:
+class InstrSet[T: FCall]:
     """
     A dag is a sequence of callables, that are linked by fake tensors.
     """
@@ -166,7 +40,7 @@ class Dag[T: ThunkNode]:
         self._outputs = TList(outputs)
 
         self._thunk_to_step: AnyDict[T, int] = any_dict(
-            ThunkNode, *((thunk, idx) for idx, thunk in enumerate(self._thunks))
+            FCall, *((thunk, idx) for idx, thunk in enumerate(self._thunks))
         )
 
         self._tensor_links = _build_tensor_refs(self._thunks, list(self._inputs))
@@ -322,19 +196,84 @@ class Dag[T: ThunkNode]:
         return cls(thunks, input_tensors, output_tensors)
 
 
+# The node classes ====
+
+
+class TensorRef[T: FCall]:
+    """
+    A data structure holding tensor information in the DAG.
+
+    It holds the reference to the fake tensor,
+    the callable that produces it, and the downstream consumer (function).
+
+    Since in the DAG the tensor are never reused by the function,
+    we can assume there is only 1 single producer.
+    """
+
+    def __init__(self, producer: T | None, tensor: torch.Tensor) -> None:
+        """
+        Args:
+            producer: The thunk's id, or `None` if it's a free variable.
+            tensor: The tensor this reference tracks. Must be fake.
+        """
+
+        self._producer = producer
+        self._tensor = tensor
+        self._consumers: AnySet[T] = typing.cast(typing.Any, any_set(FCall))
+
+        if not isinstance(tensor, torch.Tensor) or is_real(tensor):
+            raise ValueError(
+                f"The fake tensor produced at idx={self._producer} is real."
+            )
+
+    def __repr__(self) -> str:
+        attr = parse_attr(self.tensor)
+        return f"TRef({attr!s}, {self.producer})"
+
+    def add_consumers(self, *consumers: T) -> None:
+        "Add consumers for the info. Allow duplication."
+
+        for consumer in consumers:
+            self._consumers.add(consumer)
+
+    @property
+    def producer(self) -> T:
+        "The producer index."
+
+        if self._producer is None:
+            raise AttributeError("The variable is a free variable.")
+        else:
+            return self._producer
+
+    @property
+    def consumers(self) -> AnySet[T]:
+        "The list of consumers."
+        return self._consumers
+
+    @property
+    def tensor(self) -> torch.Tensor:
+        "Return the fake tensor."
+        return self._tensor
+
+    @property
+    def is_free(self) -> bool:
+        "Check if the tensor is a free value."
+        return self._producer is None
+
+
 # Helper functions for dag ====
 
 
-def _all_thunk_tensors(thunks: cabc.Sequence[ThunkNode]):
+def _all_thunk_tensors(thunks: cabc.Sequence[FCall]):
     for thunk in thunks:
         yield from thunk.inputs
         yield from thunk.outputs
 
 
 def _tensor_is_input_to_thunk(
-    thunks: cabc.Sequence[ThunkNode],
-) -> AnyDict[torch.Tensor, list[ThunkNode]]:
-    result: AnyDict[torch.Tensor, list[ThunkNode]] = any_dict(torch.Tensor)
+    thunks: cabc.Sequence[FCall],
+) -> AnyDict[torch.Tensor, list[FCall]]:
+    result: AnyDict[torch.Tensor, list[FCall]] = any_dict(torch.Tensor)
 
     for thunk in thunks:
         for tensor in thunk.inputs:
@@ -347,7 +286,7 @@ def _tensor_is_input_to_thunk(
 
 
 def _build_tensor_refs(
-    thunks: cabc.Sequence[ThunkNode], inputs: cabc.Sequence[torch.Tensor]
+    thunks: cabc.Sequence[FCall], inputs: cabc.Sequence[torch.Tensor]
 ) -> AnyDict[torch.Tensor, TensorRef]:
     "Get the mapping from id of `torch.Tensor` to corresponding tensor ref."
 
@@ -376,7 +315,7 @@ def _tensor_refs_inputs(
 
 
 def _tensor_refs_outputs(
-    thunks: cabc.Sequence[ThunkNode],
+    thunks: cabc.Sequence[FCall],
 ) -> AnyDict[torch.Tensor, TensorRef]:
     mapping: AnyDict[torch.Tensor, TensorRef] = any_dict(torch.Tensor)
 
@@ -391,7 +330,7 @@ def _tensor_refs_outputs(
 
 
 def _link_inputs_for_mapping(
-    mapping: AnyDict[torch.Tensor, TensorRef], thunks: cabc.Sequence[ThunkNode]
+    mapping: AnyDict[torch.Tensor, TensorRef], thunks: cabc.Sequence[FCall]
 ) -> None:
     for thunk in thunks:
         for input in thunk.inputs:
