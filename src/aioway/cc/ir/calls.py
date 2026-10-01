@@ -16,7 +16,7 @@ from aioway.t import (
 from aioway.t.guards import is_torch_function
 
 from .execs import Exec
-from .sets import Dag, ThunkNode
+from .sets import Dag, FCallInstr
 
 __all__ = ["TorchFuncDag", "fake_aten_dag"]
 
@@ -25,16 +25,16 @@ __all__ = ["TorchFuncDag", "fake_aten_dag"]
 class _TorchCallDag(abc.ABC):
     "The base class for torch functions or dispatches."
 
-    thunks: list[ThunkNode] = dcls.field(default_factory=list)
+    thunks: list[FCallInstr] = dcls.field(default_factory=list)
     "The thunk storage."
 
     def __len__(self) -> int:
         return len(self.thunks)
 
-    def __getitem__(self, idx: int) -> ThunkNode:
+    def __getitem__(self, idx: int) -> FCallInstr:
         return self.thunks[idx]
 
-    def append(self, thunk: ThunkNode) -> None:
+    def append(self, thunk: FCallInstr) -> None:
         self.thunks.append(thunk)
 
     def exec(self) -> Exec:
@@ -45,7 +45,7 @@ class _TorchCallDag(abc.ABC):
 
         # Only track the function if it is point of interest.
         if self._track_thunk(thunk.func):
-            thunk_with_output = ThunkNode(
+            thunk_with_output = FCallInstr(
                 func=thunk.func, args=thunk.args, kwargs=thunk.kwargs, result=result
             )
             self.thunks.append(thunk_with_output)

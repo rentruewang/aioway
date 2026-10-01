@@ -16,14 +16,14 @@ from aioway.t import (
     parse_attr,
 )
 
-from .instrs import ThunkNode
+from .instrs import FCallInstr
 
 __all__ = ["TensorRef", "Dag", "TensorLifetime"]
 
 # The DAG class ====
 
 
-class Dag[T: ThunkNode]:
+class Dag[T: FCallInstr]:
     """
     A dag is a sequence of callables, that are linked by fake tensors.
     """
@@ -40,7 +40,7 @@ class Dag[T: ThunkNode]:
         self._outputs = TList(outputs)
 
         self._thunk_to_step: AnyDict[T, int] = any_dict(
-            ThunkNode, *((thunk, idx) for idx, thunk in enumerate(self._thunks))
+            FCallInstr, *((thunk, idx) for idx, thunk in enumerate(self._thunks))
         )
 
         self._tensor_links = _build_tensor_refs(self._thunks, list(self._inputs))
@@ -199,7 +199,7 @@ class Dag[T: ThunkNode]:
 # The node classes ====
 
 
-class TensorRef[T: ThunkNode]:
+class TensorRef[T: FCallInstr]:
     """
     A data structure holding tensor information in the DAG.
 
@@ -219,7 +219,7 @@ class TensorRef[T: ThunkNode]:
 
         self._producer = producer
         self._tensor = tensor
-        self._consumers: AnySet[T] = typing.cast(typing.Any, any_set(ThunkNode))
+        self._consumers: AnySet[T] = typing.cast(typing.Any, any_set(FCallInstr))
 
         if not isinstance(tensor, torch.Tensor) or is_real(tensor):
             raise ValueError(
@@ -264,16 +264,16 @@ class TensorRef[T: ThunkNode]:
 # Helper functions for dag ====
 
 
-def _all_thunk_tensors(thunks: cabc.Sequence[ThunkNode]):
+def _all_thunk_tensors(thunks: cabc.Sequence[FCallInstr]):
     for thunk in thunks:
         yield from thunk.inputs
         yield from thunk.outputs
 
 
 def _tensor_is_input_to_thunk(
-    thunks: cabc.Sequence[ThunkNode],
-) -> AnyDict[torch.Tensor, list[ThunkNode]]:
-    result: AnyDict[torch.Tensor, list[ThunkNode]] = any_dict(torch.Tensor)
+    thunks: cabc.Sequence[FCallInstr],
+) -> AnyDict[torch.Tensor, list[FCallInstr]]:
+    result: AnyDict[torch.Tensor, list[FCallInstr]] = any_dict(torch.Tensor)
 
     for thunk in thunks:
         for tensor in thunk.inputs:
@@ -286,7 +286,7 @@ def _tensor_is_input_to_thunk(
 
 
 def _build_tensor_refs(
-    thunks: cabc.Sequence[ThunkNode], inputs: cabc.Sequence[torch.Tensor]
+    thunks: cabc.Sequence[FCallInstr], inputs: cabc.Sequence[torch.Tensor]
 ) -> AnyDict[torch.Tensor, TensorRef]:
     "Get the mapping from id of `torch.Tensor` to corresponding tensor ref."
 
@@ -315,7 +315,7 @@ def _tensor_refs_inputs(
 
 
 def _tensor_refs_outputs(
-    thunks: cabc.Sequence[ThunkNode],
+    thunks: cabc.Sequence[FCallInstr],
 ) -> AnyDict[torch.Tensor, TensorRef]:
     mapping: AnyDict[torch.Tensor, TensorRef] = any_dict(torch.Tensor)
 
@@ -330,7 +330,7 @@ def _tensor_refs_outputs(
 
 
 def _link_inputs_for_mapping(
-    mapping: AnyDict[torch.Tensor, TensorRef], thunks: cabc.Sequence[ThunkNode]
+    mapping: AnyDict[torch.Tensor, TensorRef], thunks: cabc.Sequence[FCallInstr]
 ) -> None:
     for thunk in thunks:
         for input in thunk.inputs:

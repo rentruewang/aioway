@@ -5,20 +5,20 @@ from collections import abc as cabc
 
 import pytest
 
-from aioway.cc import Dag, TensorLifetime, ThunkNode
+from aioway.cc import Dag, FCallInstr, TensorLifetime
 
 
-@typing.no_type_check
-def test_thunk_not_callable():
+def test_thunk_not_callable() -> None:
+    non_call: typing.Any = 3
     with pytest.raises(TypeError):
-        ThunkNode(func=3, args=(), kwargs={}, result=None)
+        FCallInstr(func=non_call, args=(), kwargs={}, result=None)
 
 
-def test_thunk_upstream(thunks: cabc.Sequence[ThunkNode], fakes):
+def test_thunk_upstream(thunks: cabc.Sequence[FCallInstr], fakes):
     assert set(thunks[0].inputs) == set(fakes)
 
 
-def test_thunk_downstream(thunks: cabc.Sequence[ThunkNode]):
+def test_thunk_downstream(thunks: cabc.Sequence[FCallInstr]):
     assert list(thunks[0].outputs) == [thunks[0].result]
 
 

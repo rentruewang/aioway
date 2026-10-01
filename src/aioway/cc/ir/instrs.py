@@ -16,15 +16,13 @@ from aioway.t import (
     replace_tensors_with_attr,
 )
 
-__all__ = ["ThunkNode"]
+__all__ = ["FCallInstr"]
 
 
 @dcls.dataclass(frozen=True, eq=False, repr=False)
-class ThunkNode[F: cabc.Callable]:
+class FCallInstr[F: cabc.Callable]:
     """
-    Stores the thunk's arguments, function, and output.
-
-    This is the node type for the dag.
+    An instruction representing a function call.
     """
 
     _: dcls.KW_ONLY
