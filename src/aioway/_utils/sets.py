@@ -104,7 +104,7 @@ class AnySet[K = typing.Any]:
 
     def __contains__(self, key: object, /) -> bool:
         if isinstance(key, self._type):
-            key_id = _hash_or_id(key)
+            key_id = _HASH(key)
             return key_id in self._keys
 
         raise TypeError(f"{type(key)=} is not `{self._type}`.")
@@ -123,13 +123,13 @@ class AnySet[K = typing.Any]:
         return self
 
     def isdisjoint(self, other: cabc.Iterable[K]) -> bool:
-        return all(_hash_or_id(item) not in self._keys for item in other)
+        return all(_HASH(item) not in self._keys for item in other)
 
     def add(self, key: K) -> None:
-        self._keys[_hash_or_id(key)] = key
+        self._keys[_HASH(key)] = key
 
     def discard(self, key: K) -> None:
-        if (key_hash := _hash_or_id(key)) in self._keys:
+        if (key_hash := _HASH(key)) in self._keys:
             del self._keys[key_hash]
 
     def copy(self) -> typing.Self:
@@ -159,13 +159,13 @@ class AnyDict[K = typing.Any, V = typing.Any](AnySet[K]):
         if key not in self:
             raise KeyError(f"{key=} is not found in `AnyDict`.")
 
-        return self._vals[_hash_or_id(key)]
+        return self._vals[_HASH(key)]
 
     def __setitem__(self, key: K, val: V, /) -> None:
         self.__assert_same_length()
 
         super().add(key)
-        self._vals[_hash_or_id(key)] = val
+        self._vals[_HASH(key)] = val
 
     def __delitem__(self, key: K, /) -> None:
         self.__assert_same_length()
@@ -174,7 +174,7 @@ class AnyDict[K = typing.Any, V = typing.Any](AnySet[K]):
             raise KeyError(f"{key=} is not in `AnyDict`.")
 
         super().discard(key)
-        del self._vals[_hash_or_id(key)]
+        del self._vals[_HASH(key)]
 
     def __or__(self, other: typing.Self) -> typing.Self:
         copied = self.copy()
@@ -228,10 +228,13 @@ class HashId:
     The hasher that uses `id` for non hashable types.
     """
 
-    non_hashable_types: set[type] = dcls.field(default_factory=set)
+    no_hash: set[type] = dcls.field(default_factory=set)
+    """
+    The types that we don't want to hash.
+    """
 
     def __call__(self, obj) -> AnyId:
-        if (type_obj := type(obj)) in self.non_hashable_types:
+        if (type_obj := type(obj)) in self.no_hash:
             return id(obj)
 
         try:
@@ -239,8 +242,11 @@ class HashId:
 
         # Tried hash, but it's not hashable.
         except TypeError:
-            self.non_hashable_types.add(type_obj)
+            self.no_hash.add(type_obj)
             return id(obj)
 
 
-_hash_or_id = HashId()
+_HASH = HashId()
+"""
+The global hasher for both hashable and non hashable objects.
+"""
