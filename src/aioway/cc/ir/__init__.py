@@ -2,6 +2,7 @@
 
 from ._utils import *
 from .calls import *
-from .dags import *
 from .execs import *
+from .instrs import *
 from .modules import *
+from .sets import *

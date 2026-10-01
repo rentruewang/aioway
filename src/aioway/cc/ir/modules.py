@@ -14,7 +14,7 @@ from aioway.t import (
     register_module_forward_pre_hook,
 )
 
-from .dags import Dag, ThunkNode
+from .sets import Dag, ThunkNode
 
 __all__ = ["ModuleThunk", "ModuleTracker", "ModuleHist", "track_module_thunks"]
 

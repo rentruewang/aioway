@@ -10,7 +10,7 @@ from torch.utils import _pytree as pytree
 
 from aioway.t import is_fake, is_fake_tensor, is_real_tensor, parse_attr
 
-from .dags import Dag, ThunkNode
+from .sets import Dag, ThunkNode
 
 __all__ = ["Exec", "LocalScope"]
 

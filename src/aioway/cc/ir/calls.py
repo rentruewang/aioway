@@ -15,8 +15,8 @@ from aioway.t import (
 )
 from aioway.t.guards import is_torch_function
 
-from .dags import Dag, ThunkNode
 from .execs import Exec
+from .sets import Dag, ThunkNode
 
 __all__ = ["TorchFuncDag", "fake_aten_dag"]
 

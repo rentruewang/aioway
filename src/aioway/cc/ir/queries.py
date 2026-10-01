@@ -3,7 +3,7 @@
 import dataclasses as dcls
 import typing
 
-from .dags import Dag
+from .sets import Dag
 
 __all__ = ["Query"]
 
