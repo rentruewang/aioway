@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from aioway.cc import Dag, FCall
+from aioway.cc import InstrSet, FCall
 from aioway.t import fake_mode
 
 
@@ -36,5 +36,5 @@ def thunks(fakes) -> tuple[FCall, ...]:
 
 
 @pytest.fixture
-def dag(thunks, fakes) -> Dag:
-    return Dag(thunks, inputs=fakes, outputs=[thunks[-1].result])
+def dag(thunks, fakes) -> InstrSet:
+    return InstrSet(thunks, inputs=fakes, outputs=[thunks[-1].result])

@@ -3,11 +3,11 @@
 import pytest
 import torch
 
-from aioway.cc import Dag, Exec
+from aioway.cc import InstrSet, Exec
 
 
 @pytest.fixture
-def exec(dag: Dag) -> Exec:
+def exec(dag: InstrSet) -> Exec:
     return Exec(dag)
 
 
