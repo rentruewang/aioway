@@ -2,6 +2,7 @@
 
 "The instructions themselves."
 
+import abc
 import dataclasses as dcls
 import functools
 import typing
@@ -16,11 +17,35 @@ from aioway.t import (
     replace_tensors_with_attr,
 )
 
-__all__ = ["FCall"]
+__all__ = ["Instr", "FCall"]
+
+
+class Instr(abc.ABC):
+    "The instruction base class."
+
+    @functools.cached_property
+    def inputs(self) -> TList:
+        return self._inputs()
+
+    @functools.cached_property
+    def outputs(self) -> TList:
+        return self._outputs()
+
+    @abc.abstractmethod
+    def _inputs(self) -> TList:
+        "The list of tensors in the inputs."
+
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def _outputs(self) -> TList:
+        "The list of tensors in the outputs."
+
+        raise NotImplementedError
 
 
 @dcls.dataclass(frozen=True, eq=False, repr=False)
-class FCall[F: cabc.Callable]:
+class FCall[F: cabc.Callable](Instr):
     """
     An instruction representing a function call.
     """
@@ -45,8 +70,9 @@ class FCall[F: cabc.Callable]:
 
     def __eq__(self, other) -> bool:
         """
-        `ThunkNode` will not implement `__eq__`.
+        `FCall` will not implement `__eq__`.
         """
+
         return NotImplemented
 
     @typing.override
@@ -55,13 +81,13 @@ class FCall[F: cabc.Callable]:
         thunk = render_tensor_func_short(str(self.func), self.args, self.kwargs)
         return thunk + " -> " + result
 
-    @functools.cached_property
-    def inputs(self) -> TList:
+    @typing.override
+    def _inputs(self) -> TList:
         "Get the (unique) dependencies of the current thunk."
         return TList(self._in_tensors())
 
-    @functools.cached_property
-    def outputs(self) -> TList:
+    @typing.override
+    def _outputs(self) -> TList:
         "Get the output list of (unique) tensors of the current thunk."
         return TList(self._out_tensors())
 
