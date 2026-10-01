@@ -20,6 +20,9 @@ from aioway.t import (
 __all__ = ["Instr", "FCall"]
 
 
+# The base instruction class ====
+
+
 class Instr(abc.ABC):
     "The instruction base class."
 
@@ -42,6 +45,9 @@ class Instr(abc.ABC):
         "The list of tensors in the outputs."
 
         raise NotImplementedError
+
+
+# The implementations. Right now only `FCall` exists. ====
 
 
 @dcls.dataclass(frozen=True, eq=False, repr=False)

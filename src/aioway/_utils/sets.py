@@ -2,6 +2,7 @@
 
 import typing
 from collections import abc as cabc
+import dataclasses as dcls
 
 __all__ = ["any_set", "AnySet", "any_dict", "AnyDict"]
 
@@ -218,10 +219,28 @@ class AnyDict[K = typing.Any, V = typing.Any](AnySet[K]):
     add = discard = typing.cast(typing.Any, None)
 
 
-def _hash_or_id(obj) -> AnyId:
-    "Get the hash or id values."
+# Helper hashing function. ====
 
-    try:
-        return hash(obj)
-    except TypeError:
-        return id(obj)
+
+@dcls.dataclass
+class HashId:
+    """
+    The hasher that uses `id` for non hashable types.
+    """
+
+    non_hashable_types: set[type] = dcls.field(default_factory=set)
+
+    def __call__(self, obj) -> AnyId:
+        if (type_obj := type(obj)) in self.non_hashable_types:
+            return id(obj)
+
+        try:
+            return hash(obj)
+
+        # Tried hash, but it's not hashable.
+        except TypeError:
+            self.non_hashable_types.add(type_obj)
+            return id(obj)
+
+
+_hash_or_id = HashId()
