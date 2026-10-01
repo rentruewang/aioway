@@ -16,7 +16,7 @@ from aioway.t import (
 from aioway.t.guards import is_torch_function
 
 from .execs import Exec
-from .sets import InstrSet, FCall
+from .sets import FCall, InstrSet
 
 __all__ = ["TorchFuncDag", "fake_aten_dag"]
 

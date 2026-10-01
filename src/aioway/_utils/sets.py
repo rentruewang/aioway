@@ -1,8 +1,8 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import dataclasses as dcls
 import typing
 from collections import abc as cabc
-import dataclasses as dcls
 
 __all__ = ["any_set", "AnySet", "any_dict", "AnyDict"]
 

@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from aioway.cc import InstrSet, Exec
+from aioway.cc import Exec, InstrSet
 
 
 @pytest.fixture

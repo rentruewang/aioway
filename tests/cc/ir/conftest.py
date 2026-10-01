@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from aioway.cc import InstrSet, FCall
+from aioway.cc import FCall, InstrSet
 from aioway.t import fake_mode
 
 

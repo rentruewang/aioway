@@ -7,7 +7,7 @@ import torch
 from torch import ops
 from torch import testing as tt
 
-from aioway.cc import InstrSet, Exec, TorchFuncDag, fake_aten_dag
+from aioway.cc import Exec, InstrSet, TorchFuncDag, fake_aten_dag
 from aioway.t import fake_mode, is_aten_op, is_fake, parse_attr
 
 

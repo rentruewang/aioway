@@ -14,7 +14,7 @@ from aioway.t import (
     register_module_forward_pre_hook,
 )
 
-from .sets import InstrSet, FCall
+from .sets import FCall, InstrSet
 
 __all__ = ["ModuleThunk", "ModuleTracker", "ModuleHist", "track_module_thunks"]
 
