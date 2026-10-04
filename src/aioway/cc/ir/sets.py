@@ -2,6 +2,7 @@
 
 "The DAG that supports analysis."
 
+from aioway.t import fake_mode
 import dataclasses as dcls
 import functools
 import typing
@@ -73,6 +74,20 @@ class InstrSet[T: FCall]:
                 return self._thunks[idx]
             case Query():
                 return idx(self)
+
+    def __setitem__(self, query: Query, subset: typing.Self) -> None:
+        raise NotImplementedError("See ticket #")
+        # queried = self[query]
+
+        # if queried.inputs.attrs() != subset.inputs.attrs():
+        #     raise ValueError("Inputs are not compatible.")
+
+        # if queried.outputs.attrs() != subset.outputs.attrs():
+        #     raise ValueError("Outputs are not compatible.")
+
+        # with fake_mode():
+        #     # Get the inputs
+        #     x = queried
 
     def parents(self, thunk: T) -> AnySet[T]:
         return any_set(T, *self._parents(thunk))
