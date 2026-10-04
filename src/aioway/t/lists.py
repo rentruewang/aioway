@@ -12,8 +12,8 @@ import torch
 from torch.utils import _pytree as pytree
 
 from aioway._utils import is_seq_of
-from aioway.t import parse_attr
 
+from .attrs import parse_attr
 from .overrides import is_fake
 
 if typing.TYPE_CHECKING:
@@ -93,8 +93,6 @@ class TList:
         """
         Convert `TList` to a list of `Attr`.
         """
-
-        from aioway.t import parse_attr
 
         return parse_attr(self)
 

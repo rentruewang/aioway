@@ -7,13 +7,16 @@ import functools
 import typing
 from collections import abc as cabc
 
+import numpy as np
 import torch
 
-from aioway._utils import AnyDict, AnySet, any_dict, any_set
+from aioway._utils import AnyDict, AnySet, IntArray, any_dict, any_set
 from aioway.t import TList, is_real, parse_attr
 
 from .instrs import FCall
-from .queries import Query
+
+if typing.TYPE_CHECKING:
+    from .queries import Query
 
 __all__ = ["TensorRef", "InstrSet", "TensorLifetime"]
 
@@ -39,6 +42,7 @@ class InstrSet[T: FCall]:
         self._thunk_to_step: AnyDict[T, int] = any_dict(
             FCall, *((thunk, idx) for idx, thunk in enumerate(self._thunks))
         )
+        "Mapping from thunks to their indices."
 
         self._tensor_links = _build_tensor_refs(self._thunks, list(self._inputs))
         "Mapping from tensors to refs (linking functions)."
@@ -65,14 +69,25 @@ class InstrSet[T: FCall]:
     def __getitem__(self, idx: int) -> T: ...
 
     @typing.overload
+    def __getitem__(self, idx: list[int] | IntArray) -> list[FCall]: ...
+
+    @typing.overload
     def __getitem__(self, idx: Query) -> typing.Self: ...
 
     def __getitem__(self, idx):
-        match idx:
-            case int():
-                return self._thunks[idx]
-            case Query():
-                return idx(self)
+        from .queries import Query
+
+        if isinstance(idx, int):
+            return self._thunks[idx]
+
+        if isinstance(idx, Query):
+            return idx(self)
+
+        # If it's `list[int]` or `IntArray`.
+        if np.isdtype((arr := np.asarray(idx)).dtype, "integral"):
+            return [self._thunks[i] for i in arr]
+
+        raise TypeError(f"Unknown type: {type(idx)=}.")
 
     def __setitem__(self, query: Query, subset: typing.Self) -> None:
         raise NotImplementedError("See ticket #615")
@@ -89,10 +104,10 @@ class InstrSet[T: FCall]:
         #     x = queried
 
     def parents(self, thunk: T) -> AnySet[T]:
-        return any_set(T, *self._parents(thunk))
+        return any_set(FCall, *self._parents(thunk))
 
     def children(self, thunk: T) -> AnySet[T]:
-        return any_set(T, *self._children(thunk))
+        return any_set(FCall, *self._children(thunk))
 
     def _parents(self, thunk: T) -> cabc.Generator[T]:
         for input in thunk.inputs:
@@ -131,6 +146,10 @@ class InstrSet[T: FCall]:
     def tensors(self) -> TList:
         return TList(self._all_tensors())
 
+    def index(self, instr: T, /) -> int:
+        "Get the index of each instruction."
+        return self._thunk_to_step[instr]
+
     def output_of_step(self, tensor: torch.Tensor) -> int:
         """
         Get the step number of step that produced output.
@@ -139,11 +158,11 @@ class InstrSet[T: FCall]:
         """
 
         thunk = self._thunk_producing(tensor)
-        return self._thunk_to_step[thunk] if thunk is not None else -1
+        return self.index(thunk) if thunk is not None else -1
 
     def input_to_step(self, tensor: torch.Tensor) -> cabc.Sequence[int]:
         consuming = self._thunk_consuming(tensor)
-        return [self._thunk_to_step[thunk] for thunk in consuming]
+        return [self.index(thunk) for thunk in consuming]
 
     def _all_tensors(self):
         yield from self._inputs

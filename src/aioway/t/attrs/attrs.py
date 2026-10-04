@@ -12,12 +12,14 @@ import tensordict as td
 import torch
 
 from aioway._utils import is_tuple_of
-from aioway.t import TList
 
 from .devices import Device, DeviceLike
 from .dtypes import DType, DTypeLike
 from .layouts import Layout, LayoutLike
 from .shapes import Shape, ShapeLike
+
+if typing.TYPE_CHECKING:
+    from aioway.t import TList
 
 __all__ = ["Attr", "AttrDict", "parse_attr"]
 
@@ -368,6 +370,8 @@ def parse_attr(obj: AttrDictCompat, /) -> AttrDict: ...
 
 def parse_attr(obj, /):
     # Doing this isinstance check first because it's the fastest.
+    from aioway.t import TList
+
     if isinstance(obj, TList):
         return [parse_attr(elem) for elem in obj]
 
