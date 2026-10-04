@@ -1,14 +1,16 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import abc
 import dataclasses as dcls
 import typing
 
-from .sets import InstrSet
+if typing.TYPE_CHECKING:
+    from .sets import InstrSet
 
 __all__ = ["Query"]
 
 
-class Query(typing.Protocol):
+class Query(abc.ABC):
     """
     A query is a subnet generator.
     """

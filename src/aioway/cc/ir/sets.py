@@ -10,13 +10,10 @@ from collections import abc as cabc
 import torch
 
 from aioway._utils import AnyDict, AnySet, any_dict, any_set
-from aioway.t import (
-    TList,
-    is_real,
-    parse_attr,
-)
+from aioway.t import TList, is_real, parse_attr
 
 from .instrs import FCall
+from .queries import Query
 
 __all__ = ["TensorRef", "InstrSet", "TensorLifetime"]
 
@@ -64,8 +61,18 @@ class InstrSet[T: FCall]:
     def __iter__(self) -> cabc.Iterator[T]:
         return iter(self._thunks)
 
-    def __getitem__(self, idx: int) -> T:
-        return self._thunks[idx]
+    @typing.overload
+    def __getitem__(self, idx: int) -> T: ...
+
+    @typing.overload
+    def __getitem__(self, idx: Query) -> typing.Self: ...
+
+    def __getitem__(self, idx):
+        match idx:
+            case int():
+                return self._thunks[idx]
+            case Query():
+                return idx(self)
 
     def parents(self, thunk: T) -> AnySet[T]:
         return any_set(T, *self._parents(thunk))
