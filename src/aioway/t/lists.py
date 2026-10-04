@@ -16,6 +16,9 @@ from aioway.t import parse_attr
 
 from .overrides import is_fake
 
+if typing.TYPE_CHECKING:
+    from .attrs import Attr
+
 __all__ = ["TList"]
 
 
@@ -85,6 +88,15 @@ class TList:
     def all_fake(self) -> bool:
         "Check if all items are fake."
         return all(is_fake(t) for t in self)
+
+    def attrs(self) -> list[Attr]:
+        """
+        Convert `TList` to a list of `Attr`.
+        """
+
+        from aioway.t import parse_attr
+
+        return parse_attr(self)
 
     @property
     def ids(self) -> tuple[int, ...]:

@@ -12,6 +12,7 @@ import tensordict as td
 import torch
 
 from aioway._utils import is_tuple_of
+from aioway.t import TList
 
 from .devices import Device, DeviceLike
 from .dtypes import DType, DTypeLike
@@ -22,7 +23,10 @@ __all__ = ["Attr", "AttrDict", "parse_attr"]
 
 
 type AttrCompat = Attr | AttrLike | AttrLikeMapping | torch.Tensor
+"The types compatible with `Attr`."
+
 type AttrDictCompat = AttrDict | td.TensorDict | td.TensorClass | cabc.Mapping
+"The types that can be parsed into `AttrDict`."
 
 
 @typing.runtime_checkable
@@ -351,21 +355,30 @@ def _parse_attr_dict(mapping: AttrDictCompat, /) -> AttrDict:
 
 
 @typing.overload
-def parse_attr(item: AttrCompat) -> Attr: ...
+def parse_attr(obj: AttrCompat, /) -> Attr: ...
 
 
 @typing.overload
-def parse_attr(item: AttrDictCompat) -> AttrDict: ...
+def parse_attr(obj: TList, /) -> list[Attr]: ...
 
 
-def parse_attr(item):
-    if (attr := _parse_attr(item)) is not NotImplemented:
+@typing.overload
+def parse_attr(obj: AttrDictCompat, /) -> AttrDict: ...
+
+
+def parse_attr(obj, /):
+    # Doing this isinstance check first because it's the fastest.
+    if isinstance(obj, TList):
+        return [parse_attr(elem) for elem in obj]
+
+    if (attr := _parse_attr(obj)) is not NotImplemented:
         return attr
 
-    if isinstance(item, cabc.Mapping) or td.is_tensor_collection(item):
-        return _parse_attr_dict(item)
+    # Convert from `TensorDict` to `AttrDict`.
+    if isinstance(obj, cabc.Mapping) or td.is_tensor_collection(obj):
+        return _parse_attr_dict(obj)
 
-    raise TypeError(type(item))
+    raise TypeError(type(obj))
 
 
 def _attr_from_dict(item) -> Attr | None:
