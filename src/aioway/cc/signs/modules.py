@@ -12,6 +12,8 @@ MODULE_TYPES = (
     nn.BatchNorm2d,
     nn.BatchNorm3d,
     nn.Bilinear,
+    nn.BCELoss,
+    nn.BCEWithLogitsLoss,
     nn.CELU,
     nn.Conv1d,
     nn.Conv2d,
