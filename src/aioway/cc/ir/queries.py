@@ -9,7 +9,7 @@ from aioway._utils import IntArray
 
 from .sets import InstrSet
 
-__all__ = ["Query"]
+__all__ = ["Query", "IndexQuery"]
 
 
 class Query(abc.ABC):
