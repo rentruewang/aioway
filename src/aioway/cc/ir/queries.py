@@ -21,6 +21,9 @@ class Query(abc.ABC):
         raise NotImplementedError
 
 
+# Some implementations ====
+
+
 @dcls.dataclass(frozen=True)
 class IndexQuery(Query):
     indices: list[int] | IntArray
