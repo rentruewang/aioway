@@ -4,7 +4,7 @@ import pytest
 from torch import nn
 
 from aioway._utils import Sign
-from aioway.cc import NnOp, nn_op, nn_sign_skeleton
+from aioway.cc import NnOp, nn_op, nn_sign_untyped
 
 
 def _module_type_signs():
@@ -66,7 +66,7 @@ def _layers():
 
 @pytest.mark.parametrize("module_type,sign", _module_type_signs())
 def test_module(module_type: type[nn.Module], sign: Sign):
-    assert nn_sign_skeleton(module_type) == sign
+    assert nn_sign_untyped(module_type) == sign
 
 
 @pytest.mark.parametrize("module_type,sign", _module_type_signs())

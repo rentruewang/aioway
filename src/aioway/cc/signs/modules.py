@@ -2,7 +2,7 @@
 
 from torch import nn
 
-from .signs import nn_sign_skeleton
+from .signs import nn_sign_untyped
 
 MODULE_TYPES = (
     nn.AvgPool1d,
@@ -46,4 +46,4 @@ MODULE_TYPES = (
 )
 
 for _module_type in MODULE_TYPES:
-    nn_sign_skeleton(_module_type)
+    nn_sign_untyped(_module_type)
