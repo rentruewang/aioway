@@ -2,7 +2,6 @@
 
 "The DAG that supports analysis."
 
-from aioway.t import fake_mode
 import dataclasses as dcls
 import functools
 import typing
