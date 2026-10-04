@@ -76,7 +76,7 @@ class InstrSet[T: FCall]:
                 return idx(self)
 
     def __setitem__(self, query: Query, subset: typing.Self) -> None:
-        raise NotImplementedError("See ticket #")
+        raise NotImplementedError("See ticket #615")
         # queried = self[query]
 
         # if queried.inputs.attrs() != subset.inputs.attrs():
