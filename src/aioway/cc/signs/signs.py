@@ -6,12 +6,17 @@ from torch import nn
 
 from aioway._utils import Sign
 
-from .regs import sign_reg
+__all__ = ["nn_sign_untyped", "sign_reg"]
 
-__all__ = ["nn_sign_skeleton", "sign_reg"]
+_SIGN_REG: dict[type[nn.Module], Sign] = {}
+"The signature registery."
 
 
-def nn_sign_skeleton(module: type[nn.Module]) -> Sign:
+def sign_reg() -> dict[type[nn.Module], Sign]:
+    return _SIGN_REG
+
+
+def nn_sign_untyped(module: type[nn.Module]) -> Sign:
     """
     Parse the `nn.Module.forward` without `self` or type.
 
@@ -21,6 +26,7 @@ def nn_sign_skeleton(module: type[nn.Module]) -> Sign:
     sreg = sign_reg()
 
     if module not in sreg:
+
         sign = Sign.from_nn_forward(module).strip_type()
         sreg[module] = sign
 
