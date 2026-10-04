@@ -2,12 +2,11 @@
 
 "A unified registry for `type[nn.Module]` storing `aioway` operations."
 
-from aioway._utils import is_nn_type
 import dataclasses as dcls
 
 from torch import nn
 
-from aioway._utils import Sign
+from aioway._utils import Sign, is_nn_type
 
 from .signs import sign_reg
 
