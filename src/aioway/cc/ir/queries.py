@@ -37,10 +37,12 @@ class Query(abc.ABC):
         produced_here = _get_tensor_sets(instr.outputs for instr in selected)
         used_outside = _used_outside(iset, idx_set)
 
-        # Walk `selected` in order: set order is not insertion order.
+        # Inputs: used by our selected by not produced inside the region.
         inputs = TList(
             t for instr in selected for t in instr.inputs if t not in produced_here
         )
+
+        # Outputs: produced by our selected and used by outside thunks.
         outputs = TList(
             t for instr in selected for t in instr.outputs if t in used_outside
         )
