@@ -49,7 +49,7 @@ def graph():
 
 def test_all(graph):
     iset, (x, y, s, m, d, r) = graph
-    sub = IndexQuery([0, 1, 2, 3])(iset)
+    sub = IndexQuery([0, 1, 2, 3]).select(iset)
 
     assert isinstance(sub, InstrSet)
     assert len(sub) == 4
@@ -59,7 +59,7 @@ def test_all(graph):
 
 def test_prefix(graph):
     iset, (x, y, s, m, d, r) = graph
-    sub = IndexQuery([0, 1])(iset)
+    sub = IndexQuery([0, 1]).select(iset)
 
     assert len(sub) == 2
     assert sub.inputs == {x, y}
@@ -68,7 +68,7 @@ def test_prefix(graph):
 
 def test_suffix(graph):
     iset, (x, y, s, m, d, r) = graph
-    sub = IndexQuery([2, 3])(iset)
+    sub = IndexQuery([2, 3]).select(iset)
 
     assert len(sub) == 2
     assert sub.inputs == {m, s}
@@ -77,7 +77,7 @@ def test_suffix(graph):
 
 def test_single_step(graph):
     iset, (x, y, s, m, d, r) = graph
-    sub = IndexQuery([3])(iset)
+    sub = IndexQuery([3]).select(iset)
 
     assert len(sub) == 1
     assert sub.inputs == [d]
@@ -86,7 +86,7 @@ def test_single_step(graph):
 
 def test_numpy_idx(graph):
     iset, (x, y, s, m, d, r) = graph
-    sub = IndexQuery(np.array([2, 3]))(iset)
+    sub = IndexQuery(np.array([2, 3])).select(iset)
 
     assert sub.inputs == {m, s}
     assert sub.outputs == [r]
@@ -98,21 +98,21 @@ def test_no_depending_on_intermediate(graph):
     # Step 2 needs `m` from step 1, which is skipped but comes after step 0,
     # this means the subgraph is not complte.
     with pytest.raises(ValueError):
-        IndexQuery([0, 2])(iset)
+        IndexQuery([0, 2]).select(iset)
 
 
 def test_no_neg_idx(graph):
     iset, _ = graph
 
     with pytest.raises(IndexError):
-        IndexQuery([-1])(iset)
+        IndexQuery([-1]).select(iset)
 
 
 def test_out_of_bounds(graph):
     iset, _ = graph
 
     with pytest.raises(IndexError):
-        IndexQuery([4])(iset)
+        IndexQuery([4]).select(iset)
 
 
 def trace(fn, *shapes: tuple[int, ...]) -> InstrSet:
@@ -137,7 +137,7 @@ def test_rewrite_with_itself(graph):
     iset, _ = graph
     query = IndexQuery([1, 2])
 
-    result = query.rewrite(iset, query(iset))
+    result = query.rewrite(iset, query.select(iset))
 
     assert funcs(result) == funcs(iset)
 

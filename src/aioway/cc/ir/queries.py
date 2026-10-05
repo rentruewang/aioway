@@ -2,6 +2,7 @@
 
 import abc
 import dataclasses as dcls
+import typing
 
 import numpy as np
 import torch
@@ -19,7 +20,7 @@ class Query(abc.ABC):
     A query is a subnet generator.
     """
 
-    def __call__(self, dag: InstrSet) -> InstrSet:
+    def select(self, iset: InstrSet, /) -> InstrSet:
         raise NotImplementedError
 
     def rewrite(self, iset: InstrSet, subset: InstrSet) -> InstrSet:
@@ -44,7 +45,8 @@ class IndexQuery(Query):
     The index to preserve. Indices must be within `[0, len)` for each instruction set.
     """
 
-    def __call__(self, iset: InstrSet) -> InstrSet:
+    @typing.override
+    def select(self, iset: InstrSet, /) -> InstrSet:
         idx: IntArray = np.asarray(self.indices)
 
         if (idx < 0).any():
@@ -55,11 +57,17 @@ class IndexQuery(Query):
 
         result = InstrSet.from_thunk_list(iset[idx])
 
-        # Check if input is not produced by intermediate steps,
-        # which may be output of the subnet itself.
+        # Inputs should not depend on intermediate.
+        # Since `inputs_produced_by` represent intermediate, it can be empty.
         inputs_produced_by = [iset.output_of_step(t) for t in result.inputs]
-        if idx.min() < max(inputs_produced_by):
+        if inputs_produced_by and idx.min() < max(inputs_produced_by):
             raise ValueError("Illegal subset where input depend on intermediate.")
+
+        # Output should not produce intermediate not used (but may be empty).
+        # Since `outputs_consumed_by` represent intermediate, it can be empty.
+        outputs_consumed_by = [s for t in result.outputs for s in iset.input_to_step(t)]
+        if outputs_consumed_by and idx.max() > max(outputs_consumed_by):
+            raise ValueError("Illegal subset where outputs intermediate.")
 
         return result
 
@@ -69,7 +77,7 @@ def _replace_subset(*, iset: InstrSet, query: Query, subset: InstrSet) -> InstrS
     Replace the query with a new subset.
     """
 
-    queried = query(iset)
+    queried = query.select(iset)
 
     if queried.inputs.attrs() != subset.inputs.attrs():
         raise ValueError("Inputs are not compatible.")
@@ -81,6 +89,7 @@ def _replace_subset(*, iset: InstrSet, query: Query, subset: InstrSet) -> InstrS
     qidx = {iset.index(q) for q in queried}
     min_qidx = min(qidx)
 
+    # Inputs and outputs are not shared.
     assert subset.inputs.keys().isdisjoint(subset.outputs.keys())
 
     # Build mapping for replacement.
