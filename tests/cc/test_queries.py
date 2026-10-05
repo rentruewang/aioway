@@ -5,12 +5,26 @@ import pytest
 import torch
 
 from aioway.cc import IndexQuery, InstrSet, TorchFuncDag
-from aioway.t import fake_mode, parse_attr
+from aioway.t import fake_mode
+
+import typing
+
+
+class GraphInter(typing.NamedTuple):
+    x: torch.Tensor
+    y: torch.Tensor
+    s: torch.Tensor
+    m: torch.Tensor
+    d: torch.Tensor
+    r: torch.Tensor
 
 
 @pytest.fixture
 def graph():
     """
+    Trace down the following operation:
+
+
     step 0: s = add(x, y)
     step 1: m = mul(s, x)
     step 2: d = sub(m, s)
@@ -29,18 +43,17 @@ def graph():
             r = torch.relu(d)
 
     iset = InstrSet.from_thunk_list(tracer.thunks)
-    return iset, (x, y, s, m, d, r)
+    return iset, GraphInter(x, y, s, m, d, r)
 
 
-def test_select_all(graph) -> None:
-    # This is running in real mode.
-    iset, (x, y, *_, r) = graph
+def test_select_all(graph):
+    iset, (x, y, s, m, d, r) = graph
     sub = IndexQuery([0, 1, 2, 3])(iset)
 
     assert isinstance(sub, InstrSet)
     assert len(sub) == 4
     assert sub.inputs == [x, y]
-    assert sub.outputs[0] is r
+    assert sub.outputs == [r]
 
 
 def test_prefix(graph):
@@ -48,10 +61,8 @@ def test_prefix(graph):
     sub = IndexQuery([0, 1])(iset)
 
     assert len(sub) == 2
-    assert sub.inputs[0] is x
-    assert sub.inputs[1] is y
-    assert len(sub.outputs) == 1
-    assert parse_attr(sub.outputs[0]) == parse_attr(m)
+    assert sub.inputs == [x, y]
+    assert sub.outputs == [m]
 
 
 def test_suffix(graph):
@@ -59,9 +70,8 @@ def test_suffix(graph):
     sub = IndexQuery([2, 3])(iset)
 
     assert len(sub) == 2
-    assert sub.inputs[0] is m
-    assert sub.inputs[1] is s
-    assert sub.outputs[0] is r
+    assert sub.inputs == [m, s]
+    assert sub.outputs == [r]
 
 
 def test_single_step(graph):
@@ -69,15 +79,16 @@ def test_single_step(graph):
     sub = IndexQuery([3])(iset)
 
     assert len(sub) == 1
-    assert sub.inputs[0] is d
-    assert sub.outputs[0] is r
+    assert sub.inputs == [d]
+    assert sub.outputs == [r]
 
 
-def test_numpy_indices(graph):
-    iset, _ = graph
+def test_numpy_idx(graph):
+    iset, (x, y, s, m, d, r) = graph
     sub = IndexQuery(np.array([2, 3]))(iset)
 
-    assert len(sub) == 2
+    assert sub.inputs == [m, s]
+    assert sub.outputs == [r]
 
 
 def test_gap_depending_on_intermediate(graph):
