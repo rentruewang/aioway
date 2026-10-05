@@ -1,13 +1,13 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import typing
+
 import numpy as np
 import pytest
 import torch
 
 from aioway.cc import IndexQuery, InstrSet, TorchFuncDag
 from aioway.t import fake_mode
-
-import typing
 
 
 class GraphInter(typing.NamedTuple):

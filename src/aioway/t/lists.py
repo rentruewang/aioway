@@ -28,56 +28,60 @@ class TList:
     This is an immutable list of tensors, supporting fast lookups.
 
     It deduplicates the tensors it received.
+
+    The list is stable (insertion order = getitem order).
     """
 
     def __init__(self, tensors: cabc.Iterable[torch.Tensor]) -> None:
-        tensor_with_ids = sorted(((id(t), t) for t in tensors), key=lambda it: it[0])
-        self.__indexed = collections.OrderedDict(tensor_with_ids)
-
-        # Also store the ids s.t. we have fast `__getitem__`.
-        self.__ids = tuple(self.__indexed)
-
-        assert len(self.__indexed) == len(self.__ids)
+        self._indexed = collections.OrderedDict((id(t), t) for t in tensors)
+        self._tensors = tuple(self._indexed.values())
 
     def __repr__(self) -> str:
         body = ",".join(map(str, (parse_attr(t) for t in self)))
         return f"[{body}]"
 
     def __hash__(self) -> int:
-        return hash(self.__ids)
+        return hash(tuple(sorted(self._indexed.keys())))
 
     def __contains__(self, item: object) -> int:
         if isinstance(item, int | torch.Tensor):
             tensor_id = _get_id(item)
-            return tensor_id in self.__indexed
+            return tensor_id in self._indexed
 
         return False
 
     def __eq__(self, other) -> bool:
         if isinstance(other, TList):
-            return self.__indexed.keys() == other.__indexed.keys()
+            return self._indexed.keys() == other._indexed.keys()
 
         if is_seq_of(torch.Tensor):
-            return list(self.__ids) == sorted(id(t) for t in other)
+            return sorted(self._indexed.keys()) == sorted(id(t) for t in other)
 
         return NotImplemented
 
     def __len__(self) -> int:
-        return len(self.__indexed)
+        return len(self._indexed)
 
     def __getitem__(self, idx: int) -> torch.Tensor:
-        return self.__indexed[self.__ids[idx]]
+        return self._tensors[idx]
 
     def __iter__(self):
         for i in range(len(self)):
             yield self[i]
 
     def index(self, tensor: torch.Tensor | int) -> int:
-        "Get the index of the tensor."
+        "Get the index of the tensor. O(1)."
+
+        tensor = _get_id(tensor)
+
         if tensor not in self:
             raise ValueError("Tensor not in list.")
 
-        return int(np.searchsorted(self.__ids, _get_id(tensor)))
+        for idx, t in enumerate(self._tensors):
+            if tensor == id(t):
+                return idx
+
+        raise IndexError
 
     @functools.cached_property
     def any_fake(self) -> bool:
@@ -95,11 +99,6 @@ class TList:
         """
 
         return parse_attr(self)
-
-    @property
-    def ids(self) -> tuple[int, ...]:
-        "Expose the tensor ids of the tensor list."
-        return self.__ids
 
 
 # Utility functions. ====
