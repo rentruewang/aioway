@@ -7,7 +7,6 @@ import functools
 import typing
 from collections import abc as cabc
 
-import numpy as np
 import torch
 from torch.utils import _pytree as pytree
 
