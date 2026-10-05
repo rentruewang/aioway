@@ -51,7 +51,7 @@ class TList:
 
     def __eq__(self, other) -> bool:
         if isinstance(other, TList):
-            return self._indexed.keys() == other._indexed.keys()
+            return sorted(self._indexed.keys()) == sorted(other._indexed.keys())
 
         if is_set_of(torch.Tensor):
             return sorted(self._indexed.keys()) == sorted(id(t) for t in other)
@@ -70,6 +70,11 @@ class TList:
     def __iter__(self):
         for i in range(len(self)):
             yield self[i]
+
+    def keys(self) -> cabc.KeysView[int]:
+        "Get the keys for unordered comparison."
+
+        return self._indexed.keys()
 
     def index(self, tensor: torch.Tensor | int) -> int:
         "Get the index of the tensor. O(1)."

@@ -11,7 +11,8 @@ from torch.utils import _pytree as pytree
 from aioway.t import is_fake, is_fake_tensor, is_real_tensor, parse_attr
 
 if typing.TYPE_CHECKING:
-    from .sets import FCall, InstrSet
+    from .instrs import FCall
+    from .sets import InstrSet
 
 __all__ = ["Exec", "LocalScope"]
 
