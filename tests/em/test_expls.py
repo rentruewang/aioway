@@ -4,7 +4,7 @@ import pytest
 import torch
 from torch import nn
 
-from aioway.tasks import (
+from aioway.em import (
     DeepLiftExpl,
     Expl,
     FeatureAblationExpl,
