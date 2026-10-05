@@ -2,6 +2,8 @@
 
 "A utility for a list of tensor."
 
+from aioway._utils import is_frozenset_of
+from aioway._utils import is_set_of
 import collections
 import functools
 import typing
@@ -53,8 +55,11 @@ class TList:
         if isinstance(other, TList):
             return self._indexed.keys() == other._indexed.keys()
 
-        if is_seq_of(torch.Tensor):
+        if is_set_of(torch.Tensor) or is_frozenset_of(torch.Tensor):
             return sorted(self._indexed.keys()) == sorted(id(t) for t in other)
+
+        if is_seq_of(torch.Tensor):
+            return list(self._indexed.keys()) == [id(t) for t in other]
 
         return NotImplemented
 

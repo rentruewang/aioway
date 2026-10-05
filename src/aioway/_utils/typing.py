@@ -20,6 +20,8 @@ __all__ = [
     "is_list_of",
     "is_tuple_of",
     "is_seq_of",
+    "is_set_of",
+    "is_frozenset_of",
     "is_any_type_hint",
     "is_dict_of_str_to",
     "is_nn_type",
@@ -46,12 +48,7 @@ def is_any_type_hint(typ) -> bool:
 
 
 @typing.no_type_check
-def _seq_check[T](seq: type, typ: type[T]):
-    if not issubclass(seq, cabc.Sequence):
-        raise TypeError(
-            f"The given seq: `{seq}` should be subclass of `cabc.Sequence`."
-        )
-
+def _iter_check[T](seq: type, typ: type[T]):
     if not isinstance(typ, type):
         raise TypeError(f"The given typ: `{typ}` should be a type.")
 
@@ -85,19 +82,31 @@ def _mapping_check[K, V](mapping: type, key: type[K], val: type[V]):
 def is_seq_of[T](
     typ: type[T], /
 ) -> cabc.Callable[[typing.Any], typing.TypeGuard[cabc.Sequence[T]]]:
-    return _seq_check(cabc.Sequence, typ)
+    return _iter_check(cabc.Sequence, typ)
 
 
 def is_list_of[T](
     typ: type[T], /
 ) -> cabc.Callable[[typing.Any], typing.TypeGuard[list[T]]]:
-    return _seq_check(list, typ)
+    return _iter_check(list, typ)
 
 
 def is_tuple_of[T](
     typ: type[T], /
 ) -> cabc.Callable[[typing.Any], typing.TypeGuard[tuple[T, ...]]]:
-    return _seq_check(tuple, typ)
+    return _iter_check(tuple, typ)
+
+
+def is_set_of[T](
+    typ: type[T], /
+) -> cabc.Callable[[typing.Any], typing.TypeGuard[set[T]]]:
+    return _iter_check(set, typ)
+
+
+def is_frozenset_of[T](
+    typ: type[T], /
+) -> cabc.Callable[[typing.Any], typing.TypeGuard[frozenset[T]]]:
+    return _iter_check(frozenset, typ)
 
 
 def is_dict_of_str_to[T](

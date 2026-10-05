@@ -52,7 +52,7 @@ def test_all(graph):
 
     assert isinstance(sub, InstrSet)
     assert len(sub) == 4
-    assert sub.inputs == [x, y]
+    assert sub.inputs == {x, y}
     assert sub.outputs == [r]
 
 
@@ -61,7 +61,7 @@ def test_prefix(graph):
     sub = IndexQuery([0, 1])(iset)
 
     assert len(sub) == 2
-    assert sub.inputs == [x, y]
+    assert sub.inputs == {x, y}
     assert sub.outputs == [m]
 
 
@@ -70,7 +70,7 @@ def test_suffix(graph):
     sub = IndexQuery([2, 3])(iset)
 
     assert len(sub) == 2
-    assert sub.inputs == [m, s]
+    assert sub.inputs == {m, s}
     assert sub.outputs == [r]
 
 
@@ -87,7 +87,7 @@ def test_numpy_idx(graph):
     iset, (x, y, s, m, d, r) = graph
     sub = IndexQuery(np.array([2, 3]))(iset)
 
-    assert sub.inputs == [m, s]
+    assert sub.inputs == {m, s}
     assert sub.outputs == [r]
 
 
