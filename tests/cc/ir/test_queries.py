@@ -91,7 +91,7 @@ def test_numpy_idx(graph):
     assert sub.outputs == [r]
 
 
-def test_error_on_wrong_dependency(graph):
+def test_no_depending_on_intermediate(graph):
     iset, _ = graph
 
     # Step 2 needs `m` from step 1, which is skipped but comes after step 0,
