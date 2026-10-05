@@ -10,6 +10,8 @@ from torch import testing as tt
 from aioway.cc import Exec, InstrSet, TorchFuncDag, fake_aten_dag
 from aioway.t import fake_mode, is_aten_op, is_fake, parse_attr
 
+type Fakes = tuple[torch.Tensor, torch.Tensor]
+
 
 def test_torch_func_dag_data():
     a = torch.ones(3)
@@ -20,7 +22,7 @@ def test_torch_func_dag_data():
         torch.add(a, b)
 
     assert len(dag.thunks) == 1
-    assert dag.thunks[0].func is torch.add
+    assert dag.thunks[0].func == torch.add
     assert torch.equal(dag.thunks[0].result, torch.full((3,), 2.0))
 
 
@@ -115,7 +117,18 @@ def test_dag_inputs_first_use_order():
     assert _attr_eq(dag.inputs[1], y)
 
 
-Fakes = tuple[torch.Tensor, torch.Tensor]
+def test_dag_inputs_many_same_step():
+    tracer = TorchFuncDag()
+
+    with fake_mode():
+        xs = [torch.zeros(3) for _ in range(6)]
+
+        with tracer.activate():
+            torch.stack(xs)
+
+    dag = InstrSet.from_thunk_list(tracer.thunks)
+
+    assert all(_attr_eq(got, want) for got, want in zip(dag.inputs, xs))
 
 
 def trace_func(fn: cabc.Callable) -> tuple[Exec, Fakes]:
@@ -140,37 +153,43 @@ def trace_aten(fn: cabc.Callable) -> tuple[Exec, Fakes]:
     return tracer.exec(), (x, y)
 
 
-TRACERS = [
-    pytest.param(trace_aten, id="aten"),
-    pytest.param(trace_func, id="func"),
-]
-
-FUNCS = [
-    pytest.param(lambda x, y: torch.add(x, y), id="add"),
-    pytest.param(lambda x, y: torch.mul(torch.add(x, y), 2), id="add_scale"),
-    pytest.param(lambda x, y: torch.relu(torch.sub(x, y)), id="sub_relu"),
-    pytest.param(lambda x, y: torch.add(torch.mul(x, y), x), id="reuse_input"),
-    pytest.param(
-        lambda x, y: torch.mul(torch.add(x, y), torch.sum(torch.add(x, y))),
-        id="reuse_step",
-    ),
-]
-
-
 def reals() -> Fakes:
     return torch.randn(3), torch.randn(3)
 
 
-@pytest.mark.parametrize("trace", TRACERS)
-@pytest.mark.parametrize("fn", FUNCS)
+def _traces():
+    yield pytest.param(trace_aten, id="aten")
+    yield pytest.param(trace_func, id="func")
+
+
+@pytest.fixture(params=_traces())
+def trace(request) -> cabc.Callable[[cabc.Callable], tuple[Exec, Fakes]]:
+    return request.param
+
+
+def _fn():
+    yield pytest.param(lambda x, y: torch.add(x, y), id="add")
+    yield pytest.param(lambda x, y: torch.mul(torch.add(x, y), 2), id="add_scale")
+    yield pytest.param(lambda x, y: torch.relu(torch.sub(x, y)), id="sub_relu")
+    yield pytest.param(lambda x, y: torch.add(torch.mul(x, y), x), id="reuse_input")
+    yield pytest.param(
+        lambda x, y: torch.mul(torch.add(x, y), torch.sum(torch.add(x, y))),
+        id="reuse_step",
+    )
+
+
+@pytest.fixture(params=_fn())
+def fn(request) -> cabc.Callable:
+    return request.param
+
+
 def test_traced_matches_eager(trace, fn):
     exec, _ = trace(fn)
     x, y = reals()
 
-    _attr_eq(exec(x, y), fn(x, y))
+    tt.assert_close(exec(x, y), fn(x, y))
 
 
-@pytest.mark.parametrize("trace", TRACERS)
 def test_run_twice_new_data(trace):
     fn = lambda x, y: torch.mul(torch.add(x, y), 2)
     exec, _ = trace(fn)
@@ -180,7 +199,6 @@ def test_run_twice_new_data(trace):
         tt.assert_close(exec(x, y), fn(x, y))
 
 
-@pytest.mark.parametrize("trace", TRACERS)
 def test_inputs_are_traced_fakes(trace):
     exec, (x, y) = trace(lambda x, y: torch.add(x, y))
 
@@ -191,7 +209,6 @@ def test_inputs_are_traced_fakes(trace):
     assert _attr_eq(fy, y)
 
 
-@pytest.mark.parametrize("trace", TRACERS)
 def test_wrong_shape_rejected(trace):
     exec, _ = trace(lambda x, y: torch.add(x, y))
 
@@ -204,20 +221,6 @@ def test_aten_records_only_aten_ops():
 
     assert len(exec) == 2
     assert all(is_aten_op(thunk.func) for thunk in exec)
-
-
-def test_dag_inputs_many_same_step():
-    tracer = TorchFuncDag()
-
-    with fake_mode():
-        xs = [torch.zeros(3) for _ in range(6)]
-
-        with tracer.activate():
-            torch.stack(xs)
-
-    dag = InstrSet.from_thunk_list(tracer.thunks)
-
-    assert all(_attr_eq(got, want) for got, want in zip(dag.inputs, xs))
 
 
 def _attr_eq(left: torch.Tensor, right: torch.Tensor):

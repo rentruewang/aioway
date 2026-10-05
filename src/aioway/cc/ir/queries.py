@@ -1,14 +1,18 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import abc
 import dataclasses as dcls
-import typing
+
+import numpy as np
+
+from aioway._utils import IntArray
 
 from .sets import InstrSet
 
-__all__ = ["Query"]
+__all__ = ["Query", "IndexQuery"]
 
 
-class Query(typing.Protocol):
+class Query(abc.ABC):
     """
     A query is a subnet generator.
     """
@@ -17,9 +21,39 @@ class Query(typing.Protocol):
         raise NotImplementedError
 
 
+# Some implementations ====
+
+
 @dcls.dataclass(frozen=True)
 class IndexQuery(Query):
-    indices: list[int]
+    """
+    Query with subset of index.
 
-    def __call__(self, dag: InstrSet) -> InstrSet:
-        return InstrSet.from_thunk_list([dag[i] for i in self.indices])
+    Raises:
+        IndexError: if the graph index is out of bounds.
+        ValueError: if the subgraph depends on intermediate value.
+    """
+
+    indices: list[int] | IntArray
+    """
+    The index to preserve. Indices must be within `[0, len)` for each instruction set.
+    """
+
+    def __call__(self, iset: InstrSet) -> InstrSet:
+        idx: IntArray = np.asarray(self.indices)
+
+        if (idx < 0).any():
+            raise IndexError("Some indices are negative.")
+
+        if (idx >= len(iset)).any():
+            raise IndexError("Some indices are out of bounds.")
+
+        result = InstrSet.from_thunk_list(iset[idx])
+
+        # Check if input is not produced by intermediate steps,
+        # which may be output of the subnet itself.
+        inputs_produced_by = [iset.output_of_step(t) for t in result.inputs]
+        if idx.min() < max(inputs_produced_by):
+            raise ValueError("Illegal subset where input depend on intermediate.")
+
+        return result

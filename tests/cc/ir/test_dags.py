@@ -26,7 +26,7 @@ def test_dag_len(dag: InstrSet):
     assert len(dag) == 2
 
 
-def test_dag_getitem(dag: InstrSet, thunks):
+def test_dag_getitem(dag: InstrSet, thunks: cabc.Sequence[FCall]):
     assert dag[0] is thunks[0]
     assert dag[-1] is thunks[1]
 
