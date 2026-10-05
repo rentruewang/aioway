@@ -21,6 +21,17 @@ class Query(abc.ABC):
     """
 
     def select(self, iset: InstrSet, /) -> InstrSet:
+        """
+        Get a subnet.
+
+        Note:
+            A legal subnet right now only captures "escaping" values,
+            which are data produced and used outside of the current scope,
+            but not used in the current scope.
+
+            This might be an issue.
+        """
+
         raise NotImplementedError
 
     def rewrite(self, iset: InstrSet, subset: InstrSet) -> InstrSet:
