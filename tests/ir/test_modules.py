@@ -5,7 +5,7 @@ import torch
 from torch import nn
 
 from aioway._utils import Stack
-from aioway.cc import ModuleHist, ModuleThunk, ModuleTracker
+from aioway.ir import ModuleHist, ModuleThunk, ModuleTracker
 
 
 class Double(nn.Module):

@@ -7,7 +7,7 @@ import pytest
 import torch
 from torch import testing as tt
 
-from aioway.cc import Exec, IndexQuery, InstrSet, TorchFuncDag
+from aioway.ir import Exec, IndexQuery, InstrSet, TorchFuncDag
 from aioway.t import fake_mode, parse_attr
 
 
