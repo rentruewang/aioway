@@ -113,7 +113,7 @@ class FCall[F: cabc.Callable](Instr):
     @typing.override
     def __repr__(self) -> str:
         result = str(replace_tensors_with_attr(self.result))
-        thunk = render_tensor_func_short(str(self.func), self.args, self.kwargs)
+        thunk = render_tensor_func_short(self.func.__name__, self.args, self.kwargs)
         return thunk + " -> " + result
 
     @typing.override

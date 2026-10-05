@@ -2,7 +2,6 @@
 
 import abc
 import dataclasses as dcls
-import typing
 
 import numpy as np
 import torch
@@ -84,18 +83,21 @@ def _replace_subset(*, iset: InstrSet, query: Query, subset: InstrSet) -> InstrS
 
     assert subset.inputs.keys().isdisjoint(subset.outputs.keys())
 
+    # Build mapping for replacement.
     in_to_out = any_dict(torch.Tensor)
     for before, after in zip(queried.inputs, subset.inputs):
         in_to_out[before] = after
     for before, after in zip(queried.outputs, subset.outputs):
         in_to_out[before] = after
 
+    # Drop the ones that are queried.
     new_instrs: list[FCall] = [
-        thunk.tree_map_only(torch.Tensor, in_to_out.__getitem__)
+        thunk.tree_map_only(torch.Tensor, lambda t: in_to_out.get(t, t))
         for i, thunk in enumerate(iset.instrs)
         if i not in qidx
     ]
 
+    # Replace with new.
     pre = new_instrs[:min_qidx]
     post = new_instrs[min_qidx:]
     return iset.from_thunk_list([*pre, *subset.instrs, *post])
