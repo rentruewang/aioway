@@ -20,7 +20,7 @@ def test_torch_func_dag_data():
         torch.add(a, b)
 
     assert len(dag.thunks) == 1
-    assert dag.thunks[0].func is torch.add
+    assert dag.thunks[0].func == torch.add
     assert torch.equal(dag.thunks[0].result, torch.full((3,), 2.0))
 
 
