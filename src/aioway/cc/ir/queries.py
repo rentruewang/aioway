@@ -2,11 +2,14 @@
 
 import abc
 import dataclasses as dcls
+import typing
 
 import numpy as np
+import torch
 
-from aioway._utils import IntArray
+from aioway._utils import IntArray, any_dict
 
+from .instrs import FCall
 from .sets import InstrSet
 
 __all__ = ["Query", "IndexQuery"]
@@ -19,6 +22,9 @@ class Query(abc.ABC):
 
     def __call__(self, dag: InstrSet) -> InstrSet:
         raise NotImplementedError
+
+    def rewrite(self, iset: InstrSet, subset: InstrSet) -> InstrSet:
+        return _replace_subset(query=self, iset=iset, subset=subset)
 
 
 # Some implementations ====
@@ -57,3 +63,39 @@ class IndexQuery(Query):
             raise ValueError("Illegal subset where input depend on intermediate.")
 
         return result
+
+
+def _replace_subset(*, iset: InstrSet, query: Query, subset: InstrSet) -> InstrSet:
+    """
+    Replace the query with a new subset.
+    """
+
+    queried = query(iset)
+
+    if queried.inputs.attrs() != subset.inputs.attrs():
+        raise ValueError("Inputs are not compatible.")
+
+    if queried.outputs.attrs() != subset.outputs.attrs():
+        raise ValueError("Outputs are not compatible.")
+
+    # Get the indices of the queried subnet and minimum (useful in inserting).
+    qidx = {iset.index(q) for q in queried}
+    min_qidx = min(qidx)
+
+    assert subset.inputs.keys().isdisjoint(subset.outputs.keys())
+
+    in_to_out = any_dict(torch.Tensor)
+    for before, after in zip(queried.inputs, subset.inputs):
+        in_to_out[before] = after
+    for before, after in zip(queried.outputs, subset.outputs):
+        in_to_out[before] = after
+
+    new_instrs: list[FCall] = [
+        thunk.tree_map_only(torch.Tensor, in_to_out.__getitem__)
+        for i, thunk in enumerate(iset.instrs)
+        if i not in qidx
+    ]
+
+    pre = new_instrs[:min_qidx]
+    post = new_instrs[min_qidx:]
+    return iset.from_thunk_list([*pre, *subset.instrs, *post])

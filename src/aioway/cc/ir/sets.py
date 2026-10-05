@@ -15,9 +15,6 @@ from aioway.t import TList, is_real, parse_attr
 
 from .instrs import FCall
 
-if typing.TYPE_CHECKING:
-    from .queries import Query
-
 __all__ = ["TensorRef", "InstrSet", "TensorLifetime"]
 
 # The DAG class ====
@@ -71,54 +68,19 @@ class InstrSet:
     @typing.overload
     def __getitem__(self, idx: slice | list[int] | IntArray) -> list[FCall]: ...
 
-    @typing.overload
-    def __getitem__(self, idx: Query) -> typing.Self: ...
-
     def __getitem__(self, idx):
-        from .queries import Query
-
         if isinstance(idx, int):
             return self.instrs[idx]
 
-        if isinstance(idx, Query):
-            return idx(self)
+        # Convert `slice` to `list[int]` with help of `range`.
+        if isinstance(idx, slice):
+            idx = list(range(len(self))[idx])
 
         # If it's `list[int]` or `IntArray`.
         if np.isdtype((arr := np.asarray(idx)).dtype, "integral"):
             return [self.instrs[i] for i in arr]
 
         raise TypeError(f"Unknown type: {type(idx)=}.")
-
-    def replace(self, query: Query, subset: typing.Self) -> InstrSet:
-        queried = self[query]
-
-        if queried.inputs.attrs() != subset.inputs.attrs():
-            raise ValueError("Inputs are not compatible.")
-
-        if queried.outputs.attrs() != subset.outputs.attrs():
-            raise ValueError("Outputs are not compatible.")
-
-        # Get the indices of the queried subnet and minimum (useful in inserting).
-        qidx = {self.index(q) for q in queried}
-        min_qidx = min(qidx)
-
-        assert subset.inputs.keys().isdisjoint(subset.outputs.keys())
-
-        in_to_out = any_dict(torch.Tensor)
-        for before, after in zip(queried.inputs, subset.inputs):
-            in_to_out[before] = after
-        for before, after in zip(queried.outputs, subset.outputs):
-            in_to_out[before] = after
-
-        new_instrs = [
-            thunk.tree_map_only(torch.Tensor, in_to_out.__getitem__)
-            for i, thunk in enumerate(self.instrs)
-            if i not in qidx
-        ]
-
-        pre = self[:min_qidx]
-        post = self[min_qidx:]
-        return self.from_thunk_list([*pre, *subset.instrs, *post])
 
     def parents(self, thunk: FCall) -> AnySet[FCall]:
         return any_set(FCall, *self._parents(thunk))
