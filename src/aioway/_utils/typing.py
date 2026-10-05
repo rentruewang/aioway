@@ -21,7 +21,6 @@ __all__ = [
     "is_tuple_of",
     "is_seq_of",
     "is_set_of",
-    "is_frozenset_of",
     "is_any_type_hint",
     "is_dict_of_str_to",
     "is_nn_type",
@@ -99,14 +98,8 @@ def is_tuple_of[T](
 
 def is_set_of[T](
     typ: type[T], /
-) -> cabc.Callable[[typing.Any], typing.TypeGuard[set[T]]]:
-    return _iter_check(set, typ)
-
-
-def is_frozenset_of[T](
-    typ: type[T], /
-) -> cabc.Callable[[typing.Any], typing.TypeGuard[frozenset[T]]]:
-    return _iter_check(frozenset, typ)
+) -> cabc.Callable[[typing.Any], typing.TypeGuard[cabc.Set[T]]]:
+    return _iter_check(cabc.Set, typ)
 
 
 def is_dict_of_str_to[T](
