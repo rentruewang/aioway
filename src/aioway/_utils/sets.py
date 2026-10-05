@@ -117,6 +117,13 @@ class AnySet[K = typing.Any]:
         copied -= other
         return copied
 
+    def __and__(self, other: AnySet[K]) -> AnySet[K]:
+        result = any_set(self._type)
+        for item in self:
+            if item in other:
+                result.add(item)
+        return result
+
     def __isub__(self, other: AnySet[K]) -> AnySet[K]:
         for item in other:
             self.discard(item)

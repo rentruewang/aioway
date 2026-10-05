@@ -3,11 +3,13 @@
 import abc
 import dataclasses as dcls
 import typing
+from collections import abc as cabc
 
 import numpy as np
 import torch
 
-from aioway._utils import IntArray, any_dict
+from aioway._utils import AnySet, IntArray, any_dict, any_set
+from aioway.t import TList
 
 from .instrs import FCall
 from .sets import InstrSet
@@ -22,16 +24,37 @@ class Query(abc.ABC):
 
     def select(self, iset: InstrSet, /) -> InstrSet:
         """
-        Get a subnet.
-
-        Note:
-            A legal subnet right now only captures "escaping" values,
-            which are data produced and used outside of the current scope,
-            but not used in the current scope.
-
-            This might be an issue.
+        Produce a subset whose:
+        Input is any tensor used in this scope but not defined in the scope.
+        Output is any tensor produced and used in downstream.
         """
 
+        # Sorted and deduplicated, so `selected` is in step order.
+        indices = self._select_idx(iset)
+        idx_set = set(indices.tolist())
+        selected = iset[indices]
+
+        produced_here = _get_tensor_sets(instr.outputs for instr in selected)
+        used_outside = _used_outside(iset, idx_set)
+
+        # Walk `selected` in order: set order is not insertion order.
+        inputs = TList(
+            t for instr in selected for t in instr.inputs if t not in produced_here
+        )
+        outputs = TList(
+            t for instr in selected for t in instr.outputs if t in used_outside
+        )
+
+        # Inputs should not depend on intermediate.
+        # Since `inputs_produced_by` represent intermediate, it can be empty.
+        inputs_produced_by = [iset.output_of_step(t) for t in inputs]
+        if inputs_produced_by and indices.min() < max(inputs_produced_by):
+            raise ValueError("Illegal subset where input depend on intermediate.")
+
+        return InstrSet(selected, inputs, outputs)
+
+    @abc.abstractmethod
+    def _select_idx(self, iset: InstrSet, /) -> IntArray:
         raise NotImplementedError
 
     def rewrite(self, iset: InstrSet, subset: InstrSet) -> InstrSet:
@@ -57,7 +80,7 @@ class IndexQuery(Query):
     """
 
     @typing.override
-    def select(self, iset: InstrSet, /) -> InstrSet:
+    def _select_idx(self, iset: InstrSet, /) -> IntArray:
         idx: IntArray = np.asarray(self.indices)
 
         if (idx < 0).any():
@@ -66,21 +89,40 @@ class IndexQuery(Query):
         if (idx >= len(iset)).any():
             raise IndexError("Some indices are out of bounds.")
 
-        result = InstrSet.from_thunk_list(iset[idx])
+        return idx
 
-        # Inputs should not depend on intermediate.
-        # Since `inputs_produced_by` represent intermediate, it can be empty.
-        inputs_produced_by = [iset.output_of_step(t) for t in result.inputs]
-        if inputs_produced_by and idx.min() < max(inputs_produced_by):
-            raise ValueError("Illegal subset where input depend on intermediate.")
 
-        # Output should not produce intermediate not used (but may be empty).
-        # Since `outputs_consumed_by` represent intermediate, it can be empty.
-        outputs_consumed_by = [s for t in result.outputs for s in iset.input_to_step(t)]
-        if outputs_consumed_by and idx.max() > max(outputs_consumed_by):
-            raise ValueError("Illegal subset where outputs intermediate.")
+# Helper functions ====
 
-        return result
+
+def _used_outside(iset: InstrSet, selected_idx: set[int]) -> AnySet[torch.Tensor]:
+    """
+    Add all tensors used outside of selected region.
+    """
+
+    used = any_set(torch.Tensor)
+
+    for i, instr in enumerate(iset.instrs):
+        if i in selected_idx:
+            continue
+
+        for tensor in instr.inputs:
+            used.add(tensor)
+
+    for tensor in iset.outputs:
+        used.add(tensor)
+
+    return used
+
+
+def _get_tensor_sets(tlists: cabc.Iterable[TList]) -> AnySet[torch.Tensor]:
+    aset = any_set(torch.Tensor)
+
+    for tlist in tlists:
+        for tensor in tlist:
+            aset.add(tensor)
+
+    return aset
 
 
 def _replace_subset(*, iset: InstrSet, query: Query, subset: InstrSet) -> InstrSet:

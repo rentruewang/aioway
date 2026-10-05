@@ -63,7 +63,7 @@ def test_prefix(graph):
 
     assert len(sub) == 2
     assert sub.inputs == {x, y}
-    assert sub.outputs == [m]
+    assert sub.outputs == {s, m}
 
 
 def test_suffix(graph):
