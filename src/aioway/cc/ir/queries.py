@@ -26,6 +26,14 @@ class Query(abc.ABC):
 
 @dcls.dataclass(frozen=True)
 class IndexQuery(Query):
+    """
+    Query with subset of index.
+
+    Raises:
+        IndexError: if the graph index is out of bounds.
+        ValueError: if the subgraph depends on intermediate value.
+    """
+
     indices: list[int] | IntArray
     """
     The index to preserve. Indices must be within `[0, len)` for each instruction set.
@@ -46,6 +54,6 @@ class IndexQuery(Query):
         # which may be output of the subnet itself.
         inputs_produced_by = [iset.output_of_step(t) for t in result.inputs]
         if idx.min() < max(inputs_produced_by):
-            raise IndexError("Illegal subset where input depend on intermediate.")
+            raise ValueError("Illegal subset where input depend on intermediate.")
 
         return result

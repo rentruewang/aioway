@@ -46,7 +46,7 @@ def graph():
     return iset, GraphInter(x, y, s, m, d, r)
 
 
-def test_select_all(graph):
+def test_all(graph):
     iset, (x, y, s, m, d, r) = graph
     sub = IndexQuery([0, 1, 2, 3])(iset)
 
@@ -91,15 +91,16 @@ def test_numpy_idx(graph):
     assert sub.outputs == [r]
 
 
-def test_gap_depending_on_intermediate(graph):
+def test_error_on_wrong_dependency(graph):
     iset, _ = graph
 
-    # Step 2 needs `m` from step 1, which is skipped but comes after step 0.
-    with pytest.raises(IndexError):
+    # Step 2 needs `m` from step 1, which is skipped but comes after step 0,
+    # this means the subgraph is not complte.
+    with pytest.raises(ValueError):
         IndexQuery([0, 2])(iset)
 
 
-def test_negative_index(graph):
+def test_no_neg_idx(graph):
     iset, _ = graph
 
     with pytest.raises(IndexError):
