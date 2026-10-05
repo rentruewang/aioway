@@ -11,9 +11,9 @@ from aioway.t import (
     fake_mode,
     is_aten_op,
     is_tensor_method,
+    is_torch_function,
     route_aten_thunk,
 )
-from aioway.t.guards import is_torch_function
 
 from .execs import Exec
 from .sets import FCall, InstrSet
