@@ -2,7 +2,6 @@
 
 "The DAG that supports analysis."
 
-from aioway.t import fake_mode
 import dataclasses as dcls
 import functools
 import typing
@@ -12,7 +11,7 @@ import numpy as np
 import torch
 
 from aioway._utils import AnyDict, AnySet, IntArray, any_dict, any_set
-from aioway.t import TList, is_real, parse_attr
+from aioway.t import TList, fake_mode, is_real, parse_attr
 
 from .instrs import FCall
 
