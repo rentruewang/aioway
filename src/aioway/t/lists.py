@@ -10,7 +10,7 @@ from collections import abc as cabc
 import torch
 from torch.utils import _pytree as pytree
 
-from aioway._utils import is_seq_of
+from aioway._utils import is_seq_of, is_set_of
 
 from .attrs import parse_attr
 from .overrides import is_fake
@@ -51,10 +51,13 @@ class TList:
 
     def __eq__(self, other) -> bool:
         if isinstance(other, TList):
-            return self._indexed.keys() == other._indexed.keys()
+            return sorted(self._indexed.keys()) == sorted(other._indexed.keys())
+
+        if is_set_of(torch.Tensor):
+            return sorted(self._indexed.keys()) == sorted(id(t) for t in other)
 
         if is_seq_of(torch.Tensor):
-            return sorted(self._indexed.keys()) == sorted(id(t) for t in other)
+            return list(self._indexed.keys()) == [id(t) for t in other]
 
         return NotImplemented
 
@@ -67,6 +70,11 @@ class TList:
     def __iter__(self):
         for i in range(len(self)):
             yield self[i]
+
+    def keys(self) -> cabc.KeysView[int]:
+        "Get the keys for unordered comparison."
+
+        return self._indexed.keys()
 
     def index(self, tensor: torch.Tensor | int) -> int:
         "Get the index of the tensor. O(1)."

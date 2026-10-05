@@ -9,6 +9,7 @@ import typing
 from collections import abc as cabc
 
 import torch
+from torch.utils import _pytree as pytree
 
 from aioway.t import (
     TList,
@@ -20,11 +21,39 @@ from aioway.t import (
 __all__ = ["Instr", "FCall"]
 
 
+@typing.dataclass_transform(frozen_default=True, eq_default=False)
+def instr_dcls[T](cls):
+    """
+    The dataclass transform wrapper for `Instr` classes.
+
+    This also registeres the class to `pytree`.
+    """
+
+    cls = dcls.dataclass(frozen=True, eq=False, repr=False)(cls)
+    pytree.register_dataclass(cls)
+    return cls
+
+
 # The base instruction class ====
 
 
+@instr_dcls
 class Instr(abc.ABC):
     "The instruction base class."
+
+    def tree_map(self, func: cabc.Callable):
+        """
+        Call the `tree_map` function on the `Instr`.
+        """
+
+        return pytree.tree_map(func=func, tree=self)
+
+    def tree_map_only(self, types: type | tuple[type, ...], func: cabc.Callable):
+        """
+        Call the `tree_map_only` function on the `Instr`.
+        """
+
+        return pytree.tree_map_only(types, func=func, tree=self)
 
     @functools.cached_property
     def inputs(self) -> TList:
@@ -50,7 +79,7 @@ class Instr(abc.ABC):
 # The implementations. Right now only `FCall` exists. ====
 
 
-@dcls.dataclass(frozen=True, eq=False, repr=False)
+@instr_dcls
 class FCall[F: cabc.Callable](Instr):
     """
     An instruction representing a function call.
@@ -83,8 +112,14 @@ class FCall[F: cabc.Callable](Instr):
 
     @typing.override
     def __repr__(self) -> str:
+        def maybe_name(func):
+            try:
+                return func.__name__
+            except AttributeError:
+                return repr(func)
+
         result = str(replace_tensors_with_attr(self.result))
-        thunk = render_tensor_func_short(str(self.func), self.args, self.kwargs)
+        thunk = render_tensor_func_short(maybe_name(self.func), self.args, self.kwargs)
         return thunk + " -> " + result
 
     @typing.override

@@ -48,4 +48,4 @@ hist
 list(hist.dag())
 
 # %%
-list(IndexQuery([0, 1, 2])(hist.dag()))
+list(IndexQuery([0, 1, 2]).select(hist.dag()))

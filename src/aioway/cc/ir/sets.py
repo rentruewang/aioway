@@ -15,39 +15,36 @@ from aioway.t import TList, is_real, parse_attr
 
 from .instrs import FCall
 
-if typing.TYPE_CHECKING:
-    from .queries import Query
-
 __all__ = ["TensorRef", "InstrSet", "TensorLifetime"]
 
 # The DAG class ====
 
 
-class InstrSet[T: FCall]:
+class InstrSet:
     """
     A dag is a sequence of callables, that are linked by fake tensors.
     """
 
     def __init__(
         self,
-        thunks: cabc.Iterable[T],
+        instrs: cabc.Iterable[FCall],
         inputs: cabc.Iterable[torch.Tensor],
         outputs: cabc.Iterable[torch.Tensor],
     ) -> None:
-        self._thunks = tuple(thunks)
+        self._instrs = tuple(instrs)
 
         self._inputs = TList(inputs)
         self._outputs = TList(outputs)
 
-        self._thunk_to_step: AnyDict[T, int] = any_dict(
-            FCall, *((thunk, idx) for idx, thunk in enumerate(self._thunks))
+        self._thunk_to_step: AnyDict[FCall, int] = any_dict(
+            FCall, *((thunk, idx) for idx, thunk in enumerate(self.instrs))
         )
         "Mapping from thunks to their indices."
 
-        self._tensor_links = _build_tensor_refs(self._thunks, list(self._inputs))
+        self._tensor_links = _build_tensor_refs(self.instrs, list(self._inputs))
         "Mapping from tensors to refs (linking functions)."
 
-        self._inputs_to_thunk_index = _tensor_is_input_to_thunk(self._thunks)
+        self._inputs_to_thunk_index = _tensor_is_input_to_thunk(self.instrs)
         "The mapping from tensor to thunk's that uses it."
 
         # Validate if the inputs and outputs are valid.
@@ -57,59 +54,41 @@ class InstrSet[T: FCall]:
             raise ValueError("Contains non fake tensors.")
 
     def __repr__(self) -> str:
-        return repr(list(self._thunks))
+        return repr(self.instrs)
 
     def __len__(self) -> int:
-        return len(self._thunks)
+        return len(self.instrs)
 
-    def __iter__(self) -> cabc.Iterator[T]:
-        return iter(self._thunks)
-
-    @typing.overload
-    def __getitem__(self, idx: int) -> T: ...
+    def __iter__(self) -> cabc.Iterator[FCall]:
+        return iter(self.instrs)
 
     @typing.overload
-    def __getitem__(self, idx: list[int] | IntArray) -> list[FCall]: ...
+    def __getitem__(self, idx: int) -> FCall: ...
 
     @typing.overload
-    def __getitem__(self, idx: Query) -> typing.Self: ...
+    def __getitem__(self, idx: slice | list[int] | IntArray) -> list[FCall]: ...
 
     def __getitem__(self, idx):
-        from .queries import Query
-
         if isinstance(idx, int):
-            return self._thunks[idx]
+            return self.instrs[idx]
 
-        if isinstance(idx, Query):
-            return idx(self)
+        # Convert `slice` to `list[int]` with help of `range`.
+        if isinstance(idx, slice):
+            idx = list(range(len(self))[idx])
 
         # If it's `list[int]` or `IntArray`.
         if np.isdtype((arr := np.asarray(idx)).dtype, "integral"):
-            return [self._thunks[i] for i in arr]
+            return [self.instrs[i] for i in arr]
 
         raise TypeError(f"Unknown type: {type(idx)=}.")
 
-    def __setitem__(self, query: Query, subset: typing.Self) -> None:
-        raise NotImplementedError("See ticket #615")
-        # queried = self[query]
-
-        # if queried.inputs.attrs() != subset.inputs.attrs():
-        #     raise ValueError("Inputs are not compatible.")
-
-        # if queried.outputs.attrs() != subset.outputs.attrs():
-        #     raise ValueError("Outputs are not compatible.")
-
-        # with fake_mode():
-        #     # Get the inputs
-        #     x = queried
-
-    def parents(self, thunk: T) -> AnySet[T]:
+    def parents(self, thunk: FCall) -> AnySet[FCall]:
         return any_set(FCall, *self._parents(thunk))
 
-    def children(self, thunk: T) -> AnySet[T]:
+    def children(self, thunk: FCall) -> AnySet[FCall]:
         return any_set(FCall, *self._children(thunk))
 
-    def _parents(self, thunk: T) -> cabc.Generator[T]:
+    def _parents(self, thunk: FCall) -> cabc.Generator[FCall]:
         for input in thunk.inputs:
             ref = self._tensor_links[input]
 
@@ -117,7 +96,7 @@ class InstrSet[T: FCall]:
             if not ref.is_free:
                 yield ref.producer
 
-    def _children(self, thunk: T) -> cabc.Generator[T]:
+    def _children(self, thunk: FCall) -> cabc.Generator[FCall]:
         for output in thunk.outputs:
             ref = self._tensor_links[output]
             yield from ref.consumers
@@ -135,6 +114,10 @@ class InstrSet[T: FCall]:
         return TensorLifetime(birth=birth, death=death)
 
     @property
+    def instrs(self) -> cabc.Sequence[FCall]:
+        return self._instrs
+
+    @property
     def inputs(self) -> TList:
         return self._inputs
 
@@ -146,7 +129,7 @@ class InstrSet[T: FCall]:
     def tensors(self) -> TList:
         return TList(self._all_tensors())
 
-    def index(self, instr: T, /) -> int:
+    def index(self, instr: FCall, /) -> int:
         "Get the index of each instruction."
         return self._thunk_to_step[instr]
 
@@ -168,7 +151,7 @@ class InstrSet[T: FCall]:
         yield from self._inputs
         yield from self._outputs
 
-        yield from _all_thunk_tensors(self._thunks)
+        yield from _all_thunk_tensors(self.instrs)
 
     def _validate_input_output(self) -> None:
         for input in self._inputs:
@@ -188,7 +171,7 @@ class InstrSet[T: FCall]:
         if set(self._inputs) & set(self._outputs):
             raise ValueError("Inputs are in the outputs. Not allowed yet.")
 
-    def _thunk_producing(self, tensor: torch.Tensor, /) -> T | None:
+    def _thunk_producing(self, tensor: torch.Tensor, /) -> FCall | None:
         """
         Get the thunk that produces the producer.
 
@@ -201,12 +184,12 @@ class InstrSet[T: FCall]:
         else:
             return self._tensor_links[tensor].producer
 
-    def _thunk_consuming(self, tensor: torch.Tensor, /) -> cabc.Generator[T]:
+    def _thunk_consuming(self, tensor: torch.Tensor, /) -> cabc.Generator[FCall]:
         ref = self._tensor_links[tensor]
         yield from ref.consumers
 
     @classmethod
-    def from_thunk_list(cls, thunks: cabc.Sequence[T]) -> typing.Self:
+    def from_thunk_list(cls, thunks: cabc.Sequence[FCall]) -> typing.Self:
         """
         Given only the thunk list, construct a DAG, auto discover inputs and outputs.
 
@@ -239,7 +222,7 @@ class InstrSet[T: FCall]:
 # The node classes ====
 
 
-class TensorRef[T: FCall]:
+class TensorRef[FCall: FCall]:
     """
     A data structure holding tensor information in the DAG.
 
@@ -250,7 +233,7 @@ class TensorRef[T: FCall]:
     we can assume there is only 1 single producer.
     """
 
-    def __init__(self, producer: T | None, tensor: torch.Tensor) -> None:
+    def __init__(self, producer: FCall | None, tensor: torch.Tensor) -> None:
         """
         Args:
             producer: The thunk's id, or `None` if it's a free variable.
@@ -259,7 +242,7 @@ class TensorRef[T: FCall]:
 
         self._producer = producer
         self._tensor = tensor
-        self._consumers: AnySet[T] = typing.cast(typing.Any, any_set(FCall))
+        self._consumers: AnySet[FCall] = typing.cast(typing.Any, any_set(FCall))
 
         if not isinstance(tensor, torch.Tensor) or is_real(tensor):
             raise ValueError(
@@ -270,14 +253,14 @@ class TensorRef[T: FCall]:
         attr = parse_attr(self.tensor)
         return f"TRef({attr!s}, {self.producer})"
 
-    def add_consumers(self, *consumers: T) -> None:
+    def add_consumers(self, *consumers: FCall) -> None:
         "Add consumers for the info. Allow duplication."
 
         for consumer in consumers:
             self._consumers.add(consumer)
 
     @property
-    def producer(self) -> T:
+    def producer(self) -> FCall:
         "The producer index."
 
         if self._producer is None:
@@ -286,7 +269,7 @@ class TensorRef[T: FCall]:
             return self._producer
 
     @property
-    def consumers(self) -> AnySet[T]:
+    def consumers(self) -> AnySet[FCall]:
         "The list of consumers."
         return self._consumers
 

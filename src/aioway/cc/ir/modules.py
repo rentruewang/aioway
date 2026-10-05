@@ -99,7 +99,7 @@ class ModuleHist:
         )
         self.append(thunk)
 
-    def dag(self) -> InstrSet[ModuleThunk]:
+    def dag(self) -> InstrSet:
         return InstrSet.from_thunk_list(self.history)
 
 

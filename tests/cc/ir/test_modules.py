@@ -70,7 +70,7 @@ def test_thunk_upstream_yields(module: nn.Module) -> None:
     x, y = torch.ones(3), torch.zeros(3)
     thunk = _make_thunk(module, x, y, result=x)
 
-    assert thunk.inputs == [x, y]
+    assert thunk.inputs == {x, y}
 
 
 def test_thunk_downstream_yields(thunk: ModuleThunk) -> None:

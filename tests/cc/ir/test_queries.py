@@ -5,30 +5,32 @@ import typing
 import numpy as np
 import pytest
 import torch
+from torch import testing as tt
 
-from aioway.cc import IndexQuery, InstrSet, TorchFuncDag
-from aioway.t import fake_mode
+from aioway.cc import Exec, IndexQuery, InstrSet, TorchFuncDag
+from aioway.t import fake_mode, parse_attr
 
 
-class GraphInter(typing.NamedTuple):
+class Graph(typing.NamedTuple):
+    iset: InstrSet
     x: torch.Tensor
     y: torch.Tensor
-    s: torch.Tensor
-    m: torch.Tensor
-    d: torch.Tensor
-    r: torch.Tensor
+    summed: torch.Tensor
+    product: torch.Tensor
+    difference: torch.Tensor
+    activated: torch.Tensor
 
 
 @pytest.fixture
-def graph():
+def graph() -> Graph:
     """
     Trace down the following operation:
 
 
-    step 0: s = add(x, y)
-    step 1: m = mul(s, x)
-    step 2: d = sub(m, s)
-    step 3: r = relu(d)
+    step 0: summed = add(x, y)
+    step 1: product = mul(summed, x)
+    step 2: difference = sub(product, summed)
+    step 3: activated = relu(difference)
     """
 
     tracer = TorchFuncDag()
@@ -37,78 +39,171 @@ def graph():
         x, y = torch.zeros(3), torch.zeros(3)
 
         with tracer.activate():
-            s = torch.add(x, y)
-            m = torch.mul(s, x)
-            d = torch.sub(m, s)
-            r = torch.relu(d)
+            summed = torch.add(x, y)
+            product = torch.mul(summed, x)
+            difference = torch.sub(product, summed)
+            activated = torch.relu(difference)
 
     iset = InstrSet.from_thunk_list(tracer.thunks)
-    return iset, GraphInter(x, y, s, m, d, r)
+    return Graph(iset, x, y, summed, product, difference, activated)
 
 
-def test_all(graph):
-    iset, (x, y, s, m, d, r) = graph
-    sub = IndexQuery([0, 1, 2, 3])(iset)
+def test_all(graph: Graph):
+    sub = IndexQuery([0, 1, 2, 3]).select(graph.iset)
 
     assert isinstance(sub, InstrSet)
     assert len(sub) == 4
-    assert sub.inputs == [x, y]
-    assert sub.outputs == [r]
+    assert sub.inputs == {graph.x, graph.y}
+    assert sub.outputs == [graph.activated]
 
 
-def test_prefix(graph):
-    iset, (x, y, s, m, d, r) = graph
-    sub = IndexQuery([0, 1])(iset)
-
-    assert len(sub) == 2
-    assert sub.inputs == [x, y]
-    assert sub.outputs == [m]
-
-
-def test_suffix(graph):
-    iset, (x, y, s, m, d, r) = graph
-    sub = IndexQuery([2, 3])(iset)
+def test_prefix(graph: Graph):
+    sub = IndexQuery([0, 1]).select(graph.iset)
 
     assert len(sub) == 2
-    assert sub.inputs == [m, s]
-    assert sub.outputs == [r]
+    assert sub.inputs == {graph.x, graph.y}
+    assert sub.outputs == {graph.summed, graph.product}
 
 
-def test_single_step(graph):
-    iset, (x, y, s, m, d, r) = graph
-    sub = IndexQuery([3])(iset)
+def test_suffix(graph: Graph):
+    sub = IndexQuery([2, 3]).select(graph.iset)
+
+    assert len(sub) == 2
+    assert sub.inputs == {graph.product, graph.summed}
+    assert sub.outputs == [graph.activated]
+
+
+def test_single_step(graph: Graph):
+    sub = IndexQuery([3]).select(graph.iset)
 
     assert len(sub) == 1
-    assert sub.inputs == [d]
-    assert sub.outputs == [r]
+    assert sub.inputs == [graph.difference]
+    assert sub.outputs == [graph.activated]
 
 
-def test_numpy_idx(graph):
-    iset, (x, y, s, m, d, r) = graph
-    sub = IndexQuery(np.array([2, 3]))(iset)
+def test_numpy_idx(graph: Graph):
+    sub = IndexQuery(np.array([2, 3])).select(graph.iset)
 
-    assert sub.inputs == [m, s]
-    assert sub.outputs == [r]
+    assert sub.inputs == {graph.product, graph.summed}
+    assert sub.outputs == [graph.activated]
 
 
-def test_no_depending_on_intermediate(graph):
-    iset, _ = graph
-
-    # Step 2 needs `m` from step 1, which is skipped but comes after step 0,
+def test_no_depending_on_intermediate(graph: Graph):
+    # Step 2 needs `product` from step 1, which is skipped but comes after step 0,
     # this means the subgraph is not complte.
     with pytest.raises(ValueError):
-        IndexQuery([0, 2])(iset)
+        IndexQuery([0, 2]).select(graph.iset)
 
 
-def test_no_neg_idx(graph):
-    iset, _ = graph
-
+def test_no_neg_idx(graph: Graph):
     with pytest.raises(IndexError):
-        IndexQuery([-1])(iset)
+        IndexQuery([-1]).select(graph.iset)
 
 
-def test_out_of_bounds(graph):
-    iset, _ = graph
-
+def test_out_of_bounds(graph: Graph):
     with pytest.raises(IndexError):
-        IndexQuery([4])(iset)
+        IndexQuery([4]).select(graph.iset)
+
+
+def trace(fn, *shapes: tuple[int, ...]) -> InstrSet:
+    "Trace `fn` on fresh fakes of `shapes` into its own instruction set."
+
+    tracer = TorchFuncDag()
+
+    with fake_mode():
+        fakes = [torch.zeros(shape) for shape in shapes]
+
+        with tracer.activate():
+            fn(*fakes)
+
+    return InstrSet.from_thunk_list(tracer.thunks)
+
+
+def funcs(iset: InstrSet) -> list:
+    return [thunk.func for thunk in iset]
+
+
+def test_rewrite_with_itself(graph: Graph):
+    query = IndexQuery([1, 2])
+
+    result = query.rewrite(graph.iset, query.select(graph.iset))
+
+    assert funcs(result) == funcs(graph.iset)
+
+
+def test_rewrite_last(graph: Graph):
+    # Step 3 takes one tensor (difference) and returns one.
+    replacement = trace(lambda difference: torch.abs(difference), (3,))
+    result = IndexQuery([3]).rewrite(graph.iset, replacement)
+
+    assert funcs(result) == [torch.add, torch.mul, torch.sub, torch.abs]
+
+
+def test_rewrite_last_runs(graph: Graph):
+    replacement = trace(lambda difference: torch.abs(difference), (3,))
+    result = IndexQuery([3]).rewrite(graph.iset, replacement)
+
+    x_real, y_real = torch.randn(3), torch.randn(3)
+    summed = x_real + y_real
+
+    tt.assert_close(Exec(result)(x_real, y_real), torch.abs(summed * x_real - summed))
+
+
+def test_rewrite_middle(graph: Graph):
+    # Steps 1-2 take (summed, x) and return difference. Replace mul/sub with add/sub.
+    replacement = trace(
+        lambda summed, x: torch.sub(torch.add(summed, x), summed), (3,), (3,)
+    )
+    result = IndexQuery([1, 2]).rewrite(graph.iset, replacement)
+
+    assert funcs(result) == [torch.add, torch.add, torch.sub, torch.relu]
+
+
+def test_rewrite_middle_runs(graph: Graph):
+    replacement = trace(
+        lambda summed, x: torch.sub(torch.add(summed, x), summed), (3,), (3,)
+    )
+    result = IndexQuery([1, 2]).rewrite(graph.iset, replacement)
+
+    x_real, y_real = torch.randn(3), torch.randn(3)
+
+    # difference becomes (summed + x) - summed == x, so the program computes relu(x).
+    tt.assert_close(Exec(result)(x_real, y_real), torch.relu(x_real))
+
+
+def test_rewrite_keeps_io_attrs(graph: Graph):
+    replacement = trace(lambda difference: torch.abs(difference), (3,))
+    result = IndexQuery([3]).rewrite(graph.iset, replacement)
+
+    assert len(result.inputs) == len(graph.iset.inputs)
+    assert len(result.outputs) == len(graph.iset.outputs)
+    assert all(
+        parse_attr(got) == parse_attr(want)
+        for got, want in zip(result.inputs, graph.iset.inputs)
+    )
+
+
+def test_rewrite_keeps_original(graph: Graph):
+    before = funcs(graph.iset)
+
+    IndexQuery([3]).rewrite(
+        graph.iset, trace(lambda difference: torch.abs(difference), (3,))
+    )
+
+    assert funcs(graph.iset) == before
+
+
+def test_rewrite_rejects_wrong_shape(graph: Graph):
+    # Same arity, but the fake is (4,) where the subnet has (3,).
+    replacement = trace(lambda difference: torch.abs(difference), (4,))
+
+    with pytest.raises(ValueError):
+        IndexQuery([3]).rewrite(graph.iset, replacement)
+
+
+def test_rewrite_rejects_wrong_arity(graph: Graph):
+    # Two inputs where the subnet has one.
+    replacement = trace(lambda lhs, rhs: torch.add(lhs, rhs), (3,), (3,))
+
+    with pytest.raises(ValueError):
+        IndexQuery([3]).rewrite(graph.iset, replacement)

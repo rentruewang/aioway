@@ -2,11 +2,16 @@
 
 import abc
 import dataclasses as dcls
+import typing
+from collections import abc as cabc
 
 import numpy as np
+import torch
 
-from aioway._utils import IntArray
+from aioway._utils import AnySet, IntArray, any_dict, any_set
+from aioway.t import TList
 
+from .instrs import FCall
 from .sets import InstrSet
 
 __all__ = ["Query", "IndexQuery"]
@@ -17,8 +22,45 @@ class Query(abc.ABC):
     A query is a subnet generator.
     """
 
-    def __call__(self, dag: InstrSet) -> InstrSet:
+    def select(self, iset: InstrSet, /) -> InstrSet:
+        """
+        Produce a subset whose:
+        Input is any tensor used in this scope but not defined in the scope.
+        Output is any tensor produced and used in downstream.
+        """
+
+        # Sorted and deduplicated, so `selected` is in step order.
+        indices = self._select_idx(iset)
+        idx_set = set(indices.tolist())
+        selected = iset[indices]
+
+        produced_here = _get_tensor_sets(instr.outputs for instr in selected)
+        used_outside = _used_outside(iset, idx_set)
+
+        # Inputs: used by our selected by not produced inside the region.
+        inputs = TList(
+            t for instr in selected for t in instr.inputs if t not in produced_here
+        )
+
+        # Outputs: produced by our selected and used by outside thunks.
+        outputs = TList(
+            t for instr in selected for t in instr.outputs if t in used_outside
+        )
+
+        # Inputs should not depend on intermediate.
+        # Since `inputs_produced_by` represent intermediate, it can be empty.
+        inputs_produced_by = [iset.output_of_step(t) for t in inputs]
+        if inputs_produced_by and indices.min() < max(inputs_produced_by):
+            raise ValueError("Illegal subset where input depend on intermediate.")
+
+        return InstrSet(selected, inputs, outputs)
+
+    @abc.abstractmethod
+    def _select_idx(self, iset: InstrSet, /) -> IntArray:
         raise NotImplementedError
+
+    def rewrite(self, iset: InstrSet, subset: InstrSet) -> InstrSet:
+        return _replace_subset(query=self, iset=iset, subset=subset)
 
 
 # Some implementations ====
@@ -39,7 +81,8 @@ class IndexQuery(Query):
     The index to preserve. Indices must be within `[0, len)` for each instruction set.
     """
 
-    def __call__(self, iset: InstrSet) -> InstrSet:
+    @typing.override
+    def _select_idx(self, iset: InstrSet, /) -> IntArray:
         idx: IntArray = np.asarray(self.indices)
 
         if (idx < 0).any():
@@ -48,12 +91,77 @@ class IndexQuery(Query):
         if (idx >= len(iset)).any():
             raise IndexError("Some indices are out of bounds.")
 
-        result = InstrSet.from_thunk_list(iset[idx])
+        return idx
 
-        # Check if input is not produced by intermediate steps,
-        # which may be output of the subnet itself.
-        inputs_produced_by = [iset.output_of_step(t) for t in result.inputs]
-        if idx.min() < max(inputs_produced_by):
-            raise ValueError("Illegal subset where input depend on intermediate.")
 
-        return result
+# Helper functions ====
+
+
+def _used_outside(iset: InstrSet, selected_idx: set[int]) -> AnySet[torch.Tensor]:
+    """
+    Add all tensors used outside of selected region.
+    """
+
+    used = any_set(torch.Tensor)
+
+    for i, instr in enumerate(iset.instrs):
+        if i in selected_idx:
+            continue
+
+        for tensor in instr.inputs:
+            used.add(tensor)
+
+    for tensor in iset.outputs:
+        used.add(tensor)
+
+    return used
+
+
+def _get_tensor_sets(tlists: cabc.Iterable[TList]) -> AnySet[torch.Tensor]:
+    aset = any_set(torch.Tensor)
+
+    for tlist in tlists:
+        for tensor in tlist:
+            aset.add(tensor)
+
+    return aset
+
+
+def _replace_subset(*, iset: InstrSet, query: Query, subset: InstrSet) -> InstrSet:
+    """
+    Replace the query with a new subset.
+    """
+
+    queried = query.select(iset)
+
+    if queried.inputs.attrs() != subset.inputs.attrs():
+        raise ValueError("Inputs are not compatible.")
+
+    if queried.outputs.attrs() != subset.outputs.attrs():
+        raise ValueError("Outputs are not compatible.")
+
+    # Get the indices of the queried subnet and minimum (useful in inserting).
+    qidx = {iset.index(q) for q in queried}
+    min_qidx = min(qidx)
+
+    # Inputs and outputs are not shared.
+    assert subset.inputs.keys().isdisjoint(subset.outputs.keys())
+
+    # Build mapping for replacement.
+    in_to_out = any_dict(torch.Tensor)
+    for before, after in zip(queried.inputs, subset.inputs):
+        in_to_out[before] = after
+    for before, after in zip(queried.outputs, subset.outputs):
+        in_to_out[before] = after
+
+    # Drop the ones that are queried.
+    new_instrs: list[FCall] = [
+        thunk.tree_map_only(torch.Tensor, lambda t: in_to_out.get(t, t))
+        for i, thunk in enumerate(iset.instrs)
+        if i not in qidx
+    ]
+
+    # Replace with new.
+    pre = new_instrs[:min_qidx]
+    post = new_instrs[min_qidx:]
+    return iset.from_thunk_list([*pre, *subset.instrs, *post])
