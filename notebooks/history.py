@@ -22,8 +22,7 @@ from torch import nn
 pretty.install()
 
 # %%
-from aioway.cc import track_module_thunks
-from aioway.cc.ir.queries import IndexQuery
+from aioway.ir import IndexQuery, track_module_thunks
 from aioway.t import fake_mode
 
 # %%

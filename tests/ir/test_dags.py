@@ -5,7 +5,7 @@ from collections import abc as cabc
 
 import pytest
 
-from aioway.cc import FCall, InstrSet, TensorLifetime
+from aioway.ir import FCall, InstrSet, TensorLifetime
 
 
 def test_thunk_not_callable() -> None:
