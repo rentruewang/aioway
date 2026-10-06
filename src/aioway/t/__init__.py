@@ -14,4 +14,3 @@ from .overrides import *
 from .routes import *
 from .sessions import *
 from .tspecs import *
-from .visitors import *
