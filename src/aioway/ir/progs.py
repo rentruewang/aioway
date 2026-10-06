@@ -97,30 +97,6 @@ class Program:
         "Mapping from tensors to refs (linking functions)."
         return _build_tensor_refs(self.instrs, list(self._inputs))
 
-    @functools.cached_property
-    def _inputs_to_thunk_index(self) -> AnyDict[torch.Tensor, list[FuncCall]]:
-        "The mapping from tensor to thunk's that uses it."
-        return _tensor_is_input_to_thunk(self.instrs)
-
-    def parents(self, thunk: FuncCall) -> AnySet[FuncCall]:
-        return any_set(FuncCall, *self._parents(thunk))
-
-    def children(self, thunk: FuncCall) -> AnySet[FuncCall]:
-        return any_set(FuncCall, *self._children(thunk))
-
-    def _parents(self, thunk: FuncCall) -> cabc.Generator[FuncCall]:
-        for input in thunk.inputs:
-            ref = self._tensor_links[input]
-
-            # Check if it is a free variable.
-            if not ref.is_free:
-                yield ref.producer
-
-    def _children(self, thunk: FuncCall) -> cabc.Generator[FuncCall]:
-        for output in thunk.outputs:
-            ref = self._tensor_links[output]
-            yield from ref.consumers
-
     def life(self, t: torch.Tensor, /) -> TensorLifetime:
         """
         Compute the lifetime of a tensor.
@@ -174,10 +150,6 @@ class Program:
             # Input should not have a producer.
             if not self._tensor_links[input].is_free:
                 raise ValueError("Input is not a free variable.")
-
-            # Input should be used.
-            if input not in self._inputs_to_thunk_index:
-                raise ValueError("Input is not used.")
 
         for output in self._outputs:
             # Output is not produced.

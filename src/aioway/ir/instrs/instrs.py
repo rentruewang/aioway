@@ -2,7 +2,6 @@
 
 "The instructions themselves."
 
-from aioway._utils import is_list_of
 import abc
 import dataclasses as dcls
 import functools
@@ -12,7 +11,7 @@ from collections import abc as cabc
 import numpy as np
 from torch.utils import _pytree as pyt
 
-from aioway._utils import AnyDict, IntArray, any_dict
+from aioway._utils import AnyDict, IntArray, any_dict, is_list_of
 from aioway.t import TList
 
 __all__ = ["Instr", "InstrList"]
