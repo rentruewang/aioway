@@ -14,7 +14,7 @@ import torch
 from aioway._utils import AnyDict, AnySet, IntArray, any_dict, any_set
 from aioway.t import TList, all_real, parse_attr
 
-from .instrs import FuncCall, InstrList
+from .instrs import FuncCall, Instr, InstrList
 
 if typing.TYPE_CHECKING:
     from .queries import Query
@@ -214,7 +214,7 @@ class Program:
 # The node classes ====
 
 
-class TensorRef[FCall: FuncCall]:
+class TensorRef[F: Instr]:
     """
     A data structure holding tensor information in the DAG.
 
@@ -225,7 +225,7 @@ class TensorRef[FCall: FuncCall]:
     we can assume there is only 1 single producer.
     """
 
-    def __init__(self, producer: FCall | None, tensor: torch.Tensor) -> None:
+    def __init__(self, producer: F | None, tensor: torch.Tensor) -> None:
         """
         Args:
             producer: The thunk's id, or `None` if it's a free variable.
@@ -234,7 +234,7 @@ class TensorRef[FCall: FuncCall]:
 
         self._producer = producer
         self._tensor = tensor
-        self._consumers: AnySet[FCall] = typing.cast(typing.Any, any_set(FCall))
+        self._consumers: AnySet[F] = typing.cast(typing.Any, any_set(F))
 
         if not isinstance(tensor, torch.Tensor) or all_real(tensor):
             raise ValueError(
@@ -245,14 +245,14 @@ class TensorRef[FCall: FuncCall]:
         attr = parse_attr(self.tensor)
         return f"TRef({attr!s}, {self.producer})"
 
-    def add_consumers(self, *consumers: FCall) -> None:
+    def add_consumers(self, *consumers: F) -> None:
         "Add consumers for the info. Allow duplication."
 
         for consumer in consumers:
             self._consumers.add(consumer)
 
     @property
-    def producer(self) -> FCall:
+    def producer(self) -> F:
         "The producer index."
 
         if self._producer is None:
@@ -261,7 +261,7 @@ class TensorRef[FCall: FuncCall]:
             return self._producer
 
     @property
-    def consumers(self) -> AnySet[FCall]:
+    def consumers(self) -> AnySet[F]:
         "The list of consumers."
         return self._consumers
 
@@ -279,16 +279,16 @@ class TensorRef[FCall: FuncCall]:
 # Helper functions for dag ====
 
 
-def _all_thunk_tensors(thunks: cabc.Iterable[FuncCall]):
+def _all_thunk_tensors(thunks: cabc.Iterable[Instr]) -> cabc.Generator[torch.Tensor]:
     for thunk in thunks:
         yield from thunk.inputs
         yield from thunk.outputs
 
 
-def _tensor_is_input_to_thunk(
-    thunks: cabc.Iterable[FuncCall],
-) -> AnyDict[torch.Tensor, list[FuncCall]]:
-    result: AnyDict[torch.Tensor, list[FuncCall]] = any_dict(torch.Tensor)
+def _tensor_is_input_to_thunk[T: Instr](
+    thunks: cabc.Iterable[T],
+) -> AnyDict[torch.Tensor, list[T]]:
+    result: AnyDict[torch.Tensor, list[T]] = any_dict(torch.Tensor)
 
     for thunk in thunks:
         for tensor in thunk.inputs:
@@ -301,7 +301,7 @@ def _tensor_is_input_to_thunk(
 
 
 def _build_tensor_refs(
-    thunks: cabc.Iterable[FuncCall], inputs: cabc.Sequence[torch.Tensor]
+    thunks: cabc.Iterable[Instr], inputs: cabc.Sequence[torch.Tensor]
 ) -> AnyDict[torch.Tensor, TensorRef]:
     "Get the mapping from id of `torch.Tensor` to corresponding tensor ref."
 
@@ -329,10 +329,10 @@ def _tensor_refs_inputs(
     return mapping
 
 
-def _tensor_refs_outputs(
-    thunks: cabc.Iterable[FuncCall],
-) -> AnyDict[torch.Tensor, TensorRef]:
-    mapping: AnyDict[torch.Tensor, TensorRef] = any_dict(torch.Tensor)
+def _tensor_refs_outputs[I: Instr](
+    thunks: cabc.Iterable[I],
+) -> AnyDict[torch.Tensor, TensorRef[I]]:
+    mapping: AnyDict[torch.Tensor, TensorRef[I]] = any_dict(torch.Tensor)
 
     for thunk in thunks:
         for output in thunk.outputs:
@@ -345,7 +345,7 @@ def _tensor_refs_outputs(
 
 
 def _link_inputs_for_mapping(
-    mapping: AnyDict[torch.Tensor, TensorRef], thunks: cabc.Iterable[FuncCall]
+    mapping: AnyDict[torch.Tensor, TensorRef], thunks: cabc.Iterable[Instr]
 ) -> None:
     for thunk in thunks:
         for input in thunk.inputs:
