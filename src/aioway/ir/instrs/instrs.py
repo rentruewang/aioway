@@ -2,19 +2,20 @@
 
 "The instructions themselves."
 
+from aioway._utils import is_list_of
 import abc
 import dataclasses as dcls
 import functools
 import typing
 from collections import abc as cabc
 
+import numpy as np
 from torch.utils import _pytree as pyt
 
-from aioway.t import (
-    TList,
-)
+from aioway._utils import AnyDict, IntArray, any_dict
+from aioway.t import TList
 
-__all__ = ["Instr"]
+__all__ = ["Instr", "InstrList"]
 
 
 @typing.dataclass_transform(frozen_default=True, eq_default=False)
@@ -70,3 +71,53 @@ class Instr(abc.ABC):
         "The list of tensors in the outputs."
 
         raise NotImplementedError
+
+
+# The instr list class ====
+
+
+class InstrList[I: Instr = typing.Any]:
+    "The list of `Instr`."
+
+    def __init__(self, iterable: cabc.Iterable[I]) -> None:
+        self._seq = tuple(iterable)
+
+    def __len__(self) -> int:
+        return len(self._seq)
+
+    @typing.overload
+    def __getitem__(self, idx: int) -> I: ...
+
+    @typing.overload
+    def __getitem__(self, idx: slice | list[int] | IntArray) -> typing.Self: ...
+
+    def __getitem__(self, idx):
+        if isinstance(idx, int | np.generic):
+            return self._seq[int(idx)]
+
+        if isinstance(idx, slice):
+            return type(self)(self._seq[idx])
+
+        if is_list_of(int)(idx):
+            return [self._seq[i] for i in idx]
+
+        if isinstance(idx, np.ndarray) and np.isdtype(idx.dtype, "integral"):
+            match idx.ndim:
+                case 0:
+                    return self._seq[idx]
+                case 1:
+                    return [self._seq[i] for i in idx]
+
+        raise IndexError(idx)
+
+    def __iter__(self) -> cabc.Iterator[I]:
+        return iter(self._seq)
+
+    def index(self, instr: I, /) -> int:
+        return self._instr_to_step[instr]
+
+    @functools.cached_property
+    def _instr_to_step(self) -> AnyDict[I, int]:
+        "Mapping from thunks to their indices."
+
+        return any_dict(Instr, *((thunk, idx) for idx, thunk in enumerate(self._seq)))

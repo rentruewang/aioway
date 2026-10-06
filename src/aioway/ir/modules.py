@@ -14,7 +14,7 @@ from aioway.t import (
     register_module_forward_pre_hook,
 )
 
-from .instrs import ModuleCall
+from .instrs import InstrList, ModuleCall
 from .progs import Program
 
 __all__ = ["ModuleTracker", "ModuleHist", "track_module_thunks"]
@@ -47,7 +47,7 @@ class NnProgram(Program):
                 raise TypeError("`NnProgram` only accepts `ModuleCall`.")
 
     @property
-    def instrs(self) -> cabc.Sequence[ModuleCall]:
+    def instrs(self) -> InstrList:
         result: typing.Any = self._instrs
         return result
 

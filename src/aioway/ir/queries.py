@@ -144,7 +144,7 @@ def _replace_subset(*, prog: Program, query: Query, subset: Program) -> Program:
         raise ValueError("Outputs are not compatible.")
 
     # Get the indices of the queried subnet and minimum (useful in inserting).
-    qidx = {prog.index(q) for q in queried}
+    qidx = {prog.instrs.index(q) for q in queried}
     min_qidx = min(qidx)
 
     # Inputs and outputs are not shared.
