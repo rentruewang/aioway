@@ -66,7 +66,7 @@ class TList:
 
     def __eq__(self, other) -> bool:
         if isinstance(other, TList):
-            return sorted(self._indexed.keys()) == sorted(other._indexed.keys())
+            return list(self._indexed.keys()) == list(other._indexed.keys())
 
         if is_set_of(torch.Tensor):
             return sorted(self._indexed.keys()) == sorted(id(t) for t in other)
