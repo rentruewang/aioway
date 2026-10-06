@@ -3,6 +3,7 @@
 "A utility for a list of tensor."
 
 import collections
+import copy
 import functools
 import typing
 from collections import abc as cabc
@@ -25,18 +26,29 @@ __all__ = ["TList"]
 class TList:
     """
     This is an immutable list of tensors, supporting fast lookups.
-
     It deduplicates the tensors it received.
-
     The list is stable (insertion order = getitem order).
+
+    It has a private constructor.
 
     When doing `==` comparison, if the RHS is a `Set` the order doesn't matter,
     but if it's a `Sequence` or `TList` the order does matter.
     """
 
-    def __init__(self, tensors: cabc.Iterable[torch.Tensor]) -> None:
-        self._indexed = collections.OrderedDict((id(t), t) for t in tensors)
-        self._tensors = tuple(self._indexed.values())
+    def __init__(
+        self,
+        *,
+        indexed: collections.OrderedDict[int, torch.Tensor],
+        tensors: tuple[torch.Tensor, ...],
+    ) -> None:
+
+        self._indexed = indexed
+        self._tensors = tensors
+
+        if len(self._indexed) != len(self._tensors):
+            raise ValueError(
+                "The indexed tensor dict is not the same length as the tensors."
+            )
 
     def __repr__(self) -> str:
         body = ",".join(map(str, (parse_attr(t) for t in self)))
@@ -110,6 +122,24 @@ class TList:
 
         return parse_attr(self)
 
+    @classmethod
+    def from_self_or_iter(
+        cls, tensors: cabc.Iterable[torch.Tensor] | typing.Self, /
+    ) -> typing.Self:
+        # If it's a `TList` do a shallow copy.
+        if isinstance(tensors, TList):
+            return copy.copy(tensors)
+
+        else:
+            return cls.from_iterable(tensors)
+
+    @classmethod
+    def from_iterable(cls, tensors: cabc.Iterable[torch.Tensor], /) -> typing.Self:
+        "Convert from an iterable of tensors."
+        indexed = collections.OrderedDict((id(t), t) for t in tensors)
+        tensors = tuple(indexed.values())
+        return cls(indexed=indexed, tensors=tensors)
+
 
 # Utility functions. ====
 
@@ -132,7 +162,7 @@ def _flatten_tlist(tlist: TList):
 
 
 def _unflatten_tlist(tlist: cabc.Iterable[torch.Tensor], _: None):
-    return TList(tlist)
+    return TList.from_iterable(tlist)
 
 
 pytree.register_pytree_node(TList, _flatten_tlist, _unflatten_tlist)

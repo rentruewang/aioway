@@ -38,12 +38,12 @@ class Query(abc.ABC):
         used_outside = _used_outside(prog, idx_set)
 
         # Inputs: used by our selected by not produced inside the region.
-        inputs = TList(
+        inputs = TList.from_iterable(
             t for instr in selected for t in instr.inputs if t not in produced_here
         )
 
         # Outputs: produced by our selected and used by outside thunks.
-        outputs = TList(
+        outputs = TList.from_iterable(
             t for instr in selected for t in instr.outputs if t in used_outside
         )
 
@@ -97,21 +97,24 @@ class IndexQuery(Query):
 # Helper functions ====
 
 
-def _used_outside(iset: Program, selected_idx: set[int]) -> AnySet[torch.Tensor]:
+def _used_outside(prog: Program, selected_idx: set[int]) -> AnySet[torch.Tensor]:
     """
     Add all tensors used outside of selected region.
     """
 
-    used = any_set(torch.Tensor)
+    used: AnySet[torch.Tensor] = any_set(torch.Tensor)
 
-    for i, instr in enumerate(iset.instrs):
+    # Only check those that occur after, as this is a DAG.
+    for i in range(min(selected_idx), len(prog)):
+        instr = prog[i]
+
         if i in selected_idx:
             continue
 
         for tensor in instr.inputs:
             used.add(tensor)
 
-    for tensor in iset.outputs:
+    for tensor in prog.outputs:
         used.add(tensor)
 
     return used
