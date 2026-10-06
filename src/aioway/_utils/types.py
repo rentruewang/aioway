@@ -5,7 +5,7 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-__all__ = ["track_call_count", "Stack"]
+__all__ = ["track_call_count", "Stack", "find_common_base"]
 
 
 class _CallCounter[**P, T]:
@@ -153,3 +153,18 @@ class Stack[T]:
             yield item
         finally:
             self.append(item)
+
+
+def find_common_base(iterable: cabc.Iterable) -> type:
+    try:
+        first, *rest = [type(elem) for elem in iterable]
+
+    # The iterable is empty.
+    except ValueError:
+        raise RuntimeError
+
+    for typ in first.mro():
+        if all(issubclass(other, typ) for other in rest):
+            return typ
+
+    raise RuntimeError("No common subclass found.")

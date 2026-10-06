@@ -11,7 +11,7 @@ from collections import abc as cabc
 import numpy as np
 from torch.utils import _pytree as pyt
 
-from aioway._utils import AnyDict, IntArray, any_dict, is_list_of
+from aioway._utils import AnyDict, IntArray, any_dict, is_list_of, find_common_base
 from aioway.t import TList
 
 __all__ = ["Instr", "InstrList"]
@@ -138,7 +138,7 @@ class InstrList[I: Instr = typing.Any]:
             result: typing.Any = iterable
             return result
 
-        if not issubclass(base := _find_common_base(iterable), Instr):
+        if not issubclass(base := find_common_base(iterable), Instr):
             raise TypeError(f"Common base class: {base}, not subclass of `Instr`.")
 
         iterable = tuple(iterable)
@@ -147,18 +147,3 @@ class InstrList[I: Instr = typing.Any]:
                 raise TypeError(f"Expected: {base} type, got {type(item)=}.")
 
         return cls(iterable=iterable, base=base)
-
-
-def _find_common_base(iterable: cabc.Iterable) -> type:
-    try:
-        first, *rest = [type(elem) for elem in iterable]
-
-    # The iterable is empty.
-    except ValueError:
-        raise RuntimeError
-
-    for typ in first.mro():
-        if all(issubclass(other, typ) for other in rest):
-            return typ
-
-    raise RuntimeError("No common subclass found.")
