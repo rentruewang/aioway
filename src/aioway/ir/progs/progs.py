@@ -12,12 +12,11 @@ import numpy as np
 import torch
 
 from aioway._utils import AnyDict, AnySet, IntArray, any_dict, any_set
+from aioway.ir.instrs import FuncCall, Instr, InstrList
 from aioway.t import TList, all_real, parse_attr
 
-from .instrs import FuncCall, Instr, InstrList
-
 if typing.TYPE_CHECKING:
-    from .queries import Query
+    from aioway.ir import Query
 
 __all__ = ["TensorRef", "Program", "TensorLifetime"]
 
@@ -65,7 +64,7 @@ class Program:
     def __getitem__(self, idx: slice | list[int] | IntArray) -> list[FuncCall]: ...
 
     def __getitem__(self, idx):
-        from .queries import Query
+        from aioway.ir import Query
 
         if isinstance(idx, int):
             return self.instrs[idx]

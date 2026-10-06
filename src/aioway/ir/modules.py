@@ -14,8 +14,8 @@ from aioway.t import (
     register_module_forward_pre_hook,
 )
 
-from .instrs import InstrList, ModuleCall
-from .progs import Program
+from .instrs import ModuleCall
+from .progs import NnProgram, Program
 
 __all__ = ["ModuleTracker", "ModuleHist", "track_module_thunks"]
 
@@ -31,25 +31,6 @@ def track_module_thunks() -> cabc.Generator[ModuleHist]:
 class _ModuleInput(typing.NamedTuple):
     module: nn.Module
     input: typing.Any
-
-
-class NnProgram(Program):
-    def __init__(
-        self,
-        instrs: cabc.Iterable[ModuleCall],
-        inputs: cabc.Iterable[torch.Tensor],
-        outputs: cabc.Iterable[torch.Tensor],
-    ) -> None:
-        super().__init__(instrs, inputs, outputs)
-
-        for instr in instrs:
-            if not isinstance(instr, ModuleCall):
-                raise TypeError("`NnProgram` only accepts `ModuleCall`.")
-
-    @property
-    def instrs(self) -> InstrList:
-        result: typing.Any = self._instrs
-        return result
 
 
 @dcls.dataclass(frozen=True)
