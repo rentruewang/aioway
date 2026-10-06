@@ -126,6 +126,7 @@ class TList:
     def from_self_or_iter(
         cls, tensors: cabc.Iterable[torch.Tensor] | typing.Self, /
     ) -> typing.Self:
+        # If it's a `TList` do a shallow copy.
         if isinstance(tensors, TList):
             return copy.copy(tensors)
 
