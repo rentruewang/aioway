@@ -130,7 +130,7 @@ class AnySet[K = typing.Any]:
         return self
 
     def isdisjoint(self, other: cabc.Iterable[K]) -> bool:
-        return all(_HASH(item) not in self._keys for item in other)
+        return self._keys.keys().isdisjoint(_HASH(item) for item in other)
 
     def add(self, key: K) -> None:
         self._keys[_HASH(key)] = key
