@@ -9,6 +9,7 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 from torch._subclasses import fake_tensor as ft
+from torch.utils import _pytree as pyt
 
 from aioway.t._utils import tcol_to_tdict
 from aioway.t.visitors import TorchVisitor
@@ -16,9 +17,11 @@ from aioway.t.visitors import TorchVisitor
 from .contexts import fake_mode
 
 __all__ = [
-    "is_fake",
+    "has_fake",
+    "all_fake",
+    "has_real",
+    "all_real",
     "is_fake_tensor",
-    "is_real",
     "is_real_tensor",
     "to_fake",
     "clone_fake",
@@ -43,7 +46,7 @@ def _to_fake_converter():
 def to_fake[C](item: C) -> C:
     "Convert an item to its fake counterpart."
 
-    return _to_fake_converter()(item)
+    return pyt.tree_map_only(torch.Tensor, func=_to_fake_tensor, tree=item)
 
 
 @functools.cache
@@ -58,18 +61,42 @@ def _is_fake_converter() -> TorchVisitor[bool]:
     )
 
 
-def is_fake(item) -> bool:
+def has_fake(item) -> bool:
     """
     Check if the item is fake.
     """
 
-    return _is_fake_converter()(item)
+    for elem in pyt.tree_leaves(item):
+        # This already checks if it's a tensor.
+        if is_fake_tensor(elem):
+            return True
+
+    return False
 
 
-def is_real(item) -> bool:
+def all_fake(item) -> bool:
+    """
+    Check if all the tesnors in here are all fake tensors.
+    """
+
+    for elem in pyt.tree_leaves(item):
+        # May have other values not tensor, only care about tensors.
+        if is_real_tensor(elem):
+            return False
+
+    return True
+
+
+def has_real(item) -> bool:
     "Check if the item is a real one."
 
-    return is_fake(item) != True
+    return not all_fake(item)
+
+
+def all_real(item) -> bool:
+    "Check if the item is a real one."
+
+    return not has_fake(item)
 
 
 def is_real_tensor(item) -> bool:
@@ -96,7 +123,7 @@ def clone_fake[T](item: T) -> T:
     This is useful in changing the `id` of fake values for uniqueness analysis.
     """
 
-    if not is_fake(item):
+    if not has_fake(item):
         return item
 
     return _clone_fake(item)
@@ -124,7 +151,7 @@ def _is_fake_tcol(item) -> bool:
 
 
 def _is_fake_iter(item: cabc.Iterable):
-    return any(is_fake(val) for val in item)
+    return any(has_fake(val) for val in item)
 
 
 def _to_fake_tcls(item):

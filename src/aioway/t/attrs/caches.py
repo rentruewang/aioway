@@ -8,7 +8,7 @@ import tensordict as td
 import torch
 
 from aioway.t._utils import tcol_to_tdict
-from aioway.t.overrides import is_real
+from aioway.t.overrides import all_real
 
 from .attrs import Attr, AttrDict, parse_attr
 
@@ -74,7 +74,7 @@ class _FakeAttrSchemaCache:
     def attr(self, tensor: torch.Tensor, /) -> Attr:
         "Convert fake tensor to `Attr`. If tensor is real, raise `RuntimeError`."
 
-        if is_real(tensor):
+        if all_real(tensor):
             raise RuntimeError("Only handles fake tensors!")
 
         if (tensor_id := id(tensor)) not in self._cache:
@@ -91,7 +91,7 @@ class _FakeAttrSchemaCache:
         if not td.is_tensor_collection(tcol):
             raise TypeError("Only accepts tensor collection!")
 
-        if is_real(tcol):
+        if all_real(tcol):
             raise RuntimeError("Only handles fake tensor collection!")
 
         tdict = tcol_to_tdict(tcol)

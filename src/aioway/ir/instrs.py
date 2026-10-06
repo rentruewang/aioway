@@ -10,7 +10,7 @@ from collections import abc as cabc
 
 import torch
 from torch import nn
-from torch.utils import _pytree as pytree
+from torch.utils import _pytree as pyt
 
 from aioway.t import (
     TList,
@@ -27,11 +27,11 @@ def instr_dcls[T](cls):
     """
     The dataclass transform wrapper for `Instr` classes.
 
-    This also registeres the class to `pytree`.
+    This also registeres the class to `pyt`.
     """
 
     cls = dcls.dataclass(frozen=True, eq=False, repr=False)(cls)
-    pytree.register_dataclass(cls)
+    pyt.register_dataclass(cls)
     return cls
 
 
@@ -47,14 +47,14 @@ class Instr(abc.ABC):
         Call the `tree_map` function on the `Instr`.
         """
 
-        return pytree.tree_map(func=func, tree=self)
+        return pyt.tree_map(func=func, tree=self)
 
     def tree_map_only(self, types: type | tuple[type, ...], func: cabc.Callable):
         """
         Call the `tree_map_only` function on the `Instr`.
         """
 
-        return pytree.tree_map_only(types, func=func, tree=self)
+        return pyt.tree_map_only(types, func=func, tree=self)
 
     @functools.cached_property
     def inputs(self) -> TList:

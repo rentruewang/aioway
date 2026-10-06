@@ -9,12 +9,12 @@ import typing
 from collections import abc as cabc
 
 import torch
-from torch.utils import _pytree as pytree
+from torch.utils import _pytree as pyt
 
 from aioway._utils import is_seq_of, is_set_of
 
 from .attrs import parse_attr
-from .overrides import is_fake
+from .overrides import has_fake
 
 if typing.TYPE_CHECKING:
     from .attrs import Attr
@@ -108,12 +108,12 @@ class TList:
     @functools.cached_property
     def any_fake(self) -> bool:
         "Check if this contains any fake items."
-        return any(is_fake(t) for t in self)
+        return any(has_fake(t) for t in self)
 
     @functools.cached_property
     def all_fake(self) -> bool:
         "Check if all items are fake."
-        return all(is_fake(t) for t in self)
+        return all(has_fake(t) for t in self)
 
     def attrs(self) -> list[Attr]:
         """
@@ -154,7 +154,7 @@ def _get_id(tensor: torch.Tensor | int, /) -> int:
     raise TypeError(type(tensor))
 
 
-# Register for pytree. ====
+# Register for pyt. ====
 
 
 def _flatten_tlist(tlist: TList):
@@ -165,4 +165,4 @@ def _unflatten_tlist(tlist: cabc.Iterable[torch.Tensor], _: None):
     return TList.from_iterable(tlist)
 
 
-pytree.register_pytree_node(TList, _flatten_tlist, _unflatten_tlist)
+pyt.register_pytree_node(TList, _flatten_tlist, _unflatten_tlist)
