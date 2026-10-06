@@ -14,7 +14,7 @@ from aioway.t import (
     register_module_forward_pre_hook,
 )
 
-from .sets import FCall, InstrSet
+from .progs import FCall, Program
 
 __all__ = ["ModuleThunk", "ModuleTracker", "ModuleHist", "track_module_thunks"]
 
@@ -99,8 +99,8 @@ class ModuleHist:
         )
         self.append(thunk)
 
-    def dag(self) -> InstrSet:
-        return InstrSet.from_thunk_list(self.history)
+    def dag(self) -> Program:
+        return Program.from_thunk_list(self.history)
 
 
 @dcls.dataclass(frozen=True)

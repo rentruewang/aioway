@@ -15,12 +15,12 @@ from aioway.t import TList, is_real, parse_attr
 
 from .instrs import FCall
 
-__all__ = ["TensorRef", "InstrSet", "TensorLifetime"]
+__all__ = ["TensorRef", "Program", "TensorLifetime"]
 
 # The DAG class ====
 
 
-class InstrSet:
+class Program:
     """
     A dag is a sequence of callables, that are linked by fake tensors.
     """

@@ -7,12 +7,12 @@ import pytest
 import torch
 from torch import testing as tt
 
-from aioway.ir import Exec, IndexQuery, InstrSet, TorchFuncDag
+from aioway.ir import Exec, IndexQuery, Program, TorchFuncDag
 from aioway.t import fake_mode, parse_attr
 
 
 class Graph(typing.NamedTuple):
-    iset: InstrSet
+    iset: Program
     x: torch.Tensor
     y: torch.Tensor
     summed: torch.Tensor
@@ -44,14 +44,14 @@ def graph() -> Graph:
             difference = torch.sub(product, summed)
             activated = torch.relu(difference)
 
-    iset = InstrSet.from_thunk_list(tracer.thunks)
+    iset = Program.from_thunk_list(tracer.thunks)
     return Graph(iset, x, y, summed, product, difference, activated)
 
 
 def test_all(graph: Graph):
     sub = IndexQuery([0, 1, 2, 3]).select(graph.iset)
 
-    assert isinstance(sub, InstrSet)
+    assert isinstance(sub, Program)
     assert len(sub) == 4
     assert sub.inputs == {graph.x, graph.y}
     assert sub.outputs == [graph.activated]
@@ -105,7 +105,7 @@ def test_out_of_bounds(graph: Graph):
         IndexQuery([4]).select(graph.iset)
 
 
-def trace(fn, *shapes: tuple[int, ...]) -> InstrSet:
+def trace(fn, *shapes: tuple[int, ...]) -> Program:
     "Trace `fn` on fresh fakes of `shapes` into its own instruction set."
 
     tracer = TorchFuncDag()
@@ -116,10 +116,10 @@ def trace(fn, *shapes: tuple[int, ...]) -> InstrSet:
         with tracer.activate():
             fn(*fakes)
 
-    return InstrSet.from_thunk_list(tracer.thunks)
+    return Program.from_thunk_list(tracer.thunks)
 
 
-def funcs(iset: InstrSet) -> list:
+def funcs(iset: Program) -> list:
     return [thunk.func for thunk in iset]
 
 

@@ -12,7 +12,7 @@ from aioway._utils import AnySet, IntArray, any_dict, any_set
 from aioway.t import TList
 
 from .instrs import FCall
-from .sets import InstrSet
+from .progs import Program
 
 __all__ = ["Query", "IndexQuery"]
 
@@ -22,7 +22,7 @@ class Query(abc.ABC):
     A query is a subnet generator.
     """
 
-    def select(self, iset: InstrSet, /) -> InstrSet:
+    def select(self, iset: Program, /) -> Program:
         """
         Produce a subset whose:
         Input is any tensor used in this scope but not defined in the scope.
@@ -53,13 +53,13 @@ class Query(abc.ABC):
         if inputs_produced_by and indices.min() < max(inputs_produced_by):
             raise ValueError("Illegal subset where input depend on intermediate.")
 
-        return InstrSet(selected, inputs, outputs)
+        return Program(selected, inputs, outputs)
 
     @abc.abstractmethod
-    def _select_idx(self, iset: InstrSet, /) -> IntArray:
+    def _select_idx(self, iset: Program, /) -> IntArray:
         raise NotImplementedError
 
-    def rewrite(self, iset: InstrSet, subset: InstrSet) -> InstrSet:
+    def rewrite(self, iset: Program, subset: Program) -> Program:
         return _replace_subset(query=self, iset=iset, subset=subset)
 
 
@@ -82,7 +82,7 @@ class IndexQuery(Query):
     """
 
     @typing.override
-    def _select_idx(self, iset: InstrSet, /) -> IntArray:
+    def _select_idx(self, iset: Program, /) -> IntArray:
         idx: IntArray = np.asarray(self.indices)
 
         if (idx < 0).any():
@@ -97,7 +97,7 @@ class IndexQuery(Query):
 # Helper functions ====
 
 
-def _used_outside(iset: InstrSet, selected_idx: set[int]) -> AnySet[torch.Tensor]:
+def _used_outside(iset: Program, selected_idx: set[int]) -> AnySet[torch.Tensor]:
     """
     Add all tensors used outside of selected region.
     """
@@ -127,7 +127,7 @@ def _get_tensor_sets(tlists: cabc.Iterable[TList]) -> AnySet[torch.Tensor]:
     return aset
 
 
-def _replace_subset(*, iset: InstrSet, query: Query, subset: InstrSet) -> InstrSet:
+def _replace_subset(*, iset: Program, query: Query, subset: Program) -> Program:
     """
     Replace the query with a new subset.
     """
