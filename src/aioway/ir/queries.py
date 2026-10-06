@@ -17,12 +17,15 @@ from .progs import Program
 __all__ = ["Query", "IndexQuery"]
 
 
-class Query(abc.ABC):
+class Query[I: Instr](abc.ABC):
     """
     A query is a subnet generator.
     """
 
-    def select(self, prog: Program, /) -> Program:
+    def __init__(self, base: type[I], /) -> None:
+        self._base = base
+
+    def select(self, prog: Program[I], /) -> Program[I]:
         """
         Produce a subset whose:
         Input is any tensor used in this scope but not defined in the scope.
@@ -59,10 +62,14 @@ class Query(abc.ABC):
     def _select_idx(self, iset: Program, /) -> IntArray:
         raise NotImplementedError
 
-    def rewrite[I: Instr](self, prog: Program[I], subset: Program[I]) -> Program[I]:
+    def rewrite(self, prog: Program[I], subset: Program[I]) -> Program[I]:
         prog = prog.copy()
         prog[self] = subset
         return prog
+
+    @property
+    def base(self) -> type[I]:
+        return self._base
 
 
 # Some implementations ====

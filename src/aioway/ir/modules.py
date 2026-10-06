@@ -88,7 +88,7 @@ class ModuleHist:
 
     @property
     def instrs(self) -> InstrList[ModuleCall]:
-        return InstrList(self.history)
+        return InstrList.build(self.history)
 
     @property
     def program(self) -> Program[ModuleCall]:

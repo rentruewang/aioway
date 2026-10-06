@@ -78,15 +78,15 @@ class Instr(abc.ABC):
 class InstrList[I: Instr = typing.Any]:
     "The list of `Instr`."
 
-    TYPE: typing.ClassVar[type[Instr]] = Instr
-    "Corresponds to the `I` generic parameter."
+    def __init__(self, *, base: type[I], iterable: tuple[I, ...]) -> None:
+        """
+        Args:
+            base: Correspond to the `I` generic parameter.
+            iterable: The iterable data.
+        """
 
-    def __init__(self, iterable: cabc.Iterable[I]) -> None:
-        self._seq = tuple(iterable)
-
-        for item in self._seq:
-            if not isinstance(item, self.TYPE):
-                raise TypeError(f"Expected: {self.TYPE} type, got {type(item)=}.")
+        self._base = base
+        self._seq = iterable
 
     def __len__(self) -> int:
         return len(self._seq)
@@ -102,7 +102,7 @@ class InstrList[I: Instr = typing.Any]:
             return self._seq[int(idx)]
 
         if isinstance(idx, slice):
-            return type(self)(self._seq[idx])
+            return type(self)(iterable=self._seq[idx], base=self.base)
 
         if is_list_of(int)(idx):
             return [self._seq[i] for i in idx]
@@ -128,9 +128,37 @@ class InstrList[I: Instr = typing.Any]:
 
         return any_dict(Instr, *((thunk, idx) for idx, thunk in enumerate(self._seq)))
 
+    @property
+    def base(self) -> type[I]:
+        return self._base
+
     @classmethod
-    def build(cls, iterable: cabc.Iterable[I] | InstrList[I]) -> InstrList[I]:
+    def build(cls, iterable: cabc.Iterable[I] | typing.Self) -> typing.Self:
         if isinstance(iterable, InstrList):
-            return iterable
-        else:
-            return cls(iterable)
+            result: typing.Any = iterable
+            return result
+
+        if not issubclass(base := _find_common_base(iterable), Instr):
+            raise TypeError(f"Common base class: {base}, not subclass of `Instr`.")
+
+        iterable = tuple(iterable)
+        for item in iterable:
+            if not isinstance(item, base):
+                raise TypeError(f"Expected: {base} type, got {type(item)=}.")
+
+        return cls(iterable=iterable, base=base)
+
+
+def _find_common_base(iterable: cabc.Iterable) -> type:
+    try:
+        first, *rest = [type(elem) for elem in iterable]
+
+    # The iterable is empty.
+    except ValueError:
+        raise RuntimeError
+
+    for typ in first.mro():
+        if all(issubclass(other, typ) for other in rest):
+            return typ
+
+    raise RuntimeError("No common subclass found.")
