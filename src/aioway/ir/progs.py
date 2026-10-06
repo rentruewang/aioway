@@ -98,7 +98,7 @@ class Program[I: Instr = typing.Any]:
         # Overwrite the references s.t. underlying data is not touched.
         # This is not supposed to fail because we already constructed a program.
         self.__init__(
-            instrs=mutated.instrs, inputs=mutated.inputs, outputs=mutated.outputs
+            instrs=mutated.selected, inputs=mutated.inputs, outputs=mutated.outputs
         )
 
     @property
@@ -201,23 +201,10 @@ class Program[I: Instr = typing.Any]:
         Both are in order of first appearance, which decides the signature.
         """
 
-        # Inputs observed in the list of thunks.
-        tensor_in_list = TList.empty()
+        instrs = tuple(instrs)
+        io_only = _InputOutputOnly.from_instrs(instrs)
 
-        # Output observed in the list of thunks.
-        tensor_out_list = TList.empty()
-
-        for thunk in instrs:
-            tensor_in_list += thunk.inputs
-
-            # Output must be unique.
-            assert tensor_out_list.isdisjoint(thunk.outputs)
-            tensor_out_list += thunk.outputs
-
-        input_only = tensor_in_list - tensor_out_list
-        output_only = tensor_out_list - tensor_in_list
-
-        return cls(instrs, input_only, output_only)
+        return cls(instrs, inputs=io_only.inputs, outputs=io_only.outputs)
 
 
 # The node classes ====
@@ -347,9 +334,40 @@ def _link_inputs_for_mapping(
             mapping[input].add_consumers(thunk)
 
 
+def _used_outside(prog: Program, selected_idx: set[int]) -> TList:
+    """
+    Add all tensors used outside of selected region.
+    """
+
+    used = TList.empty()
+
+    # Only check those that occur after, as this is a DAG.
+    for i in range(min(selected_idx) + 1, len(prog)):
+        if i in selected_idx:
+            continue
+
+        used += prog[i].inputs
+
+    # Populate the outputs as it's considered "consumed".
+    used += prog.outputs
+
+    return used
+
+
+# The querying related utilities ====
+
+
+class _ProgramTuple[I: Instr](typing.NamedTuple):
+    "A namedtuple to avoid paying construction cost of `Program`."
+
+    selected: InstrList[I]
+    inputs: TList
+    outputs: TList
+
+
 def _replace_sub_prog[I: Instr](
     *, prog: Program[I], query: Query[I], sub_prog: Program[I]
-) -> Program[I]:
+) -> _ProgramTuple[I]:
     """
     Replace the query with a new subset.
     """
@@ -386,15 +404,15 @@ def _replace_sub_prog[I: Instr](
     # Replace with new.
     pre = new_instrs[:min_qidx]
     post = new_instrs[min_qidx:]
-    return prog.from_instr_list([*pre, *sub_prog.instrs, *post])
 
+    selection = [*pre, *sub_prog.instrs, *post]
+    io_only = _InputOutputOnly.from_instrs(selection)
 
-class _ProgramTuple[I: Instr](typing.NamedTuple):
-    "A namedtuple to avoid paying construction cost of `Program`."
-
-    selected: InstrList[I]
-    inputs: TList
-    outputs: TList
+    return _ProgramTuple(
+        selected=InstrList.build(selection),
+        inputs=io_only.inputs,
+        outputs=io_only.outputs,
+    )
 
 
 def _query_select[I: Instr](*, query: Query[I], prog: Program[I]) -> _ProgramTuple[I]:
@@ -438,27 +456,33 @@ def _select_indices[I: Instr](
     return _ProgramTuple(selected, inputs, outputs)
 
 
-def _used_outside(prog: Program, selected_idx: set[int]) -> TList:
-    """
-    Add all tensors used outside of selected region.
-    """
-
-    used = TList.empty()
-
-    # Only check those that occur after, as this is a DAG.
-    for i in range(min(selected_idx) + 1, len(prog)):
-        if i in selected_idx:
-            continue
-
-        used += prog[i].inputs
-
-    # Populate the outputs as it's considered "consumed".
-    used += prog.outputs
-
-    return used
-
-
 # Helper classes ====
+
+
+@dcls.dataclass(frozen=True)
+class _InputOutputOnly:
+    inputs: TList
+    outputs: TList
+
+    @classmethod
+    def from_instrs[I: Instr](cls, instrs: cabc.Sequence[I]) -> typing.Self:
+        # Inputs observed in the list of thunks.
+        tensor_in_list = TList.empty()
+
+        # Output observed in the list of thunks.
+        tensor_out_list = TList.empty()
+
+        for thunk in instrs:
+            tensor_in_list += thunk.inputs
+
+            # Output must be unique.
+            assert tensor_out_list.isdisjoint(thunk.outputs)
+            tensor_out_list += thunk.outputs
+
+        input_only = tensor_in_list - tensor_out_list
+        output_only = tensor_out_list - tensor_in_list
+
+        return cls(inputs=input_only, outputs=output_only)
 
 
 @dcls.dataclass(frozen=True)
