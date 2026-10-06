@@ -9,13 +9,14 @@ import torch
 from torch import nn
 
 from aioway._utils import AnyDict, Stack, any_dict
+from aioway.ir import InstrList
 from aioway.t import (
     register_module_forward_hook,
     register_module_forward_pre_hook,
 )
 
 from .instrs import ModuleCall
-from .progs import NnProgram, Program
+from .progs import Program
 
 __all__ = ["ModuleTracker", "ModuleHist", "track_module_thunks"]
 
@@ -85,8 +86,13 @@ class ModuleHist:
         )
         self.append(thunk)
 
-    def dag(self) -> Program:
-        return NnProgram.from_thunk_list(self.history)
+    @property
+    def instrs(self) -> InstrList[ModuleCall]:
+        return InstrList(self.history)
+
+    @property
+    def program(self) -> Program[ModuleCall]:
+        return Program.from_thunk_list(self.history)
 
 
 @dcls.dataclass(frozen=True)

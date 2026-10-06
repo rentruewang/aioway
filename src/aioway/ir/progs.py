@@ -34,7 +34,7 @@ class Program[I: Instr = typing.Any]:
         inputs: cabc.Iterable[torch.Tensor],
         outputs: cabc.Iterable[torch.Tensor],
     ) -> None:
-        self._instrs = InstrList(instrs)
+        self._instrs = InstrList.build(instrs)
 
         self._inputs = TList.from_self_or_iter(inputs)
         self._outputs = TList.from_self_or_iter(outputs)
@@ -180,7 +180,7 @@ class Program[I: Instr = typing.Any]:
         return copy.copy(self)
 
     @classmethod
-    def from_thunk_list(cls, thunks: cabc.Iterable[I]) -> typing.Self:
+    def from_thunk_list(cls, thunks: cabc.Iterable[I], /) -> typing.Self:
         """
         Given only the thunk list, construct a DAG, auto discover inputs and outputs.
 

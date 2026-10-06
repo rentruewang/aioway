@@ -127,3 +127,10 @@ class InstrList[I: Instr = typing.Any]:
         "Mapping from thunks to their indices."
 
         return any_dict(Instr, *((thunk, idx) for idx, thunk in enumerate(self._seq)))
+
+    @classmethod
+    def build(cls, iterable: cabc.Iterable[I] | InstrList[I]) -> InstrList[I]:
+        if isinstance(iterable, InstrList):
+            return iterable
+        else:
+            return cls(iterable)
