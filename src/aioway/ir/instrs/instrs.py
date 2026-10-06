@@ -8,10 +8,9 @@ import functools
 import typing
 from collections import abc as cabc
 
-import numpy as np
 from torch.utils import _pytree as pyt
 
-from aioway._utils import AnyDict, IntArray, any_dict, find_common_base, is_list_of
+from aioway._utils import AnyDict, any_dict, find_common_base, is_list_of
 from aioway.t import TList
 
 __all__ = ["Instr", "InstrList"]
@@ -95,24 +94,17 @@ class InstrList[I: Instr = typing.Any]:
     def __getitem__(self, idx: int) -> I: ...
 
     @typing.overload
-    def __getitem__(self, idx: slice | list[int] | IntArray) -> typing.Self: ...
+    def __getitem__(self, idx: slice | list[int]) -> typing.Self: ...
 
     def __getitem__(self, idx):
-        if isinstance(idx, int | np.generic):
-            return self._seq[int(idx)]
+        if isinstance(idx, int):
+            return self._seq[idx]
 
         if isinstance(idx, slice):
-            return type(self)(iterable=self._seq[idx], base=self.base)
+            idx = list(range(len(self))[idx])
 
         if is_list_of(int)(idx):
-            return [self._seq[i] for i in idx]
-
-        if isinstance(idx, np.ndarray) and np.isdtype(idx.dtype, "integral"):
-            match idx.ndim:
-                case 0:
-                    return self._seq[idx]
-                case 1:
-                    return [self._seq[i] for i in idx]
+            return type(self)(iterable=tuple(self._seq[i] for i in idx), base=self.base)
 
         raise IndexError(idx)
 

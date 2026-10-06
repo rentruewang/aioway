@@ -10,7 +10,7 @@ from collections import abc as cabc
 import numpy as np
 import torch
 
-from aioway._utils import AnyDict, AnySet, IntArray, any_dict, any_set
+from aioway._utils import AnyDict, AnySet, IntArray, any_dict, any_set, is_list_of
 from aioway.ir.instrs import Instr, InstrList
 from aioway.t import TList, all_real, parse_attr
 
@@ -59,30 +59,33 @@ class Program[I: Instr = typing.Any]:
         return iter(self.instrs)
 
     @typing.overload
-    def __getitem__(self, idx: Query) -> typing.Self: ...
-
-    @typing.overload
     def __getitem__(self, idx: int) -> I: ...
 
     @typing.overload
-    def __getitem__(self, idx: slice | list[int] | IntArray) -> list[I]: ...
+    def __getitem__(self, idx: slice | list[int] | IntArray | Query) -> typing.Self: ...
 
     def __getitem__(self, idx):
-        from aioway.ir import Query
+        # For numpy objects, convert to `int | list[int]`.
+        if isinstance(idx, np.ndarray | np.generic):
+            # If it's `IntArray`.
+            if np.isdtype(idx.dtype, "integral") and idx.ndim in [0, 1]:
+                idx = idx.tolist()
+            else:
+                raise IndexError("Only 0D or 1D numpy array supported.")
 
         if isinstance(idx, int):
             return self.instrs[idx]
 
         if isinstance(idx, Query):
-            return _query_select(query=idx, prog=self)
+            idx = idx(self)
 
         # Convert `slice` to `list[int]` with help of `range`.
         if isinstance(idx, slice):
             idx = list(range(len(self))[idx])
 
-        # If it's `list[int]` or `IntArray`.
-        if np.isdtype((arr := np.asarray(idx)).dtype, "integral"):
-            return [self.instrs[i] for i in arr]
+        # Finally, handle `list[int]`.
+        if is_list_of(int)(idx):
+            return _select_indices(indices=idx, prog=self)
 
         raise TypeError(f"Unknown type: {type(idx)=}.")
 
@@ -400,16 +403,21 @@ def _replace_subset[I: Instr](
 
 
 def _query_select[I: Instr](*, query: Query[I], prog: Program[I]) -> Program[I]:
+
+    # Sorted and deduplicated, so `selected` is in step order.
+    indices = query(prog)
+    return _select_indices(indices=indices, prog=prog)
+
+
+def _select_indices[I: Instr](*, indices: list[int], prog: Program[I]) -> Program[I]:
     """
-    Produce a subset whose:
+    Produce a subprogram whose:
     Input is any tensor used in this scope but not defined in the scope.
     Output is any tensor produced and used in downstream.
     """
 
-    # Sorted and deduplicated, so `selected` is in step order.
-    indices = query(prog)
     idx_set = set(indices)
-    selected = prog[indices]
+    selected = prog.instrs[indices]
 
     produced_here = _get_tensor_sets(instr.outputs for instr in selected)
     used_outside = _used_outside(prog, idx_set)
