@@ -39,4 +39,4 @@ def _common_types_pairs():
 
 @pytest.mark.parametrize("base,seq", _common_types_pairs())
 def test_common_base_type(base, seq):
-    assert base == find_common_base(seq)
+    assert base == find_common_base(*seq)

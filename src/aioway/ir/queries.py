@@ -63,9 +63,6 @@ class Query[I: Instr](abc.ABC):
         raise NotImplementedError
 
     def rewrite(self, prog: Program[I], subset: Program[I]) -> Program[I]:
-        from .progs import _replace_subset
-
-        return _replace_subset(prog=prog, subset=subset, query=self)
         prog = prog.copy()
         prog[self] = subset
         return prog

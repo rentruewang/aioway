@@ -155,16 +155,21 @@ class Stack[T]:
             self.append(item)
 
 
-def find_common_base(iterable: cabc.Iterable) -> type:
-    try:
-        first, *rest = [type(elem) for elem in iterable]
+def find_common_base(*iterable: typing.Any) -> type:
+    """
+    Find the common base type.
 
-    # The iterable is empty.
-    except ValueError:
-        raise RuntimeError
+    Raises:
+        ValueError: If the input iterable is empty.
+    """
+
+    if not iterable:
+        raise ValueError("Empty iterable.")
+
+    first, *rest = [type(e) for e in iterable]
 
     for typ in first.mro():
         if all(issubclass(other, typ) for other in rest):
             return typ
 
-    raise RuntimeError("No common subclass found.")
+    raise RuntimeError("Unrachable code, since all objects have base type `object`.")

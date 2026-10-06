@@ -138,12 +138,16 @@ class InstrList[I: Instr = typing.Any]:
             result: typing.Any = iterable
             return result
 
-        if not issubclass(base := find_common_base(iterable), Instr):
+        if it := tuple(iterable):
+            base = find_common_base(*it)
+        else:
+            base = Instr
+
+        if not issubclass(base, Instr):
             raise TypeError(f"Common base class: {base}, not subclass of `Instr`.")
 
-        iterable = tuple(iterable)
-        for item in iterable:
+        for item in it:
             if not isinstance(item, base):
                 raise TypeError(f"Expected: {base} type, got {type(item)=}.")
 
-        return cls(iterable=iterable, base=base)
+        return cls(iterable=it, base=base)
