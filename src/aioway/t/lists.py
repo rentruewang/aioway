@@ -89,10 +89,19 @@ class TList:
     def __add__(self, other: typing.Self) -> typing.Self:
         return self.from_indexed_tensors(self._indexed | other._indexed)
 
+    def __sub__(self, other: typing.Self) -> typing.Self:
+        keys = self.keys() - other.keys()
+        return self.from_indexed_tensors(
+            collections.OrderedDict((k, self._indexed[k]) for k in keys)
+        )
+
     def keys(self) -> cabc.KeysView[int]:
         "Get the keys for unordered comparison."
 
         return self._indexed.keys()
+
+    def isdisjoint(self, other: TList) -> bool:
+        return self.keys().isdisjoint(other.keys())
 
     def index(self, tensor: torch.Tensor | int) -> int:
         "Get the index of the tensor. O(1)."

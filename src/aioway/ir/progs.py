@@ -87,7 +87,8 @@ class Program[I: Instr = typing.Any]:
 
         # Finally, handle `list[int]`.
         if is_list_of(int)(idx):
-            return _select_indices(indices=idx, prog=self)
+            sel, inputs, outputs = _select_indices(indices=idx, prog=self)
+            return type(self)(instrs=sel, inputs=inputs, outputs=outputs)
 
         raise TypeError(f"Unknown type: {type(idx)=}.")
 
@@ -200,24 +201,22 @@ class Program[I: Instr = typing.Any]:
         Both are in order of first appearance, which decides the signature.
         """
 
-        uses = _tensor_is_input_to_thunk(thunks)
-        tensors = TList.from_iterable(_all_thunk_tensors(thunks))
+        # Inputs observed in the list of thunks.
+        tensor_in_list = TList.empty()
 
         # Output observed in the list of thunks.
-        tensor_out_list = any_set(torch.Tensor)
+        tensor_out_list = TList.empty()
         for thunk in thunks:
-            for o in thunk.outputs:
-                assert o not in tensor_out_list
-                tensor_out_list.add(o)
+            tensor_in_list += thunk.inputs
 
-        input_only = uses.keys() - tensor_out_list
-        output_only = tensor_out_list - uses.keys()
+            # Output must be unique.
+            assert tensor_out_list.isdisjoint(thunk.outputs)
+            tensor_out_list += thunk.outputs
 
-        # Walk `tensors` rather than the sets: set order is not insertion order.
-        input_tensors = [t for t in tensors if t in input_only]
-        output_tensors = [t for t in tensors if t in output_only]
+        input_only = tensor_in_list - tensor_out_list
+        output_only = tensor_out_list - tensor_in_list
 
-        return cls(thunks, input_tensors, output_tensors)
+        return cls(thunks, input_only, output_only)
 
 
 # The node classes ====
@@ -294,21 +293,6 @@ def _all_thunk_tensors(thunks: cabc.Iterable[Instr]) -> cabc.Generator[torch.Ten
         yield from thunk.outputs
 
 
-def _tensor_is_input_to_thunk[T: Instr](
-    thunks: cabc.Iterable[T],
-) -> AnyDict[torch.Tensor, list[T]]:
-    result: AnyDict[torch.Tensor, list[T]] = any_dict(torch.Tensor)
-
-    for thunk in thunks:
-        for tensor in thunk.inputs:
-            if tensor not in result:
-                result[tensor] = []
-
-            result[tensor].append(thunk)
-
-    return result
-
-
 def _build_tensor_refs(
     thunks: cabc.Iterable[Instr], inputs: cabc.Sequence[torch.Tensor]
 ) -> AnyDict[torch.Tensor, TensorRef]:
@@ -378,7 +362,7 @@ def _replace_sub_prog[I: Instr](
         raise ValueError("Outputs are not compatible.")
 
     # Get the indices of the queried subnet and minimum (useful in inserting).
-    qidx = {prog.instrs.index(q) for q in queried}
+    qidx = {prog.instrs.index(q) for q in queried.selected}
     min_qidx = min(qidx)
 
     # Inputs and outputs are not shared.
@@ -404,14 +388,23 @@ def _replace_sub_prog[I: Instr](
     return prog.from_thunk_list([*pre, *sub_prog.instrs, *post])
 
 
-def _query_select[I: Instr](*, query: Query[I], prog: Program[I]) -> Program[I]:
+class _ProgramTuple[I: Instr](typing.NamedTuple):
+    "A namedtuple to avoid paying construction cost of `Program`."
 
+    selected: InstrList[I]
+    inputs: TList
+    outputs: TList
+
+
+def _query_select[I: Instr](*, query: Query[I], prog: Program[I]) -> _ProgramTuple[I]:
     # Sorted and deduplicated, so `selected` is in step order.
     indices = query(prog)
     return _select_indices(indices=indices, prog=prog)
 
 
-def _select_indices[I: Instr](*, indices: list[int], prog: Program[I]) -> Program[I]:
+def _select_indices[I: Instr](
+    *, indices: list[int], prog: Program[I]
+) -> _ProgramTuple[I]:
     """
     Produce a subprogram whose:
     Input is any tensor used in this scope but not defined in the scope.
@@ -441,7 +434,7 @@ def _select_indices[I: Instr](*, indices: list[int], prog: Program[I]) -> Progra
     if inputs_produced_by and min(indices) < max(inputs_produced_by):
         raise ValueError("Illegal subset where input depend on intermediate.")
 
-    return Program(selected, inputs, outputs)
+    return _ProgramTuple(selected, inputs, outputs)
 
 
 def _used_outside(prog: Program, selected_idx: set[int]) -> TList:
