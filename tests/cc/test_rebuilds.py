@@ -7,7 +7,7 @@ import torch
 from torch import nn
 
 from aioway.cc import rebuild_module
-from aioway.t import is_fake, is_real, real_mode
+from aioway.t import all_real, has_fake, real_mode
 
 
 @pytest.fixture
@@ -25,13 +25,13 @@ def _params_and_buffers(module: nn.Module) -> cabc.Generator[torch.Tensor]:
 
 
 def test_module_is_fake(fake_module: nn.Module):
-    assert all(map(is_fake, _params_and_buffers(fake_module)))
+    assert all(map(has_fake, _params_and_buffers(fake_module)))
 
 
 def test_module_rebuild(fake_module: nn.Module):
-    assert all(map(is_fake, _params_and_buffers(fake_module)))
+    assert all(map(has_fake, _params_and_buffers(fake_module)))
 
     with real_mode():
         module = rebuild_module(fake_module)
 
-    assert all(map(is_real, _params_and_buffers(module)))
+    assert all(map(all_real, _params_and_buffers(module)))

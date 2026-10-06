@@ -12,7 +12,7 @@ import numpy as np
 import torch
 
 from aioway._utils import AnyDict, AnySet, IntArray, any_dict, any_set
-from aioway.t import TList, is_real, parse_attr
+from aioway.t import TList, all_real, parse_attr
 
 from .instrs import FuncCall
 
@@ -274,7 +274,7 @@ class TensorRef[FCall: FuncCall]:
         self._tensor = tensor
         self._consumers: AnySet[FCall] = typing.cast(typing.Any, any_set(FCall))
 
-        if not isinstance(tensor, torch.Tensor) or is_real(tensor):
+        if not isinstance(tensor, torch.Tensor) or all_real(tensor):
             raise ValueError(
                 f"The fake tensor produced at idx={self._producer} is real."
             )

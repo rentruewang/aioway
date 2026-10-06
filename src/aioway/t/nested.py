@@ -1,13 +1,13 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"Extension of `pytree` from `torch`."
+"Extension of `pyt` from `torch`."
 
 import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
 import torch
-from torch.utils import _pytree as pytree
+from torch.utils import _pytree as pyt
 
 from aioway._utils import AnyDict, any_dict
 
@@ -22,13 +22,13 @@ __all__ = [
 
 def register_pytree_dcls[T: type](cls: T) -> T:
     """
-    Decorator to register the dataclass into `pytree`.
+    Decorator to register the dataclass into `pyt`.
     """
 
     if not isinstance(cls, type) or not dcls.is_dataclass(cls):
         raise TypeError("The decorator can only be used on dataclasses.")
 
-    pytree.register_dataclass(cls)
+    pyt.register_dataclass(cls)
     return cls
 
 
@@ -60,7 +60,7 @@ def tree_map_memo(
 
         return memo[item]
 
-    return pytree.tree_map(replace_cached, obj)
+    return pyt.tree_map(replace_cached, obj)
 
 
 def tree_leaves_typed(obj, *types: type) -> cabc.Iterator[typing.Any]:
@@ -68,7 +68,7 @@ def tree_leaves_typed(obj, *types: type) -> cabc.Iterator[typing.Any]:
 
     found = lambda item: isinstance(item, types)
 
-    for elem in pytree.tree_leaves(obj, is_leaf=found):
+    for elem in pyt.tree_leaves(obj, is_leaf=found):
         if found(elem):
             yield elem
 

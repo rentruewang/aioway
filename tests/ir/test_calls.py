@@ -8,7 +8,7 @@ from torch import ops
 from torch import testing as tt
 
 from aioway.ir import Exec, Program, TorchFuncDag, fake_aten_dag
-from aioway.t import fake_mode, is_aten_op, is_fake, parse_attr
+from aioway.t import fake_mode, has_fake, is_aten_op, parse_attr
 
 type Fakes = tuple[torch.Tensor, torch.Tensor]
 
@@ -69,7 +69,7 @@ def test_fake_aten_dag_tensor():
     with fake_aten_dag():
         out = torch.ones(3) + torch.ones(3)
 
-    assert isinstance(out, torch.Tensor) and is_fake(out)
+    assert isinstance(out, torch.Tensor) and has_fake(out)
 
 
 def test_fake_aten_dag_ops():

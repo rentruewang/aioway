@@ -9,7 +9,7 @@ import torch
 from torchrl.data import tensor_specs as tspecs
 
 from ._utils import tcol_to_tdict
-from .overrides import is_fake
+from .overrides import has_fake
 from .tspecs import TSpec, default_coerce
 
 __all__ = ["batch_tspec", "iter_tspec"]
@@ -43,7 +43,7 @@ def _tensor_tspec(tensor: torch.Tensor, /) -> tspecs.TensorSpec:
     if tensor.dtype == torch.bool:
         return tspecs.Binary(shape=shape)
 
-    if is_fake(tensor):
+    if has_fake(tensor):
         return tspecs.Unbounded(shape=shape, dtype=tensor.dtype)
 
     return tspecs.Bounded(

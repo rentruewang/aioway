@@ -6,9 +6,9 @@ import typing
 from collections import abc as cabc
 
 import torch
-from torch.utils import _pytree as pytree
+from torch.utils import _pytree as pyt
 
-from aioway.t import is_fake, is_fake_tensor, is_real_tensor, parse_attr
+from aioway.t import has_fake, is_fake_tensor, is_real_tensor, parse_attr
 
 if typing.TYPE_CHECKING:
     from .instrs import FuncCall
@@ -65,7 +65,7 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
         This tolerates real tensors in the input.
         """
 
-        return pytree.tree_map_only(torch.Tensor, func=self._map_maybe_fake, tree=fake)
+        return pyt.tree_map_only(torch.Tensor, func=self._map_maybe_fake, tree=fake)
 
     def update[T: typing.Any = typing.Any](self, fake: T, real: T) -> None:
         """
@@ -74,8 +74,8 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
         Both are guaranteed to have the same structure.
         """
 
-        fake_list = pytree.tree_leaves(fake, is_leaf=is_fake_tensor)
-        real_list = pytree.tree_leaves(real, is_leaf=is_real_tensor)
+        fake_list = pyt.tree_leaves(fake, is_leaf=is_fake_tensor)
+        real_list = pyt.tree_leaves(real, is_leaf=is_real_tensor)
 
         if len(fake_list) != len(real_list):
             raise ValueError(
@@ -202,7 +202,7 @@ class Exec[F: cabc.Callable = typing.Any]:
 
 def _get_fake_id(fake: torch.Tensor | int, /) -> int:
     if isinstance(fake, torch.Tensor):
-        assert is_fake(fake)
+        assert has_fake(fake)
         return id(fake)
 
     if isinstance(fake, int):

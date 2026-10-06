@@ -2,91 +2,72 @@
 
 "Some fake mode guards."
 
-import functools
 import typing
-from collections import abc as cabc
 
-import tensordict as td
 import torch
 from torch._subclasses import fake_tensor as ft
-
-from aioway.t._utils import tcol_to_tdict
-from aioway.t.visitors import TorchVisitor
+from torch.utils import _pytree as pyt
 
 from .contexts import fake_mode
 
 __all__ = [
-    "is_fake",
+    "has_fake",
+    "all_fake",
+    "has_real",
+    "all_real",
     "is_fake_tensor",
-    "is_real",
     "is_real_tensor",
     "to_fake",
     "clone_fake",
 ]
 
 
-@functools.cache
-def _to_fake_converter():
-    to_fake_tdict = lambda item: td.from_dict(_to_fake_dict(item))
-    to_fake_seq = lambda item: [to_fake(elem) for elem in item]
-
-    return TorchVisitor(
-        tensor=_to_fake_tensor,
-        tdict=to_fake_tdict,
-        tcls=_to_fake_tcls,
-        mapping=_to_fake_dict,
-        sequence=to_fake_seq,
-        default=lambda item: item,
-    )
-
-
 def to_fake[C](item: C) -> C:
     "Convert an item to its fake counterpart."
 
-    return _to_fake_converter()(item)
+    return pyt.tree_map_only(torch.Tensor, func=_to_fake_tensor, tree=item)
 
 
-@functools.cache
-def _is_fake_converter() -> TorchVisitor[bool]:
-    return TorchVisitor(
-        tensor=is_fake_tensor,
-        tdict=_is_fake_tcol,
-        tcls=_is_fake_tcol,
-        mapping=lambda item: _is_fake_iter(item.values()),
-        sequence=_is_fake_iter,
-        default=lambda _: False,
-    )
-
-
-def is_fake(item) -> bool:
+def has_fake(item) -> bool:
     """
     Check if the item is fake.
     """
 
-    return _is_fake_converter()(item)
+    for elem in pyt.tree_leaves(item):
+        # This already checks if it's a tensor.
+        if is_fake_tensor(elem):
+            return True
+
+    return False
 
 
-def is_real(item) -> bool:
+def all_fake(item) -> bool:
+    """
+    Check if all the tesnors in here are all fake tensors.
+    """
+
+    for elem in pyt.tree_leaves(item):
+        # May have other values not tensor, only care about tensors.
+        if is_real_tensor(elem):
+            return False
+
+    return True
+
+
+def has_real(item) -> bool:
     "Check if the item is a real one."
 
-    return is_fake(item) != True
+    return not all_fake(item)
+
+
+def all_real(item) -> bool:
+    "Check if the item is a real one."
+
+    return not has_fake(item)
 
 
 def is_real_tensor(item) -> bool:
     return isinstance(item, torch.Tensor) and not is_fake_tensor(item)
-
-
-@functools.cache
-def _clone_fake_converter() -> TorchVisitor:
-    clone = lambda x: x.clone()
-    return TorchVisitor(
-        tensor=clone,
-        tdict=clone,
-        tcls=clone,
-        mapping=lambda item: {key: clone_fake(val) for key, val in item.items()},
-        sequence=lambda item: [clone_fake(val) for val in item],
-        default=lambda item: item,
-    )
 
 
 def clone_fake[T](item: T) -> T:
@@ -96,41 +77,7 @@ def clone_fake[T](item: T) -> T:
     This is useful in changing the `id` of fake values for uniqueness analysis.
     """
 
-    if not is_fake(item):
-        return item
-
-    return _clone_fake(item)
-
-
-def _clone_fake(obj: typing.Any) -> typing.Any:
-    if isinstance(obj, torch.Tensor):
-        return obj.clone()
-
-    if td.is_tensor_collection(obj):
-        return obj.clone()
-
-    if isinstance(obj, cabc.Mapping):
-        return {key: clone_fake(val) for key, val in obj.items()}
-
-    if isinstance(obj, cabc.Iterable):
-        return [clone_fake(elem) for elem in obj]
-
-    raise TypeError(f"Unknown type: {type(obj)=}.")
-
-
-def _is_fake_tcol(item) -> bool:
-    tdict = tcol_to_tdict(item)
-    return _is_fake_iter(tdict.values())
-
-
-def _is_fake_iter(item: cabc.Iterable):
-    return any(is_fake(val) for val in item)
-
-
-def _to_fake_tcls(item):
-    tdict = tcol_to_tdict(item)
-    mapping = _to_fake_dict(tdict)
-    return type(item)(**mapping)
+    return pyt.tree_map_only(torch.Tensor, func=_clone_fake_tensor, tree=item)
 
 
 def _to_fake_tensor(tensor: torch.Tensor) -> ft.FakeTensor:
@@ -146,12 +93,13 @@ def _to_fake_tensor(tensor: torch.Tensor) -> ft.FakeTensor:
         return converter.from_real_tensor(mode, tensor)
 
 
-def is_fake_tensor(tensor: torch.Tensor) -> typing.TypeIs[ft.FakeTensor]:
+def _clone_fake_tensor(tensor: torch.Tensor) -> torch.Tensor:
+    if is_fake_tensor(tensor):
+        return tensor.clone()
+    else:
+        return tensor
+
+
+def is_fake_tensor(tensor) -> typing.TypeIs[ft.FakeTensor]:
     # All fake tensors are of this type.
     return isinstance(tensor, ft.FakeTensor)
-
-
-def _to_fake_dict(
-    tdict: cabc.Mapping[str, typing.Any],
-) -> dict[str, typing.Any]:
-    return {key: to_fake(val) for key, val in tdict.items()}
