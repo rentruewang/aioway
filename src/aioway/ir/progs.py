@@ -4,7 +4,6 @@
 
 import copy
 import dataclasses as dcls
-import functools
 import typing
 from collections import abc as cabc
 
@@ -38,6 +37,9 @@ class Program[I: Instr = typing.Any]:
 
         self._inputs = TList.from_self_or_iter(inputs)
         self._outputs = TList.from_self_or_iter(outputs)
+
+        self._tensors = TList.from_iterable(self._all_tensors())
+        self._tensor_links = _build_tensor_refs(self.instrs, list(self._inputs))
 
         # Validate if the inputs and outputs are valid.
         self._validate_input_output()
@@ -91,10 +93,10 @@ class Program[I: Instr = typing.Any]:
             instrs=mutated.instrs, inputs=mutated.inputs, outputs=mutated.outputs
         )
 
-    @functools.cached_property
-    def _tensor_links(self) -> AnyDict[torch.Tensor, TensorRef]:
+    @property
+    def tensor_links(self) -> AnyDict[torch.Tensor, TensorRef]:
         "Mapping from tensors to refs (linking functions)."
-        return _build_tensor_refs(self.instrs, list(self._inputs))
+        return self._tensor_links
 
     def life(self, t: torch.Tensor, /) -> TensorLifetime:
         """
@@ -120,9 +122,10 @@ class Program[I: Instr = typing.Any]:
     def outputs(self) -> TList:
         return self._outputs
 
-    @functools.cached_property
+    @property
     def tensors(self) -> TList:
-        return TList.from_iterable(self._all_tensors())
+        "The tensors that exist in this program."
+        return self._tensors
 
     def output_of_step(self, tensor: torch.Tensor) -> int:
         """
