@@ -5,20 +5,20 @@ from collections import abc as cabc
 
 import pytest
 
-from aioway.ir import FCall, Program, TensorLifetime
+from aioway.ir import FuncCall, Program, TensorLifetime
 
 
 def test_thunk_not_callable() -> None:
     non_call: typing.Any = 3
     with pytest.raises(TypeError):
-        FCall(func=non_call, args=(), kwargs={}, result=None)
+        FuncCall(func=non_call, args=(), kwargs={}, result=None)
 
 
-def test_thunk_upstream(thunks: cabc.Sequence[FCall], fakes):
+def test_thunk_upstream(thunks: cabc.Sequence[FuncCall], fakes):
     assert set(thunks[0].inputs) == set(fakes)
 
 
-def test_thunk_downstream(thunks: cabc.Sequence[FCall]):
+def test_thunk_downstream(thunks: cabc.Sequence[FuncCall]):
     assert list(thunks[0].outputs) == [thunks[0].result]
 
 
@@ -26,7 +26,7 @@ def test_dag_len(dag: Program):
     assert len(dag) == 2
 
 
-def test_dag_getitem(dag: Program, thunks: cabc.Sequence[FCall]):
+def test_dag_getitem(dag: Program, thunks: cabc.Sequence[FuncCall]):
     assert dag[0] is thunks[0]
     assert dag[-1] is thunks[1]
 

@@ -11,7 +11,7 @@ import torch
 from aioway._utils import AnySet, IntArray, any_dict, any_set
 from aioway.t import TList
 
-from .instrs import FCall
+from .instrs import FuncCall
 from .progs import Program
 
 __all__ = ["Query", "IndexQuery"]
@@ -155,7 +155,7 @@ def _replace_subset(*, iset: Program, query: Query, subset: Program) -> Program:
         in_to_out[before] = after
 
     # Drop the ones that are queried.
-    new_instrs: list[FCall] = [
+    new_instrs: list[FuncCall] = [
         thunk.tree_map_only(torch.Tensor, lambda t: in_to_out.get(t, t))
         for i, thunk in enumerate(iset.instrs)
         if i not in qidx

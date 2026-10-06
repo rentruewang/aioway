@@ -14,7 +14,7 @@ from aioway.t import (
     register_module_forward_pre_hook,
 )
 
-from .instrs import MCall
+from .instrs import ModuleCall
 from .progs import Program
 
 __all__ = ["ModuleTracker", "ModuleHist", "track_module_thunks"]
@@ -41,7 +41,7 @@ class ModuleHist:
     Will need to integrate with `Hist` in the future.
     """
 
-    history: list[MCall] = dcls.field(default_factory=list)
+    history: list[ModuleCall] = dcls.field(default_factory=list)
     """
     The history encountered.
     """
@@ -56,10 +56,10 @@ class ModuleHist:
     def __len__(self) -> int:
         return len(self.history)
 
-    def __getitem__(self, idx: int) -> MCall:
+    def __getitem__(self, idx: int) -> ModuleCall:
         return self.history[idx]
 
-    def append(self, thunk: MCall) -> None:
+    def append(self, thunk: ModuleCall) -> None:
         outputs = tuple(thunk.outputs)
 
         # Check if the keys already exists,
@@ -73,14 +73,16 @@ class ModuleHist:
         for output in outputs:
             self.output_index[output] = length
 
-    def thunk_of(self, output: torch.Tensor) -> MCall:
+    def thunk_of(self, output: torch.Tensor) -> ModuleCall:
         idx = self.output_index[output]
         return self[idx]
 
     def module_forward_hook(
         self, module: nn.Module, input: tuple[torch.Tensor, ...], output: torch.Tensor
     ) -> None:
-        thunk = MCall(func=module, args=input, kwargs={}, result=output, parents=())
+        thunk = ModuleCall(
+            func=module, args=input, kwargs={}, result=output, parents=()
+        )
         self.append(thunk)
 
     def dag(self) -> Program:
@@ -129,7 +131,7 @@ class ModuleTracker:
             return
 
         self.hist.append(
-            MCall(
+            ModuleCall(
                 func=module,
                 args=input,
                 kwargs={},

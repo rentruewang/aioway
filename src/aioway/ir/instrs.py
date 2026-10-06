@@ -19,7 +19,7 @@ from aioway.t import (
     replace_tensors_with_attr,
 )
 
-__all__ = ["Instr", "FCall", "MCall"]
+__all__ = ["Instr", "FuncCall", "ModuleCall"]
 
 
 @typing.dataclass_transform(frozen_default=True, eq_default=False)
@@ -81,7 +81,7 @@ class Instr(abc.ABC):
 
 
 @instr_dcls
-class FCall[F: cabc.Callable](Instr):
+class FuncCall[F: cabc.Callable](Instr):
     """
     An instruction representing a function call.
     """
@@ -146,9 +146,10 @@ class FCall[F: cabc.Callable](Instr):
 
 
 @instr_dcls
-class MCall(FCall):
+class ModuleCall(FuncCall):
     """
-    `MCall` is the module version of `FCall` instruction.
+    The `nn.Module` version of `FCall` instruction.
+    Handles the super classes.
     """
 
     _: dcls.KW_ONLY
