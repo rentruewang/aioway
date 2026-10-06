@@ -9,10 +9,9 @@ import numpy as np
 import torch
 
 from aioway._utils import AnySet, IntArray, any_set
+from aioway.ir.instrs import Instr
+from aioway.ir.progs import Program
 from aioway.t import TList
-
-from .instrs import Instr
-from .progs import Program
 
 __all__ = ["Query", "IndexQuery"]
 
