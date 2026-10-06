@@ -15,6 +15,8 @@ from aioway.t import TList, is_real, parse_attr
 
 from .instrs import FuncCall
 
+if typing.TYPE_CHECKING:
+    from .queries import Query
 __all__ = ["TensorRef", "Program", "TensorLifetime"]
 
 # The DAG class ====
@@ -36,17 +38,6 @@ class Program:
         self._inputs = TList.from_iterable(inputs)
         self._outputs = TList.from_iterable(outputs)
 
-        self._thunk_to_step: AnyDict[FuncCall, int] = any_dict(
-            FuncCall, *((thunk, idx) for idx, thunk in enumerate(self.instrs))
-        )
-        "Mapping from thunks to their indices."
-
-        self._tensor_links = _build_tensor_refs(self.instrs, list(self._inputs))
-        "Mapping from tensors to refs (linking functions)."
-
-        self._inputs_to_thunk_index = _tensor_is_input_to_thunk(self.instrs)
-        "The mapping from tensor to thunk's that uses it."
-
         # Validate if the inputs and outputs are valid.
         self._validate_input_output()
 
@@ -66,11 +57,18 @@ class Program:
     def __getitem__(self, idx: int) -> FuncCall: ...
 
     @typing.overload
-    def __getitem__(self, idx: slice | list[int] | IntArray) -> list[FuncCall]: ...
+    def __getitem__(
+        self, idx: slice | list[int] | IntArray | Query
+    ) -> list[FuncCall]: ...
 
     def __getitem__(self, idx):
+        from .queries import Query
+
         if isinstance(idx, int):
             return self.instrs[idx]
+
+        if isinstance(idx, Query):
+            return idx.select(self)
 
         # Convert `slice` to `list[int]` with help of `range`.
         if isinstance(idx, slice):
@@ -81,6 +79,33 @@ class Program:
             return [self.instrs[i] for i in arr]
 
         raise TypeError(f"Unknown type: {type(idx)=}.")
+
+    def __setitem__(self, q: Query, subset: Program) -> None:
+        mutated = q.rewrite(prog=self, subset=subset)
+
+        # Overwrite the references s.t. underlying data is not touched.
+        # This is not supposed to fail because we already constructed a program.
+        self.__init__(
+            instrs=mutated.instrs, inputs=mutated.inputs, outputs=mutated.outputs
+        )
+
+    @functools.cached_property
+    def _thunk_to_step(self) -> AnyDict[FuncCall, int]:
+        "Mapping from thunks to their indices."
+
+        return any_dict(
+            FuncCall, *((thunk, idx) for idx, thunk in enumerate(self.instrs))
+        )
+
+    @functools.cached_property
+    def _tensor_links(self) -> AnyDict[torch.Tensor, TensorRef]:
+        "Mapping from tensors to refs (linking functions)."
+        return _build_tensor_refs(self.instrs, list(self._inputs))
+
+    @functools.cached_property
+    def _inputs_to_thunk_index(self) -> AnyDict[torch.Tensor, list[FuncCall]]:
+        "The mapping from tensor to thunk's that uses it."
+        return _tensor_is_input_to_thunk(self.instrs)
 
     def parents(self, thunk: FuncCall) -> AnySet[FuncCall]:
         return any_set(FuncCall, *self._parents(thunk))
