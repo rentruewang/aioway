@@ -5,49 +5,49 @@ from collections import abc as cabc
 
 import pytest
 
-from aioway.ir import FCall, InstrSet, TensorLifetime
+from aioway.ir import FuncCall, Program, TensorLifetime
 
 
 def test_thunk_not_callable() -> None:
     non_call: typing.Any = 3
     with pytest.raises(TypeError):
-        FCall(func=non_call, args=(), kwargs={}, result=None)
+        FuncCall(func=non_call, args=(), kwargs={}, result=None)
 
 
-def test_thunk_upstream(thunks: cabc.Sequence[FCall], fakes):
+def test_thunk_upstream(thunks: cabc.Sequence[FuncCall], fakes):
     assert set(thunks[0].inputs) == set(fakes)
 
 
-def test_thunk_downstream(thunks: cabc.Sequence[FCall]):
+def test_thunk_downstream(thunks: cabc.Sequence[FuncCall]):
     assert list(thunks[0].outputs) == [thunks[0].result]
 
 
-def test_dag_len(dag: InstrSet):
+def test_dag_len(dag: Program):
     assert len(dag) == 2
 
 
-def test_dag_getitem(dag: InstrSet, thunks: cabc.Sequence[FCall]):
+def test_dag_getitem(dag: Program, thunks: cabc.Sequence[FuncCall]):
     assert dag[0] is thunks[0]
     assert dag[-1] is thunks[1]
 
 
-def test_dag_iter(dag: InstrSet, thunks):
+def test_dag_iter(dag: Program, thunks):
     assert list(dag) == list(thunks)
 
 
-def test_dag_inputs(dag: InstrSet, fakes):
+def test_dag_inputs(dag: Program, fakes):
     assert set(dag.inputs) == set(fakes)
 
 
-def test_dag_outputs(dag: InstrSet, thunks):
+def test_dag_outputs(dag: Program, thunks):
     assert set(dag.outputs) == {thunks[-1].result}
 
 
-def test_dag_tensors(dag: InstrSet):
+def test_dag_tensors(dag: Program):
     assert len(dag.tensors) == 4
 
 
-def test_dag_steps(dag: InstrSet, fakes, thunks):
+def test_dag_steps(dag: Program, fakes, thunks):
     x0, _ = fakes
     y, z = thunks[0].result, thunks[1].result
 
@@ -63,4 +63,4 @@ def test_dag_steps(dag: InstrSet, fakes, thunks):
 
 def test_dag_output_unique(thunks, fakes):
     with pytest.raises(ValueError):
-        InstrSet([thunks[0], thunks[0]], inputs=fakes, outputs=[thunks[0].result])
+        Program([thunks[0], thunks[0]], inputs=fakes, outputs=[thunks[0].result])

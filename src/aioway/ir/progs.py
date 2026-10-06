@@ -13,21 +13,21 @@ import torch
 from aioway._utils import AnyDict, AnySet, IntArray, any_dict, any_set
 from aioway.t import TList, is_real, parse_attr
 
-from .instrs import FCall
+from .instrs import FuncCall
 
-__all__ = ["TensorRef", "InstrSet", "TensorLifetime"]
+__all__ = ["TensorRef", "Program", "TensorLifetime"]
 
 # The DAG class ====
 
 
-class InstrSet:
+class Program:
     """
-    A dag is a sequence of callables, that are linked by fake tensors.
+    A program is a DAG of callables, that are linked by fake tensors.
     """
 
     def __init__(
         self,
-        instrs: cabc.Iterable[FCall],
+        instrs: cabc.Iterable[FuncCall],
         inputs: cabc.Iterable[torch.Tensor],
         outputs: cabc.Iterable[torch.Tensor],
     ) -> None:
@@ -36,8 +36,8 @@ class InstrSet:
         self._inputs = TList(inputs)
         self._outputs = TList(outputs)
 
-        self._thunk_to_step: AnyDict[FCall, int] = any_dict(
-            FCall, *((thunk, idx) for idx, thunk in enumerate(self.instrs))
+        self._thunk_to_step: AnyDict[FuncCall, int] = any_dict(
+            FuncCall, *((thunk, idx) for idx, thunk in enumerate(self.instrs))
         )
         "Mapping from thunks to their indices."
 
@@ -59,14 +59,14 @@ class InstrSet:
     def __len__(self) -> int:
         return len(self.instrs)
 
-    def __iter__(self) -> cabc.Iterator[FCall]:
+    def __iter__(self) -> cabc.Iterator[FuncCall]:
         return iter(self.instrs)
 
     @typing.overload
-    def __getitem__(self, idx: int) -> FCall: ...
+    def __getitem__(self, idx: int) -> FuncCall: ...
 
     @typing.overload
-    def __getitem__(self, idx: slice | list[int] | IntArray) -> list[FCall]: ...
+    def __getitem__(self, idx: slice | list[int] | IntArray) -> list[FuncCall]: ...
 
     def __getitem__(self, idx):
         if isinstance(idx, int):
@@ -82,13 +82,13 @@ class InstrSet:
 
         raise TypeError(f"Unknown type: {type(idx)=}.")
 
-    def parents(self, thunk: FCall) -> AnySet[FCall]:
-        return any_set(FCall, *self._parents(thunk))
+    def parents(self, thunk: FuncCall) -> AnySet[FuncCall]:
+        return any_set(FuncCall, *self._parents(thunk))
 
-    def children(self, thunk: FCall) -> AnySet[FCall]:
-        return any_set(FCall, *self._children(thunk))
+    def children(self, thunk: FuncCall) -> AnySet[FuncCall]:
+        return any_set(FuncCall, *self._children(thunk))
 
-    def _parents(self, thunk: FCall) -> cabc.Generator[FCall]:
+    def _parents(self, thunk: FuncCall) -> cabc.Generator[FuncCall]:
         for input in thunk.inputs:
             ref = self._tensor_links[input]
 
@@ -96,7 +96,7 @@ class InstrSet:
             if not ref.is_free:
                 yield ref.producer
 
-    def _children(self, thunk: FCall) -> cabc.Generator[FCall]:
+    def _children(self, thunk: FuncCall) -> cabc.Generator[FuncCall]:
         for output in thunk.outputs:
             ref = self._tensor_links[output]
             yield from ref.consumers
@@ -114,7 +114,7 @@ class InstrSet:
         return TensorLifetime(birth=birth, death=death)
 
     @property
-    def instrs(self) -> cabc.Sequence[FCall]:
+    def instrs(self) -> cabc.Sequence[FuncCall]:
         return self._instrs
 
     @property
@@ -129,7 +129,7 @@ class InstrSet:
     def tensors(self) -> TList:
         return TList(self._all_tensors())
 
-    def index(self, instr: FCall, /) -> int:
+    def index(self, instr: FuncCall, /) -> int:
         "Get the index of each instruction."
         return self._thunk_to_step[instr]
 
@@ -171,7 +171,7 @@ class InstrSet:
         if set(self._inputs) & set(self._outputs):
             raise ValueError("Inputs are in the outputs. Not allowed yet.")
 
-    def _thunk_producing(self, tensor: torch.Tensor, /) -> FCall | None:
+    def _thunk_producing(self, tensor: torch.Tensor, /) -> FuncCall | None:
         """
         Get the thunk that produces the producer.
 
@@ -184,12 +184,12 @@ class InstrSet:
         else:
             return self._tensor_links[tensor].producer
 
-    def _thunk_consuming(self, tensor: torch.Tensor, /) -> cabc.Generator[FCall]:
+    def _thunk_consuming(self, tensor: torch.Tensor, /) -> cabc.Generator[FuncCall]:
         ref = self._tensor_links[tensor]
         yield from ref.consumers
 
     @classmethod
-    def from_thunk_list(cls, thunks: cabc.Sequence[FCall]) -> typing.Self:
+    def from_thunk_list(cls, thunks: cabc.Sequence[FuncCall]) -> typing.Self:
         """
         Given only the thunk list, construct a DAG, auto discover inputs and outputs.
 
@@ -222,7 +222,7 @@ class InstrSet:
 # The node classes ====
 
 
-class TensorRef[FCall: FCall]:
+class TensorRef[FCall: FuncCall]:
     """
     A data structure holding tensor information in the DAG.
 
@@ -287,16 +287,16 @@ class TensorRef[FCall: FCall]:
 # Helper functions for dag ====
 
 
-def _all_thunk_tensors(thunks: cabc.Sequence[FCall]):
+def _all_thunk_tensors(thunks: cabc.Sequence[FuncCall]):
     for thunk in thunks:
         yield from thunk.inputs
         yield from thunk.outputs
 
 
 def _tensor_is_input_to_thunk(
-    thunks: cabc.Sequence[FCall],
-) -> AnyDict[torch.Tensor, list[FCall]]:
-    result: AnyDict[torch.Tensor, list[FCall]] = any_dict(torch.Tensor)
+    thunks: cabc.Sequence[FuncCall],
+) -> AnyDict[torch.Tensor, list[FuncCall]]:
+    result: AnyDict[torch.Tensor, list[FuncCall]] = any_dict(torch.Tensor)
 
     for thunk in thunks:
         for tensor in thunk.inputs:
@@ -309,7 +309,7 @@ def _tensor_is_input_to_thunk(
 
 
 def _build_tensor_refs(
-    thunks: cabc.Sequence[FCall], inputs: cabc.Sequence[torch.Tensor]
+    thunks: cabc.Sequence[FuncCall], inputs: cabc.Sequence[torch.Tensor]
 ) -> AnyDict[torch.Tensor, TensorRef]:
     "Get the mapping from id of `torch.Tensor` to corresponding tensor ref."
 
@@ -338,7 +338,7 @@ def _tensor_refs_inputs(
 
 
 def _tensor_refs_outputs(
-    thunks: cabc.Sequence[FCall],
+    thunks: cabc.Sequence[FuncCall],
 ) -> AnyDict[torch.Tensor, TensorRef]:
     mapping: AnyDict[torch.Tensor, TensorRef] = any_dict(torch.Tensor)
 
@@ -353,7 +353,7 @@ def _tensor_refs_outputs(
 
 
 def _link_inputs_for_mapping(
-    mapping: AnyDict[torch.Tensor, TensorRef], thunks: cabc.Sequence[FCall]
+    mapping: AnyDict[torch.Tensor, TensorRef], thunks: cabc.Sequence[FuncCall]
 ) -> None:
     for thunk in thunks:
         for input in thunk.inputs:

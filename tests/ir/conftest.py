@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from aioway.ir import FCall, InstrSet
+from aioway.ir import FuncCall, Program
 from aioway.t import fake_mode
 
 
@@ -22,7 +22,7 @@ def fakes() -> tuple[torch.Tensor, torch.Tensor]:
 
 
 @pytest.fixture
-def thunks(fakes) -> tuple[FCall, ...]:
+def thunks(fakes) -> tuple[FuncCall, ...]:
     x0, x1 = fakes
 
     with fake_mode():
@@ -30,11 +30,11 @@ def thunks(fakes) -> tuple[FCall, ...]:
         z = scale(y, factor=2)
 
     return (
-        FCall(func=add, args=(x0, x1), kwargs={}, result=y),
-        FCall(func=scale, args=(y,), kwargs={"factor": 2}, result=z),
+        FuncCall(func=add, args=(x0, x1), kwargs={}, result=y),
+        FuncCall(func=scale, args=(y,), kwargs={"factor": 2}, result=z),
     )
 
 
 @pytest.fixture
-def dag(thunks, fakes) -> InstrSet:
-    return InstrSet(thunks, inputs=fakes, outputs=[thunks[-1].result])
+def dag(thunks, fakes) -> Program:
+    return Program(thunks, inputs=fakes, outputs=[thunks[-1].result])

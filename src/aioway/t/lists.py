@@ -29,6 +29,9 @@ class TList:
     It deduplicates the tensors it received.
 
     The list is stable (insertion order = getitem order).
+
+    When doing `==` comparison, if the RHS is a `Set` the order doesn't matter,
+    but if it's a `Sequence` or `TList` the order does matter.
     """
 
     def __init__(self, tensors: cabc.Iterable[torch.Tensor]) -> None:

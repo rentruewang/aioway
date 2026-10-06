@@ -9,6 +9,7 @@ import typing
 from collections import abc as cabc
 
 import torch
+from torch import nn
 from torch.utils import _pytree as pytree
 
 from aioway.t import (
@@ -18,7 +19,7 @@ from aioway.t import (
     replace_tensors_with_attr,
 )
 
-__all__ = ["Instr", "FCall"]
+__all__ = ["Instr", "FuncCall", "ModuleCall"]
 
 
 @typing.dataclass_transform(frozen_default=True, eq_default=False)
@@ -80,7 +81,7 @@ class Instr(abc.ABC):
 
 
 @instr_dcls
-class FCall[F: cabc.Callable](Instr):
+class FuncCall[F: cabc.Callable](Instr):
     """
     An instruction representing a function call.
     """
@@ -142,3 +143,19 @@ class FCall[F: cabc.Callable](Instr):
     @property
     def done(self) -> bool:
         return self.result is not dcls.MISSING
+
+
+@instr_dcls
+class ModuleCall(FuncCall):
+    """
+    The `nn.Module` version of `FCall` instruction.
+    Handles the super classes.
+    """
+
+    _: dcls.KW_ONLY
+
+    parents: tuple[nn.Module, ...]
+    "The parent modules that calls this current thunk. It's a stack."
+
+    def __repr__(self) -> str:
+        return super().__repr__() + f" [{len(self.parents)} parents]"

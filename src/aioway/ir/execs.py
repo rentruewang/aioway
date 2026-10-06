@@ -11,8 +11,8 @@ from torch.utils import _pytree as pytree
 from aioway.t import is_fake, is_fake_tensor, is_real_tensor, parse_attr
 
 if typing.TYPE_CHECKING:
-    from .instrs import FCall
-    from .sets import InstrSet
+    from .instrs import FuncCall
+    from .progs import Program
 
 __all__ = ["Exec", "LocalScope"]
 
@@ -29,7 +29,7 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
     Tracks the currently in scope tensors.
     """
 
-    def __init__(self, dag: InstrSet) -> None:
+    def __init__(self, dag: Program) -> None:
         self._dag = dag
         "The variable list."
 
@@ -165,17 +165,17 @@ class Exec[F: cabc.Callable = typing.Any]:
     This is the DAG executor responsible for executing a traced thunk list on real data.
     """
 
-    def __init__(self, dag: InstrSet) -> None:
+    def __init__(self, dag: Program) -> None:
         self._dag = dag
         self._scope = LocalScope(self._dag)
 
     def __len__(self) -> int:
         return len(self._dag)
 
-    def __getitem__(self, idx: int) -> FCall[F]:
+    def __getitem__(self, idx: int) -> FuncCall[F]:
         return self._dag[idx]
 
-    def __iter__(self) -> cabc.Generator[FCall[F]]:
+    def __iter__(self) -> cabc.Generator[FuncCall[F]]:
         yield from self._dag
 
     def __call__(self, *inputs: torch.Tensor) -> typing.Any:

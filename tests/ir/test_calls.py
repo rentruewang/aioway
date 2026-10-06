@@ -7,7 +7,7 @@ import torch
 from torch import ops
 from torch import testing as tt
 
-from aioway.ir import Exec, InstrSet, TorchFuncDag, fake_aten_dag
+from aioway.ir import Exec, Program, TorchFuncDag, fake_aten_dag
 from aioway.t import fake_mode, is_aten_op, is_fake, parse_attr
 
 type Fakes = tuple[torch.Tensor, torch.Tensor]
@@ -89,7 +89,7 @@ def test_dag_from_trace():
         with tracer.activate():
             z = torch.add(x, y)
 
-    dag = InstrSet.from_thunk_list(tracer.thunks)
+    dag = Program.from_thunk_list(tracer.thunks)
 
     assert len(dag) == 1
     assert len(dag.inputs) == 2
@@ -111,7 +111,7 @@ def test_dag_inputs_first_use_order():
         with tracer.activate():
             torch.add(torch.mul(x, y), x)
 
-    dag = InstrSet.from_thunk_list(tracer.thunks)
+    dag = Program.from_thunk_list(tracer.thunks)
 
     assert _attr_eq(dag.inputs[0], x)
     assert _attr_eq(dag.inputs[1], y)
@@ -126,7 +126,7 @@ def test_dag_inputs_many_same_step():
         with tracer.activate():
             torch.stack(xs)
 
-    dag = InstrSet.from_thunk_list(tracer.thunks)
+    dag = Program.from_thunk_list(tracer.thunks)
 
     assert all(_attr_eq(got, want) for got, want in zip(dag.inputs, xs))
 
