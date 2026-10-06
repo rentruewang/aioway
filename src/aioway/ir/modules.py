@@ -33,6 +33,25 @@ class _ModuleInput(typing.NamedTuple):
     input: typing.Any
 
 
+class NnProgram(Program):
+    def __init__(
+        self,
+        instrs: cabc.Iterable[ModuleCall],
+        inputs: cabc.Iterable[torch.Tensor],
+        outputs: cabc.Iterable[torch.Tensor],
+    ) -> None:
+        super().__init__(instrs, inputs, outputs)
+
+        for instr in instrs:
+            if not isinstance(instr, ModuleCall):
+                raise TypeError("`NnProgram` only accepts `ModuleCall`.")
+
+    @property
+    def instrs(self) -> cabc.Sequence[ModuleCall]:
+        result: typing.Any = self._instrs
+        return result
+
+
 @dcls.dataclass(frozen=True)
 class ModuleHist:
     """
@@ -86,7 +105,7 @@ class ModuleHist:
         self.append(thunk)
 
     def dag(self) -> Program:
-        return Program.from_thunk_list(self.history)
+        return NnProgram.from_thunk_list(self.history)
 
 
 @dcls.dataclass(frozen=True)
