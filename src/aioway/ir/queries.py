@@ -8,10 +8,10 @@ from collections import abc as cabc
 import numpy as np
 import torch
 
-from aioway._utils import AnySet, IntArray, any_dict, any_set
+from aioway._utils import AnySet, IntArray, any_set
 from aioway.t import TList
 
-from .instrs import FuncCall
+from .instrs import Instr
 from .progs import Program
 
 __all__ = ["Query", "IndexQuery"]
@@ -59,8 +59,10 @@ class Query(abc.ABC):
     def _select_idx(self, iset: Program, /) -> IntArray:
         raise NotImplementedError
 
-    def rewrite(self, prog: Program, subset: Program) -> Program:
-        return _replace_subset(query=self, prog=prog, subset=subset)
+    def rewrite[I: Instr](self, prog: Program[I], subset: Program[I]) -> Program[I]:
+        prog = prog.copy()
+        prog[self] = subset
+        return prog
 
 
 # Some implementations ====
@@ -128,43 +130,3 @@ def _get_tensor_sets(tlists: cabc.Iterable[TList]) -> AnySet[torch.Tensor]:
             aset.add(tensor)
 
     return aset
-
-
-def _replace_subset(*, prog: Program, query: Query, subset: Program) -> Program:
-    """
-    Replace the query with a new subset.
-    """
-
-    queried = query.select(prog)
-
-    if queried.inputs.attrs() != subset.inputs.attrs():
-        raise ValueError("Inputs are not compatible.")
-
-    if queried.outputs.attrs() != subset.outputs.attrs():
-        raise ValueError("Outputs are not compatible.")
-
-    # Get the indices of the queried subnet and minimum (useful in inserting).
-    qidx = {prog.instrs.index(q) for q in queried}
-    min_qidx = min(qidx)
-
-    # Inputs and outputs are not shared.
-    assert subset.inputs.keys().isdisjoint(subset.outputs.keys())
-
-    # Build mapping for replacement.
-    in_to_out = any_dict(torch.Tensor)
-    for before, after in zip(queried.inputs, subset.inputs):
-        in_to_out[before] = after
-    for before, after in zip(queried.outputs, subset.outputs):
-        in_to_out[before] = after
-
-    # Drop the ones that are queried.
-    new_instrs: list[FuncCall] = [
-        thunk.tree_map_only(torch.Tensor, lambda t: in_to_out.get(t, t))
-        for i, thunk in enumerate(prog.instrs)
-        if i not in qidx
-    ]
-
-    # Replace with new.
-    pre = new_instrs[:min_qidx]
-    post = new_instrs[min_qidx:]
-    return prog.from_thunk_list([*pre, *subset.instrs, *post])

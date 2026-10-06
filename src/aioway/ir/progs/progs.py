@@ -12,7 +12,7 @@ import numpy as np
 import torch
 
 from aioway._utils import AnyDict, AnySet, IntArray, any_dict, any_set
-from aioway.ir.instrs import FuncCall, Instr, InstrList
+from aioway.ir.instrs import Instr, InstrList
 from aioway.t import TList, all_real, parse_attr
 
 if typing.TYPE_CHECKING:
@@ -23,14 +23,14 @@ __all__ = ["TensorRef", "Program", "TensorLifetime"]
 # The DAG class ====
 
 
-class Program:
+class Program[I: Instr = typing.Any]:
     """
     A program is a DAG of callables, that are linked by fake tensors.
     """
 
     def __init__(
         self,
-        instrs: cabc.Iterable[FuncCall],
+        instrs: cabc.Iterable[I],
         inputs: cabc.Iterable[torch.Tensor],
         outputs: cabc.Iterable[torch.Tensor],
     ) -> None:
@@ -51,17 +51,17 @@ class Program:
     def __len__(self) -> int:
         return len(self.instrs)
 
-    def __iter__(self) -> cabc.Iterator[FuncCall]:
+    def __iter__(self) -> cabc.Iterator[I]:
         return iter(self.instrs)
 
     @typing.overload
     def __getitem__(self, idx: Query) -> typing.Self: ...
 
     @typing.overload
-    def __getitem__(self, idx: int) -> FuncCall: ...
+    def __getitem__(self, idx: int) -> I: ...
 
     @typing.overload
-    def __getitem__(self, idx: slice | list[int] | IntArray) -> list[FuncCall]: ...
+    def __getitem__(self, idx: slice | list[int] | IntArray) -> list[I]: ...
 
     def __getitem__(self, idx):
         from aioway.ir import Query
@@ -83,7 +83,7 @@ class Program:
         raise TypeError(f"Unknown type: {type(idx)=}.")
 
     def __setitem__(self, q: Query, subset: Program) -> None:
-        mutated = q.rewrite(prog=self, subset=subset)
+        mutated = _replace_subset(prog=self, query=q, subset=subset)
 
         # Overwrite the references s.t. underlying data is not touched.
         # This is not supposed to fail because we already constructed a program.
@@ -109,7 +109,7 @@ class Program:
         return TensorLifetime(birth=birth, death=death)
 
     @property
-    def instrs(self) -> InstrList[FuncCall]:
+    def instrs(self) -> InstrList[I]:
         return self._instrs
 
     @property
@@ -158,7 +158,7 @@ class Program:
         if set(self._inputs) & set(self._outputs):
             raise ValueError("Inputs are in the outputs. Not allowed yet.")
 
-    def _instr_producing(self, tensor: torch.Tensor, /) -> FuncCall | None:
+    def _instr_producing(self, tensor: torch.Tensor, /) -> I | None:
         """
         Get the thunk that produces the producer.
 
@@ -171,7 +171,7 @@ class Program:
         else:
             return self._tensor_links[tensor].producer
 
-    def _thunk_consuming(self, tensor: torch.Tensor, /) -> cabc.Generator[FuncCall]:
+    def _thunk_consuming(self, tensor: torch.Tensor, /) -> cabc.Generator[I]:
         ref = self._tensor_links[tensor]
         yield from ref.consumers
 
@@ -180,7 +180,7 @@ class Program:
         return copy.copy(self)
 
     @classmethod
-    def from_thunk_list(cls, thunks: cabc.Iterable[FuncCall]) -> typing.Self:
+    def from_thunk_list(cls, thunks: cabc.Iterable[I]) -> typing.Self:
         """
         Given only the thunk list, construct a DAG, auto discover inputs and outputs.
 
@@ -350,6 +350,48 @@ def _link_inputs_for_mapping(
         for input in thunk.inputs:
             assert input in mapping
             mapping[input].add_consumers(thunk)
+
+
+def _replace_subset[I: Instr](
+    *, prog: Program[I], query: Query, subset: Program[I]
+) -> Program[I]:
+    """
+    Replace the query with a new subset.
+    """
+
+    queried = query.select(prog)
+
+    if queried.inputs.attrs() != subset.inputs.attrs():
+        raise ValueError("Inputs are not compatible.")
+
+    if queried.outputs.attrs() != subset.outputs.attrs():
+        raise ValueError("Outputs are not compatible.")
+
+    # Get the indices of the queried subnet and minimum (useful in inserting).
+    qidx = {prog.instrs.index(q) for q in queried}
+    min_qidx = min(qidx)
+
+    # Inputs and outputs are not shared.
+    assert subset.inputs.keys().isdisjoint(subset.outputs.keys())
+
+    # Build mapping for replacement.
+    in_to_out = any_dict(torch.Tensor)
+    for before, after in zip(queried.inputs, subset.inputs):
+        in_to_out[before] = after
+    for before, after in zip(queried.outputs, subset.outputs):
+        in_to_out[before] = after
+
+    # Drop the ones that are queried.
+    new_instrs: list[I] = [
+        thunk.tree_map_only(torch.Tensor, lambda t: in_to_out.get(t, t))
+        for i, thunk in enumerate(prog.instrs)
+        if i not in qidx
+    ]
+
+    # Replace with new.
+    pre = new_instrs[:min_qidx]
+    post = new_instrs[min_qidx:]
+    return prog.from_thunk_list([*pre, *subset.instrs, *post])
 
 
 # Helper classes ====
