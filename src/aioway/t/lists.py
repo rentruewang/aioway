@@ -90,9 +90,10 @@ class TList:
         return self.from_indexed_tensors(self._indexed | other._indexed)
 
     def __sub__(self, other: typing.Self) -> typing.Self:
-        keys = self.keys() - other.keys()
         return self.from_indexed_tensors(
-            collections.OrderedDict((k, self._indexed[k]) for k in keys)
+            collections.OrderedDict(
+                (k, self._indexed[k]) for k in self.keys() if k not in other.keys()
+            )
         )
 
     def keys(self) -> cabc.KeysView[int]:
