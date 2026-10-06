@@ -429,6 +429,9 @@ def _select_indices[I: Instr](
     Output is any tensor produced and used in downstream.
     """
 
+    if indices != sorted(indices):
+        raise ValueError("The index provided should be sorted and unique.")
+
     idx_set = set(indices)
     selected = prog.instrs[indices]
 
