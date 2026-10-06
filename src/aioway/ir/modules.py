@@ -92,7 +92,7 @@ class ModuleHist:
 
     @property
     def program(self) -> Program[ModuleCall]:
-        return Program.from_thunk_list(self.history)
+        return Program.from_instr_list(self.history)
 
 
 @dcls.dataclass(frozen=True)

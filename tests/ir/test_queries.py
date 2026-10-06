@@ -55,7 +55,7 @@ def graph() -> Graph:
             difference = torch.sub(product, summed)
             activated = torch.relu(difference)
 
-    iset = Program.from_thunk_list(tracer.thunks)
+    iset = Program.from_instr_list(tracer.thunks)
     return Graph(iset, x, y, summed, product, difference, activated)
 
 
@@ -127,7 +127,7 @@ def trace(fn, *shapes: tuple[int, ...]) -> Program:
         with tracer.activate():
             fn(*fakes)
 
-    return Program.from_thunk_list(tracer.thunks)
+    return Program.from_instr_list(tracer.thunks)
 
 
 def funcs(iset: Program) -> list:

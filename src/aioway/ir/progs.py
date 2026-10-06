@@ -191,7 +191,7 @@ class Program[I: Instr = typing.Any]:
         return copy.copy(self)
 
     @classmethod
-    def from_thunk_list(cls, thunks: cabc.Iterable[I], /) -> typing.Self:
+    def from_instr_list(cls, instrs: cabc.Iterable[I], /) -> typing.Self:
         """
         Given only the thunk list, construct a DAG, auto discover inputs and outputs.
 
@@ -206,7 +206,8 @@ class Program[I: Instr = typing.Any]:
 
         # Output observed in the list of thunks.
         tensor_out_list = TList.empty()
-        for thunk in thunks:
+
+        for thunk in instrs:
             tensor_in_list += thunk.inputs
 
             # Output must be unique.
@@ -216,7 +217,7 @@ class Program[I: Instr = typing.Any]:
         input_only = tensor_in_list - tensor_out_list
         output_only = tensor_out_list - tensor_in_list
 
-        return cls(thunks, input_only, output_only)
+        return cls(instrs, input_only, output_only)
 
 
 # The node classes ====
@@ -385,7 +386,7 @@ def _replace_sub_prog[I: Instr](
     # Replace with new.
     pre = new_instrs[:min_qidx]
     post = new_instrs[min_qidx:]
-    return prog.from_thunk_list([*pre, *sub_prog.instrs, *post])
+    return prog.from_instr_list([*pre, *sub_prog.instrs, *post])
 
 
 class _ProgramTuple[I: Instr](typing.NamedTuple):

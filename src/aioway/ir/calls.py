@@ -39,7 +39,7 @@ class _TorchCallDag(abc.ABC):
         self.thunks.append(thunk)
 
     def exec(self) -> Exec:
-        return Exec(Program.from_thunk_list(self.thunks))
+        return Exec(Program.from_instr_list(self.thunks))
 
     def run(self, thunk):
         result = thunk()
