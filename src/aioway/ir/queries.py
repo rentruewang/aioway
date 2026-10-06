@@ -97,21 +97,24 @@ class IndexQuery(Query):
 # Helper functions ====
 
 
-def _used_outside(iset: Program, selected_idx: set[int]) -> AnySet[torch.Tensor]:
+def _used_outside(prog: Program, selected_idx: set[int]) -> AnySet[torch.Tensor]:
     """
     Add all tensors used outside of selected region.
     """
 
-    used = any_set(torch.Tensor)
+    used: AnySet[torch.Tensor] = any_set(torch.Tensor)
+    first_selected = min(selected_idx)
 
-    for i, instr in enumerate(iset.instrs):
+    for i in range(min(selected_idx), len(prog)):
+        instr = prog[i]
+
         if i in selected_idx:
             continue
 
         for tensor in instr.inputs:
             used.add(tensor)
 
-    for tensor in iset.outputs:
+    for tensor in prog.outputs:
         used.add(tensor)
 
     return used
