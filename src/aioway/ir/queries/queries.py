@@ -113,15 +113,14 @@ def _used_outside(prog: Program, selected_idx: set[int]) -> AnySet[torch.Tensor]
     used: AnySet[torch.Tensor] = any_set(torch.Tensor)
 
     # Only check those that occur after, as this is a DAG.
-    for i in range(min(selected_idx), len(prog)):
-        instr = prog[i]
-
+    for i in range(min(selected_idx) + 1, len(prog)):
         if i in selected_idx:
             continue
 
-        for tensor in instr.inputs:
+        for tensor in prog[i].inputs:
             used.add(tensor)
 
+    # Populate the outputs as it's considered "consumed".
     for tensor in prog.outputs:
         used.add(tensor)
 
