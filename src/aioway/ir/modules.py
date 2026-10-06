@@ -14,24 +14,10 @@ from aioway.t import (
     register_module_forward_pre_hook,
 )
 
-from .progs import FCall, Program
+from .instrs import MCall
+from .progs import Program
 
-__all__ = ["ModuleThunk", "ModuleTracker", "ModuleHist", "track_module_thunks"]
-
-
-@dcls.dataclass(frozen=True)
-class ModuleThunk(FCall):
-    """
-    Module thunk is a thunk tracking inputs, outputs, and which module calls it.
-    """
-
-    _: dcls.KW_ONLY
-
-    parents: tuple[nn.Module, ...]
-    "The parent modules that calls this current thunk. It's a stack."
-
-    def __repr__(self) -> str:
-        return super().__repr__() + f" [{len(self.parents)} parents]"
+__all__ = ["ModuleTracker", "ModuleHist", "track_module_thunks"]
 
 
 @ctxl.contextmanager
@@ -55,7 +41,7 @@ class ModuleHist:
     Will need to integrate with `Hist` in the future.
     """
 
-    history: list[ModuleThunk] = dcls.field(default_factory=list)
+    history: list[MCall] = dcls.field(default_factory=list)
     """
     The history encountered.
     """
@@ -70,10 +56,10 @@ class ModuleHist:
     def __len__(self) -> int:
         return len(self.history)
 
-    def __getitem__(self, idx: int) -> ModuleThunk:
+    def __getitem__(self, idx: int) -> MCall:
         return self.history[idx]
 
-    def append(self, thunk: ModuleThunk) -> None:
+    def append(self, thunk: MCall) -> None:
         outputs = tuple(thunk.outputs)
 
         # Check if the keys already exists,
@@ -87,16 +73,14 @@ class ModuleHist:
         for output in outputs:
             self.output_index[output] = length
 
-    def thunk_of(self, output: torch.Tensor) -> ModuleThunk:
+    def thunk_of(self, output: torch.Tensor) -> MCall:
         idx = self.output_index[output]
         return self[idx]
 
     def module_forward_hook(
         self, module: nn.Module, input: tuple[torch.Tensor, ...], output: torch.Tensor
     ) -> None:
-        thunk = ModuleThunk(
-            func=module, args=input, kwargs={}, result=output, parents=()
-        )
+        thunk = MCall(func=module, args=input, kwargs={}, result=output, parents=())
         self.append(thunk)
 
     def dag(self) -> Program:
@@ -145,7 +129,7 @@ class ModuleTracker:
             return
 
         self.hist.append(
-            ModuleThunk(
+            MCall(
                 func=module,
                 args=input,
                 kwargs={},

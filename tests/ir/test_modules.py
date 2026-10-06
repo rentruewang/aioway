@@ -5,7 +5,7 @@ import torch
 from torch import nn
 
 from aioway._utils import Stack
-from aioway.ir import ModuleHist, ModuleThunk, ModuleTracker
+from aioway.ir import MCall, ModuleHist, ModuleTracker
 
 
 class Double(nn.Module):
@@ -29,8 +29,8 @@ def _make_thunk(
     *args: torch.Tensor,
     result: object = None,
     parents: tuple[nn.Module, ...] = (),
-) -> ModuleThunk:
-    return ModuleThunk(
+) -> MCall:
+    return MCall(
         func=module,
         args=args,
         kwargs={},
@@ -45,7 +45,7 @@ def module() -> nn.Module:
 
 
 @pytest.fixture
-def thunk(module: nn.Module) -> ModuleThunk:
+def thunk(module: nn.Module) -> MCall:
     return _make_thunk(module, torch.ones(3))
 
 
@@ -73,7 +73,7 @@ def test_thunk_upstream_yields(module: nn.Module) -> None:
     assert thunk.inputs == {x, y}
 
 
-def test_thunk_downstream_yields(thunk: ModuleThunk) -> None:
+def test_thunk_downstream_yields(thunk: MCall) -> None:
     assert thunk.outputs == [thunk.result]
 
 
@@ -81,14 +81,14 @@ def test_hist_starts_empty(hist: ModuleHist) -> None:
     assert len(hist) == 0
 
 
-def test_append_stores_thunk(hist: ModuleHist, thunk: ModuleThunk) -> None:
+def test_append_stores_thunk(hist: ModuleHist, thunk: MCall) -> None:
     hist.append(thunk)
 
     assert len(hist) == 1
     assert hist[0] is thunk
 
 
-def test_thunk_looks_up(hist: ModuleHist, thunk: ModuleThunk) -> None:
+def test_thunk_looks_up(hist: ModuleHist, thunk: MCall) -> None:
     hist.append(thunk)
 
     assert hist.thunk_of(thunk.outputs[0]) is thunk
@@ -104,14 +104,14 @@ def test_append_index_all_outputs(hist: ModuleHist, module: nn.Module) -> None:
     assert hist.thunk_of(y) is thunk
 
 
-def test_append_fail_dups(hist: ModuleHist, thunk: ModuleThunk) -> None:
+def test_append_fail_dups(hist: ModuleHist, thunk: MCall) -> None:
     hist.append(thunk)
 
     with pytest.raises(KeyError):
         hist.append(thunk)
 
 
-def test_thunk_of_unknown_fail(hist: ModuleHist, thunk: ModuleThunk) -> None:
+def test_thunk_of_unknown_fail(hist: ModuleHist, thunk: MCall) -> None:
     with pytest.raises(KeyError):
         hist.thunk_of(thunk.outputs[0])
 
