@@ -9,6 +9,7 @@ import torch
 from torch import nn
 
 from aioway._utils import AnyDict, Stack, any_dict
+from aioway.ir import InstrList
 from aioway.t import (
     register_module_forward_hook,
     register_module_forward_pre_hook,
@@ -85,7 +86,12 @@ class ModuleHist:
         )
         self.append(thunk)
 
-    def dag(self) -> Program:
+    @property
+    def instrs(self) -> InstrList[ModuleCall]:
+        return InstrList.build(self.history)
+
+    @property
+    def program(self) -> Program[ModuleCall]:
         return Program.from_thunk_list(self.history)
 
 

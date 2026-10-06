@@ -44,7 +44,7 @@ with track_module_thunks() as hist:
 hist
 
 # %%
-list(hist.dag())
+list(hist.program)
 
 # %%
-list(IndexQuery([0, 1, 2]).select(hist.dag()))
+list(IndexQuery([0, 1, 2]).select(hist.program))

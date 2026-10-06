@@ -4,7 +4,6 @@
 
 import copy
 import dataclasses as dcls
-import functools
 import typing
 from collections import abc as cabc
 
@@ -12,32 +11,35 @@ import numpy as np
 import torch
 
 from aioway._utils import AnyDict, AnySet, IntArray, any_dict, any_set
+from aioway.ir.instrs import Instr, InstrList
 from aioway.t import TList, all_real, parse_attr
 
-from .instrs import FuncCall
-
 if typing.TYPE_CHECKING:
-    from .queries import Query
+    from aioway.ir import Query
+
 __all__ = ["TensorRef", "Program", "TensorLifetime"]
 
 # The DAG class ====
 
 
-class Program:
+class Program[I: Instr = typing.Any]:
     """
     A program is a DAG of callables, that are linked by fake tensors.
     """
 
     def __init__(
         self,
-        instrs: cabc.Iterable[FuncCall],
+        instrs: cabc.Iterable[I],
         inputs: cabc.Iterable[torch.Tensor],
         outputs: cabc.Iterable[torch.Tensor],
     ) -> None:
-        self._instrs = tuple(instrs)
+        self._instrs = InstrList.build(instrs)
 
         self._inputs = TList.from_self_or_iter(inputs)
         self._outputs = TList.from_self_or_iter(outputs)
+
+        self._tensors = TList.from_iterable(self._all_tensors())
+        self._tensor_links = _build_tensor_refs(self.instrs, list(self._inputs))
 
         # Validate if the inputs and outputs are valid.
         self._validate_input_output()
@@ -51,19 +53,20 @@ class Program:
     def __len__(self) -> int:
         return len(self.instrs)
 
-    def __iter__(self) -> cabc.Iterator[FuncCall]:
+    def __iter__(self) -> cabc.Iterator[I]:
         return iter(self.instrs)
 
     @typing.overload
-    def __getitem__(self, idx: int) -> FuncCall: ...
+    def __getitem__(self, idx: Query) -> typing.Self: ...
 
     @typing.overload
-    def __getitem__(
-        self, idx: slice | list[int] | IntArray | Query
-    ) -> list[FuncCall]: ...
+    def __getitem__(self, idx: int) -> I: ...
+
+    @typing.overload
+    def __getitem__(self, idx: slice | list[int] | IntArray) -> list[I]: ...
 
     def __getitem__(self, idx):
-        from .queries import Query
+        from aioway.ir import Query
 
         if isinstance(idx, int):
             return self.instrs[idx]
@@ -82,7 +85,7 @@ class Program:
         raise TypeError(f"Unknown type: {type(idx)=}.")
 
     def __setitem__(self, q: Query, subset: Program) -> None:
-        mutated = q.rewrite(prog=self, subset=subset)
+        mutated = _replace_subset(prog=self, query=q, subset=subset)
 
         # Overwrite the references s.t. underlying data is not touched.
         # This is not supposed to fail because we already constructed a program.
@@ -90,42 +93,10 @@ class Program:
             instrs=mutated.instrs, inputs=mutated.inputs, outputs=mutated.outputs
         )
 
-    @functools.cached_property
-    def _thunk_to_step(self) -> AnyDict[FuncCall, int]:
-        "Mapping from thunks to their indices."
-
-        return any_dict(
-            FuncCall, *((thunk, idx) for idx, thunk in enumerate(self.instrs))
-        )
-
-    @functools.cached_property
-    def _tensor_links(self) -> AnyDict[torch.Tensor, TensorRef]:
+    @property
+    def tensor_links(self) -> AnyDict[torch.Tensor, TensorRef]:
         "Mapping from tensors to refs (linking functions)."
-        return _build_tensor_refs(self.instrs, list(self._inputs))
-
-    @functools.cached_property
-    def _inputs_to_thunk_index(self) -> AnyDict[torch.Tensor, list[FuncCall]]:
-        "The mapping from tensor to thunk's that uses it."
-        return _tensor_is_input_to_thunk(self.instrs)
-
-    def parents(self, thunk: FuncCall) -> AnySet[FuncCall]:
-        return any_set(FuncCall, *self._parents(thunk))
-
-    def children(self, thunk: FuncCall) -> AnySet[FuncCall]:
-        return any_set(FuncCall, *self._children(thunk))
-
-    def _parents(self, thunk: FuncCall) -> cabc.Generator[FuncCall]:
-        for input in thunk.inputs:
-            ref = self._tensor_links[input]
-
-            # Check if it is a free variable.
-            if not ref.is_free:
-                yield ref.producer
-
-    def _children(self, thunk: FuncCall) -> cabc.Generator[FuncCall]:
-        for output in thunk.outputs:
-            ref = self._tensor_links[output]
-            yield from ref.consumers
+        return self._tensor_links
 
     def life(self, t: torch.Tensor, /) -> TensorLifetime:
         """
@@ -140,7 +111,7 @@ class Program:
         return TensorLifetime(birth=birth, death=death)
 
     @property
-    def instrs(self) -> cabc.Sequence[FuncCall]:
+    def instrs(self) -> InstrList[I]:
         return self._instrs
 
     @property
@@ -151,13 +122,10 @@ class Program:
     def outputs(self) -> TList:
         return self._outputs
 
-    @functools.cached_property
+    @property
     def tensors(self) -> TList:
-        return TList.from_iterable(self._all_tensors())
-
-    def index(self, instr: FuncCall, /) -> int:
-        "Get the index of each instruction."
-        return self._thunk_to_step[instr]
+        "The tensors that exist in this program."
+        return self._tensors
 
     def output_of_step(self, tensor: torch.Tensor) -> int:
         """
@@ -166,12 +134,12 @@ class Program:
         If not set (producer is None), return -1.
         """
 
-        thunk = self._thunk_producing(tensor)
-        return self.index(thunk) if thunk is not None else -1
+        ins = self._instr_producing(tensor)
+        return self.instrs.index(ins) if ins is not None else -1
 
     def input_to_step(self, tensor: torch.Tensor) -> cabc.Sequence[int]:
         consuming = self._thunk_consuming(tensor)
-        return [self.index(thunk) for thunk in consuming]
+        return [self.instrs.index(thunk) for thunk in consuming]
 
     def _all_tensors(self):
         yield from self._inputs
@@ -185,10 +153,6 @@ class Program:
             if not self._tensor_links[input].is_free:
                 raise ValueError("Input is not a free variable.")
 
-            # Input should be used.
-            if input not in self._inputs_to_thunk_index:
-                raise ValueError("Input is not used.")
-
         for output in self._outputs:
             # Output is not produced.
             if output not in self._tensor_links:
@@ -197,7 +161,7 @@ class Program:
         if set(self._inputs) & set(self._outputs):
             raise ValueError("Inputs are in the outputs. Not allowed yet.")
 
-    def _thunk_producing(self, tensor: torch.Tensor, /) -> FuncCall | None:
+    def _instr_producing(self, tensor: torch.Tensor, /) -> I | None:
         """
         Get the thunk that produces the producer.
 
@@ -210,7 +174,7 @@ class Program:
         else:
             return self._tensor_links[tensor].producer
 
-    def _thunk_consuming(self, tensor: torch.Tensor, /) -> cabc.Generator[FuncCall]:
+    def _thunk_consuming(self, tensor: torch.Tensor, /) -> cabc.Generator[I]:
         ref = self._tensor_links[tensor]
         yield from ref.consumers
 
@@ -219,7 +183,7 @@ class Program:
         return copy.copy(self)
 
     @classmethod
-    def from_thunk_list(cls, thunks: cabc.Sequence[FuncCall]) -> typing.Self:
+    def from_thunk_list(cls, thunks: cabc.Iterable[I], /) -> typing.Self:
         """
         Given only the thunk list, construct a DAG, auto discover inputs and outputs.
 
@@ -252,7 +216,7 @@ class Program:
 # The node classes ====
 
 
-class TensorRef[FCall: FuncCall]:
+class TensorRef[F: Instr]:
     """
     A data structure holding tensor information in the DAG.
 
@@ -263,7 +227,7 @@ class TensorRef[FCall: FuncCall]:
     we can assume there is only 1 single producer.
     """
 
-    def __init__(self, producer: FCall | None, tensor: torch.Tensor) -> None:
+    def __init__(self, producer: F | None, tensor: torch.Tensor) -> None:
         """
         Args:
             producer: The thunk's id, or `None` if it's a free variable.
@@ -272,7 +236,7 @@ class TensorRef[FCall: FuncCall]:
 
         self._producer = producer
         self._tensor = tensor
-        self._consumers: AnySet[FCall] = typing.cast(typing.Any, any_set(FCall))
+        self._consumers: AnySet[F] = typing.cast(typing.Any, any_set(F))
 
         if not isinstance(tensor, torch.Tensor) or all_real(tensor):
             raise ValueError(
@@ -283,14 +247,14 @@ class TensorRef[FCall: FuncCall]:
         attr = parse_attr(self.tensor)
         return f"TRef({attr!s}, {self.producer})"
 
-    def add_consumers(self, *consumers: FCall) -> None:
+    def add_consumers(self, *consumers: F) -> None:
         "Add consumers for the info. Allow duplication."
 
         for consumer in consumers:
             self._consumers.add(consumer)
 
     @property
-    def producer(self) -> FCall:
+    def producer(self) -> F:
         "The producer index."
 
         if self._producer is None:
@@ -299,7 +263,7 @@ class TensorRef[FCall: FuncCall]:
             return self._producer
 
     @property
-    def consumers(self) -> AnySet[FCall]:
+    def consumers(self) -> AnySet[F]:
         "The list of consumers."
         return self._consumers
 
@@ -317,16 +281,16 @@ class TensorRef[FCall: FuncCall]:
 # Helper functions for dag ====
 
 
-def _all_thunk_tensors(thunks: cabc.Sequence[FuncCall]):
+def _all_thunk_tensors(thunks: cabc.Iterable[Instr]) -> cabc.Generator[torch.Tensor]:
     for thunk in thunks:
         yield from thunk.inputs
         yield from thunk.outputs
 
 
-def _tensor_is_input_to_thunk(
-    thunks: cabc.Sequence[FuncCall],
-) -> AnyDict[torch.Tensor, list[FuncCall]]:
-    result: AnyDict[torch.Tensor, list[FuncCall]] = any_dict(torch.Tensor)
+def _tensor_is_input_to_thunk[T: Instr](
+    thunks: cabc.Iterable[T],
+) -> AnyDict[torch.Tensor, list[T]]:
+    result: AnyDict[torch.Tensor, list[T]] = any_dict(torch.Tensor)
 
     for thunk in thunks:
         for tensor in thunk.inputs:
@@ -339,7 +303,7 @@ def _tensor_is_input_to_thunk(
 
 
 def _build_tensor_refs(
-    thunks: cabc.Sequence[FuncCall], inputs: cabc.Sequence[torch.Tensor]
+    thunks: cabc.Iterable[Instr], inputs: cabc.Sequence[torch.Tensor]
 ) -> AnyDict[torch.Tensor, TensorRef]:
     "Get the mapping from id of `torch.Tensor` to corresponding tensor ref."
 
@@ -367,10 +331,10 @@ def _tensor_refs_inputs(
     return mapping
 
 
-def _tensor_refs_outputs(
-    thunks: cabc.Sequence[FuncCall],
-) -> AnyDict[torch.Tensor, TensorRef]:
-    mapping: AnyDict[torch.Tensor, TensorRef] = any_dict(torch.Tensor)
+def _tensor_refs_outputs[I: Instr](
+    thunks: cabc.Iterable[I],
+) -> AnyDict[torch.Tensor, TensorRef[I]]:
+    mapping: AnyDict[torch.Tensor, TensorRef[I]] = any_dict(torch.Tensor)
 
     for thunk in thunks:
         for output in thunk.outputs:
@@ -383,12 +347,54 @@ def _tensor_refs_outputs(
 
 
 def _link_inputs_for_mapping(
-    mapping: AnyDict[torch.Tensor, TensorRef], thunks: cabc.Sequence[FuncCall]
+    mapping: AnyDict[torch.Tensor, TensorRef], thunks: cabc.Iterable[Instr]
 ) -> None:
     for thunk in thunks:
         for input in thunk.inputs:
             assert input in mapping
             mapping[input].add_consumers(thunk)
+
+
+def _replace_subset[I: Instr](
+    *, prog: Program[I], query: Query, subset: Program[I]
+) -> Program[I]:
+    """
+    Replace the query with a new subset.
+    """
+
+    queried = query.select(prog)
+
+    if queried.inputs.attrs() != subset.inputs.attrs():
+        raise ValueError("Inputs are not compatible.")
+
+    if queried.outputs.attrs() != subset.outputs.attrs():
+        raise ValueError("Outputs are not compatible.")
+
+    # Get the indices of the queried subnet and minimum (useful in inserting).
+    qidx = {prog.instrs.index(q) for q in queried}
+    min_qidx = min(qidx)
+
+    # Inputs and outputs are not shared.
+    assert subset.inputs.keys().isdisjoint(subset.outputs.keys())
+
+    # Build mapping for replacement.
+    in_to_out = any_dict(torch.Tensor)
+    for before, after in zip(queried.inputs, subset.inputs):
+        in_to_out[before] = after
+    for before, after in zip(queried.outputs, subset.outputs):
+        in_to_out[before] = after
+
+    # Drop the ones that are queried.
+    new_instrs: list[I] = [
+        thunk.tree_map_only(torch.Tensor, lambda t: in_to_out.get(t, t))
+        for i, thunk in enumerate(prog.instrs)
+        if i not in qidx
+    ]
+
+    # Replace with new.
+    pre = new_instrs[:min_qidx]
+    post = new_instrs[min_qidx:]
+    return prog.from_thunk_list([*pre, *subset.instrs, *post])
 
 
 # Helper classes ====
