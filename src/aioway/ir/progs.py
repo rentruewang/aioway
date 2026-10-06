@@ -22,7 +22,7 @@ __all__ = ["TensorRef", "Program", "TensorLifetime"]
 
 class Program:
     """
-    A dag is a sequence of callables, that are linked by fake tensors.
+    A program is a DAG of callables, that are linked by fake tensors.
     """
 
     def __init__(

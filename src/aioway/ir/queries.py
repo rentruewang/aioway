@@ -22,7 +22,7 @@ class Query(abc.ABC):
     A query is a subnet generator.
     """
 
-    def select(self, iset: Program, /) -> Program:
+    def select(self, prog: Program, /) -> Program:
         """
         Produce a subset whose:
         Input is any tensor used in this scope but not defined in the scope.
@@ -30,12 +30,12 @@ class Query(abc.ABC):
         """
 
         # Sorted and deduplicated, so `selected` is in step order.
-        indices = self._select_idx(iset)
+        indices = self._select_idx(prog)
         idx_set = set(indices.tolist())
-        selected = iset[indices]
+        selected = prog[indices]
 
         produced_here = _get_tensor_sets(instr.outputs for instr in selected)
-        used_outside = _used_outside(iset, idx_set)
+        used_outside = _used_outside(prog, idx_set)
 
         # Inputs: used by our selected by not produced inside the region.
         inputs = TList(
@@ -49,7 +49,7 @@ class Query(abc.ABC):
 
         # Inputs should not depend on intermediate.
         # Since `inputs_produced_by` represent intermediate, it can be empty.
-        inputs_produced_by = [iset.output_of_step(t) for t in inputs]
+        inputs_produced_by = [prog.output_of_step(t) for t in inputs]
         if inputs_produced_by and indices.min() < max(inputs_produced_by):
             raise ValueError("Illegal subset where input depend on intermediate.")
 
@@ -59,8 +59,8 @@ class Query(abc.ABC):
     def _select_idx(self, iset: Program, /) -> IntArray:
         raise NotImplementedError
 
-    def rewrite(self, iset: Program, subset: Program) -> Program:
-        return _replace_subset(query=self, iset=iset, subset=subset)
+    def rewrite(self, prog: Program, subset: Program) -> Program:
+        return _replace_subset(query=self, prog=prog, subset=subset)
 
 
 # Some implementations ====
@@ -127,12 +127,12 @@ def _get_tensor_sets(tlists: cabc.Iterable[TList]) -> AnySet[torch.Tensor]:
     return aset
 
 
-def _replace_subset(*, iset: Program, query: Query, subset: Program) -> Program:
+def _replace_subset(*, prog: Program, query: Query, subset: Program) -> Program:
     """
     Replace the query with a new subset.
     """
 
-    queried = query.select(iset)
+    queried = query.select(prog)
 
     if queried.inputs.attrs() != subset.inputs.attrs():
         raise ValueError("Inputs are not compatible.")
@@ -141,7 +141,7 @@ def _replace_subset(*, iset: Program, query: Query, subset: Program) -> Program:
         raise ValueError("Outputs are not compatible.")
 
     # Get the indices of the queried subnet and minimum (useful in inserting).
-    qidx = {iset.index(q) for q in queried}
+    qidx = {prog.index(q) for q in queried}
     min_qidx = min(qidx)
 
     # Inputs and outputs are not shared.
@@ -157,11 +157,11 @@ def _replace_subset(*, iset: Program, query: Query, subset: Program) -> Program:
     # Drop the ones that are queried.
     new_instrs: list[FuncCall] = [
         thunk.tree_map_only(torch.Tensor, lambda t: in_to_out.get(t, t))
-        for i, thunk in enumerate(iset.instrs)
+        for i, thunk in enumerate(prog.instrs)
         if i not in qidx
     ]
 
     # Replace with new.
     pre = new_instrs[:min_qidx]
     post = new_instrs[min_qidx:]
-    return iset.from_thunk_list([*pre, *subset.instrs, *post])
+    return prog.from_thunk_list([*pre, *subset.instrs, *post])
