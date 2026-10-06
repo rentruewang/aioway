@@ -92,7 +92,7 @@ class Program[I: Instr = typing.Any]:
         raise TypeError(f"Unknown type: {type(idx)=}.")
 
     def __setitem__(self, query: Query, subset: Program) -> None:
-        mutated = _replace_subset(prog=self, query=query, subprog=subset)
+        mutated = _replace_sub_prog(prog=self, query=query, sub_prog=subset)
 
         # Overwrite the references s.t. underlying data is not touched.
         # This is not supposed to fail because we already constructed a program.
@@ -362,8 +362,8 @@ def _link_inputs_for_mapping(
             mapping[input].add_consumers(thunk)
 
 
-def _replace_subset[I: Instr](
-    *, prog: Program[I], query: Query[I], subprog: Program[I]
+def _replace_sub_prog[I: Instr](
+    *, prog: Program[I], query: Query[I], sub_prog: Program[I]
 ) -> Program[I]:
     """
     Replace the query with a new subset.
@@ -371,10 +371,10 @@ def _replace_subset[I: Instr](
 
     queried = _query_select(query=query, prog=prog)
 
-    if queried.inputs.attrs() != subprog.inputs.attrs():
+    if queried.inputs.attrs() != sub_prog.inputs.attrs():
         raise ValueError("Inputs are not compatible.")
 
-    if queried.outputs.attrs() != subprog.outputs.attrs():
+    if queried.outputs.attrs() != sub_prog.outputs.attrs():
         raise ValueError("Outputs are not compatible.")
 
     # Get the indices of the queried subnet and minimum (useful in inserting).
@@ -382,13 +382,13 @@ def _replace_subset[I: Instr](
     min_qidx = min(qidx)
 
     # Inputs and outputs are not shared.
-    assert subprog.inputs.keys().isdisjoint(subprog.outputs.keys())
+    assert sub_prog.inputs.keys().isdisjoint(sub_prog.outputs.keys())
 
     # Build mapping for replacement.
     in_to_out = any_dict(torch.Tensor)
-    for before, after in zip(queried.inputs, subprog.inputs):
+    for before, after in zip(queried.inputs, sub_prog.inputs):
         in_to_out[before] = after
-    for before, after in zip(queried.outputs, subprog.outputs):
+    for before, after in zip(queried.outputs, sub_prog.outputs):
         in_to_out[before] = after
 
     # Drop the ones that are queried.
@@ -401,7 +401,7 @@ def _replace_subset[I: Instr](
     # Replace with new.
     pre = new_instrs[:min_qidx]
     post = new_instrs[min_qidx:]
-    return prog.from_thunk_list([*pre, *subprog.instrs, *post])
+    return prog.from_thunk_list([*pre, *sub_prog.instrs, *post])
 
 
 def _query_select[I: Instr](*, query: Query[I], prog: Program[I]) -> Program[I]:
