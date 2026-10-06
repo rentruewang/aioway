@@ -4,22 +4,26 @@
 
 import copy
 import dataclasses as dcls
+import functools
+import operator
 import typing
 from collections import abc as cabc
 
 import numpy as np
 import torch
 
-from aioway._utils import AnyDict, AnySet, IntArray, any_dict, any_set
+from aioway._utils import AnyDict, AnySet, IntArray, any_dict, any_set, is_list_of
 from aioway.ir.instrs import Instr, InstrList
 from aioway.t import TList, all_real, parse_attr
 
-if typing.TYPE_CHECKING:
-    from aioway.ir import Query
-
-__all__ = ["TensorRef", "Program", "TensorLifetime"]
+__all__ = ["TensorRef", "Program", "Query", "TensorLifetime"]
 
 # The DAG class ====
+
+
+@typing.runtime_checkable
+class Query[I: Instr = typing.Any](typing.Protocol):
+    def __call__(self, program: Program[I], /) -> list[int]: ...
 
 
 class Program[I: Instr = typing.Any]:
@@ -57,40 +61,44 @@ class Program[I: Instr = typing.Any]:
         return iter(self.instrs)
 
     @typing.overload
-    def __getitem__(self, idx: Query) -> typing.Self: ...
-
-    @typing.overload
     def __getitem__(self, idx: int) -> I: ...
 
     @typing.overload
-    def __getitem__(self, idx: slice | list[int] | IntArray) -> list[I]: ...
+    def __getitem__(self, idx: slice | list[int] | IntArray | Query) -> typing.Self: ...
 
     def __getitem__(self, idx):
-        from aioway.ir import Query
+        # For numpy objects, convert to `int | list[int]`.
+        if isinstance(idx, np.ndarray | np.generic):
+            # If it's `IntArray`.
+            if np.isdtype(idx.dtype, "integral") and idx.ndim in [0, 1]:
+                idx = idx.tolist()
+            else:
+                raise IndexError("Only 0D or 1D numpy array supported.")
 
         if isinstance(idx, int):
             return self.instrs[idx]
 
         if isinstance(idx, Query):
-            return idx.select(self)
+            idx = idx(self)
 
         # Convert `slice` to `list[int]` with help of `range`.
         if isinstance(idx, slice):
             idx = list(range(len(self))[idx])
 
-        # If it's `list[int]` or `IntArray`.
-        if np.isdtype((arr := np.asarray(idx)).dtype, "integral"):
-            return [self.instrs[i] for i in arr]
+        # Finally, handle `list[int]`.
+        if is_list_of(int)(idx):
+            sel, inputs, outputs = _select_indices(indices=idx, prog=self)
+            return type(self)(instrs=sel, inputs=inputs, outputs=outputs)
 
         raise TypeError(f"Unknown type: {type(idx)=}.")
 
-    def __setitem__(self, q: Query, subset: Program) -> None:
-        mutated = _replace_subset(prog=self, query=q, subset=subset)
+    def __setitem__(self, query: Query, subset: Program) -> None:
+        mutated = _replace_sub_prog(prog=self, query=query, sub_prog=subset)
 
         # Overwrite the references s.t. underlying data is not touched.
-        # This is not supposed to fail because we already constructed a program.
+        # This is not supposed to fail.
         self.__init__(
-            instrs=mutated.instrs, inputs=mutated.inputs, outputs=mutated.outputs
+            instrs=mutated.ilist, inputs=mutated.inputs, outputs=mutated.outputs
         )
 
     @property
@@ -183,7 +191,7 @@ class Program[I: Instr = typing.Any]:
         return copy.copy(self)
 
     @classmethod
-    def from_thunk_list(cls, thunks: cabc.Iterable[I], /) -> typing.Self:
+    def from_instr_list(cls, instrs: cabc.Iterable[I], /) -> typing.Self:
         """
         Given only the thunk list, construct a DAG, auto discover inputs and outputs.
 
@@ -193,24 +201,10 @@ class Program[I: Instr = typing.Any]:
         Both are in order of first appearance, which decides the signature.
         """
 
-        uses = _tensor_is_input_to_thunk(thunks)
-        tensors = TList.from_iterable(_all_thunk_tensors(thunks))
+        instrs = tuple(instrs)
+        io_only = _InputOutputOnly.from_instrs(instrs)
 
-        # Output observed in the list of thunks.
-        tensor_out_list = any_set(torch.Tensor)
-        for thunk in thunks:
-            for o in thunk.outputs:
-                assert o not in tensor_out_list
-                tensor_out_list.add(o)
-
-        input_only = uses.keys() - tensor_out_list
-        output_only = tensor_out_list - uses.keys()
-
-        # Walk `tensors` rather than the sets: set order is not insertion order.
-        input_tensors = [t for t in tensors if t in input_only]
-        output_tensors = [t for t in tensors if t in output_only]
-
-        return cls(thunks, input_tensors, output_tensors)
+        return cls(instrs, inputs=io_only.inputs, outputs=io_only.outputs)
 
 
 # The node classes ====
@@ -287,21 +281,6 @@ def _all_thunk_tensors(thunks: cabc.Iterable[Instr]) -> cabc.Generator[torch.Ten
         yield from thunk.outputs
 
 
-def _tensor_is_input_to_thunk[T: Instr](
-    thunks: cabc.Iterable[T],
-) -> AnyDict[torch.Tensor, list[T]]:
-    result: AnyDict[torch.Tensor, list[T]] = any_dict(torch.Tensor)
-
-    for thunk in thunks:
-        for tensor in thunk.inputs:
-            if tensor not in result:
-                result[tensor] = []
-
-            result[tensor].append(thunk)
-
-    return result
-
-
 def _build_tensor_refs(
     thunks: cabc.Iterable[Instr], inputs: cabc.Sequence[torch.Tensor]
 ) -> AnyDict[torch.Tensor, TensorRef]:
@@ -355,33 +334,64 @@ def _link_inputs_for_mapping(
             mapping[input].add_consumers(thunk)
 
 
-def _replace_subset[I: Instr](
-    *, prog: Program[I], query: Query, subset: Program[I]
-) -> Program[I]:
+def _used_outside(prog: Program, selected_idx: set[int]) -> TList:
+    """
+    Add all tensors used outside of selected region.
+    """
+
+    used = TList.empty()
+
+    # Only check those that occur after, as this is a DAG.
+    for i in range(min(selected_idx) + 1, len(prog)):
+        if i in selected_idx:
+            continue
+
+        used += prog[i].inputs
+
+    # Populate the outputs as it's considered "consumed".
+    used += prog.outputs
+
+    return used
+
+
+# The querying related utilities ====
+
+
+class _ProgramTuple[I: Instr](typing.NamedTuple):
+    "A namedtuple to avoid paying construction cost of `Program`."
+
+    ilist: InstrList[I]
+    inputs: TList
+    outputs: TList
+
+
+def _replace_sub_prog[I: Instr](
+    *, prog: Program[I], query: Query[I], sub_prog: Program[I]
+) -> _ProgramTuple[I]:
     """
     Replace the query with a new subset.
     """
 
-    queried = query.select(prog)
+    queried = _query_select(query=query, prog=prog)
 
-    if queried.inputs.attrs() != subset.inputs.attrs():
+    if queried.inputs.attrs() != sub_prog.inputs.attrs():
         raise ValueError("Inputs are not compatible.")
 
-    if queried.outputs.attrs() != subset.outputs.attrs():
+    if queried.outputs.attrs() != sub_prog.outputs.attrs():
         raise ValueError("Outputs are not compatible.")
 
     # Get the indices of the queried subnet and minimum (useful in inserting).
-    qidx = {prog.instrs.index(q) for q in queried}
+    qidx = {prog.instrs.index(q) for q in queried.ilist}
     min_qidx = min(qidx)
 
     # Inputs and outputs are not shared.
-    assert subset.inputs.keys().isdisjoint(subset.outputs.keys())
+    assert sub_prog.inputs.keys().isdisjoint(sub_prog.outputs.keys())
 
     # Build mapping for replacement.
     in_to_out = any_dict(torch.Tensor)
-    for before, after in zip(queried.inputs, subset.inputs):
+    for before, after in zip(queried.inputs, sub_prog.inputs):
         in_to_out[before] = after
-    for before, after in zip(queried.outputs, subset.outputs):
+    for before, after in zip(queried.outputs, sub_prog.outputs):
         in_to_out[before] = after
 
     # Drop the ones that are queried.
@@ -394,10 +404,87 @@ def _replace_subset[I: Instr](
     # Replace with new.
     pre = new_instrs[:min_qidx]
     post = new_instrs[min_qidx:]
-    return prog.from_thunk_list([*pre, *subset.instrs, *post])
+    replaced = [*pre, *sub_prog.instrs, *post]
+    io_only = _InputOutputOnly.from_instrs(replaced)
+
+    return _ProgramTuple(
+        ilist=InstrList.build(replaced),
+        inputs=io_only.inputs,
+        outputs=io_only.outputs,
+    )
+
+
+def _query_select[I: Instr](*, query: Query[I], prog: Program[I]) -> _ProgramTuple[I]:
+    # Sorted and deduplicated, so `selected` is in step order.
+    indices = query(prog)
+    return _select_indices(indices=indices, prog=prog)
+
+
+def _select_indices[I: Instr](
+    *, indices: list[int], prog: Program[I]
+) -> _ProgramTuple[I]:
+    """
+    Produce a subprogram whose:
+    Input is any tensor used in this scope but not defined in the scope.
+    Output is any tensor produced and used in downstream.
+    """
+
+    if indices != sorted(indices):
+        raise ValueError("The index provided should be sorted and unique.")
+
+    idx_set = set(indices)
+    selected = prog.instrs[indices]
+
+    # Using `TList` as it has fast lookups and ergonomic operations.
+    produced_here = functools.reduce(operator.add, (i.outputs for i in selected))
+    used_outside = _used_outside(prog, idx_set)
+
+    # Inputs: used by our selected by not produced inside the region.
+    inputs = TList.from_iterable(
+        t for i in selected for t in i.inputs if t not in produced_here
+    )
+
+    # Outputs: produced by our selected and used by outside thunks.
+    outputs = TList.from_iterable(
+        t for i in selected for t in i.outputs if t in used_outside
+    )
+
+    # Inputs should not depend on intermediate.
+    # Since `inputs_produced_by` represent intermediate, it can be empty.
+    inputs_produced_by = [prog.output_of_step(t) for t in inputs]
+    if inputs_produced_by and min(indices) < max(inputs_produced_by):
+        raise ValueError("Illegal subset where input depend on intermediate.")
+
+    return _ProgramTuple(selected, inputs, outputs)
 
 
 # Helper classes ====
+
+
+@dcls.dataclass(frozen=True)
+class _InputOutputOnly:
+    inputs: TList
+    outputs: TList
+
+    @classmethod
+    def from_instrs[I: Instr](cls, instrs: cabc.Sequence[I]) -> typing.Self:
+        # Inputs observed in the list of thunks.
+        tensor_in_list = TList.empty()
+
+        # Output observed in the list of thunks.
+        tensor_out_list = TList.empty()
+
+        for thunk in instrs:
+            tensor_in_list += thunk.inputs
+
+            # Output must be unique.
+            assert tensor_out_list.isdisjoint(thunk.outputs)
+            tensor_out_list += thunk.outputs
+
+        input_only = tensor_in_list - tensor_out_list
+        output_only = tensor_out_list - tensor_in_list
+
+        return cls(inputs=input_only, outputs=output_only)
 
 
 @dcls.dataclass(frozen=True)

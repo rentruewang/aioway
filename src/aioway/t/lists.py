@@ -55,7 +55,7 @@ class TList:
         return f"[{body}]"
 
     def __hash__(self) -> int:
-        return hash(tuple(sorted(self._indexed.keys())))
+        return hash(tuple(self._indexed.keys()))
 
     def __contains__(self, item: object) -> int:
         if isinstance(item, int | torch.Tensor):
@@ -66,7 +66,7 @@ class TList:
 
     def __eq__(self, other) -> bool:
         if isinstance(other, TList):
-            return sorted(self._indexed.keys()) == sorted(other._indexed.keys())
+            return list(self._indexed.keys()) == list(other._indexed.keys())
 
         if is_set_of(torch.Tensor):
             return sorted(self._indexed.keys()) == sorted(id(t) for t in other)
@@ -86,10 +86,23 @@ class TList:
         for i in range(len(self)):
             yield self[i]
 
+    def __add__(self, other: typing.Self) -> typing.Self:
+        return self.from_indexed_tensors(self._indexed | other._indexed)
+
+    def __sub__(self, other: typing.Self) -> typing.Self:
+        return self.from_indexed_tensors(
+            collections.OrderedDict(
+                (k, self._indexed[k]) for k in self.keys() if k not in other.keys()
+            )
+        )
+
     def keys(self) -> cabc.KeysView[int]:
         "Get the keys for unordered comparison."
 
         return self._indexed.keys()
+
+    def isdisjoint(self, other: TList) -> bool:
+        return self.keys().isdisjoint(other.keys())
 
     def index(self, tensor: torch.Tensor | int) -> int:
         "Get the index of the tensor. O(1)."
@@ -137,8 +150,18 @@ class TList:
     def from_iterable(cls, tensors: cabc.Iterable[torch.Tensor], /) -> typing.Self:
         "Convert from an iterable of tensors."
         indexed = collections.OrderedDict((id(t), t) for t in tensors)
+        return cls.from_indexed_tensors(indexed=indexed)
+
+    @classmethod
+    def from_indexed_tensors(
+        cls, indexed: collections.OrderedDict[int, torch.Tensor]
+    ) -> typing.Self:
         tensors = tuple(indexed.values())
         return cls(indexed=indexed, tensors=tensors)
+
+    @classmethod
+    def empty(cls) -> typing.Self:
+        return cls.from_indexed_tensors(collections.OrderedDict())
 
 
 # Utility functions. ====
