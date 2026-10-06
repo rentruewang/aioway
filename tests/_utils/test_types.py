@@ -1,8 +1,8 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from aioway._utils import find_common_base
-from aioway._utils import track_call_count
 import pytest
+
+from aioway._utils import find_common_base, track_call_count
 
 
 @track_call_count

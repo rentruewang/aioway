@@ -11,7 +11,7 @@ from collections import abc as cabc
 import numpy as np
 from torch.utils import _pytree as pyt
 
-from aioway._utils import AnyDict, IntArray, any_dict, is_list_of, find_common_base
+from aioway._utils import AnyDict, IntArray, any_dict, find_common_base, is_list_of
 from aioway.t import TList
 
 __all__ = ["Instr", "InstrList"]
