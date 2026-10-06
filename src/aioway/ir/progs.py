@@ -2,6 +2,7 @@
 
 "The DAG that supports analysis."
 
+import copy
 import dataclasses as dcls
 import functools
 import typing
@@ -212,6 +213,10 @@ class Program:
     def _thunk_consuming(self, tensor: torch.Tensor, /) -> cabc.Generator[FuncCall]:
         ref = self._tensor_links[tensor]
         yield from ref.consumers
+
+    def copy(self) -> typing.Self:
+        "Do a shallow copy of `self`, for CoW."
+        return copy.copy(self)
 
     @classmethod
     def from_thunk_list(cls, thunks: cabc.Sequence[FuncCall]) -> typing.Self:
