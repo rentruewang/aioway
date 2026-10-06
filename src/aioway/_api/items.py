@@ -21,7 +21,7 @@ class FuncOrClass(typing.Protocol):
 
 
 @typing.runtime_checkable
-class AiowayApi[**P = ..., T = typing.Any](FuncOrClass, typing.Protocol):
+class AiowayApi[**P = ..., T: object = typing.Any](FuncOrClass, typing.Protocol):
     "The aioway marker."
 
     __aioway_internal_ref__: FuncOrClass

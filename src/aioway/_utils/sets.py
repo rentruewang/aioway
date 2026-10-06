@@ -76,7 +76,7 @@ def any_dict[K = typing.Any, V = typing.Any](
 # Class definitions, private. Exposed to `__all__` for type hints. ====
 
 
-class AnySet[K = typing.Any]:
+class AnySet[K: object = typing.Any]:
     """
     `AnySet` allows to store a set of items, using their `id` or `hash` to compare equality.
     """
@@ -143,7 +143,7 @@ class AnySet[K = typing.Any]:
         return type(self)(base=self._type, keys=self._keys.copy())
 
 
-class AnyDict[K = typing.Any, V = typing.Any](AnySet[K]):
+class AnyDict[K: object = typing.Any, V: object = typing.Any](AnySet[K]):
     """
     `AnyDict` allows you to treat `T` as if it's `Hashable` (it's not).
     Each item would be compared with `is` rather than `==`.
