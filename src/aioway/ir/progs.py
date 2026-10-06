@@ -96,9 +96,9 @@ class Program[I: Instr = typing.Any]:
         mutated = _replace_sub_prog(prog=self, query=query, sub_prog=subset)
 
         # Overwrite the references s.t. underlying data is not touched.
-        # This is not supposed to fail because we already constructed a program.
+        # This is not supposed to fail.
         self.__init__(
-            instrs=mutated.selected, inputs=mutated.inputs, outputs=mutated.outputs
+            instrs=mutated.ilist, inputs=mutated.inputs, outputs=mutated.outputs
         )
 
     @property
@@ -360,7 +360,7 @@ def _used_outside(prog: Program, selected_idx: set[int]) -> TList:
 class _ProgramTuple[I: Instr](typing.NamedTuple):
     "A namedtuple to avoid paying construction cost of `Program`."
 
-    selected: InstrList[I]
+    ilist: InstrList[I]
     inputs: TList
     outputs: TList
 
@@ -381,7 +381,7 @@ def _replace_sub_prog[I: Instr](
         raise ValueError("Outputs are not compatible.")
 
     # Get the indices of the queried subnet and minimum (useful in inserting).
-    qidx = {prog.instrs.index(q) for q in queried.selected}
+    qidx = {prog.instrs.index(q) for q in queried.ilist}
     min_qidx = min(qidx)
 
     # Inputs and outputs are not shared.
@@ -404,12 +404,11 @@ def _replace_sub_prog[I: Instr](
     # Replace with new.
     pre = new_instrs[:min_qidx]
     post = new_instrs[min_qidx:]
-
-    selection = [*pre, *sub_prog.instrs, *post]
-    io_only = _InputOutputOnly.from_instrs(selection)
+    replaced = [*pre, *sub_prog.instrs, *post]
+    io_only = _InputOutputOnly.from_instrs(replaced)
 
     return _ProgramTuple(
-        selected=InstrList.build(selection),
+        ilist=InstrList.build(replaced),
         inputs=io_only.inputs,
         outputs=io_only.outputs,
     )
