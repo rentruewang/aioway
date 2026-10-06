@@ -32,7 +32,7 @@ def any_set(base, /, *default) -> AnySet: ...
 
 
 def any_set(base=object, /, *default) -> AnySet:
-    aset = AnySet(base, {})
+    aset = AnySet(base=base, keys={})
 
     # Add all the default values.
     for key in default:
@@ -64,7 +64,7 @@ def any_dict(base, /, *default) -> AnyDict: ...
 def any_dict[K = typing.Any, V = typing.Any](
     base: type | tuple[type, ...] = object, /, *default: tuple[K, V]
 ):
-    adict = AnyDict(base, {}, {})
+    adict = AnyDict(base=base, keys={}, vals={})
 
     # Add all default values.
     for key, val in default:
@@ -81,7 +81,7 @@ class AnySet[K = typing.Any]:
     `AnySet` allows to store a set of items, using their `id` or `hash` to compare equality.
     """
 
-    def __init__(self, base: type | tuple[type, ...], keys: dict[AnyId, K]) -> None:
+    def __init__(self, *, base: type | tuple[type, ...], keys: dict[AnyId, K]) -> None:
         self._keys: dict[AnyId, K] = keys
         """
         The keys that has been stored in the `AnyDict`.
@@ -140,7 +140,7 @@ class AnySet[K = typing.Any]:
             del self._keys[key_hash]
 
     def copy(self) -> typing.Self:
-        return type(self)(self._type, self._keys.copy())
+        return type(self)(base=self._type, keys=self._keys.copy())
 
 
 class AnyDict[K = typing.Any, V = typing.Any](AnySet[K]):
@@ -150,9 +150,13 @@ class AnyDict[K = typing.Any, V = typing.Any](AnySet[K]):
     """
 
     def __init__(
-        self, base: type | tuple[type, ...], keys: dict[AnyId, K], vals: dict[AnyId, V]
+        self,
+        *,
+        base: type | tuple[type, ...],
+        keys: dict[AnyId, K],
+        vals: dict[AnyId, V],
     ) -> None:
-        super().__init__(base, keys)
+        super().__init__(base=base, keys=keys)
 
         self._vals: dict[AnyId, V] = vals
         """
@@ -194,7 +198,7 @@ class AnyDict[K = typing.Any, V = typing.Any](AnySet[K]):
         return self
 
     def keys(self) -> AnySet[K]:
-        return AnySet(self._type, self._keys.copy())
+        return AnySet(base=self._type, keys=self._keys.copy())
 
     def values(self) -> cabc.Iterable[V]:
         for key in self.keys():
@@ -217,7 +221,9 @@ class AnyDict[K = typing.Any, V = typing.Any](AnySet[K]):
             return default
 
     def copy(self) -> typing.Self:
-        return type(self)(self._type, self._keys.copy(), self._vals.copy())
+        return type(self)(
+            base=self._type, keys=self._keys.copy(), vals=self._vals.copy()
+        )
 
     def __assert_same_length(self) -> None:
         assert super().__len__() == len(self._vals)

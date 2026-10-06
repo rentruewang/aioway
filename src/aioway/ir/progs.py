@@ -33,8 +33,8 @@ class Program:
     ) -> None:
         self._instrs = tuple(instrs)
 
-        self._inputs = TList(inputs)
-        self._outputs = TList(outputs)
+        self._inputs = TList.from_iterable(inputs)
+        self._outputs = TList.from_iterable(outputs)
 
         self._thunk_to_step: AnyDict[FuncCall, int] = any_dict(
             FuncCall, *((thunk, idx) for idx, thunk in enumerate(self.instrs))
@@ -127,7 +127,7 @@ class Program:
 
     @functools.cached_property
     def tensors(self) -> TList:
-        return TList(self._all_tensors())
+        return TList.from_iterable(self._all_tensors())
 
     def index(self, instr: FuncCall, /) -> int:
         "Get the index of each instruction."
@@ -200,7 +200,7 @@ class Program:
         """
 
         uses = _tensor_is_input_to_thunk(thunks)
-        tensors = TList(_all_thunk_tensors(thunks))
+        tensors = TList.from_iterable(_all_thunk_tensors(thunks))
 
         # Output observed in the list of thunks.
         tensor_out_list = any_set(torch.Tensor)

@@ -38,12 +38,12 @@ class Query(abc.ABC):
         used_outside = _used_outside(prog, idx_set)
 
         # Inputs: used by our selected by not produced inside the region.
-        inputs = TList(
+        inputs = TList.from_iterable(
             t for instr in selected for t in instr.inputs if t not in produced_here
         )
 
         # Outputs: produced by our selected and used by outside thunks.
-        outputs = TList(
+        outputs = TList.from_iterable(
             t for instr in selected for t in instr.outputs if t in used_outside
         )
 
