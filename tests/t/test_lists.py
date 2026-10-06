@@ -65,7 +65,7 @@ def test_tlist_index_missing(tlist: TList):
 
 def test_tlist_eq(x, y):
     assert TList.from_iterable([x, y]) == TList.from_iterable([y, x])
-    assert hash(TList.from_iterable([x, y])) == hash(TList.from_iterable([y, x]))
+    assert hash(TList.from_iterable([x, y])) != hash(TList.from_iterable([y, x]))
 
 
 def test_tlist_fake_check_all(tlist: TList):

@@ -55,7 +55,7 @@ class TList:
         return f"[{body}]"
 
     def __hash__(self) -> int:
-        return hash(tuple(sorted(self._indexed.keys())))
+        return hash(tuple(self._indexed.keys()))
 
     def __contains__(self, item: object) -> int:
         if isinstance(item, int | torch.Tensor):
