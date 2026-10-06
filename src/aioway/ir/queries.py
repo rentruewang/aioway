@@ -103,8 +103,8 @@ def _used_outside(prog: Program, selected_idx: set[int]) -> AnySet[torch.Tensor]
     """
 
     used: AnySet[torch.Tensor] = any_set(torch.Tensor)
-    first_selected = min(selected_idx)
 
+    # Only check those that occur after, as this is a DAG.
     for i in range(min(selected_idx), len(prog)):
         instr = prog[i]
 
