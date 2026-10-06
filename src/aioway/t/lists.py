@@ -86,6 +86,9 @@ class TList:
         for i in range(len(self)):
             yield self[i]
 
+    def __add__(self, other: typing.Self) -> typing.Self:
+        return self.from_indexed_tensors(self._indexed | other._indexed)
+
     def keys(self) -> cabc.KeysView[int]:
         "Get the keys for unordered comparison."
 
@@ -137,8 +140,18 @@ class TList:
     def from_iterable(cls, tensors: cabc.Iterable[torch.Tensor], /) -> typing.Self:
         "Convert from an iterable of tensors."
         indexed = collections.OrderedDict((id(t), t) for t in tensors)
+        return cls.from_indexed_tensors(indexed=indexed)
+
+    @classmethod
+    def from_indexed_tensors(
+        cls, indexed: collections.OrderedDict[int, torch.Tensor]
+    ) -> typing.Self:
         tensors = tuple(indexed.values())
         return cls(indexed=indexed, tensors=tensors)
+
+    @classmethod
+    def empty(cls) -> typing.Self:
+        return cls.from_indexed_tensors(collections.OrderedDict())
 
 
 # Utility functions. ====

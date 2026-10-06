@@ -4,6 +4,8 @@
 
 import copy
 import dataclasses as dcls
+import functools
+import operator
 import typing
 from collections import abc as cabc
 
@@ -90,7 +92,7 @@ class Program[I: Instr = typing.Any]:
         raise TypeError(f"Unknown type: {type(idx)=}.")
 
     def __setitem__(self, query: Query, subset: Program) -> None:
-        mutated = _replace_subset(prog=self, query=query, subset=subset)
+        mutated = _replace_subset(prog=self, query=query, subprog=subset)
 
         # Overwrite the references s.t. underlying data is not touched.
         # This is not supposed to fail because we already constructed a program.
@@ -361,7 +363,7 @@ def _link_inputs_for_mapping(
 
 
 def _replace_subset[I: Instr](
-    *, prog: Program[I], query: Query[I], subset: Program[I]
+    *, prog: Program[I], query: Query[I], subprog: Program[I]
 ) -> Program[I]:
     """
     Replace the query with a new subset.
@@ -369,10 +371,10 @@ def _replace_subset[I: Instr](
 
     queried = _query_select(query=query, prog=prog)
 
-    if queried.inputs.attrs() != subset.inputs.attrs():
+    if queried.inputs.attrs() != subprog.inputs.attrs():
         raise ValueError("Inputs are not compatible.")
 
-    if queried.outputs.attrs() != subset.outputs.attrs():
+    if queried.outputs.attrs() != subprog.outputs.attrs():
         raise ValueError("Outputs are not compatible.")
 
     # Get the indices of the queried subnet and minimum (useful in inserting).
@@ -380,13 +382,13 @@ def _replace_subset[I: Instr](
     min_qidx = min(qidx)
 
     # Inputs and outputs are not shared.
-    assert subset.inputs.keys().isdisjoint(subset.outputs.keys())
+    assert subprog.inputs.keys().isdisjoint(subprog.outputs.keys())
 
     # Build mapping for replacement.
     in_to_out = any_dict(torch.Tensor)
-    for before, after in zip(queried.inputs, subset.inputs):
+    for before, after in zip(queried.inputs, subprog.inputs):
         in_to_out[before] = after
-    for before, after in zip(queried.outputs, subset.outputs):
+    for before, after in zip(queried.outputs, subprog.outputs):
         in_to_out[before] = after
 
     # Drop the ones that are queried.
@@ -399,7 +401,7 @@ def _replace_subset[I: Instr](
     # Replace with new.
     pre = new_instrs[:min_qidx]
     post = new_instrs[min_qidx:]
-    return prog.from_thunk_list([*pre, *subset.instrs, *post])
+    return prog.from_thunk_list([*pre, *subprog.instrs, *post])
 
 
 def _query_select[I: Instr](*, query: Query[I], prog: Program[I]) -> Program[I]:
@@ -419,17 +421,18 @@ def _select_indices[I: Instr](*, indices: list[int], prog: Program[I]) -> Progra
     idx_set = set(indices)
     selected = prog.instrs[indices]
 
-    produced_here = _get_tensor_sets(instr.outputs for instr in selected)
+    # Using `TList` as it has fast lookups and ergonomic operations.
+    produced_here = functools.reduce(operator.add, (i.outputs for i in selected))
     used_outside = _used_outside(prog, idx_set)
 
     # Inputs: used by our selected by not produced inside the region.
     inputs = TList.from_iterable(
-        t for instr in selected for t in instr.inputs if t not in produced_here
+        t for i in selected for t in i.inputs if t not in produced_here
     )
 
     # Outputs: produced by our selected and used by outside thunks.
     outputs = TList.from_iterable(
-        t for instr in selected for t in instr.outputs if t in used_outside
+        t for i in selected for t in i.outputs if t in used_outside
     )
 
     # Inputs should not depend on intermediate.
@@ -441,36 +444,24 @@ def _select_indices[I: Instr](*, indices: list[int], prog: Program[I]) -> Progra
     return Program(selected, inputs, outputs)
 
 
-def _used_outside(prog: Program, selected_idx: set[int]) -> AnySet[torch.Tensor]:
+def _used_outside(prog: Program, selected_idx: set[int]) -> TList:
     """
     Add all tensors used outside of selected region.
     """
 
-    used: AnySet[torch.Tensor] = any_set(torch.Tensor)
+    used = TList.empty()
 
     # Only check those that occur after, as this is a DAG.
     for i in range(min(selected_idx) + 1, len(prog)):
         if i in selected_idx:
             continue
 
-        for tensor in prog[i].inputs:
-            used.add(tensor)
+        used += prog[i].inputs
 
     # Populate the outputs as it's considered "consumed".
-    for tensor in prog.outputs:
-        used.add(tensor)
+    used += prog.outputs
 
     return used
-
-
-def _get_tensor_sets(tlists: cabc.Iterable[TList]) -> AnySet[torch.Tensor]:
-    aset = any_set(torch.Tensor)
-
-    for tlist in tlists:
-        for tensor in tlist:
-            aset.add(tensor)
-
-    return aset
 
 
 # Helper classes ====
