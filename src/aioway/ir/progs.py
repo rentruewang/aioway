@@ -35,8 +35,8 @@ class Program:
     ) -> None:
         self._instrs = tuple(instrs)
 
-        self._inputs = TList.from_iterable(inputs)
-        self._outputs = TList.from_iterable(outputs)
+        self._inputs = TList.from_self_or_iter(inputs)
+        self._outputs = TList.from_self_or_iter(outputs)
 
         # Validate if the inputs and outputs are valid.
         self._validate_input_output()

@@ -3,6 +3,7 @@
 "A utility for a list of tensor."
 
 import collections
+import copy
 import functools
 import typing
 from collections import abc as cabc
@@ -122,7 +123,18 @@ class TList:
         return parse_attr(self)
 
     @classmethod
+    def from_self_or_iter(
+        cls, tensors: cabc.Iterable[torch.Tensor] | typing.Self, /
+    ) -> typing.Self:
+        if isinstance(tensors, TList):
+            return copy.copy(tensors)
+
+        else:
+            return cls.from_iterable(tensors)
+
+    @classmethod
     def from_iterable(cls, tensors: cabc.Iterable[torch.Tensor], /) -> typing.Self:
+        "Convert from an iterable of tensors."
         indexed = collections.OrderedDict((id(t), t) for t in tensors)
         tensors = tuple(indexed.values())
         return cls(indexed=indexed, tensors=tensors)
