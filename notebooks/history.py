@@ -47,4 +47,4 @@ hist
 list(hist.program)
 
 # %%
-list(IndexQuery([0, 1, 2]).select(hist.program))
+list(hist.program[IndexQuery([0, 1, 2])])

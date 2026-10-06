@@ -14,12 +14,14 @@ from aioway._utils import AnyDict, AnySet, IntArray, any_dict, any_set
 from aioway.ir.instrs import Instr, InstrList
 from aioway.t import TList, all_real, parse_attr
 
-if typing.TYPE_CHECKING:
-    from aioway.ir import Query
-
-__all__ = ["TensorRef", "Program", "TensorLifetime"]
+__all__ = ["TensorRef", "Program", "Query", "TensorLifetime"]
 
 # The DAG class ====
+
+
+@typing.runtime_checkable
+class Query[I: Instr = typing.Any](typing.Protocol):
+    def __call__(self, program: Program[I], /) -> list[int]: ...
 
 
 class Program[I: Instr = typing.Any]:
@@ -72,7 +74,7 @@ class Program[I: Instr = typing.Any]:
             return self.instrs[idx]
 
         if isinstance(idx, Query):
-            return idx.select(self)
+            return _query_select(query=idx, prog=self)
 
         # Convert `slice` to `list[int]` with help of `range`.
         if isinstance(idx, slice):
@@ -84,8 +86,8 @@ class Program[I: Instr = typing.Any]:
 
         raise TypeError(f"Unknown type: {type(idx)=}.")
 
-    def __setitem__(self, q: Query, subset: Program) -> None:
-        mutated = _replace_subset(prog=self, query=q, subset=subset)
+    def __setitem__(self, query: Query, subset: Program) -> None:
+        mutated = _replace_subset(prog=self, query=query, subset=subset)
 
         # Overwrite the references s.t. underlying data is not touched.
         # This is not supposed to fail because we already constructed a program.
@@ -356,13 +358,13 @@ def _link_inputs_for_mapping(
 
 
 def _replace_subset[I: Instr](
-    *, prog: Program[I], query: Query, subset: Program[I]
+    *, prog: Program[I], query: Query[I], subset: Program[I]
 ) -> Program[I]:
     """
     Replace the query with a new subset.
     """
 
-    queried = query.select(prog)
+    queried = _query_select(query=query, prog=prog)
 
     if queried.inputs.attrs() != subset.inputs.attrs():
         raise ValueError("Inputs are not compatible.")
@@ -395,6 +397,72 @@ def _replace_subset[I: Instr](
     pre = new_instrs[:min_qidx]
     post = new_instrs[min_qidx:]
     return prog.from_thunk_list([*pre, *subset.instrs, *post])
+
+
+def _query_select[I: Instr](*, query: Query[I], prog: Program[I]) -> Program[I]:
+    """
+    Produce a subset whose:
+    Input is any tensor used in this scope but not defined in the scope.
+    Output is any tensor produced and used in downstream.
+    """
+
+    # Sorted and deduplicated, so `selected` is in step order.
+    indices = query(prog)
+    idx_set = set(indices)
+    selected = prog[indices]
+
+    produced_here = _get_tensor_sets(instr.outputs for instr in selected)
+    used_outside = _used_outside(prog, idx_set)
+
+    # Inputs: used by our selected by not produced inside the region.
+    inputs = TList.from_iterable(
+        t for instr in selected for t in instr.inputs if t not in produced_here
+    )
+
+    # Outputs: produced by our selected and used by outside thunks.
+    outputs = TList.from_iterable(
+        t for instr in selected for t in instr.outputs if t in used_outside
+    )
+
+    # Inputs should not depend on intermediate.
+    # Since `inputs_produced_by` represent intermediate, it can be empty.
+    inputs_produced_by = [prog.output_of_step(t) for t in inputs]
+    if inputs_produced_by and min(indices) < max(inputs_produced_by):
+        raise ValueError("Illegal subset where input depend on intermediate.")
+
+    return Program(selected, inputs, outputs)
+
+
+def _used_outside(prog: Program, selected_idx: set[int]) -> AnySet[torch.Tensor]:
+    """
+    Add all tensors used outside of selected region.
+    """
+
+    used: AnySet[torch.Tensor] = any_set(torch.Tensor)
+
+    # Only check those that occur after, as this is a DAG.
+    for i in range(min(selected_idx) + 1, len(prog)):
+        if i in selected_idx:
+            continue
+
+        for tensor in prog[i].inputs:
+            used.add(tensor)
+
+    # Populate the outputs as it's considered "consumed".
+    for tensor in prog.outputs:
+        used.add(tensor)
+
+    return used
+
+
+def _get_tensor_sets(tlists: cabc.Iterable[TList]) -> AnySet[torch.Tensor]:
+    aset = any_set(torch.Tensor)
+
+    for tlist in tlists:
+        for tensor in tlist:
+            aset.add(tensor)
+
+    return aset
 
 
 # Helper classes ====

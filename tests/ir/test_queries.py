@@ -1,6 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import typing
+from collections import abc as cabc
 
 import numpy as np
 import pytest
@@ -9,6 +10,16 @@ from torch import testing as tt
 
 from aioway.ir import Exec, IndexQuery, Program, TorchFuncDag
 from aioway.t import fake_mode, parse_attr
+
+type QueryFn = cabc.Callable[[Program], list[int]]
+
+
+def cow_rewrite(query: QueryFn, prog: Program, sub: Program) -> Program:
+    "A copy of `prog` with the part picked out by `query` replaced by `sub`."
+
+    prog = prog.copy()
+    prog[query] = sub
+    return prog
 
 
 class Graph(typing.NamedTuple):
@@ -49,7 +60,7 @@ def graph() -> Graph:
 
 
 def test_all(graph: Graph):
-    sub = IndexQuery([0, 1, 2, 3]).select(graph.prog)
+    sub = graph.prog[IndexQuery([0, 1, 2, 3])]
 
     assert isinstance(sub, Program)
     assert len(sub) == 4
@@ -58,7 +69,7 @@ def test_all(graph: Graph):
 
 
 def test_prefix(graph: Graph):
-    sub = IndexQuery([0, 1]).select(graph.prog)
+    sub = graph.prog[IndexQuery([0, 1])]
 
     assert len(sub) == 2
     assert sub.inputs == {graph.x, graph.y}
@@ -66,7 +77,7 @@ def test_prefix(graph: Graph):
 
 
 def test_suffix(graph: Graph):
-    sub = IndexQuery([2, 3]).select(graph.prog)
+    sub = graph.prog[IndexQuery([2, 3])]
 
     assert len(sub) == 2
     assert sub.inputs == {graph.product, graph.summed}
@@ -74,7 +85,7 @@ def test_suffix(graph: Graph):
 
 
 def test_single_step(graph: Graph):
-    sub = IndexQuery([3]).select(graph.prog)
+    sub = graph.prog[IndexQuery([3])]
 
     assert len(sub) == 1
     assert sub.inputs == [graph.difference]
@@ -82,7 +93,7 @@ def test_single_step(graph: Graph):
 
 
 def test_numpy_idx(graph: Graph):
-    sub = IndexQuery(np.array([2, 3])).select(graph.prog)
+    sub = graph.prog[IndexQuery(np.array([2, 3]))]
 
     assert sub.inputs == {graph.product, graph.summed}
     assert sub.outputs == [graph.activated]
@@ -92,17 +103,17 @@ def test_no_depending_on_intermediate(graph: Graph):
     # Step 2 needs `product` from step 1, which is skipped but comes after step 0,
     # this means the subgraph is not complte.
     with pytest.raises(ValueError):
-        IndexQuery([0, 2]).select(graph.prog)
+        graph.prog[IndexQuery([0, 2])]
 
 
 def test_no_neg_idx(graph: Graph):
     with pytest.raises(IndexError):
-        IndexQuery([-1]).select(graph.prog)
+        graph.prog[IndexQuery([-1])]
 
 
 def test_out_of_bounds(graph: Graph):
     with pytest.raises(IndexError):
-        IndexQuery([4]).select(graph.prog)
+        graph.prog[IndexQuery([4])]
 
 
 def trace(fn, *shapes: tuple[int, ...]) -> Program:
@@ -126,7 +137,7 @@ def funcs(iset: Program) -> list:
 def test_rewrite_with_itself(graph: Graph):
     query = IndexQuery([1, 2])
 
-    result = query.rewrite(graph.prog, query.select(graph.prog))
+    result = cow_rewrite(query, graph.prog, graph.prog[query])
 
     assert funcs(result) == funcs(graph.prog)
 
@@ -134,7 +145,7 @@ def test_rewrite_with_itself(graph: Graph):
 def test_rewrite_with_itself_setitem(graph: Graph):
     query = IndexQuery([1, 2])
     before = funcs(graph.prog)
-    graph.prog[query] = query.select(graph.prog)
+    graph.prog[query] = graph.prog[query]
     assert before == funcs(graph.prog)
     assert before is not funcs(graph.prog)
 
@@ -142,14 +153,14 @@ def test_rewrite_with_itself_setitem(graph: Graph):
 def test_rewrite_last(graph: Graph):
     # Step 3 takes one tensor (difference) and returns one.
     replacement = trace(lambda difference: torch.abs(difference), (3,))
-    result = IndexQuery([3]).rewrite(graph.prog, replacement)
+    result = cow_rewrite(IndexQuery([3]), graph.prog, replacement)
 
     assert funcs(result) == [torch.add, torch.mul, torch.sub, torch.abs]
 
 
 def test_rewrite_last_runs(graph: Graph):
     replacement = trace(lambda difference: torch.abs(difference), (3,))
-    result = IndexQuery([3]).rewrite(graph.prog, replacement)
+    result = cow_rewrite(IndexQuery([3]), graph.prog, replacement)
 
     x_real, y_real = torch.randn(3), torch.randn(3)
     summed = x_real + y_real
@@ -162,7 +173,7 @@ def test_rewrite_middle(graph: Graph):
     replacement = trace(
         lambda summed, x: torch.sub(torch.add(summed, x), summed), (3,), (3,)
     )
-    result = IndexQuery([1, 2]).rewrite(graph.prog, replacement)
+    result = cow_rewrite(IndexQuery([1, 2]), graph.prog, replacement)
 
     assert funcs(result) == [torch.add, torch.add, torch.sub, torch.relu]
 
@@ -171,7 +182,7 @@ def test_rewrite_middle_runs(graph: Graph):
     replacement = trace(
         lambda summed, x: torch.sub(torch.add(summed, x), summed), (3,), (3,)
     )
-    result = IndexQuery([1, 2]).rewrite(graph.prog, replacement)
+    result = cow_rewrite(IndexQuery([1, 2]), graph.prog, replacement)
 
     x_real, y_real = torch.randn(3), torch.randn(3)
 
@@ -181,7 +192,7 @@ def test_rewrite_middle_runs(graph: Graph):
 
 def test_rewrite_keeps_io_attrs(graph: Graph):
     replacement = trace(lambda difference: torch.abs(difference), (3,))
-    result = IndexQuery([3]).rewrite(graph.prog, replacement)
+    result = cow_rewrite(IndexQuery([3]), graph.prog, replacement)
 
     assert len(result.inputs) == len(graph.prog.inputs)
     assert len(result.outputs) == len(graph.prog.outputs)
@@ -194,8 +205,10 @@ def test_rewrite_keeps_io_attrs(graph: Graph):
 def test_rewrite_keeps_original(graph: Graph):
     before = funcs(graph.prog)
 
-    IndexQuery([3]).rewrite(
-        graph.prog, trace(lambda difference: torch.abs(difference), (3,))
+    cow_rewrite(
+        IndexQuery([3]),
+        graph.prog,
+        trace(lambda difference: torch.abs(difference), (3,)),
     )
 
     assert funcs(graph.prog) == before
@@ -206,7 +219,7 @@ def test_rewrite_rejects_wrong_shape(graph: Graph):
     replacement = trace(lambda difference: torch.abs(difference), (4,))
 
     with pytest.raises(ValueError):
-        IndexQuery([3]).rewrite(graph.prog, replacement)
+        cow_rewrite(IndexQuery([3]), graph.prog, replacement)
 
 
 def test_rewrite_rejects_wrong_arity(graph: Graph):
@@ -214,4 +227,4 @@ def test_rewrite_rejects_wrong_arity(graph: Graph):
     replacement = trace(lambda lhs, rhs: torch.add(lhs, rhs), (3,), (3,))
 
     with pytest.raises(ValueError):
-        IndexQuery([3]).rewrite(graph.prog, replacement)
+        cow_rewrite(IndexQuery([3]), graph.prog, replacement)
