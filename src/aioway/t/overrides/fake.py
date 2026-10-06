@@ -100,6 +100,6 @@ def _clone_fake_tensor(tensor: torch.Tensor) -> torch.Tensor:
         return tensor
 
 
-def is_fake_tensor(tensor: torch.Tensor) -> typing.TypeIs[ft.FakeTensor]:
+def is_fake_tensor(tensor) -> typing.TypeIs[ft.FakeTensor]:
     # All fake tensors are of this type.
     return isinstance(tensor, ft.FakeTensor)

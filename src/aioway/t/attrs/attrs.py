@@ -368,6 +368,10 @@ def parse_attr(obj: TList, /) -> list[Attr]: ...
 def parse_attr(obj: AttrDictCompat, /) -> AttrDict: ...
 
 
+@typing.overload
+def parse_attr(obj: typing.Any, /) -> typing.Never: ...
+
+
 def parse_attr(obj, /):
     # Doing this isinstance check first because it's the fastest.
     from aioway.t import TList
