@@ -14,7 +14,7 @@ from .progs import Program
 __all__ = ["NnProgram"]
 
 
-class NnProgram(Program):
+class NnProgram(Program[ModuleCall]):
     def __init__(
         self,
         instrs: cabc.Iterable[ModuleCall],

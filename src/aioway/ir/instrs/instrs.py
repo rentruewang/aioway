@@ -78,8 +78,15 @@ class Instr(abc.ABC):
 class InstrList[I: Instr = typing.Any]:
     "The list of `Instr`."
 
+    TYPE: typing.ClassVar[type[Instr]] = Instr
+    "Corresponds to the `I` generic parameter."
+
     def __init__(self, iterable: cabc.Iterable[I]) -> None:
         self._seq = tuple(iterable)
+
+        for item in self._seq:
+            if not isinstance(item, self.TYPE):
+                raise TypeError(f"Expected: {self.TYPE} type, got {type(item)=}.")
 
     def __len__(self) -> int:
         return len(self._seq)
