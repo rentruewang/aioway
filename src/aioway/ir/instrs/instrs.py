@@ -2,11 +2,10 @@
 
 "The instructions themselves."
 
-from aioway._utils import IntArray
 import abc
 import dataclasses as dcls
 import functools
-import typing, numpy as np
+import typing
 from collections import abc as cabc
 
 from torch.utils import _pytree as pyt

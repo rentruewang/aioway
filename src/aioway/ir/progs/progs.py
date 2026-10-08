@@ -70,7 +70,7 @@ class Program[I: Instr = typing.Any]:
         if isinstance(idx, np.ndarray | np.generic):
             # If it's `IntArray`.
             if np.isdtype(idx.dtype, "integral") and idx.ndim in [0, 1]:
-                return self[idx.tolist()]
+                idx = idx.tolist()
             else:
                 raise IndexError("Only 0D or 1D numpy array supported.")
 
