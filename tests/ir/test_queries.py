@@ -1,20 +1,17 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import typing
-from collections import abc as cabc
 
 import numpy as np
 import pytest
 import torch
 from torch import testing as tt
 
-from aioway.ir import Exec, IndexQuery, Program, TorchFuncDag
+from aioway.ir import Exec, IndexQuery, Program, Query, TorchFuncDag
 from aioway.t import fake_mode, parse_attr
 
-type QueryFn = cabc.Callable[[Program], list[int]]
 
-
-def cow_rewrite(query: QueryFn, prog: Program, sub: Program) -> Program:
+def cow_rewrite(query: Query, prog: Program, sub: Program) -> Program:
     "A copy of `prog` with the part picked out by `query` replaced by `sub`."
 
     prog = prog.copy()

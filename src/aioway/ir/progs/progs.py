@@ -14,9 +14,8 @@ import torch
 
 from aioway._utils import AnyDict, AnySet, IntArray, any_dict, any_set, is_list_of
 from aioway.ir.instrs import Instr, InstrList
+from aioway.ir.queries import Query, QuerySel
 from aioway.t import TList, all_real, parse_attr
-
-from .queries import Query, QuerySel
 
 __all__ = ["TensorRef", "Program", "TensorLifetime"]
 
@@ -424,7 +423,7 @@ def _replace_sub_prog[I: Instr](
 def _query_select[I: Instr](*, query: Query[I], prog: Program[I]) -> _ProgramTuple[I]:
     # Sorted and deduplicated, so `selected` is in step order.
     indices = query(prog)
-    return _select_indices(indices=indices, prog=prog)
+    return _select_indices(selection=indices, prog=prog)
 
 
 def _select_indices[I: Instr](
@@ -436,8 +435,7 @@ def _select_indices[I: Instr](
     Output is any tensor produced and used in downstream.
     """
 
-    indices = np.asarray(selection)
-    selected = prog.instrs[indices]
+    selected = prog.instrs[selection.tolist()]
 
     # Using `TList` as it has fast lookups and ergonomic operations.
     produced_here = functools.reduce(operator.add, (i.outputs for i in selected))
@@ -456,7 +454,7 @@ def _select_indices[I: Instr](
     # Inputs should not depend on intermediate.
     # Since `inputs_produced_by` represent intermediate, it can be empty.
     inputs_produced_by = [prog.output_of_step(t) for t in inputs]
-    if inputs_produced_by and min(indices) < max(inputs_produced_by):
+    if inputs_produced_by and selection.min() < max(inputs_produced_by):
         raise ValueError("Illegal subset where input depend on intermediate.")
 
     return _ProgramTuple(selected, inputs, outputs)
