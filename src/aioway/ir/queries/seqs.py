@@ -34,7 +34,7 @@ class SequentialQuery[I: Instr = typing.Any](Query[I]):
     "What each instr in the chain must match, in order."
 
     key: cabc.Callable[[I], typing.Any]
-    "Gets the value to match from an instr, e.g. `lambda i: i.fn`."
+    "Gets the value to match from an instr, e.g. `lambda thunk: thunk.func`."
 
     def __call__(self, program: Program[I], /) -> OrderedIndex:
         # Try every end, walking back from it. The first few steps can't end
@@ -72,7 +72,8 @@ class SequentialQuery[I: Instr = typing.Any](Query[I]):
         return reverse_chain[::-1]
 
     @abc.abstractmethod
-    def _match(self, value: typing.Any, pat: typing.Any) -> bool: ...
+    def _match(self, value: typing.Any, pat: typing.Any) -> bool:
+        raise NotImplementedError
 
 
 class ExactSequential[I: Instr = typing.Any](SequentialQuery[I]):
