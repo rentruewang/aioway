@@ -47,9 +47,12 @@ def render_function(name: str, params: list[str], body: list[str], returns: str)
     )
 
 
-def render_program(program: Program) -> str:
+def render_program(program: Program, name: str, args: list[str], var_names) -> str:
     inputs = program.inputs
     instrs = program.instrs
+
+    if len(args) != len(inputs):
+        raise ValueError
 
     all_tensors = program.tensors
 
