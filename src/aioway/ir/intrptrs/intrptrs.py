@@ -6,6 +6,7 @@ import abc
 import typing
 
 import torch
+from torch.utils import _pytree as pyt
 
 from aioway.ir.instrs import Instr, InstrList
 from aioway.ir.progs import Program
@@ -24,13 +25,17 @@ class Intrptr[I: Instr = Instr, T: object = typing.Any](abc.ABC):
     - `walk` goes over the instruction list.
     - `finalize` yields the result.
 
-    Right now it only allows `torch.Tensor` list as input.
-    Consider generalize it in the future.
+    Right now it only binds `torch.Tensor` in the input,
+    we may need more in the future to handle extra types.
     """
 
     @typing.final
-    def __call__(self, *inputs: torch.Tensor) -> T:
-        self.setup(self.program.inputs, *inputs)
+    def __call__(self, *args: typing.Any, **kwargs: typing.Any) -> T:
+        # Find the tensors to bind.
+        flattened = pyt.arg_tree_leaves(*args, **kwargs)
+        tensors = [t for t in flattened if isinstance(t, torch.Tensor)]
+
+        self.bind(self.program.inputs, tensors)
         self.walk(self.program.instrs)
         return self.finalize()
 
@@ -45,9 +50,11 @@ class Intrptr[I: Instr = Instr, T: object = typing.Any](abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def setup(self, inputs: TList, *data: torch.Tensor) -> None:
+    def bind(self, inputs: TList, args: list[torch.Tensor], /) -> None:
         """
         Setup with regards to the inputs and feed the data in.
+
+        Only binds the tensors for now.
         """
 
         raise NotImplementedError

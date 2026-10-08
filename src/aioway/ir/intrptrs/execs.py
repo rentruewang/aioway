@@ -181,7 +181,7 @@ class Exec[F: cabc.Callable = typing.Any](Intrptr["FuncCall[F]"]):
         yield from self._prog
 
     @typing.override
-    def setup(self, inputs: TList, *args: torch.Tensor) -> None:
+    def bind(self, inputs: TList, args: list[torch.Tensor]) -> None:
         try:
             self._scope.update(inputs, args)
         except ValueError as err:

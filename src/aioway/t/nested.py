@@ -63,14 +63,14 @@ def tree_map_memo(
     return pyt.tree_map(replace_cached, obj)
 
 
-def tree_leaves_typed(obj, *types: type) -> cabc.Iterator[typing.Any]:
+def tree_leaves_typed(obj, *types: type) -> list[typing.Any]:
     "Decompose the object based on the desired type."
 
     found = lambda item: isinstance(item, types)
 
-    for elem in pyt.tree_leaves(obj, is_leaf=found):
-        if found(elem):
-            yield elem
+    # Tree leaves without decomposing the target types.
+    leaves = pyt.tree_leaves(obj, is_leaf=found)
+    return [elem for elem in leaves if found(elem)]
 
 
 def find_nested_tensors(obj: object) -> cabc.Iterator[torch.Tensor]:
