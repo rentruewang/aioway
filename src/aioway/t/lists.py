@@ -82,9 +82,8 @@ class TList:
     def __getitem__(self, idx: int) -> torch.Tensor:
         return self._tensors[idx]
 
-    def __iter__(self):
-        for i in range(len(self)):
-            yield self[i]
+    def __iter__(self) -> cabc.Iterator[torch.Tensor]:
+        return iter(self._tensors)
 
     def __add__(self, other: typing.Self) -> typing.Self:
         return self.from_indexed_tensors(self._indexed | other._indexed)

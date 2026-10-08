@@ -155,16 +155,19 @@ class Stack[T]:
             self.append(item)
 
 
-def find_common_base(*iterable: typing.Any) -> type:
+def find_common_base(iterable: cabc.Iterable) -> type | None:
     """
     Find the common base type.
+
+    Returns:
+        The common type if found. If sequence is empty return `None`.
 
     Raises:
         ValueError: If the input iterable is empty.
     """
 
     if not iterable:
-        raise ValueError("Empty iterable.")
+        return None
 
     first, *rest = [type(e) for e in iterable]
 

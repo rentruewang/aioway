@@ -1,14 +1,26 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import typing
+from collections import abc as cabc
 
 import numpy as np
 import pytest
 import torch
 from torch import testing as tt
 
-from aioway.ir import Exec, IndexQuery, Program, Query, TorchFuncDag
+from aioway.ir import (
+    ExactSequential,
+    Exec,
+    FuncCall,
+    IndexQuery,
+    Program,
+    Query,
+    TorchFuncDag,
+    TypeSequential,
+)
 from aioway.t import fake_mode, parse_attr
+
+# Shared utilities ====
 
 
 def cow_rewrite(query: Query, prog: Program, sub: Program) -> Program:
@@ -54,6 +66,9 @@ def graph() -> Graph:
 
     iset = Program.from_instr_list(tracer.thunks)
     return Graph(iset, x, y, summed, product, difference, activated)
+
+
+# Test query in general ====
 
 
 def test_all(graph: Graph):
@@ -225,3 +240,107 @@ def test_rewrite_rejects_wrong_arity(graph: Graph):
 
     with pytest.raises(ValueError):
         cow_rewrite(IndexQuery([3]), graph.prog, replacement)
+
+
+# `aioway.ir.seqs` queries ====
+
+
+def seq_exact(*pattern) -> ExactSequential:
+    def func(thunk: FuncCall, /):
+        return thunk.func
+
+    return ExactSequential[FuncCall](pattern, key=func)
+
+
+def test_seqs_finds_chain(graph: Graph):
+    # sub -> relu is a chain.
+    sub = graph.prog[seq_exact(torch.sub, torch.relu)]
+
+    assert funcs(sub) == [torch.sub, torch.relu]
+
+    # Can compare this to a list, since the input is ordered.
+    assert sub.inputs == [graph.product, graph.summed]
+    assert sub.outputs == [graph.activated]
+
+
+def test_seqs_single_step(graph: Graph):
+    indices = seq_exact(torch.mul)(graph.prog)
+    assert indices.tolist() == [1]
+
+
+def test_seqs_requires_chain(graph: Graph):
+    # sub reads both `product` and `summed`, so mul -> sub is not a chain.
+    with pytest.raises(LookupError):
+        graph.prog[seq_exact(torch.mul, torch.sub)]
+
+
+def test_seqs_whole_program_fail(graph: Graph):
+    with pytest.raises(LookupError):
+        graph.prog[seq_exact(torch.add, torch.mul, torch.sub, torch.relu)]
+
+
+def test_seqs_is_ordered(graph: Graph):
+    with pytest.raises(LookupError):
+        graph.prog[seq_exact(torch.relu, torch.sub)]
+
+
+def test_seqs_longer_than_program(graph: Graph):
+    with pytest.raises(LookupError):
+        graph.prog[seq_exact(torch.sub, torch.relu, torch.relu, torch.relu, torch.relu)]
+
+
+def test_seqs_by_type(graph: Graph):
+    # only sub -> relu is a chain.
+    query = TypeSequential((cabc.Callable, cabc.Callable), key=lambda thunk: thunk.func)
+
+    assert query(graph.prog).tolist() == [2, 3]
+
+
+def test_seqs_by_type_no_match(graph: Graph):
+    query = TypeSequential((int,), key=lambda thunk: thunk.func)
+
+    with pytest.raises(LookupError):
+        query(graph.prog)
+
+
+def test_seqs_shared_output():
+    # `e` feeds both relu and tanh. Each still depends on exp alone.
+    def fn(x):
+        e = torch.exp(x)
+        torch.relu(e)
+        torch.tanh(e)
+
+    prog = trace(fn, (3,))
+
+    assert seq_exact(torch.exp, torch.relu)(prog).tolist() == [0, 1]
+    assert seq_exact(torch.exp, torch.tanh)(prog).tolist() == [0, 2]
+
+    # relu still reads `e`, so `e` is an extra output of the exp -> tanh part.
+    assert len(prog[seq_exact(torch.exp, torch.tanh)].outputs) == 2
+
+
+def _build_new_program(graph):
+    # sub -> relu takes (product, summed) and returns activated.
+    replacement = trace(
+        lambda product, summed: torch.abs(torch.sub(product, summed)), (3,), (3,)
+    )
+    return cow_rewrite(seq_exact(torch.sub, torch.relu), graph.prog, replacement)
+
+
+def test_seqs_rewrite(graph: Graph):
+    result = _build_new_program(graph)
+
+    assert funcs(result) == [torch.add, torch.mul, torch.sub, torch.abs]
+    assert seq_exact(torch.sub, torch.abs)(result).tolist() == [2, 3]
+
+    with pytest.raises(LookupError):
+        seq_exact(torch.sub, torch.relu)(result)
+
+
+def test_seqs_rewrite_runs(graph: Graph):
+    result = _build_new_program(graph)
+
+    x_real, y_real = torch.randn(3), torch.randn(3)
+    summed = x_real + y_real
+
+    tt.assert_close(Exec(result)(x_real, y_real), torch.abs(summed * x_real - summed))

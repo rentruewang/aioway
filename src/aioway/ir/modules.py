@@ -16,7 +16,7 @@ from aioway.t import (
 )
 
 from .instrs import ModuleCall
-from .progs import Program
+from .progs import NnProgram
 
 __all__ = ["ModuleTracker", "ModuleHist", "track_module_thunks"]
 
@@ -91,8 +91,8 @@ class ModuleHist:
         return InstrList.build(self.history)
 
     @property
-    def program(self) -> Program[ModuleCall]:
-        return Program.from_instr_list(self.history)
+    def program(self) -> NnProgram:
+        return NnProgram.from_instr_list(self.history)
 
 
 @dcls.dataclass(frozen=True)

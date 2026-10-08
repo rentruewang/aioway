@@ -77,14 +77,12 @@ class Instr(abc.ABC):
 class InstrList[I: Instr = typing.Any]:
     "The list of `Instr`."
 
-    def __init__(self, *, base: type[I], iterable: tuple[I, ...]) -> None:
+    def __init__(self, iterable: tuple[I, ...]) -> None:
         """
         Args:
-            base: Correspond to the `I` generic parameter.
             iterable: The iterable data.
         """
 
-        self._base = base
         self._seq = iterable
 
     def __len__(self) -> int:
@@ -104,7 +102,7 @@ class InstrList[I: Instr = typing.Any]:
             idx = list(range(len(self))[idx])
 
         if is_list_of(int)(idx):
-            return type(self)(iterable=tuple(self._seq[i] for i in idx), base=self.base)
+            return type(self)(tuple(self._seq[i] for i in idx))
 
         raise IndexError(idx)
 
@@ -121,8 +119,13 @@ class InstrList[I: Instr = typing.Any]:
         return any_dict(Instr, *((thunk, idx) for idx, thunk in enumerate(self._seq)))
 
     @property
-    def base(self) -> type[I]:
-        return self._base
+    def base(self) -> type[Instr] | None:
+        """
+        Get the common base type. If sequence is empty, return `None`.
+        """
+
+        # Pass in `self` works, but `tuple` for better performance.
+        return find_common_base(self._seq)
 
     @classmethod
     def build(cls, iterable: cabc.Iterable[I] | typing.Self) -> typing.Self:
@@ -130,16 +133,4 @@ class InstrList[I: Instr = typing.Any]:
             result: typing.Any = iterable
             return result
 
-        if it := tuple(iterable):
-            base = find_common_base(*it)
-        else:
-            base = Instr
-
-        if not issubclass(base, Instr):
-            raise TypeError(f"Common base class: {base}, not subclass of `Instr`.")
-
-        for item in it:
-            if not isinstance(item, base):
-                raise TypeError(f"Expected: {base} type, got {type(item)=}.")
-
-        return cls(iterable=it, base=base)
+        return cls(tuple(iterable))

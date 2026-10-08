@@ -17,7 +17,7 @@ from aioway.t import (
 
 from .instrs import FuncCall
 from .intrptrs import Exec
-from .progs import Program
+from .progs import FuncProgram
 
 __all__ = ["TorchFuncDag", "fake_aten_dag"]
 
@@ -38,9 +38,6 @@ class _TorchCallDag(abc.ABC):
     def append(self, thunk: FuncCall) -> None:
         self.thunks.append(thunk)
 
-    def exec(self) -> Exec:
-        return Exec(Program.from_instr_list(self.thunks))
-
     def run(self, thunk):
         result = thunk()
 
@@ -56,6 +53,14 @@ class _TorchCallDag(abc.ABC):
     @abc.abstractmethod
     def _track_thunk(self, func) -> bool:
         raise NotImplementedError
+
+    @property
+    def program(self) -> FuncProgram:
+        return FuncProgram.from_instr_list(self.thunks)
+
+    @property
+    def exec(self) -> Exec:
+        return Exec(self.program)
 
 
 @typing.final

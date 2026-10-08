@@ -80,19 +80,19 @@ def _mapping_check[K, V](mapping: type, key: type[K], val: type[V]):
 
 def is_seq_of[T](
     typ: type[T], /
-) -> cabc.Callable[[typing.Any], typing.TypeGuard[cabc.Sequence[T]]]:
+) -> cabc.Callable[[typing.Any], typing.TypeIs[cabc.Sequence[T]]]:
     return _iter_check(cabc.Sequence, typ)
 
 
 def is_list_of[T](
     typ: type[T], /
-) -> cabc.Callable[[typing.Any], typing.TypeGuard[list[T]]]:
+) -> cabc.Callable[[typing.Any], typing.TypeIs[list[T]]]:
     return _iter_check(list, typ)
 
 
 def is_tuple_of[T](
     typ: type[T], /
-) -> cabc.Callable[[typing.Any], typing.TypeGuard[tuple[T, ...]]]:
+) -> cabc.Callable[[typing.Any], typing.TypeIs[tuple[T, ...]]]:
     return _iter_check(tuple, typ)
 
 

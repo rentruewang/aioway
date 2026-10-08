@@ -14,7 +14,7 @@ import torch
 
 from aioway._utils import AnyDict, AnySet, IntArray, any_dict, any_set, is_list_of
 from aioway.ir.instrs import Instr, InstrList
-from aioway.ir.queries import Query, QuerySel
+from aioway.ir.queries import OrderedIndex, Query
 from aioway.t import TList, all_real, parse_attr
 
 __all__ = ["TensorRef", "Program", "TensorLifetime"]
@@ -50,7 +50,7 @@ class Program[I: Instr = typing.Any]:
         if not self.tensors.all_fake:
             raise ValueError("Contains non fake tensors.")
 
-        if not issubclass(self.instrs.base, self.INSTR):
+        if (base := self.instrs.base) and not issubclass(base, self.INSTR):
             raise TypeError(
                 f"The base of instr: {self.instrs.base} is not {self.INSTR}"
             )
@@ -69,7 +69,7 @@ class Program[I: Instr = typing.Any]:
 
     @typing.overload
     def __getitem__(
-        self, idx: slice | list[int] | IntArray | Query | QuerySel
+        self, idx: slice | list[int] | IntArray | Query | OrderedIndex
     ) -> typing.Self: ...
 
     def __getitem__(self, idx):
@@ -89,14 +89,14 @@ class Program[I: Instr = typing.Any]:
             idx = list(range(len(self))[idx])
 
         if is_list_of(int)(idx):
-            idx = QuerySel.from_list_int(idx)
+            idx = OrderedIndex.from_list_int(idx)
 
         # Do the query.
         if isinstance(idx, Query):
             idx = idx(self)
 
         # Should all be `QuerySel` now.
-        if not isinstance(idx, QuerySel):
+        if not isinstance(idx, OrderedIndex):
             raise TypeError(f"Unknown index type: {type(idx)=}.")
 
         sel, inputs, outputs = _select_indices(selection=idx, prog=self)
@@ -344,7 +344,7 @@ def _link_inputs_for_mapping(
             mapping[input].add_consumers(thunk)
 
 
-def _used_outside(prog: Program, selected: QuerySel) -> TList:
+def _used_outside(prog: Program, selected: OrderedIndex) -> TList:
     """
     Add all tensors used outside of selected region.
 
@@ -435,7 +435,7 @@ def _query_select[I: Instr](*, query: Query[I], prog: Program[I]) -> _ProgramTup
 
 
 def _select_indices[I: Instr](
-    *, selection: QuerySel, prog: Program[I]
+    *, selection: OrderedIndex, prog: Program[I]
 ) -> _ProgramTuple[I]:
     """
     Produce a subprogram whose:
