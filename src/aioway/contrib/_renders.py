@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"Render a `Program` as the source of a Python function, with Jinja2 templates."
+"SLOP: Render a `Program` as the source of a Python function, with Jinja2 templates."
 
 import dataclasses as dcls
 import enum
