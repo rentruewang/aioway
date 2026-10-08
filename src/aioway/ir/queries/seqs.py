@@ -2,9 +2,8 @@
 
 "Queries for a chain of instrs `a -> b -> c`, like `nn.Sequential`."
 
-from torch._inductor.config import runtime_triton_nan_asserts
 import abc
-import dataclasses as dcls, collections
+import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
@@ -22,7 +21,7 @@ class SequentialQuery[I: Instr = typing.Any](Query[I]):
     """
     Search for a chain in reverse.
 
-    How `Instr` matches the given pattenr can be defined by key.
+    How `Instr` matches the given pattern can be defined by key.
 
     The chain can sit anywhere in the program, like `re.search` not `re.match`.
     """
@@ -88,7 +87,7 @@ class TypeSequential[I: Instr = typing.Any](SequentialQuery[I]):
 
 def _prev_in_chain[I: Instr](program: Program[I], step: int) -> int:
     """
-    The step before `step` in a chain, or `None` if the chain cannot continue.
+    The step before `step` in a chain. Raises `RuntimeError` if there is none.
 
     `step` must have one input, made by an instr rather than given to the program.
     """
@@ -96,7 +95,7 @@ def _prev_in_chain[I: Instr](program: Program[I], step: int) -> int:
     inputs = program.instrs[step].inputs
 
     if len(inputs) != 1:
-        return None
+        raise RuntimeError
 
     if (prev := program.output_of_step(inputs[0])) >= 0:
         return prev
