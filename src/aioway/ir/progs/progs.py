@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"The DAG that supports analysis."
+"The `Program` that supports analysis."
 
 import copy
 import dataclasses as dcls
@@ -16,14 +16,11 @@ from aioway._utils import AnyDict, AnySet, IntArray, any_dict, any_set, is_list_
 from aioway.ir.instrs import Instr, InstrList
 from aioway.t import TList, all_real, parse_attr
 
-__all__ = ["TensorRef", "Program", "Query", "TensorLifetime"]
+from .queries import Query, QuerySel
+
+__all__ = ["TensorRef", "Program", "TensorLifetime"]
 
 # The DAG class ====
-
-
-@typing.runtime_checkable
-class Query[I: Instr = typing.Any](typing.Protocol):
-    def __call__(self, program: Program[I], /) -> list[int]: ...
 
 
 class Program[I: Instr = typing.Any]:
@@ -64,33 +61,39 @@ class Program[I: Instr = typing.Any]:
     def __getitem__(self, idx: int) -> I: ...
 
     @typing.overload
-    def __getitem__(self, idx: slice | list[int] | IntArray | Query) -> typing.Self: ...
+    def __getitem__(
+        self, idx: slice | list[int] | IntArray | Query | QuerySel
+    ) -> typing.Self: ...
 
     def __getitem__(self, idx):
-        # For numpy objects, convert to `int | list[int]`.
+        # For numpy objects, convert to `int | list[int]` via `.tolist()`.
         if isinstance(idx, np.ndarray | np.generic):
             # If it's `IntArray`.
             if np.isdtype(idx.dtype, "integral") and idx.ndim in [0, 1]:
-                idx = idx.tolist()
+                return self[idx.tolist()]
             else:
                 raise IndexError("Only 0D or 1D numpy array supported.")
 
         if isinstance(idx, int):
             return self.instrs[idx]
 
-        if isinstance(idx, Query):
-            idx = idx(self)
-
         # Convert `slice` to `list[int]` with help of `range`.
         if isinstance(idx, slice):
             idx = list(range(len(self))[idx])
 
-        # Finally, handle `list[int]`.
         if is_list_of(int)(idx):
-            sel, inputs, outputs = _select_indices(indices=idx, prog=self)
-            return type(self)(instrs=sel, inputs=inputs, outputs=outputs)
+            idx = QuerySel.from_list_int(idx)
 
-        raise TypeError(f"Unknown type: {type(idx)=}.")
+        # Do the query.
+        if isinstance(idx, Query):
+            idx = idx(self)
+
+        # Should all be `QuerySel` now.
+        if not isinstance(idx, QuerySel):
+            raise TypeError(f"Unknown index type: {type(idx)=}.")
+
+        sel, inputs, outputs = _select_indices(selection=idx, prog=self)
+        return type(self)(instrs=sel, inputs=inputs, outputs=outputs)
 
     def __setitem__(self, query: Query, subset: Program) -> None:
         mutated = _replace_sub_prog(prog=self, query=query, sub_prog=subset)
@@ -334,16 +337,20 @@ def _link_inputs_for_mapping(
             mapping[input].add_consumers(thunk)
 
 
-def _used_outside(prog: Program, selected_idx: set[int]) -> TList:
+def _used_outside(prog: Program, selected: QuerySel) -> TList:
     """
     Add all tensors used outside of selected region.
+
+    Args:
+        prog: The program.
+        selected: Indices that are selected.
     """
 
     used = TList.empty()
 
     # Only check those that occur after, as this is a DAG.
-    for i in range(min(selected_idx) + 1, len(prog)):
-        if i in selected_idx:
+    for i in range(selected.min() + 1, len(prog)):
+        if i in selected:
             continue
 
         used += prog[i].inputs
@@ -421,7 +428,7 @@ def _query_select[I: Instr](*, query: Query[I], prog: Program[I]) -> _ProgramTup
 
 
 def _select_indices[I: Instr](
-    *, indices: list[int], prog: Program[I]
+    *, selection: QuerySel, prog: Program[I]
 ) -> _ProgramTuple[I]:
     """
     Produce a subprogram whose:
@@ -429,15 +436,12 @@ def _select_indices[I: Instr](
     Output is any tensor produced and used in downstream.
     """
 
-    if indices != sorted(indices):
-        raise ValueError("The index provided should be sorted and unique.")
-
-    idx_set = set(indices)
+    indices = np.asarray(selection)
     selected = prog.instrs[indices]
 
     # Using `TList` as it has fast lookups and ergonomic operations.
     produced_here = functools.reduce(operator.add, (i.outputs for i in selected))
-    used_outside = _used_outside(prog, idx_set)
+    used_outside = _used_outside(prog, selection)
 
     # Inputs: used by our selected by not produced inside the region.
     inputs = TList.from_iterable(
