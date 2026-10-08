@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="400" height="400">
   <!-- Based on the Noto Emoji "motorway" (U+1F6E3), Copyright 2013 Google Inc.,
        licensed under the Apache License 2.0: http://www.apache.org/licenses/LICENSE-2.0
-       Modified: cleaned up, sign symbols replaced with "AI". -->
+       Modified: cleaned up, sign symbols replaced with "AI" in Noto Serif Bold. -->
 
   <!-- hills -->
   <path fill="#a1d1da" d="M32.2,68.3l16.3-2.7c0,0-6.2-6.8-14.4-8.6S22.2,55.5,22.2,55.5s-6.1-3.9-10.3-5.1 s-8.1-0.8-8.1-0.8l 0,17.4L32.2,68.3z"/>
@@ -45,7 +45,7 @@
   <path fill="#dfe1e0" d="M90.8,48.6h-53.9c-2,0-3.6-1.6-3.6-3.6V11.8c0-2,1.6-3.6,3.6-3.6h53.9 c2,0,3.6,1.6,3.6,3.6v33.1C94.4,47,92.8,48.6,90.8,48.6z"/>
   <polygon fill="#1b9372" points="36.4,45.5 36.7,10.9 91.2,11.1 91.2,45.4"/>
 
-  <!-- AI on the sign -->
-  <text x="63.8" y="37.5" font-family="Noto Sans, Arial, Helvetica, sans-serif" font-size="27"
-        font-weight="bold" fill="white" text-anchor="middle">AI</text>
+  <!-- AI on the sign, drawn from Noto Serif Bold
+       (SIL Open Font License 1.1, https://openfontlicense.org) -->
+  <path fill="white" d="M48.62 37.85V36.42H48.95Q49.68 36.42 50.16 36.04Q50.65 35.66 51.11 34.44L56.97 18.55H60.7L66.46 34.77Q66.79 35.69 67.29 36.05Q67.79 36.42 68.54 36.42H68.87V37.85H59.95V36.42H60.84Q61.43 36.42 61.8 36.19Q62.16 35.96 62.16 35.39Q62.16 35.07 62.08 34.74Q62 34.42 61.92 34.2L60.98 31.5H54.41L53.62 33.82Q53.51 34.15 53.41 34.59Q53.3 35.04 53.3 35.36Q53.3 36.42 54.62 36.42H55.65V37.85ZM54.97 29.85H60.43L58.84 24.88Q58.54 23.96 58.26 23.05Q57.97 22.15 57.79 21.23Q57.57 22.15 57.31 22.98Q57.06 23.82 56.73 24.74ZM69.63 37.85V36.42H70.6Q71.19 36.42 71.67 36.08Q72.14 35.74 72.14 34.85V21.63Q72.14 20.66 71.67 20.32Q71.19 19.98 70.6 19.98H69.63V18.55H78.98V19.98H77.95Q77.3 19.98 76.87 20.33Q76.44 20.69 76.44 21.66V34.82Q76.44 35.71 76.88 36.07Q77.33 36.42 77.95 36.42H78.98V37.85Z"/>
 </svg>

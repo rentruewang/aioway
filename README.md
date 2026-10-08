@@ -1,5 +1,5 @@
 <div align="center">
-<img src="./assets/emoji.svg" />
+<img src="./assets/aioway-noto-sans.svg" />
 </div>
 
 [![Unit Testing](https://github.com/rentruewang/aioway/actions/workflows/unit-test.yaml/badge.svg)](https://github.com/rentruewang/aioway/actions/workflows/unit-test.yaml)
