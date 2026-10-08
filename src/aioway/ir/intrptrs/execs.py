@@ -8,11 +8,13 @@ from collections import abc as cabc
 import torch
 from torch.utils import _pytree as pyt
 
-from aioway.t import has_fake, is_fake_tensor, is_real_tensor, parse_attr
+from aioway.ir.instrs import InstrList
+from aioway.t import TList, has_fake, is_fake_tensor, is_real_tensor, parse_attr
+
+from .intrptrs import Intrptr
 
 if typing.TYPE_CHECKING:
-    from .instrs import FuncCall
-    from .progs import Program
+    from aioway.ir import FuncCall, Program
 
 __all__ = ["Exec", "LocalScope"]
 
@@ -30,7 +32,7 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
     """
 
     def __init__(self, dag: Program) -> None:
-        self._dag = dag
+        self._prog = dag
         "The variable list."
 
         self._alive: dict[int, torch.Tensor] = {}
@@ -41,16 +43,16 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
         Count the total variables tracked.
         """
 
-        return len(self._dag)
+        return len(self._prog)
 
     def __contains__(self, tensor) -> bool:
         if not is_fake_tensor(tensor):
             return False
 
-        return tensor in self._dag.tensors
+        return tensor in self._prog.tensors
 
     def __iter__(self) -> cabc.Generator[torch.Tensor]:
-        yield from self._dag.tensors
+        yield from self._prog.tensors
 
     def __getitem__(self, fake: torch.Tensor) -> torch.Tensor | None:
         if not is_fake_tensor(fake):
@@ -94,10 +96,10 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
         Expire those variables that is not used after step = `step`.
         """
 
-        thunk = self._dag[step]
+        thunk = self._prog[step]
 
         for input in thunk.inputs:
-            if self._dag.life(input).death == step:
+            if self._prog.life(input).death == step:
                 self.drop(input)
 
     def clear(self) -> None:
@@ -160,44 +162,54 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
             raise ValueError("Real tensor in `fake` paired with a different value.")
 
 
-class Exec[F: cabc.Callable = typing.Any]:
+class Exec[F: cabc.Callable = typing.Any](Intrptr["FuncCall[F]"]):
     """
     This is the DAG executor responsible for executing a traced thunk list on real data.
     """
 
     def __init__(self, program: Program) -> None:
-        self._dag = program
-        self._scope = LocalScope(self._dag)
+        self._prog = program
+        self._scope = LocalScope(self._prog)
 
     def __len__(self) -> int:
-        return len(self._dag)
+        return len(self._prog)
 
     def __getitem__(self, idx: int) -> FuncCall[F]:
-        return self._dag[idx]
+        return self._prog.instrs[idx]
 
     def __iter__(self) -> cabc.Generator[FuncCall[F]]:
-        yield from self._dag
+        yield from self._prog
 
-    def __call__(self, *inputs: torch.Tensor) -> typing.Any:
+    @typing.override
+    def setup(self, inputs: TList, *args: torch.Tensor) -> None:
         try:
-            self._scope.update(self.inputs, inputs)
+            self._scope.update(inputs, args)
         except ValueError as err:
             raise TypeError from err
 
+    @typing.override
+    def walk(self, instrs: InstrList) -> None:
         # Execute the steps one by one in topo sorted order.
-        for idx, thunk in enumerate(self._dag):
+        for idx, thunk in enumerate(self._prog):
             args, kwargs = self._scope.map([thunk.args, thunk.kwargs])
             real = thunk.func(*args, **kwargs)
             self._scope.update(thunk.result, real)
             self._scope.expire(idx)
 
-        result = self._scope.map(self._dag[-1].result)
+    @typing.override
+    def finalize(self) -> typing.Any:
+        result = self._scope.map(self._prog[-1].result)
         self._scope.clear()
         return result
 
     @property
+    @typing.override
+    def program(self) -> Program:
+        return self._prog
+
+    @property
     def inputs(self):
-        return self._dag.inputs
+        return self._prog.inputs
 
 
 def _get_fake_id(fake: torch.Tensor | int, /) -> int:
