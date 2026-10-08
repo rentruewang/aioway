@@ -4,10 +4,12 @@ from aioway.ir.instrs import FuncCall, ModuleCall
 
 from .progs import Program
 
+__all__ = ["FuncProgram", "NnProgram"]
+
 
 class FuncProgram(Program[FuncCall]):
-    pass
+    INSTR = FuncCall
 
 
 class NnProgram(Program[ModuleCall]):
-    pass
+    INSTR = ModuleCall
