@@ -11,7 +11,7 @@ from aioway.t import TList
 
 from .intrptrs import Intrptr
 
-__all__ = []
+__all__ = ["CodeRender", "FuncProgramCode"]
 
 _FUNCTION_TEMPLATE = """\
 def {{ name }}({{ params }}):
@@ -38,8 +38,9 @@ class CodeRender(typing.Protocol):
 
 @typing.final
 class FuncProgramCode(Intrptr[FuncCall, CodeRender]):
-    def __init__(self, program: FuncProgram) -> None:
+    def __init__(self, program: FuncProgram, name: str) -> None:
         self._program = program
+        self._name = name
 
     @typing.override
     def bind(self, inputs: TList, args: list[torch.Tensor]) -> None:
