@@ -16,6 +16,10 @@ if typing.TYPE_CHECKING:
 __all__ = ["SequentialQuery", "ExactSequential", "TypeSequential"]
 
 
+class _SeqMatchFailed(RuntimeError):
+    "Our custom error to catch when matching failed."
+
+
 @dcls.dataclass(frozen=True)
 class SequentialQuery[I: Instr = typing.Any](Query[I]):
     """
@@ -40,7 +44,7 @@ class SequentialQuery[I: Instr = typing.Any](Query[I]):
         for end in range(len(self.pattern) - 1, len(program)):
             try:
                 chain = self._chain(program, end)
-            except RuntimeError:
+            except _SeqMatchFailed:
                 continue
             else:
                 return OrderedIndex.from_list_int(chain)
@@ -48,7 +52,7 @@ class SequentialQuery[I: Instr = typing.Any](Query[I]):
         raise LookupError(f"No match for {self.pattern}.")
 
     def _chain(self, program: Program[I], end: int) -> list[int]:
-        "The chain ending at `end`. Raises `RuntimeError` if it doesn't match."
+        "The chain ending at `end`. Raises `_SeqMatchFailed` if it doesn't match."
 
         step = end
         reverse_chain: list[int] = []
@@ -56,7 +60,7 @@ class SequentialQuery[I: Instr = typing.Any](Query[I]):
         for item in reversed(self.pattern):
             # Stop if does not match.
             if not self._match(self.key(program[step]), item):
-                raise RuntimeError
+                raise _SeqMatchFailed
 
             reverse_chain.append(step)
 
@@ -87,7 +91,7 @@ class TypeSequential[I: Instr = typing.Any](SequentialQuery[I]):
 
 def _prev_in_chain[I: Instr](program: Program[I], step: int) -> int:
     """
-    The step before `step` in a chain. Raises `RuntimeError` if there is none.
+    The step before `step` in a chain. Raises `_SeqMatchFailed` if there is none.
 
     `step` must have one input, made by an instr rather than given to the program.
     """
@@ -95,10 +99,10 @@ def _prev_in_chain[I: Instr](program: Program[I], step: int) -> int:
     inputs = program.instrs[step].inputs
 
     if len(inputs) != 1:
-        raise RuntimeError
+        raise _SeqMatchFailed
 
     if (prev := program.output_of_step(inputs[0])) >= 0:
         return prev
 
     # `output_of_step` gives -1 for program inputs.
-    raise RuntimeError
+    raise _SeqMatchFailed
