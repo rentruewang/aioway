@@ -2,6 +2,7 @@
 
 "`NetMorphLinearDeeper` on traced programs instead of `nn.Sequential`."
 
+from aioway.t import fake_mode
 import dataclasses as dcls
 
 import torch
@@ -29,6 +30,10 @@ class NetMorphLinearSeqDeeper(Rewriter):
     middle: tuple[type[nn.Module], ...] = (nn.ReLU,)
     "Types of the modules between the two `nn.Linear`, in order."
 
+    def __post_init__(self) -> None:
+        if not self.middle:
+            raise ValueError("Middle is empty.")
+
     @typing.override
     def handle(self, prog: NnProgram) -> bool:
         try:
@@ -45,25 +50,28 @@ class NetMorphLinearSeqDeeper(Rewriter):
         "A copy of `prog` with the first match deepened. Check `handle` first."
 
         result = prog.copy()
-        result[self.part] = self._deeper(prog[self.part])
+        result[self.part] = self._build_deeper_net(prog[self.part])
         return result
 
-    def _deeper(self, sub: NnProgram) -> NnProgram:
+    def _build_deeper_net(self, sub: NnProgram) -> NnProgram:
         first, middle, last = _modules(sub)
         inserted = _identity_linear(first.out_features)
 
         (x,) = sub.inputs
-        h = torch.zeros_like(x)
+        assert sub.inputs.all_fake
 
-        with track_module_thunks() as hist:
+        # By tracing additional 2 sets of `middles` and `inserted`,
+        # the built program would be deeper.
+        with track_module_thunks() as hist, fake_mode():
             for module in [first, *middle, inserted, *middle, last]:
-                h = module(h)
+                x = module(x)
+                assert isinstance(x, torch.Tensor)
 
         return hist.program
 
     @property
     def part(self) -> TypeSequential[ModuleCall]:
-        pattern = (nn.Linear, *self.middle, nn.Linear)
+        pattern = nn.Linear, *self.middle, nn.Linear
         return TypeSequential(pattern, key=lambda call: call.func)
 
 
