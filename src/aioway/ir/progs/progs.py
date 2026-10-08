@@ -15,7 +15,7 @@ import torch
 from aioway._utils import AnyDict, AnySet, IntArray, any_dict, any_set, is_list_of
 from aioway.ir.instrs import Instr, InstrList
 from aioway.ir.queries import OrderedIndex, Query
-from aioway.t import DType, Shape, TList, all_real, parse_attr
+from aioway.t import TList, all_real, parse_attr
 
 __all__ = ["TensorRef", "Program", "TensorLifetime"]
 
@@ -388,25 +388,16 @@ def _replace_sub_prog[I: Instr](
 
     queried = _query_select(query=query, prog=prog)
 
-    queried_input_attr = queried.inputs.attrs()
-    queried_output_attr = queried.outputs.attrs()
-
-    def shapes(lists: TList) -> list[Shape]:
-        return [attr.shape for attr in lists.attrs()]
-
-    def dtypes(lists: TList) -> list[DType]:
-        return [attr.dtype for attr in lists.attrs()]
-
-    if shapes(queried.inputs) != shapes(sub_prog.inputs):
+    if queried.inputs.shapes() != sub_prog.inputs.shapes():
         raise ValueError("Inputs have different shapes.")
 
-    if shapes(queried.outputs) != shapes(sub_prog.outputs):
+    if queried.outputs.shapes() != sub_prog.outputs.shapes():
         raise ValueError("Outputs have different shapes.")
 
-    if dtypes(queried.inputs) != dtypes(sub_prog.inputs):
+    if queried.inputs.dtypes() != sub_prog.inputs.dtypes():
         raise ValueError("Inputs have different dtypes.")
 
-    if dtypes(queried.outputs) != dtypes(sub_prog.outputs):
+    if queried.outputs.dtypes() != sub_prog.outputs.dtypes():
         raise ValueError("Outputs have different dtypes.")
 
     # Get the indices of the queried subnet and minimum (useful in inserting).
