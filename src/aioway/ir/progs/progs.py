@@ -2,8 +2,6 @@
 
 "The `Program` that supports analysis."
 
-from aioway.t import DType
-from aioway.t import Shape
 import copy
 import dataclasses as dcls
 import functools
@@ -17,7 +15,7 @@ import torch
 from aioway._utils import AnyDict, AnySet, IntArray, any_dict, any_set, is_list_of
 from aioway.ir.instrs import Instr, InstrList
 from aioway.ir.queries import OrderedIndex, Query
-from aioway.t import TList, all_real, parse_attr
+from aioway.t import DType, Shape, TList, all_real, parse_attr
 
 __all__ = ["TensorRef", "Program", "TensorLifetime"]
 
