@@ -1,13 +1,6 @@
-```
-       _____
-______ ___(_)________      _______ _____  __
-_  __ `/_  /_  __ \_ | /| / /  __ `/_  / / /
-/ /_/ /_  / / /_/ /_ |/ |/ // /_/ /_  /_/ /
-\__,_/ /_/  \____/____/|__/ \__,_/ _\__, /
-                                   /____/
-
-An optimizing compiler for ML algorithms.
-```
+<div align="center">
+<img src="./assets/aioway-noto-sans.svg" />
+</div>
 
 [![Unit Testing](https://github.com/rentruewang/aioway/actions/workflows/unit-test.yaml/badge.svg)](https://github.com/rentruewang/aioway/actions/workflows/unit-test.yaml)
 [![Pre Commit Checks](https://github.com/rentruewang/aioway/actions/workflows/pre-commit.yaml/badge.svg)](https://github.com/rentruewang/aioway/actions/workflows/pre-commit.yaml)
