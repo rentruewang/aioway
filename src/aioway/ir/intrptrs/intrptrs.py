@@ -39,12 +39,12 @@ class Intrptr[I: Instr = Instr, T: object = typing.Any](abc.ABC):
         program = self.program
 
         if len(tensors) != len(program.inputs):
-            raise ValueError(
+            raise TypeError(
                 f"Cannot bind {len(tensors)} to {len(program.inputs)} input tensors."
             )
 
         if program.inputs.attrs() != [parse_attr(t) for t in tensors]:
-            raise ValueError("Tensors do not look like they can be consumed by inputs.")
+            raise TypeError("Tensors do not look like they can be consumed by inputs.")
 
         L.logger.debug("Binding {l} tensors to respective inputs.", l=len(tensors))
         self.bind(program.inputs, tensors)
