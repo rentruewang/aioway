@@ -5,12 +5,13 @@
 import abc
 import typing
 
+import loguru as L
 import torch
 from torch.utils import _pytree as pyt
 
 from aioway.ir.instrs import Instr, InstrList
 from aioway.ir.progs import Program
-from aioway.t import TList
+from aioway.t import TList, parse_attr
 
 __all__ = ["Intrptr"]
 
@@ -35,8 +36,23 @@ class Intrptr[I: Instr = Instr, T: object = typing.Any](abc.ABC):
         flattened = pyt.arg_tree_leaves(*args, **kwargs)
         tensors = [t for t in flattened if isinstance(t, torch.Tensor)]
 
-        self.bind(self.program.inputs, tensors)
+        program = self.program
+
+        if len(tensors) != len(program.inputs):
+            raise ValueError(
+                f"Cannot bind {len(tensors)} to {len(program.inputs)} input tensors."
+            )
+
+        if program.inputs.attrs() != [parse_attr(t) for t in tensors]:
+            raise ValueError("Tensors do not look like they can be consumed by inputs.")
+
+        L.logger.debug("Binding {l} tensors to respective inputs.", l=len(tensors))
+        self.bind(program.inputs, tensors)
+
+        L.logger.debug("Prepare walking the {} instructions.", len(program.instrs))
         self.walk(self.program.instrs)
+
+        L.logger.debug("Preparing the output.")
         return self.finalize()
 
     @property
