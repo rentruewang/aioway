@@ -105,7 +105,7 @@ class TList:
         return self.keys().isdisjoint(other.keys())
 
     def index(self, tensor: torch.Tensor | int) -> int:
-        "Get the index of the tensor. O(1)."
+        "Get the index of the tensor. O(n)."
 
         tensor = _get_id(tensor)
 
@@ -116,7 +116,7 @@ class TList:
             if tensor == id(t):
                 return idx
 
-        raise IndexError
+        raise RuntimeError("Unreachable.")
 
     @functools.cached_property
     def any_fake(self) -> bool:
@@ -159,6 +159,12 @@ class TList:
         tensors = tuple(indexed.values())
         return cls(indexed=indexed, tensors=tensors)
 
+    def flatten_tree(self: TList) -> tuple:
+        return self._tensors, None
+
+    def unflatten_tree(self: cabc.Iterable[torch.Tensor], _: None):
+        return TList.from_iterable(self)
+
     @classmethod
     def empty(cls) -> typing.Self:
         return cls.from_indexed_tensors(collections.OrderedDict())
@@ -180,12 +186,4 @@ def _get_id(tensor: torch.Tensor | int, /) -> int:
 # Register for pyt. ====
 
 
-def _flatten_tlist(tlist: TList):
-    return list(tlist), None
-
-
-def _unflatten_tlist(tlist: cabc.Iterable[torch.Tensor], _: None):
-    return TList.from_iterable(tlist)
-
-
-pyt.register_pytree_node(TList, _flatten_tlist, _unflatten_tlist)
+pyt.register_pytree_node(TList, TList.flatten_tree, TList.unflatten_tree)
