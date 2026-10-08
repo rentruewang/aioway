@@ -27,8 +27,8 @@ class Program[I: Instr = typing.Any]:
     A program is a DAG of callables, that are linked by fake tensors.
     """
 
-    INSTR: typing.ClassVar[type[Instr]]
-    "The instr base class."
+    INSTR: typing.ClassVar[type[Instr]] = Instr
+    "The instr base class. If not specified, anything is ok."
 
     def __init__(
         self,
@@ -50,8 +50,10 @@ class Program[I: Instr = typing.Any]:
         if not self.tensors.all_fake:
             raise ValueError("Contains non fake tensors.")
 
-        if (b := self.instrs.base) != self.INSTR:
-            raise TypeError("The base {}")
+        if self.instrs.base != self.INSTR:
+            raise TypeError(
+                f"The base of instr: {self.instrs.base} is not {self.INSTR}"
+            )
 
     def __repr__(self) -> str:
         return repr(self.instrs)
