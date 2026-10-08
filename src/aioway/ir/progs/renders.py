@@ -3,23 +3,11 @@
 "Render a `Program` as the source of a Python function, with Jinja2 templates."
 
 import functools
-import dataclasses as dcls
-import enum
-import keyword
-import re
-import types
-import typing
-from collections import abc as cabc
 
 import jinja2
-import torch
-
-from aioway._utils import AnyDict, any_dict
-from aioway.ir.instrs import Instr
-from aioway.t import parse_attr
-from .progs import Program
-from aioway.ir.instrs import Instr, InstrList, FuncCall, ModuleCall
 import jinja2 as j2
+
+from .progs import Program
 
 __all__ = []
 
@@ -55,6 +43,8 @@ def render_program(program: Program, name: str, args: list[str], var_names) -> s
         raise ValueError
 
     all_tensors = program.tensors
+
+    raise NotImplementedError
 
 
 @functools.cache
