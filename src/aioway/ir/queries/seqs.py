@@ -17,7 +17,7 @@ __all__ = ["SequentialQuery", "ExactSequential", "TypeSequential"]
 
 
 class _SeqMatchFailed(RuntimeError):
-    "Our custom error to catch when matching failed."
+    "Our custom error to raise / catch when matching failed."
 
 
 @dcls.dataclass(frozen=True)
