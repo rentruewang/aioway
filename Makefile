@@ -19,6 +19,8 @@ else
 endif
 
 
+ci: autoflake isort black pyrefly pytest
+
 setup: cleanup deps
 
 cleanup:

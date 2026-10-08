@@ -15,8 +15,8 @@ from aioway.t import (
     route_aten_thunk,
 )
 
-from .execs import Exec
 from .instrs import FuncCall
+from .intrptrs import Exec
 from .progs import Program
 
 __all__ = ["TorchFuncDag", "fake_aten_dag"]
