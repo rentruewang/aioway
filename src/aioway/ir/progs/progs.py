@@ -388,11 +388,17 @@ def _replace_sub_prog[I: Instr](
 
     queried = _query_select(query=query, prog=prog)
 
-    if queried.inputs.attrs() != sub_prog.inputs.attrs():
-        raise ValueError("Inputs are not compatible.")
+    if queried.inputs.shapes() != sub_prog.inputs.shapes():
+        raise ValueError("Inputs have different shapes.")
 
-    if queried.outputs.attrs() != sub_prog.outputs.attrs():
-        raise ValueError("Outputs are not compatible.")
+    if queried.outputs.shapes() != sub_prog.outputs.shapes():
+        raise ValueError("Outputs have different shapes.")
+
+    if queried.inputs.dtypes() != sub_prog.inputs.dtypes():
+        raise ValueError("Inputs have different dtypes.")
+
+    if queried.outputs.dtypes() != sub_prog.outputs.dtypes():
+        raise ValueError("Outputs have different dtypes.")
 
     # Get the indices of the queried subnet and minimum (useful in inserting).
     qidx = {prog.instrs.index(q) for q in queried.ilist}

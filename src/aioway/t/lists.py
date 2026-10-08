@@ -17,7 +17,7 @@ from .attrs import parse_attr
 from .overrides import has_fake
 
 if typing.TYPE_CHECKING:
-    from .attrs import Attr
+    from aioway.t import Attr, Device, DType, Layout, Shape
 
 __all__ = ["TList"]
 
@@ -133,6 +133,21 @@ class TList:
         """
 
         return parse_attr(self)
+
+    def shapes(self) -> list[Shape]:
+        return [attr.shape for attr in self.attrs()]
+
+    def dtypes(self) -> list[DType]:
+        return [attr.dtype for attr in self.attrs()]
+
+    def devices(self) -> list[Device]:
+        return [attr.device for attr in self.attrs()]
+
+    def layouts(self) -> list[Layout]:
+        return [attr.layout for attr in self.attrs()]
+
+    def requires_grads(self) -> list[bool]:
+        return [attr.requires_grad for attr in self.attrs()]
 
     @classmethod
     def from_self_or_iter(

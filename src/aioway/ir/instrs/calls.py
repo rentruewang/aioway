@@ -95,6 +95,8 @@ class ModuleCall(FuncCall):
 
     _: dcls.KW_ONLY
 
+    func: nn.Module
+
     parents: tuple[nn.Module, ...]
     "The parent modules that calls this current thunk. It's a stack."
 
