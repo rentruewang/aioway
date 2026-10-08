@@ -7,7 +7,7 @@ import numpy as np
 
 from aioway._utils import IntArray
 
-from .queries import Query, QuerySel
+from .queries import OrderedIndex, Query
 
 if typing.TYPE_CHECKING:
     from aioway.ir import Program
@@ -34,7 +34,7 @@ class IndexQuery(Query):
     """
 
     @typing.override
-    def __call__(self, prog: Program, /) -> QuerySel:
+    def __call__(self, prog: Program, /) -> OrderedIndex:
         idx: IntArray = np.asarray(self.indices)
 
         if (idx < 0).any():
@@ -43,4 +43,4 @@ class IndexQuery(Query):
         if (idx >= len(prog)).any():
             raise IndexError("Some indices are out of bounds.")
 
-        return QuerySel.from_list_int(idx.tolist())
+        return OrderedIndex.from_list_int(idx.tolist())
