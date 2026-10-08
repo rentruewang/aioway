@@ -62,7 +62,7 @@ def test_seq_like_api():
 def test_dag_property():
     dag = TorchFuncDag()
 
-    assert isinstance(dag.exec(), Exec)
+    assert isinstance(dag.exec, Exec)
 
 
 def test_fake_aten_dag_tensor():
@@ -140,7 +140,7 @@ def trace_func(fn: cabc.Callable) -> tuple[Exec, Fakes]:
         with tracer.activate():
             fn(x, y)
 
-    return tracer.exec(), (x, y)
+    return tracer.exec, (x, y)
 
 
 def trace_aten(fn: cabc.Callable) -> tuple[Exec, Fakes]:
@@ -150,7 +150,7 @@ def trace_aten(fn: cabc.Callable) -> tuple[Exec, Fakes]:
         with fake_aten_dag() as tracer:
             fn(x, y)
 
-    return tracer.exec(), (x, y)
+    return tracer.exec, (x, y)
 
 
 def reals() -> Fakes:

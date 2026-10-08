@@ -50,7 +50,7 @@ class Program[I: Instr = typing.Any]:
         if not self.tensors.all_fake:
             raise ValueError("Contains non fake tensors.")
 
-        if not issubclass(self.instrs.base, self.INSTR):
+        if (base := self.instrs.base) and not issubclass(base, self.INSTR):
             raise TypeError(
                 f"The base of instr: {self.instrs.base} is not {self.INSTR}"
             )

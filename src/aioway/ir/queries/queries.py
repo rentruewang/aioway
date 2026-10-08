@@ -15,7 +15,7 @@ from aioway.ir.instrs import Instr
 if typing.TYPE_CHECKING:
     from aioway.ir import Program
 
-__all__ = ["Query", "OrderedIndex"]
+__all__ = ["Query", "OrderedIndex", "IndexQuery"]
 
 type _OrderedIndexLike = OrderedIndex | list[int] | IntArray
 
@@ -125,3 +125,34 @@ class OrderedIndex:
             return cls.from_list_int(like)
 
         typing.assert_never(like)
+
+
+# Some implementations ====
+
+
+@dcls.dataclass(frozen=True)
+class IndexQuery(Query):
+    """
+    Query with subset of index.
+
+    Raises:
+        IndexError: if the graph index is out of bounds.
+        ValueError: if the subgraph depends on intermediate value.
+    """
+
+    indices: list[int] | IntArray
+    """
+    The index to preserve. Indices must be within `[0, len)` for each instruction set.
+    """
+
+    @typing.override
+    def __call__(self, prog: Program, /) -> OrderedIndex:
+        idx: IntArray = np.asarray(self.indices)
+
+        if (idx < 0).any():
+            raise IndexError("Some indices are negative.")
+
+        if (idx >= len(prog)).any():
+            raise IndexError("Some indices are out of bounds.")
+
+        return OrderedIndex.from_list_int(idx.tolist())
