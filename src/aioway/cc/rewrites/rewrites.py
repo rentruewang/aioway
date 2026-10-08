@@ -5,7 +5,7 @@
 import abc
 import typing
 
-from torch import nn
+from aioway.ir import NnProgram
 
 __all__ = ["Rewriter"]
 
@@ -16,14 +16,14 @@ class Rewriter(abc.ABC):
     """
 
     @typing.no_type_check
-    def __call__(self, module: nn.Module) -> nn.Module:
+    def __call__(self, module: NnProgram) -> NnProgram:
         if not self.handle(module):
             return NotImplemented
 
         return self.rewrite(module)
 
     @abc.abstractmethod
-    def handle(self, module: nn.Module, /) -> bool:
+    def handle(self, module: NnProgram, /) -> bool:
         """
         Check whether the `Rewriter` handles the module or not.
         """
@@ -31,7 +31,7 @@ class Rewriter(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def rewrite(self, module: typing.Any, /) -> nn.Module:
+    def rewrite(self, module: typing.Any, /) -> NnProgram:
         """
         Perform the rewrite. Should not modify the input module.
 

@@ -2,6 +2,8 @@
 
 "The `Program` that supports analysis."
 
+from aioway.t import DType
+from aioway.t import Shape
 import copy
 import dataclasses as dcls
 import functools
@@ -388,11 +390,26 @@ def _replace_sub_prog[I: Instr](
 
     queried = _query_select(query=query, prog=prog)
 
-    if queried.inputs.attrs() != sub_prog.inputs.attrs():
-        raise ValueError("Inputs are not compatible.")
+    queried_input_attr = queried.inputs.attrs()
+    queried_output_attr = queried.outputs.attrs()
 
-    if queried.outputs.attrs() != sub_prog.outputs.attrs():
-        raise ValueError("Outputs are not compatible.")
+    def shapes(lists: TList) -> list[Shape]:
+        return [attr.shape for attr in lists.attrs()]
+
+    def dtypes(lists: TList) -> list[DType]:
+        return [attr.dtype for attr in lists.attrs()]
+
+    if shapes(queried.inputs) != shapes(sub_prog.inputs):
+        raise ValueError("Inputs have different shapes.")
+
+    if shapes(queried.outputs) != shapes(sub_prog.outputs):
+        raise ValueError("Outputs have different shapes.")
+
+    if dtypes(queried.inputs) != dtypes(sub_prog.inputs):
+        raise ValueError("Inputs have different dtypes.")
+
+    if dtypes(queried.outputs) != dtypes(sub_prog.outputs):
+        raise ValueError("Outputs have different dtypes.")
 
     # Get the indices of the queried subnet and minimum (useful in inserting).
     qidx = {prog.instrs.index(q) for q in queried.ilist}
