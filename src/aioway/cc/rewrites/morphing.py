@@ -2,7 +2,6 @@
 
 "`NetMorphLinearDeeper` on traced programs instead of `nn.Sequential`."
 
-from aioway.t import fake_mode
 import dataclasses as dcls
 
 import torch
@@ -10,6 +9,7 @@ from IPython.core.guarded_eval import typing
 from torch import nn
 
 from aioway.ir import ModuleCall, NnProgram, TypeSequential, track_module_thunks
+from aioway.t import fake_mode
 
 from .rewrites import Rewriter
 
