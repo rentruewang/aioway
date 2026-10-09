@@ -37,7 +37,7 @@ class NetMorphLinearSeqDeeper(Rewriter):
     @typing.override
     def handle(self, prog: NnProgram) -> bool:
         try:
-            sub = prog[self.part]
+            sub = prog[self.query]
         except LookupError:
             return False
 
@@ -50,7 +50,7 @@ class NetMorphLinearSeqDeeper(Rewriter):
         "A copy of `prog` with the first match deepened. Check `handle` first."
 
         result = prog.copy()
-        result[self.part] = self._build_deeper_net(prog[self.part])
+        result[self.query] = self._build_deeper_net(prog[self.query])
         return result
 
     def _build_deeper_net(self, sub: NnProgram) -> NnProgram:
@@ -70,7 +70,7 @@ class NetMorphLinearSeqDeeper(Rewriter):
         return hist.program
 
     @property
-    def part(self) -> TypeSequential[ModuleCall]:
+    def query(self) -> TypeSequential[ModuleCall]:
         pattern = nn.Linear, *self.middle, nn.Linear
         return TypeSequential(pattern, key=lambda call: call.func)
 
