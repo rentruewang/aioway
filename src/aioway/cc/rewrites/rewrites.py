@@ -2,6 +2,7 @@
 
 "The rewriter module."
 
+from aioway.ir import Query
 import abc
 import typing
 
@@ -23,11 +24,12 @@ class Rewriter(abc.ABC):
         return self.rewrite(module)
 
     @abc.abstractmethod
-    def handle(self, module: NnProgram, /) -> bool:
-        """
-        Check whether the `Rewriter` handles the module or not.
-        """
+    def query(self) -> Query:
+        "The query that the rewriter gets."
+        raise NotImplementedError
 
+    @abc.abstractmethod
+    def proposed(self) -> NnProgram:
         raise NotImplementedError
 
     @abc.abstractmethod
