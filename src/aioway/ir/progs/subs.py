@@ -9,7 +9,7 @@ from aioway.t import is_fake_tensor, parse_attr
 
 from .progs import Program
 
-__all__ = ["FuncProgram", "NnProgram"]
+__all__ = ["FuncProgram", "NnProgram", "NnProgramModule"]
 
 
 class FuncProgram(Program[FuncCall]):
@@ -18,6 +18,10 @@ class FuncProgram(Program[FuncCall]):
 
 class NnProgram(Program[ModuleCall]):
     INSTR = ModuleCall
+
+    @property
+    def module(self) -> NnProgramModule:
+        return NnProgramModule(self)
 
 
 class NnProgramModule(nn.Module):
