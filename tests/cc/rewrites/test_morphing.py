@@ -4,7 +4,7 @@ import pytest
 import torch
 from torch import nn
 
-from aioway.cc import NetMorphLinearSeqDeeper
+from aioway.cc.rewrites import NetMorphLinearSeqDeeper
 from aioway.ir import ExactSequential, NnProgram, TypeSequential, track_module_thunks
 from aioway.t import fake_mode
 
