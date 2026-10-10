@@ -6,7 +6,7 @@ import pytest
 import torch
 from torch import nn
 
-from aioway.cc import rebuild_module
+from aioway.ir.rebuild import rebuild_module
 from aioway.t import all_real, has_fake, real_mode
 
 
