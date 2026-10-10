@@ -9,7 +9,7 @@ import torch
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
-from .signs import sign_reg
+from aioway.cc.signs import nn_sign_untyped
 
 __all__ = ["ArgsTSpec", "NnArgs"]
 
@@ -58,7 +58,7 @@ class NnArgs:
     ) -> tuple[list[typing.Any], dict[str, typing.Any]]:
         "Apply `self` onto `nn.Module.forward` of the given `nn_type`."
 
-        signature = sign_reg()[nn_type]
+        signature = nn_sign_untyped(nn_type)
 
         args = []
         kwargs = {}

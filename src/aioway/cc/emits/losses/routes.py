@@ -7,7 +7,7 @@ from collections import abc as cabc
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.cc.args import ArgsTSpec
+from aioway.cc.emits.args import ArgsTSpec
 from aioway.cc.emits.emitters import emitter_function
 from aioway.t import LossTSpec, TSpec, TSpecLike, as_tspec, is_tspec_like
 
