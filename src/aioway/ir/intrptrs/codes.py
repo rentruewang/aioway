@@ -5,7 +5,7 @@ import typing
 import jinja2 as j2
 import torch
 
-from aioway.ir import FuncCall, InstrList
+from aioway.ir.instrs import FuncCall, InstrList
 from aioway.ir.progs import FuncProgram
 from aioway.t import TList
 
