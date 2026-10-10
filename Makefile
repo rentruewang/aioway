@@ -7,6 +7,7 @@ PYTHON_VERSION :=
 CHECK :=
 CHECK_FLAG := $(if $(CHECK),--check,)
 SUDO := sudo -E
+PYREFLY_ARGS := 
 
 # Running in GitHub Actions
 ifeq ($(GITHUB_ACTIONS),true)
@@ -63,7 +64,7 @@ isort:
 	@$(SH) pdm run isort . $(CHECK_FLAG)
 
 pyrefly:
-	@$(SH) pdm run pyrefly check src notebooks tests
+	@$(SH) pdm run pyrefly check src notebooks tests $(PYREFLY_ARGS)
 
 
 sphinx:
