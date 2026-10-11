@@ -8,11 +8,11 @@ from torch import nn
 from aioway._utils import Param, ParamKind, Sign
 
 
-def int_add(a: int, b: int):
+def _add_i(a: int, b: int):
     return a + b
 
 
-def float_add(a: float, b: float):
+def _add_f(a: float, b: float):
     return a + b
 
 
@@ -35,12 +35,12 @@ class TestSign:
     @pytest.fixture(scope="class")
     @classmethod
     def add_i(cls):
-        return Sign.from_callable(int_add)
+        return Sign.from_callable(_add_i)
 
     @pytest.fixture(scope="class")
     @classmethod
     def add_f(cls):
-        return Sign.from_callable(float_add)
+        return Sign.from_callable(_add_f)
 
     @pytest.fixture(scope="class")
     @classmethod
