@@ -6,7 +6,7 @@ import abc
 import typing
 
 import loguru as L
-from collections import abc as cabc
+
 from aioway.ir.instrs import Instr, InstrList
 from aioway.ir.progs import Program
 from aioway.t import TList
@@ -33,6 +33,7 @@ class Intrptr[I: Instr = Instr, A = typing.Any, R = typing.Any](abc.ABC):
 
     @typing.final
     def __call__(self, *args: A, **kwargs: A) -> R:
+        breakpoint()
         flattened = self._flatten_args(*args, **kwargs)
 
         L.logger.debug("Binding {l} tensors to respective inputs.", l=len(args))
@@ -55,7 +56,7 @@ class Intrptr[I: Instr = Instr, A = typing.Any, R = typing.Any](abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def bind(self, inputs: TList, args: cabc.Sequence[A]) -> None:
+    def bind(self, inputs: TList, args: list[A]) -> None:
         """
         Setup with regards to the inputs and feed the data in.
 
@@ -64,10 +65,19 @@ class Intrptr[I: Instr = Instr, A = typing.Any, R = typing.Any](abc.ABC):
 
         raise NotImplementedError
 
-    @abc.abstractmethod
     def walk(self, instrs: InstrList[I], /) -> None:
         """
         Walk over the program and update the states.
+        """
+
+        # Execute the steps one by one in topo sorted order.
+        for idx, instr in enumerate(self.program):
+            self.step(idx, instr)
+
+    @abc.abstractmethod
+    def step(self, idx: int, instr: I) -> None:
+        """
+        Step over each `instr` one by one.
         """
 
         raise NotImplementedError
@@ -80,8 +90,8 @@ class Intrptr[I: Instr = Instr, A = typing.Any, R = typing.Any](abc.ABC):
 
         raise NotImplementedError
 
-    def _flatten_args(self, *args: A, **kwargs: A) -> cabc.Sequence[A]:
-        tensors = *args, *kwargs.values()
+    def _flatten_args(self, *args: A, **kwargs: A) -> list[A]:
+        tensors = [*args, *kwargs.values()]
 
         for tensor in tensors:
             if not isinstance(tensor, self.TYPE):
