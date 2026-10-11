@@ -16,7 +16,6 @@ from torch.utils import _python_dispatch as pyd
 
 from aioway._utils import Stack
 from aioway.t.attrs import render_function_body_prefix
-from aioway.t.nested import find_nested_tensors
 
 __all__ = [
     "Mode",
@@ -66,6 +65,8 @@ class ModeThunk[**P = ..., T = typing.Any]:
         return self.func(*self.args, **self.kwargs)
 
     def inputs(self):
+        from aioway.t import find_nested_tensors
+
         yield from find_nested_tensors(self.args)
         yield from find_nested_tensors(self.kwargs)
 

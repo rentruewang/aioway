@@ -93,7 +93,7 @@ def replace_tensors(
     Caused by `.device` / `.shape` / `.dtype` calls, which is used in `replace_tensors`.
     """
 
-    from .overrides import mode_off
+    from aioway.t import mode_off
 
     def maybe_replace(item):
         if not isinstance(item, torch.Tensor):

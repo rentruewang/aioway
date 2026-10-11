@@ -4,6 +4,7 @@
 
 import collections
 import dataclasses as dcls
+import enum
 import inspect
 import typing
 from collections import abc as cabc
@@ -12,7 +13,46 @@ from torch import nn
 
 from .typing import is_any_type_hint, is_nn_type
 
-__all__ = ["Param", "Sign"]
+__all__ = ["Param", "ParamKind", "Sign"]
+
+
+class ParamKind(enum.Enum):
+    "The type checked alternative to `inspect`'s private `.kind` type."
+
+    POSITIONAL_ONLY = enum.auto()
+    POSITIONAL_OR_KEYWORD = enum.auto()
+    VAR_POSITIONAL = enum.auto()
+    KEYWORD_ONLY = enum.auto()
+    VAR_KEYWORD = enum.auto()
+
+    def __eq__(self, other) -> bool:
+        # Use the typical enum implementation.
+        if (result := super().__eq__(other)) is not NotImplemented:
+            return result
+
+        # Works with comparing with other `inspect.Parameter` kinds.
+        if type(kind := self.to_inspect()) == type(other):
+            return kind == other
+
+        # Works with strings.
+        if isinstance(other, str):
+            return self.name == other.upper()
+
+        return NotImplemented
+
+    def __hash__(self):
+        return super().__hash__()
+
+    def to_inspect(self):
+        "The matching `inspect.Parameter` kind."
+
+        return getattr(inspect.Parameter, self.name)
+
+    @classmethod
+    def from_inspect(cls, kind) -> typing.Self:
+        "Convert an `inspect.Parameter` kind to `ParamKind`."
+
+        return cls[kind.name]
 
 
 @dcls.dataclass(frozen=True)
@@ -39,8 +79,8 @@ class Param:
         return self.parameter.name
 
     @property
-    def kind(self):
-        return self.parameter.kind
+    def kind(self) -> ParamKind:
+        return ParamKind.from_inspect(self.parameter.kind)
 
     @property
     def default(self):
@@ -51,24 +91,24 @@ class Param:
         return self.parameter.annotation
 
     @property
-    def is_positional_only(self):
-        return self.kind == inspect.Parameter.POSITIONAL_ONLY
+    def is_positional_only(self) -> bool:
+        return self.kind == ParamKind.POSITIONAL_ONLY
 
     @property
-    def is_keyword_only(self):
-        return self.kind == inspect.Parameter.KEYWORD_ONLY
+    def is_keyword_only(self) -> bool:
+        return self.kind == ParamKind.KEYWORD_ONLY
 
     @property
-    def is_positional_or_keyword(self):
-        return self.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD
+    def is_positional_or_keyword(self) -> bool:
+        return self.kind == ParamKind.POSITIONAL_OR_KEYWORD
 
     @property
-    def is_var_positional(self):
-        return self.kind == inspect.Parameter.VAR_POSITIONAL
+    def is_var_positional(self) -> bool:
+        return self.kind == ParamKind.VAR_POSITIONAL
 
     @property
-    def is_var_keyword(self):
-        return self.kind == inspect.Parameter.VAR_KEYWORD
+    def is_var_keyword(self) -> bool:
+        return self.kind == ParamKind.VAR_KEYWORD
 
     @property
     def is_any_type(self) -> bool:
@@ -80,9 +120,29 @@ class Param:
         return type(self)(
             inspect.Parameter(
                 name=self.name,
-                kind=self.kind,
+                kind=self.kind.to_inspect(),
                 default=self.default,
                 annotation=inspect.Parameter.empty,
+            )
+        )
+
+    @classmethod
+    def build(
+        cls,
+        name: str,
+        kind: ParamKind = ParamKind.POSITIONAL_OR_KEYWORD,
+        *,
+        default: typing.Any = inspect.Parameter.empty,
+        annotation: typing.Any = inspect.Parameter.empty,
+    ) -> typing.Self:
+        "Construct a `Param` directly, mirroring `inspect.Parameter`'s constructor."
+
+        return cls(
+            inspect.Parameter(
+                name=name,
+                kind=kind.to_inspect(),
+                default=default,
+                annotation=annotation,
             )
         )
 
@@ -189,7 +249,7 @@ class Sign:
     def drop_first(self) -> typing.Self:
         "Drop the `self` parameter."
         params = [param.parameter for param in self.param_list[1:]]
-        return type(self)(inspect.Signature(params))
+        return type(self)(self.signature.replace(parameters=params))
 
     @property
     def argc(self) -> int:

@@ -12,14 +12,20 @@ import torch
 from torch.utils import _pytree as pyt
 
 from aioway._utils import is_seq_of, is_set_of
-
-from .attrs import parse_attr
-from .overrides import has_fake
+from aioway.t.attrs import parse_attr
+from aioway.t.overrides import has_fake
 
 if typing.TYPE_CHECKING:
     from aioway.t import Attr, Device, DType, Layout, Shape
 
 __all__ = ["TList"]
+
+
+class TListKey(int):
+    "The custom key class to decompose the"
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({super().__repr__()})"
 
 
 @typing.final
@@ -176,6 +182,9 @@ class TList:
     def flatten_tree(self: TList) -> tuple:
         return self._tensors, None
 
+    def flatten_tree_with_keys(self: TList) -> tuple:
+        return [(TListKey(i), t) for i, t in enumerate(self._tensors)], None
+
     def unflatten_tree(self: cabc.Iterable[torch.Tensor], _: None):
         return TList.from_iterable(self)
 
@@ -200,4 +209,9 @@ def _get_id(tensor: torch.Tensor | int, /) -> int:
 # Register for pyt. ====
 
 
-pyt.register_pytree_node(TList, TList.flatten_tree, TList.unflatten_tree)
+pyt.register_pytree_node(
+    TList,
+    flatten_fn=TList.flatten_tree,
+    unflatten_fn=TList.unflatten_tree,
+    flatten_with_keys_fn=TList.flatten_tree_with_keys,
+)
