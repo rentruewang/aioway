@@ -14,7 +14,7 @@ from aioway.t import TList
 __all__ = ["Intrptr"]
 
 
-class Intrptr[I: Instr = Instr, R = typing.Any](abc.ABC):
+class Intrptr[I: Instr = Instr, A = typing.Any, R = typing.Any](abc.ABC):
     """
     The `Intrptr` API interprets the program and process it to something else.
 
@@ -29,7 +29,7 @@ class Intrptr[I: Instr = Instr, R = typing.Any](abc.ABC):
     """
 
     @typing.final
-    def __call__(self, *args, **kwargs) -> R:
+    def __call__(self, *args: A, **kwargs: A) -> R:
         self.bind(self.program.inputs, *args, **kwargs)
 
         L.logger.debug("Prepare walking the {} instructions.", len(self.program.instrs))
@@ -49,7 +49,7 @@ class Intrptr[I: Instr = Instr, R = typing.Any](abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def bind(self, inputs: TList, *args, **kwargs) -> None:
+    def bind(self, inputs: TList, *args: A, **kwargs: A) -> None:
         """
         Setup with regards to the inputs and feed the data in.
 

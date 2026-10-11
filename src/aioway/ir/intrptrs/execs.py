@@ -163,9 +163,16 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
             raise ValueError("Real tensor in `fake` paired with a different value.")
 
 
-class Exec[F: cabc.Callable = typing.Any](Intrptr["FuncCall[F]"]):
+class Exec[F: cabc.Callable = typing.Any](
+    Intrptr["FuncCall[F]", torch.Tensor, typing.Any]
+):
     """
-    This is the DAG executor responsible for executing a traced thunk list on real data.
+    This is the executor responsible for executing a traced thunk list on real data.
+
+    Note that it only handles `torch.Tensor` inputs for now.
+    This behavior is due to tracing since we can only trace tensors.
+
+    This might be generalized in the future.
     """
 
     def __init__(self, program: Program) -> None:
@@ -182,8 +189,22 @@ class Exec[F: cabc.Callable = typing.Any](Intrptr["FuncCall[F]"]):
         yield from self._prog
 
     @typing.override
-    def bind(self, inputs: TList, *args, **kwargs) -> None:
-        tensors = self._flatten_tensors(*args, **kwargs)
+    def bind(self, inputs: TList, *args: torch.Tensor, **kwargs: torch.Tensor) -> None:
+        tensors = *args, *kwargs.values()
+
+        for tensor in tensors:
+            if not isinstance(tensor, torch.Tensor):
+                raise TypeError
+
+        if len(tensors) != len(self.program.inputs):
+            raise TypeError(
+                f"Cannot bind {len(tensors)} to {len(self.program.inputs)} input tensors."
+            )
+
+        if self.program.inputs.attrs() != [parse_attr(t) for t in tensors]:
+            raise TypeError("Tensors do not look like they can be consumed by inputs.")
+
+        L.logger.debug("Binding {l} tensors to respective inputs.", l=len(tensors))
 
         try:
             self._scope.update(inputs, tensors)
@@ -213,25 +234,6 @@ class Exec[F: cabc.Callable = typing.Any](Intrptr["FuncCall[F]"]):
     @property
     def inputs(self):
         return self._prog.inputs
-
-    def _flatten_tensors(self, *args, **kwargs) -> list[torch.Tensor]:
-        # Find the tensors to bind.
-        flattened = pyt.arg_tree_leaves(*args, **kwargs)
-        tensors = [t for t in flattened if isinstance(t, torch.Tensor)]
-
-        program = self.program
-
-        if len(tensors) != len(program.inputs):
-            raise TypeError(
-                f"Cannot bind {len(tensors)} to {len(program.inputs)} input tensors."
-            )
-
-        if program.inputs.attrs() != [parse_attr(t) for t in tensors]:
-            raise TypeError("Tensors do not look like they can be consumed by inputs.")
-
-        L.logger.debug("Binding {l} tensors to respective inputs.", l=len(tensors))
-
-        return tensors
 
 
 def _get_fake_id(fake: torch.Tensor | int, /) -> int:

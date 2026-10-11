@@ -3,7 +3,6 @@
 import typing
 
 import jinja2 as j2
-import torch
 
 from aioway.ir.instrs import FuncCall, InstrList
 from aioway.ir.progs import FuncProgram
@@ -48,7 +47,7 @@ class FuncProgramCode(Intrptr[FuncCall, CodeRender]):
         self._name = name
 
     @typing.override
-    def bind(self, inputs: TList, args: list[torch.Tensor]) -> None:
+    def bind(self, inputs: TList, *args: str, **kwargs: str) -> None:
         raise NotImplementedError
 
     @typing.override
