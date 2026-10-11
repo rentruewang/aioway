@@ -2,9 +2,9 @@
 
 "The utilities for signatures."
 
-import enum
 import collections
 import dataclasses as dcls
+import enum
 import inspect
 import typing
 from collections import abc as cabc
