@@ -5,6 +5,7 @@
 import typing
 from collections import abc as cabc
 
+import loguru as L
 import torch
 from torch.utils import _pytree as pyt
 
@@ -181,9 +182,11 @@ class Exec[F: cabc.Callable = typing.Any](Intrptr["FuncCall[F]"]):
         yield from self._prog
 
     @typing.override
-    def bind(self, inputs: TList, args: list[torch.Tensor]) -> None:
+    def bind(self, inputs: TList, *args, **kwargs) -> None:
+        tensors = self._flatten_tensors(*args, **kwargs)
+
         try:
-            self._scope.update(inputs, args)
+            self._scope.update(inputs, tensors)
         except ValueError as err:
             raise TypeError from err
 
@@ -210,6 +213,25 @@ class Exec[F: cabc.Callable = typing.Any](Intrptr["FuncCall[F]"]):
     @property
     def inputs(self):
         return self._prog.inputs
+
+    def _flatten_tensors(self, *args, **kwargs) -> list[torch.Tensor]:
+        # Find the tensors to bind.
+        flattened = pyt.arg_tree_leaves(*args, **kwargs)
+        tensors = [t for t in flattened if isinstance(t, torch.Tensor)]
+
+        program = self.program
+
+        if len(tensors) != len(program.inputs):
+            raise TypeError(
+                f"Cannot bind {len(tensors)} to {len(program.inputs)} input tensors."
+            )
+
+        if program.inputs.attrs() != [parse_attr(t) for t in tensors]:
+            raise TypeError("Tensors do not look like they can be consumed by inputs.")
+
+        L.logger.debug("Binding {l} tensors to respective inputs.", l=len(tensors))
+
+        return tensors
 
 
 def _get_fake_id(fake: torch.Tensor | int, /) -> int:

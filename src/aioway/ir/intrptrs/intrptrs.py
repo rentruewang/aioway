@@ -6,17 +6,15 @@ import abc
 import typing
 
 import loguru as L
-import torch
-from torch.utils import _pytree as pyt
 
 from aioway.ir.instrs import Instr, InstrList
 from aioway.ir.progs import Program
-from aioway.t import TList, parse_attr
+from aioway.t import TList
 
 __all__ = ["Intrptr"]
 
 
-class Intrptr[I: Instr = Instr, O: object = typing.Any](abc.ABC):
+class Intrptr[I: Instr = Instr, R = typing.Any](abc.ABC):
     """
     The `Intrptr` API interprets the program and process it to something else.
 
@@ -31,25 +29,10 @@ class Intrptr[I: Instr = Instr, O: object = typing.Any](abc.ABC):
     """
 
     @typing.final
-    def __call__(self, *args: typing.Any, **kwargs: typing.Any) -> O:
-        # Find the tensors to bind.
-        flattened = pyt.arg_tree_leaves(*args, **kwargs)
-        tensors = [t for t in flattened if isinstance(t, torch.Tensor)]
+    def __call__(self, *args, **kwargs) -> R:
+        self.bind(self.program.inputs, *args, **kwargs)
 
-        program = self.program
-
-        if len(tensors) != len(program.inputs):
-            raise TypeError(
-                f"Cannot bind {len(tensors)} to {len(program.inputs)} input tensors."
-            )
-
-        if program.inputs.attrs() != [parse_attr(t) for t in tensors]:
-            raise TypeError("Tensors do not look like they can be consumed by inputs.")
-
-        L.logger.debug("Binding {l} tensors to respective inputs.", l=len(tensors))
-        self.bind(program.inputs, tensors)
-
-        L.logger.debug("Prepare walking the {} instructions.", len(program.instrs))
+        L.logger.debug("Prepare walking the {} instructions.", len(self.program.instrs))
         self.walk(self.program.instrs)
 
         L.logger.debug("Preparing the output.")
@@ -66,7 +49,7 @@ class Intrptr[I: Instr = Instr, O: object = typing.Any](abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def bind(self, inputs: TList, args: list[torch.Tensor], /) -> None:
+    def bind(self, inputs: TList, *args, **kwargs) -> None:
         """
         Setup with regards to the inputs and feed the data in.
 
@@ -84,7 +67,7 @@ class Intrptr[I: Instr = Instr, O: object = typing.Any](abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def finalize(self) -> O:
+    def finalize(self) -> R:
         """
         Finalize and return the result.
         """
