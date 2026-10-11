@@ -20,7 +20,7 @@ import torch
 from rich import pretty
 
 # %%
-from aioway.ir import Program, TorchFuncDag, render_stateless_program
+from aioway.ir import FuncProgram, TorchFuncDag, render_stateless_program
 from aioway.t import fake_mode
 
 pretty.install()
@@ -47,7 +47,7 @@ with fake_mode():
         difference = torch.sub(product, summed)
         activated = torch.relu(difference)
 
-iset = Program.from_instr_list(tracer.thunks)
+iset = FuncProgram.from_instr_list(tracer.thunks)
 
 # %%
 render_stateless_program(iset, "example_program", "x", "y")

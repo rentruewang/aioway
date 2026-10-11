@@ -33,7 +33,6 @@ class Intrptr[I: Instr = Instr, A = typing.Any, R = typing.Any](abc.ABC):
 
     @typing.final
     def __call__(self, *args: A, **kwargs: A) -> R:
-        breakpoint()
         flattened = self._flatten_args(*args, **kwargs)
 
         L.logger.debug("Binding {l} tensors to respective inputs.", l=len(args))
