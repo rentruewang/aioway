@@ -10,6 +10,7 @@ from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
 from aioway._signs import nn_sign_untyped
+from aioway._utils import ParamKind
 
 __all__ = ["ArgsTSpec", "NnArgs"]
 
@@ -64,7 +65,7 @@ class NnArgs:
         kwargs = {}
 
         for key, param in signature.params.items():
-            if param.is_positional_only:
+            if param.kind == ParamKind.POSITIONAL_ONLY:
                 args.append(self.args[key])
 
             else:
