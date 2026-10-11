@@ -8,7 +8,6 @@ from collections import abc as cabc
 import torch
 from torch.utils import _pytree as pyt
 
-from aioway.ir.instrs import InstrList
 from aioway.t import TList, has_fake, is_fake_tensor, is_real_tensor, parse_attr
 
 from .intrptrs import Intrptr
@@ -162,10 +161,19 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
             raise ValueError("Real tensor in `fake` paired with a different value.")
 
 
-class Exec[F: cabc.Callable = typing.Any](Intrptr["FuncCall[F]"]):
+class Exec[F: cabc.Callable = typing.Any](
+    Intrptr["FuncCall[F]", torch.Tensor, typing.Any]
+):
     """
-    This is the DAG executor responsible for executing a traced thunk list on real data.
+    This is the executor responsible for executing a traced thunk list on real data.
+
+    Note that it only handles `torch.Tensor` inputs for now.
+    This behavior is due to tracing since we can only trace tensors.
+
+    This might be generalized in the future.
     """
+
+    TYPE = torch.Tensor
 
     def __init__(self, program: Program) -> None:
         self._prog = program
@@ -182,19 +190,20 @@ class Exec[F: cabc.Callable = typing.Any](Intrptr["FuncCall[F]"]):
 
     @typing.override
     def bind(self, inputs: TList, args: list[torch.Tensor]) -> None:
+        if self.program.inputs.attrs() != [parse_attr(t) for t in args]:
+            raise TypeError("Tensors do not look like they can be consumed by inputs.")
+
         try:
             self._scope.update(inputs, args)
         except ValueError as err:
             raise TypeError from err
 
     @typing.override
-    def walk(self, instrs: InstrList) -> None:
-        # Execute the steps one by one in topo sorted order.
-        for idx, thunk in enumerate(self._prog):
-            args, kwargs = self._scope.map([thunk.args, thunk.kwargs])
-            real = thunk.func(*args, **kwargs)
-            self._scope.update(thunk.result, real)
-            self._scope.expire(idx)
+    def step(self, idx: int, instr: FuncCall[F]) -> None:
+        args, kwargs = self._scope.map([instr.args, instr.kwargs])
+        real = instr.func(*args, **kwargs)
+        self._scope.update(instr.result, real)
+        self._scope.expire(idx)
 
     @typing.override
     def finalize(self) -> typing.Any:
