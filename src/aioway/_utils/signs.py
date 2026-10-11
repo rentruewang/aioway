@@ -2,9 +2,9 @@
 
 "The utilities for signatures."
 
+import enum
 import collections
 import dataclasses as dcls
-import enum
 import inspect
 import typing
 from collections import abc as cabc
@@ -16,7 +16,7 @@ from .typing import is_any_type_hint, is_nn_type
 __all__ = ["Param", "ParamKind", "Sign"]
 
 
-class ParamKind(enum.StrEnum):
+class ParamKind(enum.Enum):
     "The type checked alternative to `inspect`'s private `.kind` type."
 
     POSITIONAL_ONLY = enum.auto()
@@ -39,6 +39,9 @@ class ParamKind(enum.StrEnum):
             return self.name == other.upper()
 
         return NotImplemented
+
+    def __hash__(self):
+        return super().__hash__()
 
     def to_inspect(self):
         "The matching `inspect.Parameter` kind."
@@ -86,6 +89,26 @@ class Param:
     @property
     def annotation(self) -> type:
         return self.parameter.annotation
+
+    @property
+    def is_positional_only(self) -> bool:
+        return self.kind == ParamKind.POSITIONAL_ONLY
+
+    @property
+    def is_keyword_only(self) -> bool:
+        return self.kind == ParamKind.KEYWORD_ONLY
+
+    @property
+    def is_positional_or_keyword(self) -> bool:
+        return self.kind == ParamKind.POSITIONAL_OR_KEYWORD
+
+    @property
+    def is_var_positional(self) -> bool:
+        return self.kind == ParamKind.VAR_POSITIONAL
+
+    @property
+    def is_var_keyword(self) -> bool:
+        return self.kind == ParamKind.VAR_KEYWORD
 
     @property
     def is_any_type(self) -> bool:
@@ -226,7 +249,7 @@ class Sign:
     def drop_first(self) -> typing.Self:
         "Drop the `self` parameter."
         params = [param.parameter for param in self.param_list[1:]]
-        return type(self)(inspect.Signature(params))
+        return type(self)(self.signature.replace(parameters=params))
 
     @property
     def argc(self) -> int:
