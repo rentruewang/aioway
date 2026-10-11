@@ -36,6 +36,11 @@ class CodeRender(typing.Protocol):
     def __rich__(self) -> typing.Any: ...
 
 
+# class _FuncRender:
+#     def __rich__(self):
+#         return syntax.Syntax(str(self), lexer="py")
+
+
 @typing.final
 class FuncProgramCode(Intrptr[FuncCall, CodeRender]):
     def __init__(self, program: FuncProgram, name: str) -> None:

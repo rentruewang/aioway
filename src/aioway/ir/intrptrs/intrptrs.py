@@ -16,7 +16,7 @@ from aioway.t import TList, parse_attr
 __all__ = ["Intrptr"]
 
 
-class Intrptr[I: Instr = Instr, T: object = typing.Any](abc.ABC):
+class Intrptr[I: Instr = Instr, O: object = typing.Any](abc.ABC):
     """
     The `Intrptr` API interprets the program and process it to something else.
 
@@ -31,7 +31,7 @@ class Intrptr[I: Instr = Instr, T: object = typing.Any](abc.ABC):
     """
 
     @typing.final
-    def __call__(self, *args: typing.Any, **kwargs: typing.Any) -> T:
+    def __call__(self, *args: typing.Any, **kwargs: typing.Any) -> O:
         # Find the tensors to bind.
         flattened = pyt.arg_tree_leaves(*args, **kwargs)
         tensors = [t for t in flattened if isinstance(t, torch.Tensor)]
@@ -84,7 +84,7 @@ class Intrptr[I: Instr = Instr, T: object = typing.Any](abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def finalize(self) -> T:
+    def finalize(self) -> O:
         """
         Finalize and return the result.
         """
