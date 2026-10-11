@@ -189,25 +189,12 @@ class Exec[F: cabc.Callable = typing.Any](
         yield from self._prog
 
     @typing.override
-    def bind(self, inputs: TList, *args: torch.Tensor, **kwargs: torch.Tensor) -> None:
-        tensors = *args, *kwargs.values()
-
-        for tensor in tensors:
-            if not isinstance(tensor, torch.Tensor):
-                raise TypeError
-
-        if len(tensors) != len(self.program.inputs):
-            raise TypeError(
-                f"Cannot bind {len(tensors)} to {len(self.program.inputs)} input tensors."
-            )
-
-        if self.program.inputs.attrs() != [parse_attr(t) for t in tensors]:
+    def bind(self, inputs: TList, args: cabc.Sequence[torch.Tensor]) -> None:
+        if self.program.inputs.attrs() != [parse_attr(t) for t in args]:
             raise TypeError("Tensors do not look like they can be consumed by inputs.")
 
-        L.logger.debug("Binding {l} tensors to respective inputs.", l=len(tensors))
-
         try:
-            self._scope.update(inputs, tensors)
+            self._scope.update(inputs, args)
         except ValueError as err:
             raise TypeError from err
 

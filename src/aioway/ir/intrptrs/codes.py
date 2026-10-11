@@ -41,7 +41,7 @@ class CodeRender(typing.Protocol):
 
 
 @typing.final
-class FuncProgramCode(Intrptr[FuncCall, CodeRender]):
+class FuncProgramCode(Intrptr[FuncCall, str, CodeRender]):
     def __init__(self, program: FuncProgram, name: str) -> None:
         self._program = program
         self._name = name

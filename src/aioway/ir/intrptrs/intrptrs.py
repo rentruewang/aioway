@@ -6,7 +6,7 @@ import abc
 import typing
 
 import loguru as L
-
+from collections import abc as cabc
 from aioway.ir.instrs import Instr, InstrList
 from aioway.ir.progs import Program
 from aioway.t import TList
@@ -28,9 +28,15 @@ class Intrptr[I: Instr = Instr, A = typing.Any, R = typing.Any](abc.ABC):
     we may need more in the future to handle extra types.
     """
 
+    TYPE: typing.ClassVar[type] = object
+    "The type variable, corresponding to the `A` generic parameter."
+
     @typing.final
     def __call__(self, *args: A, **kwargs: A) -> R:
-        self.bind(self.program.inputs, *args, **kwargs)
+        flattened = self._flatten_args(*args, **kwargs)
+
+        L.logger.debug("Binding {l} tensors to respective inputs.", l=len(args))
+        self.bind(self.program.inputs, flattened)
 
         L.logger.debug("Prepare walking the {} instructions.", len(self.program.instrs))
         self.walk(self.program.instrs)
@@ -49,7 +55,7 @@ class Intrptr[I: Instr = Instr, A = typing.Any, R = typing.Any](abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def bind(self, inputs: TList, *args: A, **kwargs: A) -> None:
+    def bind(self, inputs: TList, args: cabc.Sequence[A]) -> None:
         """
         Setup with regards to the inputs and feed the data in.
 
@@ -73,3 +79,17 @@ class Intrptr[I: Instr = Instr, A = typing.Any, R = typing.Any](abc.ABC):
         """
 
         raise NotImplementedError
+
+    def _flatten_args(self, *args: A, **kwargs: A) -> cabc.Sequence[A]:
+        tensors = *args, *kwargs.values()
+
+        for tensor in tensors:
+            if not isinstance(tensor, self.TYPE):
+                raise TypeError
+
+        if len(tensors) != len(self.program.inputs):
+            raise TypeError(
+                f"Cannot bind {len(tensors)} to {len(self.program.inputs)} input tensors."
+            )
+
+        return tensors
