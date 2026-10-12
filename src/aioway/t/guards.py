@@ -62,7 +62,16 @@ def is_sparse_tensor(t: torch.Tensor) -> bool:
 
 def is_torch_function(obj) -> bool:
     "Check if it's `torch.*`."
-    return callable(obj) and getattr(torch, obj.__name__, None) is obj
+
+    if not callable(obj):
+        return False
+
+    try:
+        name = obj.__name__
+    except AttributeError:
+        return False
+
+    return getattr(torch, name, NotImplemented) is obj
 
 
 def is_tensor_method(method) -> bool:

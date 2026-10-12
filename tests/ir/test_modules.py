@@ -13,6 +13,15 @@ class Double(nn.Module):
         return x * 2
 
 
+class Pair(nn.Module):
+    """Two inputs, two outputs: passes each argument straight through."""
+
+    def forward(
+        self, x: torch.Tensor, y: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        return x, y
+
+
 class Wrapped(nn.Module):
     """A parent whose output is a fresh tensor, not its child's."""
 
@@ -27,14 +36,13 @@ class Wrapped(nn.Module):
 def _make_thunk(
     module: nn.Module,
     *args: torch.Tensor,
-    result: object = None,
     parents: tuple[nn.Module, ...] = (),
 ) -> ModuleCall:
     return ModuleCall(
         func=module,
         args=args,
         kwargs={},
-        result=module(*args) if result is None else result,
+        result=module(*args),
         parents=parents,
     )
 
@@ -66,15 +74,29 @@ def test_thunk_keeps_parents(module: nn.Module) -> None:
     assert thunk.parents == (parent,)
 
 
-def test_thunk_upstream_yields(module: nn.Module) -> None:
+def test_thunk_upstream_yields() -> None:
     x, y = torch.ones(3), torch.zeros(3)
-    thunk = _make_thunk(module, x, y, result=x)
+    thunk = _make_thunk(Pair(), x, y)
 
-    assert thunk.inputs == {x, y}
+    assert list(thunk.inputs) == [x, y]
 
 
 def test_thunk_downstream_yields(thunk: ModuleCall) -> None:
     assert thunk.outputs == [thunk.result]
+
+
+def test_thunk_binding_fail_extra_args(module: nn.Module) -> None:
+    x, y = torch.ones(3), torch.zeros(3)
+
+    with pytest.raises(TypeError):
+        ModuleCall(func=module, args=(x, y), kwargs={}, result=x, parents=())
+
+
+def test_thunk_binding_fail_missing_args() -> None:
+    x = torch.ones(3)
+
+    with pytest.raises(TypeError):
+        ModuleCall(func=Pair(), args=(x,), kwargs={}, result=x, parents=())
 
 
 def test_hist_starts_empty(hist: ModuleHist) -> None:
@@ -94,9 +116,9 @@ def test_thunk_looks_up(hist: ModuleHist, thunk: ModuleCall) -> None:
     assert hist.thunk_of(thunk.outputs[0]) is thunk
 
 
-def test_append_index_all_outputs(hist: ModuleHist, module: nn.Module) -> None:
+def test_append_index_all_outputs(hist: ModuleHist) -> None:
     x, y = torch.ones(3), torch.zeros(3)
-    thunk = _make_thunk(module, result=(x, y))
+    thunk = _make_thunk(Pair(), x, y)
 
     hist.append(thunk)
 

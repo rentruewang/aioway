@@ -10,7 +10,7 @@ import torch
 from rich import syntax
 from torch.utils import _pytree as pyt
 
-from aioway._utils import AnyDict, any_dict, render_fcall_str
+from aioway._utils import AnyDict, any_dict, render_fcall
 from aioway.ir.instrs import FuncCall
 from aioway.ir.progs import FuncProgram
 from aioway.t import TList, render_torch_func_name
@@ -60,7 +60,7 @@ class _FuncProgramCode(Intrptr[FuncCall, str, CodeRender]):
     @typing.override
     def step(self, idx: int, instr: FuncCall) -> None:
         # Rerun is not permitted.
-        assert len(self._steps) == idx
+        assert len(self._steps) == idx, "Length is not equal"
 
         args = pyt.tree_map_only(torch.Tensor, self._tensor_name, instr.args)
         kwargs = pyt.tree_map_only(torch.Tensor, self._tensor_name, instr.kwargs)
@@ -71,13 +71,11 @@ class _FuncProgramCode(Intrptr[FuncCall, str, CodeRender]):
         result = self._tensor_name(instr.result)
 
         func_name = render_torch_func_name(instr.func)
-        self._steps.append(
-            result + " = " + render_fcall_str(func_name, *args, **kwargs)
-        )
+        self._steps.append(result + " = " + render_fcall(func_name, *args, **kwargs))
 
     @typing.override
     def finalize(self) -> CodeRender:
-        assert len(self.program.outputs) == 1
+        assert len(self.program.outputs) == 1, "Length is not 1."
         return _FuncRender(
             name=self._name,
             params=[self._tensor_name(var) for var in self.program.inputs],
@@ -96,7 +94,9 @@ class _FuncProgramCode(Intrptr[FuncCall, str, CodeRender]):
             name = f"tensor_{next_int}"
             self._vars[var] = name
 
-        return self._vars[var]
+        r = self._vars[var]
+        assert isinstance(r, str)
+        return r
 
 
 # Convenient object that can be used in different contexts ====
