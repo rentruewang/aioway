@@ -3,7 +3,6 @@
 "The instructions themselves."
 
 import abc
-import dataclasses as dcls
 import functools
 import typing
 from collections import abc as cabc
@@ -16,25 +15,21 @@ from aioway.t import TList
 __all__ = ["Instr", "InstrList"]
 
 
-@typing.dataclass_transform(frozen_default=True, eq_default=False)
-def instr_dcls[T](cls):
-    """
-    The dataclass transform wrapper for `Instr` classes.
-
-    This also registeres the class to `pyt`.
-    """
-
-    cls = dcls.dataclass(frozen=True, eq=False, repr=False)(cls)
-    pyt.register_dataclass(cls)
-    return cls
-
-
 # The base instruction class ====
 
 
-@instr_dcls
 class Instr(abc.ABC):
     "The instruction base class."
+
+    def __init_subclass__(cls, **kwargs) -> None:
+        super().__init_subclass__(**kwargs)
+
+        pyt.register_pytree_node(
+            cls,
+            flatten_fn=cls._tree_flatten,
+            unflatten_fn=cls._tree_unflatten,
+            flatten_with_keys_fn=cls._tree_flatten_with_keys,
+        )
 
     def tree_map(self, func: cabc.Callable):
         """
@@ -68,6 +63,30 @@ class Instr(abc.ABC):
     def _outputs(self) -> TList:
         "The list of tensors in the outputs."
 
+        raise NotImplementedError
+
+    def _tree_flatten(self):
+        return list(self._tree_children().values()), self._tree_context
+
+    def _tree_flatten_with_keys(self):
+        values = [(pyt.GetAttrKey(k), v) for k, v in self._tree_children().items()]
+        return values, self._tree_context
+
+    @abc.abstractmethod
+    def _tree_children(self) -> dict[str, typing.Any]:
+        "The named children pytree should descend into, in a fixed order."
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def _tree_context(self) -> typing.Any:
+        "Everything else needed to rebuild the instruction."
+        raise NotImplementedError
+
+    @classmethod
+    @abc.abstractmethod
+    def _tree_unflatten(cls, children: cabc.Iterable, context) -> typing.Self:
+        "Rebuild from the children (in `_tree_children` order) and the context."
         raise NotImplementedError
 
 

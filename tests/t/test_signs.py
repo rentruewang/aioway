@@ -169,7 +169,7 @@ class TestBoundArgs:
 
     def test_apply_defaults(self, greet: Sign):
         bound = greet.bind("bob")
-
+        bound.apply_defaults_()
         assert bound.arguments == {
             "name": "bob",
             "greeting": "hi",
@@ -249,16 +249,43 @@ class TestBoundArgs:
         assert torch.equal(_add(*doubled.args, **doubled.kwargs), torch.full([2], 4.0))
 
     def test_tree_map_many(self, greet: Sign):
-        # Defaults are applied on `bind`, so the same parameters are always bound,
+        # Once defaults are applied, the same parameters are always bound,
         # and calls that differ only in values share one tree structure.
-        first = greet.bind("bob", loud=True)
-        second = greet.bind("eve", "yo")
+        first = greet.bind("bob", loud=True).apply_defaults_()
+        second = greet.bind("eve", "yo").apply_defaults_()
 
         assert pyt.tree_structure(first) == pyt.tree_structure(second)
 
         picked = pyt.tree_map(lambda x, y: (x, y), first, second)
         assert picked.arguments["name"] == ("bob", "eve")
         assert picked.arguments["loud"] == (True, False)
+
+    def test_bind_no_default(self, greet: Sign):
+        bound = greet.bind("bob")
+        assert bound.arguments == {"name": "bob"}
+
+        assert bound.apply_defaults_() is bound
+        assert bound.arguments == greet.apply("bob")
+
+    @pytest.mark.xfail(strict=True, reason="`__eq__` with a `dict` checks one key.")
+    def test_ne_dict(self, bound: BoundArgs):
+        assert bound != {"name": "bob", "greeting": "bye"}
+
+    @pytest.mark.xfail(strict=True, reason="`.tensors` has non-tensors, no nested.")
+    def test_tensors_nested(self, greet: Sign):
+        a, b = torch.ones(1), torch.ones(2)
+        bound = greet.bind("bob", "hey", a, extra=b)
+
+        assert [id(t) for t in bound.tensors] == [id(a), id(b)]
+
+    @pytest.mark.xfail(strict=True, reason="`.tensors` is cached before defaults.")
+    def test_tensors_apply_defaults(self):
+        x, w = torch.ones(2), torch.ones(2)
+        bound = Sign.from_callable(lambda x, w=w: x * w).bind(x)
+        assert len(bound.tensors) == 1
+
+        bound.apply_defaults_()
+        assert len(bound.tensors) == 2
 
 
 class TestParamKind:
