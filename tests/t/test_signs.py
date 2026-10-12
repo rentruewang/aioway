@@ -1,8 +1,10 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import inspect
+from collections import abc as cabc
 
 import pytest
+import torch
 from torch import nn
 
 from aioway.t import Param, ParamKind, Sign
@@ -51,6 +53,15 @@ class TestSign:
     @classmethod
     def greet(cls):
         return Sign.from_callable(_greet)
+
+    @pytest.fixture(params=[torch.sum, torch.add, torch.max])
+    def torch_func(self, request: pytest.FixtureRequest):
+        return request.param
+
+    def test_torch_functions(self, torch_func: cabc.Callable):
+        sign = Sign.from_callable(torch_func)
+        assert isinstance(sign, Sign)
+        assert isinstance(sign.to_inspect(), inspect.Signature)
 
     def test_hashable(self, add_i, add_f, add):
         # If it can be put into `set`, it is hashable.

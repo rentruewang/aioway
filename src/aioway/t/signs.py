@@ -9,9 +9,11 @@ import inspect
 import typing
 from collections import abc as cabc
 
-from torch import nn
+from torch import nn, overrides
 
 from aioway._utils import is_any_type_hint, is_nn_type
+
+from .guards import is_torch_function
 
 __all__ = ["Param", "ParamKind", "Sign"]
 
@@ -171,25 +173,27 @@ class ArgsAnnot(collections.UserDict[str, type]):
         return True
 
 
-@dcls.dataclass(frozen=True)
 class Sign:
     "The convenient wrapper for `inspect.Signature`."
 
-    signature: inspect.Signature
-    "The underlying signature."
+    def __init__(self, signature: inspect.Signature) -> None:
+        self._sign = signature
 
     def __str__(self) -> str:
-        return str(self.signature)
+        return str(self._sign)
 
     def __repr__(self) -> str:
-        return repr(self.signature)
+        return repr(self._sign)
+
+    def __hash__(self) -> int:
+        return hash(self._sign)
 
     def __eq__(self, other) -> bool:
         match other:
-            case Sign(signature=sign):
-                return self.signature == sign
+            case Sign():
+                return self._sign == other._sign
             case inspect.Signature():
-                return self.signature == other
+                return self._sign == other
             case _:
                 return NotImplemented
 
@@ -202,7 +206,7 @@ class Sign:
 
     @property
     def params(self) -> dict[str, Param]:
-        return {key: Param(param) for key, param in self.signature.parameters.items()}
+        return {key: Param(param) for key, param in self._sign.parameters.items()}
 
     @property
     def param_list(self) -> list[Param]:
@@ -211,7 +215,7 @@ class Sign:
 
     @property
     def return_annotation(self) -> type:
-        return self.signature.return_annotation
+        return self._sign.return_annotation
 
     @property
     def returns_any_type(self) -> bool:
@@ -237,7 +241,7 @@ class Sign:
             TypeError: if binding failed.
         """
 
-        return self.signature.bind(*args, **kwargs)
+        return self._sign.bind(*args, **kwargs)
 
     def apply(self, *args, **kwargs) -> dict[str, typing.Any]:
         "Apply the signature on the *args, **kwargs and get the argument dict."
@@ -251,11 +255,15 @@ class Sign:
     def drop_first(self) -> typing.Self:
         "Drop the `self` parameter."
         params = [param.parameter for param in self.param_list[1:]]
-        return type(self)(self.signature.replace(parameters=params))
+        return type(self)(self._sign.replace(parameters=params))
 
     @property
     def argc(self) -> int:
-        return len(self.signature.parameters)
+        return len(self._sign.parameters)
+
+    def to_inspect(self) -> inspect.Signature:
+        "Get the `inspect.Signature` representation."
+        return self._sign
 
     @classmethod
     def from_nn_forward(cls, module: nn.Module | type[nn.Module]) -> typing.Self:
@@ -275,6 +283,10 @@ class Sign:
     @classmethod
     def from_callable(cls, func: cabc.Callable) -> typing.Self:
         "Create the signature from a method."
+
+        # Torch builtins are not inspectable, so we need dummies.
+        if is_torch_function(func):
+            func = overrides.get_testing_overrides()[func]
 
         return cls(inspect.signature(func))
 
