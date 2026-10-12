@@ -2,6 +2,7 @@
 
 "The utilities for signatures."
 
+from key_value.aio.errors import KeyValueStoreError
 import collections
 import dataclasses as dcls
 import enum
@@ -295,8 +296,12 @@ class Sign:
         "Create the signature from a method."
 
         # Torch builtins are not inspectable, so we need dummies.
-        if is_torch_function(func):
-            func = overrides.get_testing_overrides()[func]
+        if (
+            True
+            and is_torch_function(func)
+            and func in (cpp_funcs := overrides.get_testing_overrides())
+        ):
+            func = cpp_funcs[func]
 
         if isinstance(func, nn.Module):
             return cls.from_nn_forward(func)
