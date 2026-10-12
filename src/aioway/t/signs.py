@@ -281,12 +281,25 @@ class Sign:
         return cls.from_callable(module.forward).drop_first()
 
     @classmethod
+    def from_nn_forward_untyped(cls, module: type[nn.Module]) -> Sign:
+        """
+        Parse the `nn.Module.forward` without `self` or type.
+
+        Caches the signature into `nn.Module` registry automatically.
+        """
+
+        return cls.from_nn_forward(module).strip_type()
+
+    @classmethod
     def from_callable(cls, func: cabc.Callable) -> typing.Self:
         "Create the signature from a method."
 
         # Torch builtins are not inspectable, so we need dummies.
         if is_torch_function(func):
             func = overrides.get_testing_overrides()[func]
+
+        if isinstance(func, nn.Module):
+            return cls.from_nn_forward(func)
 
         return cls(inspect.signature(func))
 
