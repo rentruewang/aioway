@@ -98,6 +98,14 @@ class Param:
         return self.parameter.annotation
 
     @property
+    def default_is_empty(self) -> bool:
+        return self.default is inspect.Parameter.empty
+
+    @property
+    def annotation_is_empty(self) -> bool:
+        return self.annotation is inspect.Parameter.empty
+
+    @property
     def is_positional_only(self) -> bool:
         return self.kind == ParamKind.POSITIONAL_ONLY
 
@@ -252,10 +260,7 @@ class Sign:
     def apply(self, *args, **kwargs) -> dict[str, typing.Any]:
         "Apply the signature on the *args, **kwargs and get the argument dict."
 
-        bound = self.bind(*args, **kwargs)
-        arguments = bound.arguments
-        assert isinstance(arguments, dict), arguments
-        return arguments
+        return self.bind(*args, **kwargs).arguments
 
     def drop_first(self) -> typing.Self:
         "Drop the `self` parameter."
