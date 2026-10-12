@@ -2,7 +2,6 @@
 
 "The utilities for signatures."
 
-from key_value.aio.errors import KeyValueStoreError
 import collections
 import dataclasses as dcls
 import enum
@@ -16,7 +15,7 @@ from aioway._utils import is_any_type_hint, is_nn_type
 
 from .guards import is_torch_function
 
-__all__ = ["Param", "ParamKind", "Sign"]
+__all__ = ["Param", "ParamKind", "Sign", "BoundArgs"]
 
 
 class ParamKind(enum.Enum):
@@ -64,17 +63,20 @@ class Param:
     parameter: inspect.Parameter
     "The underlying parameter."
 
+    def __str__(self) -> str:
+        return str(self.parameter)
+
     def __repr__(self) -> str:
         return repr(self.parameter)
 
     def __eq__(self, other) -> bool:
-        match other:
-            case Param(parameter=param):
-                return self.parameter == param
-            case inspect.Parameter():
-                return self.parameter == other
-            case _:
-                return NotImplemented
+        if isinstance(other, Param):
+            return self.parameter == other.parameter
+
+        if isinstance(other, inspect.Parameter):
+            return self.parameter == other
+
+        return NotImplemented
 
     @property
     def name(self) -> str:
@@ -234,7 +236,7 @@ class Sign:
 
         return type(self)(inspect.Signature(parameters=params))
 
-    def bind(self, *args, **kwargs) -> inspect.BoundArguments:
+    def bind(self, *args, **kwargs) -> BoundArgs:
         """
         Bind the arguments and return a `BoundArguments`.
 
@@ -242,13 +244,12 @@ class Sign:
             TypeError: if binding failed.
         """
 
-        return self._sign.bind(*args, **kwargs)
+        return BoundArgs.from_signs(self, *args, **kwargs)
 
     def apply(self, *args, **kwargs) -> dict[str, typing.Any]:
         "Apply the signature on the *args, **kwargs and get the argument dict."
 
         bound = self.bind(*args, **kwargs)
-        bound.apply_defaults()
         arguments = bound.arguments
         assert isinstance(arguments, dict), arguments
         return arguments
@@ -321,3 +322,67 @@ class Sign:
                 ]
             )
         )
+
+
+class BoundArgs:
+    """
+    Our version of `inspect.BoundArguments`.
+    """
+
+    def __init__(self, *, bounded: inspect.BoundArguments) -> None:
+        self._bounded = bounded
+
+    def __repr__(self) -> str:
+        return repr(self._bounded)
+
+    def __str__(self) -> str:
+        return str(self._bounded)
+
+    def __eq__(self, other) -> bool:
+        if isinstance(other, BoundArgs):
+            return self._bounded == other._bounded
+
+        if isinstance(other, inspect.BoundArguments):
+            return self._bounded == other
+
+        if isinstance(other, dict):
+            for key, val in other.items():
+                if not isinstance(key, str):
+                    return False
+
+                return val == self.arguments[key]
+
+        return NotImplemented
+
+    def __hash__(self) -> int:
+        return hash(self._bounded)
+
+    def __len__(self) -> int:
+        return len(self.arguments)
+
+    def __getitem__(self, key: str) -> int:
+        return self.arguments[key]
+
+    def __iter__(self) -> cabc.Iterator[str]:
+        return iter(self.arguments)
+
+    @property
+    def arguments(self) -> dict[str, typing.Any]:
+        return self._bounded.arguments
+
+    @property
+    def args(self) -> tuple:
+        return self._bounded.args
+
+    @property
+    def kwargs(self) -> dict[str, typing.Any]:
+        return self._bounded.kwargs
+
+    def to_inspect(self) -> inspect.BoundArguments:
+        return self._bounded
+
+    @classmethod
+    def from_signs(cls, sign: Sign, *args, **kwargs) -> typing.Self:
+        bounded = sign.to_inspect().bind(*args, **kwargs)
+        bounded.apply_defaults()
+        return cls(bounded=bounded)
