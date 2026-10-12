@@ -8,10 +8,10 @@ from collections import abc as cabc
 
 from torch.utils import _pytree as pyt
 
-__all__ = ["PyTree", "PyTreeObj"]
+__all__ = ["PyTree", "PyTreeObj", "PyTreeFlatten", "PyTreeFlattenWithKey"]
 
-type _Flatten = tuple[list, typing.Any]
-type _FlattenWithKey = tuple[list[tuple[pyt.KeyEntry, typing.Any]], typing.Any]
+type PyTreeFlatten = tuple[list, typing.Any]
+type PyTreeFlattenWithKey = tuple[list[tuple[pyt.KeyEntry, typing.Any]], typing.Any]
 
 
 class PyTreeKeyFunc(typing.Protocol):
@@ -37,11 +37,12 @@ class PyTree(abc.ABC):
         )
 
     @abc.abstractmethod
-    def _tree_flatten(self) -> _Flatten:
+    def _tree_flatten(self) -> PyTreeFlatten:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def _tree_flatten_with_keys(self) -> _FlattenWithKey:
+    def _tree_flatten_with_keys(self) -> PyTreeFlattenWithKey:
+        "Flatten the given tree with list."
         raise NotImplementedError
 
     @classmethod
@@ -62,11 +63,11 @@ class PyTreeObj(PyTree, abc.ABC):
         cls._PY_TREE_KEY = pytree_key
 
     @typing.override
-    def _tree_flatten(self) -> _Flatten:
+    def _tree_flatten(self) -> PyTreeFlatten:
         return list(self._tree_children().values()), self._tree_context
 
     @typing.override
-    def _tree_flatten_with_keys(self) -> _FlattenWithKey:
+    def _tree_flatten_with_keys(self) -> PyTreeFlattenWithKey:
         values = [(self._tree_key(k), v) for k, v in self._tree_children().items()]
         return values, self._tree_context
 
