@@ -6,7 +6,7 @@ from collections import abc as cabc
 
 from torch import nn
 
-from aioway._utils import Sign
+from aioway.t import Sign
 
 __all__ = ["MatchFunc", "Matcher"]
 

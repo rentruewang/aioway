@@ -5,15 +5,20 @@
 import collections
 import dataclasses as dcls
 import enum
+import functools
 import inspect
 import typing
 from collections import abc as cabc
 
-from torch import nn
+from torch import nn, overrides
+from torch.utils import _pytree as pyt
 
-from .typing import is_any_type_hint, is_nn_type
+from aioway._utils import is_any_type_hint, is_nn_type, is_seq_of
+from aioway.t.structs import TList
 
-__all__ = ["Param", "ParamKind", "Sign"]
+from .guards import is_torch_function
+
+__all__ = ["Param", "ParamKind", "Sign", "BoundArgs"]
 
 
 class ParamKind(enum.Enum):
@@ -26,9 +31,8 @@ class ParamKind(enum.Enum):
     VAR_KEYWORD = enum.auto()
 
     def __eq__(self, other) -> bool:
-        # Use the typical enum implementation.
-        if (result := super().__eq__(other)) is not NotImplemented:
-            return result
+        if isinstance(other, ParamKind):
+            return self is other
 
         # Works with comparing with other `inspect.Parameter` kinds.
         if type(kind := self.to_inspect()) == type(other):
@@ -62,17 +66,20 @@ class Param:
     parameter: inspect.Parameter
     "The underlying parameter."
 
+    def __str__(self) -> str:
+        return str(self.parameter)
+
     def __repr__(self) -> str:
         return repr(self.parameter)
 
     def __eq__(self, other) -> bool:
-        match other:
-            case Param(parameter=param):
-                return self.parameter == param
-            case inspect.Parameter():
-                return self.parameter == other
-            case _:
-                return NotImplemented
+        if isinstance(other, Param):
+            return self.parameter == other.parameter
+
+        if isinstance(other, inspect.Parameter):
+            return self.parameter == other
+
+        return NotImplemented
 
     @property
     def name(self) -> str:
@@ -89,6 +96,14 @@ class Param:
     @property
     def annotation(self) -> type:
         return self.parameter.annotation
+
+    @property
+    def default_is_empty(self) -> bool:
+        return self.default is inspect.Parameter.empty
+
+    @property
+    def annotation_is_empty(self) -> bool:
+        return self.annotation is inspect.Parameter.empty
 
     @property
     def is_positional_only(self) -> bool:
@@ -172,22 +187,27 @@ class ArgsAnnot(collections.UserDict[str, type]):
         return True
 
 
-@dcls.dataclass(frozen=True)
 class Sign:
     "The convenient wrapper for `inspect.Signature`."
 
-    signature: inspect.Signature
-    "The underlying signature."
+    def __init__(self, signature: inspect.Signature) -> None:
+        self._sign = signature
+
+    def __str__(self) -> str:
+        return str(self._sign)
 
     def __repr__(self) -> str:
-        return repr(self.signature)
+        return repr(self._sign)
+
+    def __hash__(self) -> int:
+        return hash(self._sign)
 
     def __eq__(self, other) -> bool:
         match other:
-            case Sign(signature=sign):
-                return self.signature == sign
+            case Sign():
+                return self._sign == other._sign
             case inspect.Signature():
-                return self.signature == other
+                return self._sign == other
             case _:
                 return NotImplemented
 
@@ -200,7 +220,7 @@ class Sign:
 
     @property
     def params(self) -> dict[str, Param]:
-        return {key: Param(param) for key, param in self.signature.parameters.items()}
+        return {key: Param(param) for key, param in self._sign.parameters.items()}
 
     @property
     def param_list(self) -> list[Param]:
@@ -209,7 +229,7 @@ class Sign:
 
     @property
     def return_annotation(self) -> type:
-        return self.signature.return_annotation
+        return self._sign.return_annotation
 
     @property
     def returns_any_type(self) -> bool:
@@ -227,7 +247,7 @@ class Sign:
 
         return type(self)(inspect.Signature(parameters=params))
 
-    def bind(self, *args, **kwargs) -> inspect.BoundArguments:
+    def bind(self, *args, **kwargs) -> BoundArgs:
         """
         Bind the arguments and return a `BoundArguments`.
 
@@ -235,25 +255,25 @@ class Sign:
             TypeError: if binding failed.
         """
 
-        return self.signature.bind(*args, **kwargs)
+        return BoundArgs.from_signs(self, *args, **kwargs)
 
     def apply(self, *args, **kwargs) -> dict[str, typing.Any]:
         "Apply the signature on the *args, **kwargs and get the argument dict."
 
-        bound = self.bind(*args, **kwargs)
-        bound.apply_defaults()
-        arguments = bound.arguments
-        assert isinstance(arguments, dict), arguments
-        return arguments
+        return self.bind(*args, **kwargs).arguments
 
     def drop_first(self) -> typing.Self:
         "Drop the `self` parameter."
         params = [param.parameter for param in self.param_list[1:]]
-        return type(self)(self.signature.replace(parameters=params))
+        return type(self)(self._sign.replace(parameters=params))
 
     @property
     def argc(self) -> int:
-        return len(self.signature.parameters)
+        return len(self._sign.parameters)
+
+    def to_inspect(self) -> inspect.Signature:
+        "Get the `inspect.Signature` representation."
+        return self._sign
 
     @classmethod
     def from_nn_forward(cls, module: nn.Module | type[nn.Module]) -> typing.Self:
@@ -271,8 +291,30 @@ class Sign:
         return cls.from_callable(module.forward).drop_first()
 
     @classmethod
+    def from_nn_forward_untyped(cls, module: type[nn.Module]) -> Sign:
+        """
+        Parse the `nn.Module.forward` without `self` or type.
+
+        Caches the signature into `nn.Module` registry automatically.
+        """
+
+        return cls.from_nn_forward(module).strip_type()
+
+    @classmethod
     def from_callable(cls, func: cabc.Callable) -> typing.Self:
         "Create the signature from a method."
+
+        # Torch builtins are not inspectable, so we need dummies.
+        if (
+            True
+            and is_torch_function(func)
+            and func in (cpp_funcs := overrides.get_testing_overrides())
+        ):
+            func = cpp_funcs[func]
+
+        if isinstance(func, nn.Module):
+            return cls.from_nn_forward(func)
+
         return cls(inspect.signature(func))
 
     @classmethod
@@ -288,3 +330,118 @@ class Sign:
                 ]
             )
         )
+
+
+class BoundArgs:
+    """
+    Our version of `inspect.BoundArguments`.
+    """
+
+    def __init__(self, *, bounded: inspect.BoundArguments) -> None:
+        self._bounded = bounded
+
+    def __repr__(self) -> str:
+        return repr(self._bounded)
+
+    def __str__(self) -> str:
+        return str(self._bounded)
+
+    def __eq__(self, other) -> bool:
+        if isinstance(other, BoundArgs):
+            return self._bounded == other._bounded
+
+        if isinstance(other, inspect.BoundArguments):
+            return self._bounded == other
+
+        if isinstance(other, dict):
+            for key, val in other.items():
+                if not isinstance(key, str):
+                    return False
+
+                return val == self.arguments[key]
+
+        return NotImplemented
+
+    def __hash__(self) -> int:
+        return hash(self._bounded)
+
+    def __len__(self) -> int:
+        return len(self.arguments)
+
+    def __getitem__(self, key: str) -> int:
+        return self.arguments[key]
+
+    def __iter__(self) -> cabc.Iterator[str]:
+        return iter(self.arguments)
+
+    @property
+    def sign(self) -> Sign:
+        return Sign(signature=self._bounded.signature)
+
+    @property
+    def arguments(self) -> dict[str, typing.Any]:
+        return self._bounded.arguments
+
+    @property
+    def args(self) -> tuple:
+        return self._bounded.args
+
+    @property
+    def kwargs(self) -> dict[str, typing.Any]:
+        return self._bounded.kwargs
+
+    @property
+    def tensors(self) -> TList:
+        return self._tensor_list
+
+    @functools.cached_property
+    def _tensor_list(self) -> TList:
+        return TList.from_iterable(self.arguments.values())
+
+    def to_inspect(self) -> inspect.BoundArguments:
+        return self._bounded
+
+    @property
+    def _pyt_context(self):
+        return self._bounded.signature, tuple(self.arguments)
+
+    def flatten_tree(self):
+        "Flatten into the argument values, and the context to rebuild with."
+
+        return list(self.arguments.values()), self._pyt_context
+
+    def flatten_tree_with_keys(self):
+        "Like `flatten_tree`, but each value is keyed by its parameter name."
+
+        with_keys = [(pyt.MappingKey(key), val) for key, val in self.arguments.items()]
+        return with_keys, self._pyt_context
+
+    @classmethod
+    def unflatten_tree(cls, values: cabc.Iterable[typing.Any], context) -> typing.Self:
+        "Rebuild from the values and the context from `flatten_tree`."
+
+        values = list(values)
+        signature, names = context
+
+        assert isinstance(signature, inspect.Signature)
+        assert len(names) == len(values)
+        assert is_seq_of(str)(names), names
+
+        arguments = {key: val for key, val in zip(names, values)}
+        return cls(bounded=inspect.BoundArguments(signature, arguments))
+
+    @classmethod
+    def from_signs(cls, sign: Sign, *args, **kwargs) -> typing.Self:
+        bounded = sign.to_inspect().bind(*args, **kwargs)
+        bounded.apply_defaults()
+        return cls(bounded=bounded)
+
+
+# Register as pytree node ====
+
+pyt.register_pytree_node(
+    BoundArgs,
+    flatten_fn=BoundArgs.flatten_tree,
+    unflatten_fn=BoundArgs.unflatten_tree,
+    flatten_with_keys_fn=BoundArgs.flatten_tree_with_keys,
+)
