@@ -2,6 +2,7 @@
 
 "The utilities for signatures."
 
+from aioway._utils import is_seq_of
 import collections
 import dataclasses as dcls
 import enum
@@ -11,7 +12,7 @@ import typing
 from collections import abc as cabc
 
 from torch import nn, overrides
-
+from torch.utils import _pytree as pyt
 from aioway._utils import is_any_type_hint, is_nn_type
 from aioway.t.structs import TList
 
@@ -369,6 +370,10 @@ class BoundArgs:
         return iter(self.arguments)
 
     @property
+    def sign(self) -> Sign:
+        return Sign(signature=self._bounded.signature)
+
+    @property
     def arguments(self) -> dict[str, typing.Any]:
         return self._bounded.arguments
 
@@ -391,8 +396,47 @@ class BoundArgs:
     def to_inspect(self) -> inspect.BoundArguments:
         return self._bounded
 
+    @property
+    def _pyt_context(self):
+        return self._bounded.signature, tuple(self.arguments)
+
+    def flatten_tree(self):
+        "Flatten into the argument values, and the context to rebuild with."
+
+        return list(self.arguments.values()), self._pyt_context
+
+    def flatten_tree_with_keys(self):
+        "Like `flatten_tree`, but each value is keyed by its parameter name."
+
+        with_keys = [(pyt.MappingKey(key), val) for key, val in self.arguments.items()]
+        return with_keys, self._pyt_context
+
+    @classmethod
+    def unflatten_tree(cls, values: cabc.Iterable[typing.Any], context) -> typing.Self:
+        "Rebuild from the values and the context from `flatten_tree`."
+
+        values = list(values)
+        signature, names = context
+
+        assert isinstance(signature, inspect.Signature)
+        assert len(names) == len(values)
+        assert is_seq_of(str)(names), names
+
+        arguments = {key: val for key, val in zip(names, values)}
+        return cls(bounded=inspect.BoundArguments(signature, arguments))
+
     @classmethod
     def from_signs(cls, sign: Sign, *args, **kwargs) -> typing.Self:
         bounded = sign.to_inspect().bind(*args, **kwargs)
         bounded.apply_defaults()
         return cls(bounded=bounded)
+
+
+# Register as pytree node ====
+
+pyt.register_pytree_node(
+    BoundArgs,
+    flatten_fn=BoundArgs.flatten_tree,
+    unflatten_fn=BoundArgs.unflatten_tree,
+    flatten_with_keys_fn=BoundArgs.flatten_tree_with_keys,
+)
