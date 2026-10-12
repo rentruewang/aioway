@@ -260,7 +260,7 @@ class TestBoundArgs:
         assert picked.arguments["name"] == ("bob", "eve")
         assert picked.arguments["loud"] == (True, False)
 
-    def test_bind_leaves_defaults_out(self, greet: Sign):
+    def test_bind_no_default(self, greet: Sign):
         bound = greet.bind("bob")
         assert bound.arguments == {"name": "bob"}
 
@@ -279,7 +279,7 @@ class TestBoundArgs:
         assert [id(t) for t in bound.tensors] == [id(a), id(b)]
 
     @pytest.mark.xfail(strict=True, reason="`.tensors` is cached before defaults.")
-    def test_tensors_after_apply_defaults(self):
+    def test_tensors_apply_defaults(self):
         x, w = torch.ones(2), torch.ones(2)
         bound = Sign.from_callable(lambda x, w=w: x * w).bind(x)
         assert len(bound.tensors) == 1
