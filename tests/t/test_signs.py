@@ -6,8 +6,9 @@ from collections import abc as cabc
 import pytest
 import torch
 from torch import nn
+from torch.utils import _pytree as pyt
 
-from aioway.t import Param, ParamKind, Sign
+from aioway.t import BoundArgs, Param, ParamKind, Sign
 
 
 def _add_i(a: int, b: int):
@@ -145,6 +146,133 @@ class TestSign:
         assert args.is_var_positional
         assert loud.is_keyword_only
         assert kwargs.is_var_keyword
+
+
+class TestBoundArgs:
+    @pytest.fixture(scope="class")
+    @classmethod
+    def add(cls):
+        return Sign.from_callable(_add)
+
+    @pytest.fixture(scope="class")
+    @classmethod
+    def greet(cls):
+        return Sign.from_callable(_greet)
+
+    @pytest.fixture(scope="class")
+    @classmethod
+    def bound(cls, greet: Sign):
+        return greet.bind("bob", "hey", 1, 2, loud=True, extra=3)
+
+    def test_bind(self, bound: BoundArgs):
+        assert isinstance(bound, BoundArgs)
+        assert isinstance(bound.to_inspect(), inspect.BoundArguments)
+        assert bound.arguments == {
+            "name": "bob",
+            "greeting": "hey",
+            "args": (1, 2),
+            "loud": True,
+            "kwargs": {"extra": 3},
+        }
+
+    def test_bind_applies_defaults(self, greet: Sign):
+        bound = greet.bind("bob")
+
+        assert bound.arguments == {
+            "name": "bob",
+            "greeting": "hi",
+            "args": (),
+            "loud": False,
+            "kwargs": {},
+        }
+        assert greet.apply("bob") == bound.arguments
+
+    def test_args_kwargs(self, bound: BoundArgs):
+        assert bound.args == ("bob", "hey", 1, 2)
+        assert bound.kwargs == {"loud": True, "extra": 3}
+        assert _greet(*bound.args, **bound.kwargs) == "hey bob"
+
+    def test_sign(self, greet: Sign, bound: BoundArgs):
+        assert isinstance(bound.sign, Sign)
+        assert bound.sign == greet
+        assert bound.sign.to_inspect() is greet.to_inspect()
+
+        # Binding the same call through `.sign` gives back the same `BoundArgs`.
+        assert bound.sign.bind(*bound.args, **bound.kwargs) == bound
+
+    def test_mapping(self, bound: BoundArgs):
+        assert len(bound) == 5
+        assert list(bound) == ["name", "greeting", "args", "loud", "kwargs"]
+        assert bound["name"] == "bob"
+        assert {name: bound[name] for name in bound} == bound.arguments
+
+    def test_eq(self, greet: Sign, bound: BoundArgs):
+        assert bound == greet.bind("bob", "hey", 1, 2, loud=True, extra=3)
+        assert bound == bound.to_inspect()
+        assert bound.to_inspect() == bound
+        assert bound == bound.arguments
+        assert bound != greet.bind("bob")
+        assert bound != "bob"
+
+    @pytest.mark.xfail(
+        strict=True, reason="`__eq__` with a `dict` returns after its first key."
+    )
+    def test_eq_dict_checks_every_key(self, bound: BoundArgs):
+        assert bound != {"name": "bob", "greeting": "bye"}
+
+    def test_repr_str(self, bound: BoundArgs):
+        assert repr(bound) == repr(bound.to_inspect())
+        assert str(bound) == str(bound.to_inspect())
+
+    def test_tensors(self, add: Sign):
+        a, b = torch.ones(2), torch.zeros(2)
+        bound = add.bind(a, b)
+
+        assert [id(t) for t in bound.tensors] == [id(a), id(b)]
+        assert bound.tensors is bound.tensors
+
+    def test_tree_flatten(self, greet: Sign, bound: BoundArgs):
+        leaves, spec = pyt.tree_flatten(bound)
+
+        # The `*args` tuple and the `**kwargs` dict are flattened as well.
+        assert leaves == ["bob", "hey", 1, 2, True, 3]
+
+        rebuilt = pyt.tree_unflatten(leaves, spec)
+        assert isinstance(rebuilt, BoundArgs)
+        assert rebuilt == bound
+        assert rebuilt.sign == greet
+
+    def test_tree_flatten_with_path(self, bound: BoundArgs):
+        flat, _ = pyt.tree_flatten_with_path(bound)
+
+        assert [pyt.keystr(path) for path, _ in flat] == [
+            "['name']",
+            "['greeting']",
+            "['args'][0]",
+            "['args'][1]",
+            "['loud']",
+            "['kwargs']['extra']",
+        ]
+
+    def test_tree_map(self, add: Sign):
+        bound = add.bind(torch.ones(2), b=torch.ones(2))
+        doubled = pyt.tree_map(lambda t: t * 2, bound)
+
+        assert isinstance(doubled, BoundArgs)
+        assert doubled.sign == add
+        assert torch.equal(_add(*doubled.args, **doubled.kwargs), torch.full([2], 4.0))
+
+    def test_tree_map_many(self, greet: Sign):
+        # Defaults are applied on `bind`, so the same parameters are always bound,
+        # and calls that differ only in values share one tree structure.
+        first = greet.bind("bob", loud=True)
+        second = greet.bind("eve", "yo")
+
+        assert pyt.tree_structure(first) == pyt.tree_structure(second)
+
+        picked = pyt.tree_map(lambda x, y: (x, y), first, second)
+        assert picked.arguments["name"] == ("bob", "eve")
+        assert picked.arguments["loud"] == (True, False)
 
 
 class TestParamKind:

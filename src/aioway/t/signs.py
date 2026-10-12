@@ -2,7 +2,6 @@
 
 "The utilities for signatures."
 
-from aioway._utils import is_seq_of
 import collections
 import dataclasses as dcls
 import enum
@@ -13,7 +12,8 @@ from collections import abc as cabc
 
 from torch import nn, overrides
 from torch.utils import _pytree as pyt
-from aioway._utils import is_any_type_hint, is_nn_type
+
+from aioway._utils import is_any_type_hint, is_nn_type, is_seq_of
 from aioway.t.structs import TList
 
 from .guards import is_torch_function
