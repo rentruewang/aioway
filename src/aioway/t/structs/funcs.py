@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"Extension of `pyt` from `torch`."
+"Utility functions."
 
 import dataclasses as dcls
 import typing

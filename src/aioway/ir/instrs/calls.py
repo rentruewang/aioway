@@ -6,6 +6,7 @@ import typing
 from collections import abc as cabc
 
 from torch import nn
+from torch.utils import _pytree as pyt
 
 from aioway.t import (
     BoundArgs,
@@ -21,7 +22,7 @@ from .instrs import Instr
 __all__ = ["FuncCall", "ModuleCall"]
 
 
-class FuncCall[F: cabc.Callable](Instr):
+class FuncCall[F: cabc.Callable](Instr, pytree_key=pyt.GetAttrKey):
     """
     An instruction representing a function call.
     """
@@ -103,7 +104,7 @@ class FuncCall[F: cabc.Callable](Instr):
         return self.result is not NotImplemented
 
     @typing.override
-    def _tree_children(self) -> dict[str, typing.Any]:
+    def _tree_dict(self) -> dict[str, typing.Any]:
         return {"bounded": self.bounded, "result": self.result}
 
     @property
@@ -123,7 +124,7 @@ class FuncCall[F: cabc.Callable](Instr):
         )
 
 
-class ModuleCall(FuncCall[nn.Module]):
+class ModuleCall(FuncCall[nn.Module], pytree_key=pyt.GetAttrKey):
     """
     The `nn.Module` version of `FCall` instruction.
     Handles the hierarchy of `nn.Module`s.

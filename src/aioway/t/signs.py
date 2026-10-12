@@ -17,6 +17,7 @@ from aioway._utils import is_any_type_hint, is_nn_type, is_seq_of
 from aioway.t.structs import TList
 
 from .guards import is_torch_function
+from .structs import PyTreeDict
 
 __all__ = ["Param", "ParamKind", "Sign", "BoundArgs"]
 
@@ -332,9 +333,11 @@ class Sign:
         )
 
 
-class BoundArgs:
+class BoundArgs(PyTreeDict, pytree_key=pyt.MappingKey):
     """
     Our version of `inspect.BoundArguments`.
+
+    The `pyt` children are the bound arguments, keyed by parameter name.
     """
 
     def __init__(self, *, bounded: inspect.BoundArguments) -> None:
@@ -406,25 +409,19 @@ class BoundArgs:
         return self._bounded
 
     @property
-    def _pyt_context(self):
+    @typing.override
+    def _tree_context(self) -> tuple[inspect.Signature, tuple[str, ...]]:
+        "The signature, and the names of the bound parameters."
         return self._bounded.signature, tuple(self.arguments)
 
-    def flatten_tree(self):
-        "Flatten into the argument values, and the context to rebuild with."
-
-        return list(self.arguments.values()), self._pyt_context
-
-    def flatten_tree_with_keys(self):
-        "Like `flatten_tree`, but each value is keyed by its parameter name."
-
-        with_keys = [(pyt.MappingKey(key), val) for key, val in self.arguments.items()]
-        return with_keys, self._pyt_context
+    @typing.override
+    def _tree_dict(self) -> dict[str, typing.Any]:
+        return self.arguments
 
     @classmethod
-    def unflatten_tree(cls, values: cabc.Iterable[typing.Any], context) -> typing.Self:
-        "Rebuild from the values and the context from `flatten_tree`."
-
-        values = list(values)
+    @typing.override
+    def _tree_unflatten(cls, children: cabc.Iterable, context) -> typing.Self:
+        values = list(children)
         signature, names = context
 
         assert isinstance(signature, inspect.Signature)
@@ -438,13 +435,3 @@ class BoundArgs:
     def from_signs(cls, sign: Sign, *args, **kwargs) -> typing.Self:
         bounded = sign.to_inspect().bind(*args, **kwargs)
         return cls(bounded=bounded)
-
-
-# Register as pytree node ====
-
-pyt.register_pytree_node(
-    BoundArgs,
-    flatten_fn=BoundArgs.flatten_tree,
-    unflatten_fn=BoundArgs.unflatten_tree,
-    flatten_with_keys_fn=BoundArgs.flatten_tree_with_keys,
-)

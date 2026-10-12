@@ -2,7 +2,6 @@
 
 "A utility for a list of tensor."
 
-import collections
 import copy
 import functools
 import typing
@@ -15,27 +14,24 @@ from aioway._utils import is_seq_of, is_set_of
 from aioway.t.attrs import parse_attr
 from aioway.t.overrides import has_fake
 
+from .trees import PyTree, PyTreeFlatten, PyTreeFlattenWithKey
+
 if typing.TYPE_CHECKING:
     from aioway.t import Attr, Device, DType, Layout, Shape
 
 __all__ = ["TList"]
 
 
-class TListKey(int):
-    "The custom key class to decompose the"
-
-    def __repr__(self) -> str:
-        return f"{type(self).__name__}({super().__repr__()})"
-
-
 @typing.final
-class TList:
+class TList(PyTree):
     """
     This is an immutable list of tensors, supporting fast lookups.
     It deduplicates the tensors it received.
     The list is stable (insertion order = getitem order).
 
-    It has a private constructor.
+    Note: this relies on `dict` values being ordered.
+
+    Prefer classmethods over its constructor.
 
     When doing `==` comparison, if the RHS is a `Set` the order doesn't matter,
     but if it's a `Sequence` or `TList` the order does matter.
@@ -44,7 +40,7 @@ class TList:
     def __init__(
         self,
         *,
-        indexed: collections.OrderedDict[int, torch.Tensor],
+        indexed: dict[int, torch.Tensor],
         tensors: tuple[torch.Tensor, ...],
     ) -> None:
 
@@ -96,9 +92,7 @@ class TList:
 
     def __sub__(self, other: typing.Self) -> typing.Self:
         return self.from_indexed_tensors(
-            collections.OrderedDict(
-                (k, self._indexed[k]) for k in self.keys() if k not in other.keys()
-            )
+            {k: self._indexed[k] for k in self.keys() if k not in other.keys()}
         )
 
     def keys(self) -> cabc.KeysView[int]:
@@ -169,28 +163,33 @@ class TList:
     @classmethod
     def from_iterable(cls, tensors: cabc.Iterable[torch.Tensor], /) -> typing.Self:
         "Convert from an iterable of tensors."
-        indexed = collections.OrderedDict((id(t), t) for t in tensors)
+        indexed = {id(t): t for t in tensors}
         return cls.from_indexed_tensors(indexed=indexed)
 
     @classmethod
-    def from_indexed_tensors(
-        cls, indexed: collections.OrderedDict[int, torch.Tensor]
-    ) -> typing.Self:
+    def from_indexed_tensors(cls, indexed: dict[int, torch.Tensor]) -> typing.Self:
         tensors = tuple(indexed.values())
         return cls(indexed=indexed, tensors=tensors)
 
-    def flatten_tree(self: TList) -> tuple:
-        return self._tensors, None
+    def _tree_flatten(self) -> PyTreeFlatten:
+        return list(self._tensors), None
 
-    def flatten_tree_with_keys(self: TList) -> tuple:
-        return [(TListKey(i), t) for i, t in enumerate(self._tensors)], None
+    def _tree_flatten_with_keys(self) -> PyTreeFlattenWithKey:
+        with_path = [(_seq_key(i), t) for i, t in enumerate(self._tensors)]
+        return with_path, None
 
-    def unflatten_tree(self: cabc.Iterable[torch.Tensor], _: None):
-        return TList.from_iterable(self)
+    @classmethod
+    def _tree_unflatten(cls, children: cabc.Iterable, context) -> typing.Self:
+        assert context is None
+        return TList.from_iterable(children)
 
     @classmethod
     def empty(cls) -> typing.Self:
-        return cls.from_indexed_tensors(collections.OrderedDict())
+        return cls.from_indexed_tensors({})
+
+
+def _seq_key(idx: int) -> pyt.KeyEntry:
+    return typing.cast(typing.Any, pyt.SequenceKey)(idx)
 
 
 # Utility functions. ====
@@ -204,14 +203,3 @@ def _get_id(tensor: torch.Tensor | int, /) -> int:
             return tensor
 
     raise TypeError(type(tensor))
-
-
-# Register for pyt. ====
-
-
-pyt.register_pytree_node(
-    TList,
-    flatten_fn=TList.flatten_tree,
-    unflatten_fn=TList.unflatten_tree,
-    flatten_with_keys_fn=TList.flatten_tree_with_keys,
-)

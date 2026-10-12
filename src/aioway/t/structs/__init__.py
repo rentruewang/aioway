@@ -2,5 +2,6 @@
 
 "Structures of tensors."
 
+from .funcs import *
 from .lists import *
-from .nested import *
+from .trees import *
