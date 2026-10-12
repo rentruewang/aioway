@@ -10,7 +10,7 @@ from collections import abc as cabc
 from torch.utils import _pytree as pyt
 
 from aioway._utils import AnyDict, any_dict, find_common_base, is_list_of
-from aioway.t import TList
+from aioway.t import PyTreeMixin, TList
 
 __all__ = ["Instr", "InstrList"]
 
@@ -18,18 +18,8 @@ __all__ = ["Instr", "InstrList"]
 # The base instruction class ====
 
 
-class Instr(abc.ABC):
+class Instr(PyTreeMixin, abc.ABC):
     "The instruction base class."
-
-    def __init_subclass__(cls, **kwargs) -> None:
-        super().__init_subclass__(**kwargs)
-
-        pyt.register_pytree_node(
-            cls,
-            flatten_fn=cls._tree_flatten,
-            unflatten_fn=cls._tree_unflatten,
-            flatten_with_keys_fn=cls._tree_flatten_with_keys,
-        )
 
     def tree_map(self, func: cabc.Callable):
         """
@@ -63,30 +53,6 @@ class Instr(abc.ABC):
     def _outputs(self) -> TList:
         "The list of tensors in the outputs."
 
-        raise NotImplementedError
-
-    def _tree_flatten(self):
-        return list(self._tree_children().values()), self._tree_context
-
-    def _tree_flatten_with_keys(self):
-        values = [(pyt.GetAttrKey(k), v) for k, v in self._tree_children().items()]
-        return values, self._tree_context
-
-    @abc.abstractmethod
-    def _tree_children(self) -> dict[str, typing.Any]:
-        "The named children pytree should descend into, in a fixed order."
-        raise NotImplementedError
-
-    @property
-    @abc.abstractmethod
-    def _tree_context(self) -> typing.Any:
-        "Everything else needed to rebuild the instruction."
-        raise NotImplementedError
-
-    @classmethod
-    @abc.abstractmethod
-    def _tree_unflatten(cls, children: cabc.Iterable, context) -> typing.Self:
-        "Rebuild from the children (in `_tree_children` order) and the context."
         raise NotImplementedError
 
 

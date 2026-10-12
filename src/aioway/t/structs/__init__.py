@@ -3,4 +3,4 @@
 "Structures of tensors."
 
 from .lists import *
-from .nested import *
+from .trees import *
