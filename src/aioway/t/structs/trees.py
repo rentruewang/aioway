@@ -21,6 +21,9 @@ class PyTreeKeyFunc(typing.Protocol):
 class PyTree(abc.ABC):
     """
     The mixin that enables the types to be compatible with `pytree` of `torch`.
+
+    Using this is preferred because it's type safe,
+    since implementing this should work with all pytree operations.
     """
 
     def __init_subclass__(cls) -> None:
