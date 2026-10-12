@@ -106,6 +106,7 @@ class FuncCall[F: cabc.Callable](Instr):
     def _tree_children(self) -> dict[str, typing.Any]:
         return {"bounded": self.bounded, "result": self.result}
 
+    @property
     @typing.override
     def _tree_context(self) -> typing.Any:
         return self.func
@@ -148,6 +149,7 @@ class ModuleCall(FuncCall[nn.Module]):
         "The parent modules that calls this current thunk. It's a stack."
         return self._parents
 
+    @property
     @typing.override
     def _tree_context(self) -> typing.Any:
         return self.func, self.parents

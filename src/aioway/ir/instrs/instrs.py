@@ -66,17 +66,18 @@ class Instr(abc.ABC):
         raise NotImplementedError
 
     def _tree_flatten(self):
-        return list(self._tree_children().values()), self._tree_context()
+        return list(self._tree_children().values()), self._tree_context
 
     def _tree_flatten_with_keys(self):
         values = [(pyt.GetAttrKey(k), v) for k, v in self._tree_children().items()]
-        return values, self._tree_context()
+        return values, self._tree_context
 
     @abc.abstractmethod
     def _tree_children(self) -> dict[str, typing.Any]:
         "The named children pytree should descend into, in a fixed order."
         raise NotImplementedError
 
+    @property
     @abc.abstractmethod
     def _tree_context(self) -> typing.Any:
         "Everything else needed to rebuild the instruction."
