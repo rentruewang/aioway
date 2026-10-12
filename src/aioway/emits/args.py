@@ -10,7 +10,7 @@ from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
 from aioway._signs import nn_sign_untyped
-from aioway._utils import ParamKind
+from aioway.t import ParamKind
 
 __all__ = ["ArgsTSpec", "NnArgs"]
 

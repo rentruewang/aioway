@@ -4,7 +4,7 @@
 
 from torch import nn
 
-from aioway._utils import Sign
+from aioway.t import Sign
 
 __all__ = ["nn_sign_untyped", "sign_reg"]
 

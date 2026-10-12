@@ -11,7 +11,7 @@ from collections import abc as cabc
 
 from torch import nn
 
-from .typing import is_any_type_hint, is_nn_type
+from aioway._utils import is_any_type_hint, is_nn_type
 
 __all__ = ["Param", "ParamKind", "Sign"]
 
@@ -26,9 +26,8 @@ class ParamKind(enum.Enum):
     VAR_KEYWORD = enum.auto()
 
     def __eq__(self, other) -> bool:
-        # Use the typical enum implementation.
-        if (result := super().__eq__(other)) is not NotImplemented:
-            return result
+        if isinstance(other, ParamKind):
+            return self is other
 
         # Works with comparing with other `inspect.Parameter` kinds.
         if type(kind := self.to_inspect()) == type(other):
@@ -179,6 +178,9 @@ class Sign:
     signature: inspect.Signature
     "The underlying signature."
 
+    def __str__(self) -> str:
+        return str(self.signature)
+
     def __repr__(self) -> str:
         return repr(self.signature)
 
@@ -273,6 +275,7 @@ class Sign:
     @classmethod
     def from_callable(cls, func: cabc.Callable) -> typing.Self:
         "Create the signature from a method."
+
         return cls(inspect.signature(func))
 
     @classmethod

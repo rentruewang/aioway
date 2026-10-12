@@ -5,7 +5,7 @@ import inspect
 import pytest
 from torch import nn
 
-from aioway._utils import Param, ParamKind, Sign
+from aioway.t import Param, ParamKind, Sign
 
 
 def _add_i(a: int, b: int):
