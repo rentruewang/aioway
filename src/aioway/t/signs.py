@@ -260,9 +260,7 @@ class Sign:
     def apply(self, *args, **kwargs) -> dict[str, typing.Any]:
         "Apply the signature on the *args, **kwargs and get the argument dict."
 
-        bounded = self.bind(*args, **kwargs)
-        bounded.apply_defaults()
-        return bounded.arguments
+        return self.bind(*args, **kwargs).apply_defaults_().arguments
 
     def drop_first(self) -> typing.Self:
         "Drop the `self` parameter."
@@ -400,8 +398,9 @@ class BoundArgs:
     def _tensor_list(self) -> TList:
         return TList.from_iterable(self.arguments.values())
 
-    def apply_defaults(self) -> None:
+    def apply_defaults_(self) -> typing.Self:
         self._bounded.apply_defaults()
+        return self
 
     def to_inspect(self) -> inspect.BoundArguments:
         return self._bounded

@@ -159,6 +159,7 @@ class TestBoundArgs:
     def test_bind(self, bound: BoundArgs):
         assert isinstance(bound, BoundArgs)
         assert isinstance(bound.to_inspect(), inspect.BoundArguments)
+        bound.apply_defaults_()
         assert bound.arguments == {
             "name": "bob",
             "greeting": "hey",
@@ -169,7 +170,7 @@ class TestBoundArgs:
 
     def test_apply_defaults(self, greet: Sign):
         bound = greet.bind("bob")
-
+        bound.apply_defaults_()
         assert bound.arguments == {
             "name": "bob",
             "greeting": "hi",
@@ -251,8 +252,8 @@ class TestBoundArgs:
     def test_tree_map_many(self, greet: Sign):
         # Defaults are applied on `bind`, so the same parameters are always bound,
         # and calls that differ only in values share one tree structure.
-        first = greet.bind("bob", loud=True)
-        second = greet.bind("eve", "yo")
+        first = greet.bind("bob", loud=True).apply_defaults_()
+        second = greet.bind("eve", "yo").apply_defaults_()
 
         assert pyt.tree_structure(first) == pyt.tree_structure(second)
 
