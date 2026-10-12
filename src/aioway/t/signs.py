@@ -5,6 +5,7 @@
 import collections
 import dataclasses as dcls
 import enum
+import functools
 import inspect
 import typing
 from collections import abc as cabc
@@ -12,6 +13,7 @@ from collections import abc as cabc
 from torch import nn, overrides
 
 from aioway._utils import is_any_type_hint, is_nn_type
+from aioway.t.structs import TList
 
 from .guards import is_torch_function
 
@@ -377,6 +379,14 @@ class BoundArgs:
     @property
     def kwargs(self) -> dict[str, typing.Any]:
         return self._bounded.kwargs
+
+    @property
+    def tensors(self) -> TList:
+        return self._tensor_list
+
+    @functools.cached_property
+    def _tensor_list(self) -> TList:
+        return TList.from_iterable(self.arguments.values())
 
     def to_inspect(self) -> inspect.BoundArguments:
         return self._bounded
