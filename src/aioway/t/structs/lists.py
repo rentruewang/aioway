@@ -2,7 +2,6 @@
 
 "A utility for a list of tensor."
 
-import collections
 import copy
 import functools
 import typing
@@ -30,7 +29,9 @@ class TList(PyTree):
     It deduplicates the tensors it received.
     The list is stable (insertion order = getitem order).
 
-    It has a private constructor.
+    Note: this relies on `dict` values being ordered.
+
+    Prefer classmethods over its constructor.
 
     When doing `==` comparison, if the RHS is a `Set` the order doesn't matter,
     but if it's a `Sequence` or `TList` the order does matter.
@@ -39,7 +40,7 @@ class TList(PyTree):
     def __init__(
         self,
         *,
-        indexed: collections.OrderedDict[int, torch.Tensor],
+        indexed: dict[int, torch.Tensor],
         tensors: tuple[torch.Tensor, ...],
     ) -> None:
 
@@ -91,9 +92,7 @@ class TList(PyTree):
 
     def __sub__(self, other: typing.Self) -> typing.Self:
         return self.from_indexed_tensors(
-            collections.OrderedDict(
-                (k, self._indexed[k]) for k in self.keys() if k not in other.keys()
-            )
+            {k: self._indexed[k] for k in self.keys() if k not in other.keys()}
         )
 
     def keys(self) -> cabc.KeysView[int]:
@@ -164,13 +163,11 @@ class TList(PyTree):
     @classmethod
     def from_iterable(cls, tensors: cabc.Iterable[torch.Tensor], /) -> typing.Self:
         "Convert from an iterable of tensors."
-        indexed = collections.OrderedDict((id(t), t) for t in tensors)
+        indexed = {id(t): t for t in tensors}
         return cls.from_indexed_tensors(indexed=indexed)
 
     @classmethod
-    def from_indexed_tensors(
-        cls, indexed: collections.OrderedDict[int, torch.Tensor]
-    ) -> typing.Self:
+    def from_indexed_tensors(cls, indexed: dict[int, torch.Tensor]) -> typing.Self:
         tensors = tuple(indexed.values())
         return cls(indexed=indexed, tensors=tensors)
 
@@ -188,7 +185,7 @@ class TList(PyTree):
 
     @classmethod
     def empty(cls) -> typing.Self:
-        return cls.from_indexed_tensors(collections.OrderedDict())
+        return cls.from_indexed_tensors({})
 
 
 def _seq_key(idx: int) -> pyt.KeyEntry:
