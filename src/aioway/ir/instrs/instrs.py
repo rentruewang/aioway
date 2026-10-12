@@ -10,7 +10,7 @@ from collections import abc as cabc
 from torch.utils import _pytree as pyt
 
 from aioway._utils import AnyDict, any_dict, find_common_base, is_list_of
-from aioway.t import PyTreeObj, TList
+from aioway.t import PyTreeDict, TList
 
 __all__ = ["Instr", "InstrList"]
 
@@ -18,7 +18,7 @@ __all__ = ["Instr", "InstrList"]
 # The base instruction class ====
 
 
-class Instr(PyTreeObj, abc.ABC):
+class Instr(PyTreeDict, abc.ABC):
     "The instruction base class."
 
     def tree_map(self, func: cabc.Callable):

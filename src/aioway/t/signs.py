@@ -17,7 +17,7 @@ from aioway._utils import is_any_type_hint, is_nn_type, is_seq_of
 from aioway.t.structs import TList
 
 from .guards import is_torch_function
-from .structs import PyTreeObj
+from .structs import PyTreeDict
 
 __all__ = ["Param", "ParamKind", "Sign", "BoundArgs"]
 
@@ -333,7 +333,7 @@ class Sign:
         )
 
 
-class BoundArgs(PyTreeObj, pytree_key=pyt.MappingKey):
+class BoundArgs(PyTreeDict, pytree_key=pyt.MappingKey):
     """
     Our version of `inspect.BoundArguments`.
 
@@ -415,7 +415,7 @@ class BoundArgs(PyTreeObj, pytree_key=pyt.MappingKey):
         return self._bounded.signature, tuple(self.arguments)
 
     @typing.override
-    def _tree_children(self) -> dict[str, typing.Any]:
+    def _tree_dict(self) -> dict[str, typing.Any]:
         return self.arguments
 
     @classmethod

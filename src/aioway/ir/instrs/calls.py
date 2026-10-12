@@ -104,7 +104,7 @@ class FuncCall[F: cabc.Callable](Instr, pytree_key=pyt.GetAttrKey):
         return self.result is not NotImplemented
 
     @typing.override
-    def _tree_children(self) -> dict[str, typing.Any]:
+    def _tree_dict(self) -> dict[str, typing.Any]:
         return {"bounded": self.bounded, "result": self.result}
 
     @property
