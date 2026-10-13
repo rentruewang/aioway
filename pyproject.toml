@@ -24,6 +24,7 @@ dependencies = [
     "lightning>=2",
     "captum>=0.9",
     "loguru>=0.7",
+    "optree>=0.20",
 ]
 
 [project.optional-dependencies]
