@@ -255,7 +255,7 @@ def test_netmorph_rewrite_keeps_io():
 
     result = NetMorphLinearSeqDeeper().rewrite(prog)
 
-    assert result.inputs == list(prog.inputs)
+    assert result.inputs.tensors == list(prog.inputs)
     assert result.outputs == list(prog.outputs)
 
 

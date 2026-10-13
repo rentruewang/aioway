@@ -5,7 +5,7 @@ from collections import abc as cabc
 
 import pytest
 
-from aioway.ir import FuncCall, Program, TensorLifetime
+from aioway.ir import FuncCall, Program, ProgramIn, TensorLifetime
 from aioway.t import TList
 
 
@@ -43,7 +43,7 @@ class TestProgram:
         with pytest.raises(ValueError):
             Program(
                 instrs=[thunks[0], thunks[0]],
-                inputs=TList.from_iterable(fakes),
+                inputs=ProgramIn.from_tensors(fakes),
                 outputs=TList.from_iterable([thunks[0].result]),
             )
 

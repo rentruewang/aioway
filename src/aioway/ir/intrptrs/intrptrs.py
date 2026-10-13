@@ -8,8 +8,7 @@ import typing
 import loguru as L
 
 from aioway.ir.instrs import Instr, InstrList
-from aioway.ir.progs import Program
-from aioway.t import TList
+from aioway.ir.progs import Program, ProgramIn
 
 __all__ = ["Intrptr"]
 
@@ -55,7 +54,7 @@ class Intrptr[I: Instr = Instr, A = typing.Any, R = typing.Any](abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def bind(self, inputs: TList, args: list[A]) -> None:
+    def bind(self, inputs: ProgramIn, args: list[A]) -> None:
         """
         Setup with regards to the inputs and feed the data in.
 

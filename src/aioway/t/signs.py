@@ -3,6 +3,7 @@
 "The utilities for signatures."
 
 import collections
+import copy
 import dataclasses as dcls
 import enum
 import functools
@@ -10,6 +11,7 @@ import inspect
 import typing
 from collections import abc as cabc
 
+import torch
 from torch import nn, overrides
 from torch.utils import _pytree as pyt
 
@@ -261,7 +263,7 @@ class Sign:
     def apply(self, *args, **kwargs) -> dict[str, typing.Any]:
         "Apply the signature on the *args, **kwargs and get the argument dict."
 
-        return self.bind(*args, **kwargs).apply_defaults_().arguments
+        return self.bind(*args, **kwargs).apply_defaults().arguments
 
     def drop_first(self) -> typing.Self:
         "Drop the `self` parameter."
@@ -360,16 +362,15 @@ class BoundArgs(PyTreeDict, pytree_key=pyt.MappingKey):
             return self._bounded == other
 
         if isinstance(other, dict):
-            for key, val in other.items():
-                if not isinstance(key, str):
-                    return False
-
-                return val == self.arguments[key]
+            return self.arguments == other
 
         return NotImplemented
 
     def __hash__(self) -> int:
         return hash(self._bounded)
+
+    def __copy__(self) -> typing.Self:
+        return type(self)(bounded=self._bounded)
 
     def __len__(self) -> int:
         return len(self.arguments)
@@ -392,6 +393,10 @@ class BoundArgs(PyTreeDict, pytree_key=pyt.MappingKey):
         return Sign(signature=self._bounded.signature)
 
     @property
+    def param_list(self) -> list[Param]:
+        return self.sign.param_list
+
+    @property
     def arguments(self) -> dict[str, typing.Any]:
         return self._bounded.arguments
 
@@ -409,9 +414,15 @@ class BoundArgs(PyTreeDict, pytree_key=pyt.MappingKey):
 
     @functools.cached_property
     def _tensor_list(self) -> TList:
-        return TList.from_iterable(self.arguments.values())
+        tensors = [
+            tensor
+            for tensor in pyt.tree_leaves(self.arguments)
+            if isinstance(tensor, torch.Tensor)
+        ]
+        return TList.from_iterable(tensors)
 
-    def apply_defaults_(self) -> typing.Self:
+    def apply_defaults(self) -> typing.Self:
+        self = copy.copy(self)
         self._bounded.apply_defaults()
         return self
 
@@ -445,3 +456,14 @@ class BoundArgs(PyTreeDict, pytree_key=pyt.MappingKey):
     def from_signs(cls, sign: Sign, *args, **kwargs) -> typing.Self:
         bounded = sign.to_inspect().bind(*args, **kwargs)
         return cls(bounded=bounded)
+
+    @classmethod
+    def from_args(cls, sign: Sign, args: cabc.Mapping[str, typing.Any]) -> typing.Self:
+        "Construct from a signature and the args by parameter name, without binding."
+
+        if unknown := args.keys() - sign.params.keys():
+            raise TypeError(f"Unknown parameters: {sorted(unknown)}.")
+
+        # Signature order, so `args` / `kwargs` / iteration follow the signature.
+        ordered = {name: args[name] for name in sign.params if name in args}
+        return cls(bounded=inspect.BoundArguments(sign.to_inspect(), ordered))
