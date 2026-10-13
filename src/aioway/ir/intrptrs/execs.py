@@ -213,12 +213,8 @@ class Exec[F: cabc.Callable = typing.Any](
 
     @property
     @typing.override
-    def program(self) -> Program:
+    def program(self) -> Program[FuncCall[F]]:
         return self._prog
-
-    @property
-    def inputs(self):
-        return self._prog.inputs
 
 
 def _get_fake_id(fake: torch.Tensor | int, /) -> int:
