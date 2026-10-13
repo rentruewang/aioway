@@ -159,10 +159,11 @@ class Program[I: Instr = typing.Any]:
 
 class TensorIndex[I: Instr = typing.Any]:
     """
-    Tensor-level index over a `Program`.
+    Tensor-level index over a `Program`,
+    to decouple input output from lifetimes.
 
     Maps every tensor to a `TensorRef` (its producer and consumers),
-    and answers step and lifetime queries about tensors.
+    and provide info step and lifetime queries about tensors.
 
     `Program` builds this index on construction.
     """
