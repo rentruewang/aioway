@@ -175,7 +175,7 @@ class Exec[F: cabc.Callable = typing.Any](
 
     TYPE = torch.Tensor
 
-    def __init__(self, program: Program) -> None:
+    def __init__(self, program: Program[FuncCall[F]]) -> None:
         self._prog = program
         self._scope = LocalScope(self._prog)
 
@@ -200,14 +200,14 @@ class Exec[F: cabc.Callable = typing.Any](
 
     @typing.override
     def step(self, idx: int, instr: FuncCall[F]) -> None:
-        args, kwargs = self._scope.map([instr.args, instr.kwargs])
-        real = instr.func(*args, **kwargs)
+        bounded = self._scope.map(instr.bounded)
+        real = instr.func(*bounded.args, **bounded.kwargs)
         self._scope.update(instr.result, real)
         self._scope.expire(idx)
 
     @typing.override
     def finalize(self) -> typing.Any:
-        result = self._scope.map(self._prog[-1].result)
+        result = self._scope.map(self[-1].result)
         self._scope.clear()
         return result
 
