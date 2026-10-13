@@ -9,6 +9,7 @@ import loguru as L
 
 from aioway.ir.instrs import Instr, InstrList
 from aioway.ir.progs import Program, ProgramIn
+from aioway.t import BoundArgs
 
 __all__ = ["Intrptr"]
 
@@ -32,10 +33,8 @@ class Intrptr[I: Instr = Instr, A = typing.Any, R = typing.Any](abc.ABC):
 
     @typing.final
     def __call__(self, *args: A, **kwargs: A) -> R:
-        flattened = self._flatten_args(*args, **kwargs)
-
-        L.logger.debug("Binding {l} tensors to respective inputs.", l=len(args))
-        self.bind(self.program.inputs, flattened)
+        bound = self.program.inputs.sign.bind(*args, **kwargs)
+        self.bind(self.program.inputs, bound)
 
         L.logger.debug("Prepare walking the {} instructions.", len(self.program.instrs))
         self.walk(self.program.instrs)
@@ -54,7 +53,7 @@ class Intrptr[I: Instr = Instr, A = typing.Any, R = typing.Any](abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def bind(self, inputs: ProgramIn, args: list[A]) -> None:
+    def bind(self, inputs: ProgramIn, bound: BoundArgs) -> None:
         """
         Setup with regards to the inputs and feed the data in.
 

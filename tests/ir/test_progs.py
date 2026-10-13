@@ -4,6 +4,7 @@ import typing
 from collections import abc as cabc
 
 import pytest
+from torch.utils import _pytree as pyt
 
 from aioway.ir import FuncCall, Program, ProgramIn, TensorLifetime
 from aioway.t import TList
@@ -43,7 +44,7 @@ class TestProgram:
         with pytest.raises(ValueError):
             Program(
                 instrs=[thunks[0], thunks[0]],
-                inputs=ProgramIn.from_tensors(fakes),
+                inputs=ProgramIn.from_iters(fakes),
                 outputs=TList.from_iterable([thunks[0].result]),
             )
 
@@ -64,3 +65,10 @@ class TestTensorIndex:
 
         assert dag.tindex.output_of_step(z) == 1
         assert dag.tindex.life(z) == TensorLifetime(1, len(dag))
+
+
+class TestProgramIn:
+    def test_reconstruct(self, dag: Program):
+        data, spec = pyt.tree_flatten(dag.inputs)
+        recon = pyt.tree_unflatten(data, spec)
+        assert dag.inputs == recon

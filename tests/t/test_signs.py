@@ -84,7 +84,7 @@ class TestSign:
 
     def test_params(self, greet: Sign):
         assert list(greet.params) == ["name", "greeting", "args", "loud", "kwargs"]
-        assert greet.param_list == list(greet.params.values())
+        assert greet.param_list == tuple(greet.params.values())
         assert greet.argc == 5
 
     def test_return_annotation(self, greet: Sign, add: Sign):

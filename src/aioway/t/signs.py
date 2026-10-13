@@ -226,9 +226,9 @@ class Sign:
         return {key: Param(param) for key, param in self._sign.parameters.items()}
 
     @functools.cached_property
-    def param_list(self) -> list[Param]:
+    def param_list(self) -> tuple[Param, ...]:
         "Convert parameters into a list."
-        return list(self.params.values())
+        return tuple(self.params.values())
 
     @property
     def return_annotation(self) -> type:
@@ -249,6 +249,19 @@ class Sign:
         ]
 
         return type(self)(inspect.Signature(parameters=params))
+
+    def rename(self, /, **names: str) -> typing.Self:
+        """
+        A copy with parameters renamed, like `dcls.replace`.
+        """
+
+        if unknown := names.keys() - self.params.keys():
+            raise KeyError(f"Unknown parameters: {unknown}.")
+
+        params = [
+            p.parameter.replace(name=names.get(p.name, p.name)) for p in self.param_list
+        ]
+        return type(self)(self._sign.replace(parameters=params))
 
     def bind(self, *args, **kwargs) -> BoundArgs:
         """
@@ -393,7 +406,7 @@ class BoundArgs(PyTreeDict, pytree_key=pyt.MappingKey):
         return Sign(signature=self._bounded.signature)
 
     @property
-    def param_list(self) -> list[Param]:
+    def param_list(self) -> tuple[Param, ...]:
         return self.sign.param_list
 
     @property
@@ -425,6 +438,10 @@ class BoundArgs(PyTreeDict, pytree_key=pyt.MappingKey):
         self = copy.copy(self)
         self._bounded.apply_defaults()
         return self
+
+    def values(self):
+        for param in self.param_list:
+            yield self.arguments[param.name]
 
     def to_inspect(self) -> inspect.BoundArguments:
         return self._bounded

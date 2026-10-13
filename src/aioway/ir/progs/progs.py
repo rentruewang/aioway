@@ -179,7 +179,7 @@ class Program[I: Instr = typing.Any]:
 
         return cls(
             instrs=instrs,
-            inputs=ProgramIn.from_tensors(consumed - produced),
+            inputs=ProgramIn.from_iters(consumed - produced),
             outputs=produced - consumed,
         )
 
@@ -239,14 +239,8 @@ class ProgramIn(PyTree):
 
         return self.bound[key]
 
-    def keys(self) -> cabc.KeysView[str]:
-        return self.arguments.keys()
-
-    def values(self) -> cabc.ValuesView[typing.Any]:
-        return self.arguments.values()
-
-    def items(self) -> cabc.ItemsView[str, typing.Any]:
-        return self.arguments.items()
+    def values(self) -> cabc.Iterator[typing.Any]:
+        return self.bound.values()
 
     @property
     def bound(self) -> BoundArgs:
@@ -259,7 +253,7 @@ class ProgramIn(PyTree):
     @functools.cached_property
     def names(self) -> tuple[str, ...]:
         "The parameter names, in signature order."
-        return tuple(self.keys())
+        return tuple(param.name for param in self.bound.param_list)
 
     @property
     def sign(self) -> Sign:
@@ -271,11 +265,11 @@ class ProgramIn(PyTree):
         return self.bound.arguments
 
     @property
-    def tensors(self):
+    def tensors(self) -> TList:
         return self.bound.tensors
 
     @property
-    def signature(self):
+    def signature(self) -> Sign:
         return self.sign
 
     @property
@@ -290,7 +284,7 @@ class ProgramIn(PyTree):
         return list(self.values()), self.bound.sign
 
     def _tree_flatten_with_keys(self) -> PyTreeFlattenWithKey:
-        with_path = [(_map_key(name), t) for name, t in self.items()]
+        with_path = [(_map_key(name), self.arguments[name]) for name in self.names]
         return with_path, self.bound.sign
 
     @classmethod
@@ -315,18 +309,18 @@ class ProgramIn(PyTree):
         return cls(bound=sign.bind(*args, **kwargs))
 
     @classmethod
-    def from_dict(cls, tensors: cabc.Mapping[str, torch.Tensor], /) -> typing.Self:
+    def from_dict(cls, mapping: cabc.Mapping[str, typing.Any], /) -> typing.Self:
         "Bind tensors by name, in the order of the mapping."
 
-        return cls.from_sign(Sign.from_inputs(tensors.keys()), **tensors)
+        return cls.from_sign(Sign.from_inputs(mapping.keys()), **mapping)
 
     @classmethod
-    def from_tensors(
-        cls, tensors: cabc.Iterable[torch.Tensor], /, *, prefix: str = "t"
+    def from_iters(
+        cls, items: cabc.Iterable[typing.Any], /, *, prefix: str = "t"
     ) -> typing.Self:
         "Bind tensors positionally, to parameters named `t0`, `t1`, ..."
 
-        tensors = tuple(tensors)
+        tensors = tuple(items)
         names = [f"{prefix}{i}" for i in range(len(tensors))]
         return cls.from_sign(Sign.from_inputs(names), *tensors)
 
@@ -689,7 +683,7 @@ def _select_indices[I: Instr](
 
     return _ProgramTuple(
         ilist=selected,
-        inputs=ProgramIn.from_tensors(inputs),
+        inputs=ProgramIn.from_iters(inputs),
         outputs=outputs,
     )
 

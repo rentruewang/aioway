@@ -20,7 +20,7 @@ import torch
 from rich import pretty
 
 # %%
-from aioway.ir import FuncProgram, TorchFuncDag, render_stateless_program
+from aioway.ir import FuncProgram, ProgramIn, TorchFuncDag, render_stateless_program
 from aioway.t import fake_mode
 
 pretty.install()
@@ -51,3 +51,14 @@ iset = FuncProgram.from_instr_list(tracer.thunks)
 
 # %%
 render_stateless_program(iset, "example_program", "x", "y")
+
+# %%
+x, y = iset.inputs.tensors
+another = FuncProgram(
+    instrs=iset.instrs,
+    inputs=ProgramIn.from_dict({"dict": {"a": x, "b": y}}),
+    outputs=iset.outputs,
+)
+
+# %%
+render_stateless_program(another, "another_program", "mapping")
