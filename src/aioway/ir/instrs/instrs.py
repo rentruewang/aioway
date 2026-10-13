@@ -36,11 +36,11 @@ class Instr(PyTreeDict, abc.ABC):
         return pyt.tree_map_only(types, func=func, tree=self)
 
     @functools.cached_property
-    def inputs(self) -> TList:
+    def tensor_inputs(self) -> TList:
         return self._inputs()
 
     @functools.cached_property
-    def outputs(self) -> TList:
+    def tensor_outputs(self) -> TList:
         return self._outputs()
 
     @abc.abstractmethod

@@ -97,7 +97,7 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
 
         thunk = self._prog[step]
 
-        for input in thunk.inputs:
+        for input in thunk.tensor_inputs:
             if self._prog.life(input).death == step:
                 self.drop(input)
 

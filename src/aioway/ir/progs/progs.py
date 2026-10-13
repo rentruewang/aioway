@@ -19,7 +19,7 @@ from aioway.t import TList, all_real, parse_attr
 
 __all__ = ["TensorRef", "Program", "TensorLifetime"]
 
-# The DAG class ====
+# The Program class ====
 
 
 class Program[I: Instr = typing.Any]:
@@ -287,8 +287,8 @@ class TensorRef[F: Instr]:
 
 def _all_thunk_tensors(thunks: cabc.Iterable[Instr]) -> cabc.Generator[torch.Tensor]:
     for thunk in thunks:
-        yield from thunk.inputs
-        yield from thunk.outputs
+        yield from thunk.tensor_inputs
+        yield from thunk.tensor_outputs
 
 
 def _build_tensor_refs(
@@ -326,7 +326,7 @@ def _tensor_refs_outputs[I: Instr](
     mapping: AnyDict[torch.Tensor, TensorRef[I]] = any_dict(torch.Tensor)
 
     for thunk in thunks:
-        for output in thunk.outputs:
+        for output in thunk.tensor_outputs:
             if output in mapping:
                 raise ValueError("The output fake tensor is not unique.")
 
@@ -339,12 +339,12 @@ def _link_inputs_for_mapping(
     mapping: AnyDict[torch.Tensor, TensorRef], thunks: cabc.Iterable[Instr]
 ) -> None:
     for thunk in thunks:
-        for input in thunk.inputs:
+        for input in thunk.tensor_inputs:
             assert input in mapping
             mapping[input].add_consumers(thunk)
 
 
-def _used_outside(prog: Program, selected: OrderedIndex) -> TList:
+def _used_outside[I: Instr](prog: Program[I], selected: OrderedIndex) -> TList:
     """
     Add all tensors used outside of selected region.
 
@@ -360,7 +360,7 @@ def _used_outside(prog: Program, selected: OrderedIndex) -> TList:
         if i in selected:
             continue
 
-        used += prog[i].inputs
+        used += prog[i].tensor_inputs
 
     # Populate the outputs as it's considered "consumed".
     used += prog.outputs
@@ -452,17 +452,17 @@ def _select_indices[I: Instr](
     selected = prog.instrs[selection.tolist()]
 
     # Using `TList` as it has fast lookups and ergonomic operations.
-    produced_here = functools.reduce(operator.add, (i.outputs for i in selected))
+    produced_here = functools.reduce(operator.add, (i.tensor_outputs for i in selected))
     used_outside = _used_outside(prog, selection)
 
     # Inputs: used by our selected by not produced inside the region.
     inputs = TList.from_iterable(
-        t for i in selected for t in i.inputs if t not in produced_here
+        t for i in selected for t in i.tensor_inputs if t not in produced_here
     )
 
     # Outputs: produced by our selected and used by outside thunks.
     outputs = TList.from_iterable(
-        t for i in selected for t in i.outputs if t in used_outside
+        t for i in selected for t in i.tensor_outputs if t in used_outside
     )
 
     # Inputs should not depend on intermediate.
@@ -491,11 +491,11 @@ class _InputOutputOnly:
         tensor_out_list = TList.empty()
 
         for thunk in instrs:
-            tensor_in_list += thunk.inputs
+            tensor_in_list += thunk.tensor_inputs
 
             # Output must be unique.
-            assert tensor_out_list.isdisjoint(thunk.outputs)
-            tensor_out_list += thunk.outputs
+            assert tensor_out_list.isdisjoint(thunk.tensor_outputs)
+            tensor_out_list += thunk.tensor_outputs
 
         input_only = tensor_in_list - tensor_out_list
         output_only = tensor_out_list - tensor_in_list

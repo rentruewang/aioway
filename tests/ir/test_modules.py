@@ -78,11 +78,11 @@ def test_thunk_upstream_yields() -> None:
     x, y = torch.ones(3), torch.zeros(3)
     thunk = _make_thunk(Pair(), x, y)
 
-    assert list(thunk.inputs) == [x, y]
+    assert list(thunk.tensor_inputs) == [x, y]
 
 
 def test_thunk_downstream_yields(thunk: ModuleCall) -> None:
-    assert thunk.outputs == [thunk.result]
+    assert thunk.tensor_outputs == [thunk.result]
 
 
 def test_thunk_binding_fail_extra_args(module: nn.Module) -> None:
@@ -113,7 +113,7 @@ def test_append_stores_thunk(hist: ModuleHist, thunk: ModuleCall) -> None:
 def test_thunk_looks_up(hist: ModuleHist, thunk: ModuleCall) -> None:
     hist.append(thunk)
 
-    assert hist.thunk_of(thunk.outputs[0]) is thunk
+    assert hist.thunk_of(thunk.tensor_outputs[0]) is thunk
 
 
 def test_append_index_all_outputs(hist: ModuleHist) -> None:
@@ -135,7 +135,7 @@ def test_append_fail_dups(hist: ModuleHist, thunk: ModuleCall) -> None:
 
 def test_thunk_of_unknown_fail(hist: ModuleHist, thunk: ModuleCall) -> None:
     with pytest.raises(KeyError):
-        hist.thunk_of(thunk.outputs[0])
+        hist.thunk_of(thunk.tensor_outputs[0])
 
 
 def test_hook_appends_thunk(hist: ModuleHist, module: nn.Module) -> None:
@@ -146,8 +146,8 @@ def test_hook_appends_thunk(hist: ModuleHist, module: nn.Module) -> None:
 
     (recorded,) = hist.history
     assert recorded.func is module
-    assert list(recorded.inputs) == [x]
-    assert list(recorded.outputs) == [y]
+    assert list(recorded.tensor_inputs) == [x]
+    assert list(recorded.tensor_outputs) == [y]
     assert recorded.parents == ()
 
 
@@ -181,8 +181,8 @@ def test_tracker_records_shapes(tracker: ModuleTracker, hist: ModuleHist) -> Non
         model(torch.ones(3, 4))
 
     (thunk,) = hist.history
-    assert thunk.inputs[0].shape == (3, 4)
-    assert thunk.outputs[0].shape == (3, 2)
+    assert thunk.tensor_inputs[0].shape == (3, 4)
+    assert thunk.tensor_outputs[0].shape == (3, 2)
 
 
 def test_tracker_empty_stack(tracker: ModuleTracker) -> None:

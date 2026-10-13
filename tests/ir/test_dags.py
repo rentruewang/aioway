@@ -15,11 +15,11 @@ def test_thunk_not_callable() -> None:
 
 
 def test_thunk_upstream(thunks: cabc.Sequence[FuncCall], fakes):
-    assert set(thunks[0].inputs) == set(fakes)
+    assert set(thunks[0].tensor_inputs) == set(fakes)
 
 
 def test_thunk_downstream(thunks: cabc.Sequence[FuncCall]):
-    assert list(thunks[0].outputs) == [thunks[0].result]
+    assert list(thunks[0].tensor_outputs) == [thunks[0].result]
 
 
 def test_dag_len(dag: Program):
