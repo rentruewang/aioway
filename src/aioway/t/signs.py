@@ -442,9 +442,9 @@ class BoundArgs(PyTreeDict, pytree_key=pyt.MappingKey):
         return TList.from_iterable(tensors)
 
     def apply_defaults(self) -> typing.Self:
-        self = copy.copy(self)
-        self._bounded.apply_defaults()
-        return self
+        copied = copy.copy(self)
+        copied._bounded.apply_defaults()
+        return copied
 
     def keys(self) -> cabc.KeysView[str]:
         return self.arguments.keys()
@@ -487,12 +487,17 @@ class BoundArgs(PyTreeDict, pytree_key=pyt.MappingKey):
         return cls(bounded=bounded)
 
     @classmethod
-    def from_args(cls, sign: Sign, args: cabc.Mapping[str, typing.Any]) -> typing.Self:
-        "Construct from a signature and the args by parameter name, without binding."
+    def from_no_bind(
+        cls, sign: Sign, arguments: cabc.Mapping[str, typing.Any]
+    ) -> typing.Self:
+        """
+        Construct from a signature and the args by parameter name, without binding.
+        This avoids issues with positional only arguments with `.bind` method.
+        """
 
-        if unknown := args.keys() - sign.params.keys():
+        if unknown := arguments.keys() - sign.params.keys():
             raise TypeError(f"Unknown parameters: {sorted(unknown)}.")
 
         # Signature order, so `args` / `kwargs` / iteration follow the signature.
-        ordered = {name: args[name] for name in sign.params if name in args}
+        ordered = {name: arguments[name] for name in sign.params if name in arguments}
         return cls(bounded=inspect.BoundArguments(sign.to_inspect(), ordered))

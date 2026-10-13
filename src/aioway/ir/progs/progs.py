@@ -309,7 +309,7 @@ class ProgramIn(PyTree):
         assert isinstance(context, Sign)
 
         arguments = dict(zip(context.params, children, strict=True))
-        return cls(bound=BoundArgs.from_args(sign=context, args=arguments))
+        return cls(bound=BoundArgs.from_no_bind(sign=context, arguments=arguments))
 
     @classmethod
     def from_sign(
