@@ -250,6 +250,19 @@ class Sign:
 
         return type(self)(inspect.Signature(parameters=params))
 
+    def rename(self, /, **names: str) -> typing.Self:
+        """
+        A copy with parameters renamed, like `dcls.replace`.
+        """
+
+        if unknown := names.keys() - self.params.keys():
+            raise KeyError(f"Unknown parameters: {unknown}.")
+
+        params = [
+            p.parameter.replace(name=names.get(p.name, p.name)) for p in self.param_list
+        ]
+        return type(self)(self._sign.replace(parameters=params))
+
     def bind(self, *args, **kwargs) -> BoundArgs:
         """
         Bind the arguments and return a `BoundArguments`.

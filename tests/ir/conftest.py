@@ -39,6 +39,6 @@ def thunks(fakes) -> tuple[FuncCall, ...]:
 def dag(thunks, fakes) -> Program:
     return Program(
         instrs=thunks,
-        inputs=ProgramIn.from_tensors(fakes),
+        inputs=ProgramIn.from_iters(fakes),
         outputs=TList.from_iterable([thunks[-1].result]),
     )

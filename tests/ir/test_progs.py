@@ -44,7 +44,7 @@ class TestProgram:
         with pytest.raises(ValueError):
             Program(
                 instrs=[thunks[0], thunks[0]],
-                inputs=ProgramIn.from_tensors(fakes),
+                inputs=ProgramIn.from_iters(fakes),
                 outputs=TList.from_iterable([thunks[0].result]),
             )
 
