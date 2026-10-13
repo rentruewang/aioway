@@ -33,7 +33,7 @@ class Intrptr[I: Instr = Instr, A = typing.Any, R = typing.Any](abc.ABC):
 
     @typing.final
     def __call__(self, *args: A, **kwargs: A) -> R:
-        bound = self.program.inputs.sign.bind(*args, **kwargs)
+        bound = self.program.inputs.rebind(*args, **kwargs)
         self.bind(self.program.inputs, bound)
 
         L.logger.debug("Prepare walking the {} instructions.", len(self.program.instrs))
@@ -58,6 +58,8 @@ class Intrptr[I: Instr = Instr, A = typing.Any, R = typing.Any](abc.ABC):
         Setup with regards to the inputs and feed the data in.
 
         Only binds the tensors for now.
+
+        The `inputs.sign == bound.sign` will hold.
         """
 
         raise NotImplementedError

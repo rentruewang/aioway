@@ -13,11 +13,11 @@ from torch.utils import _pytree as pyt
 from aioway._utils import AnyDict, any_dict, render_fcall
 from aioway.ir.instrs import FuncCall
 from aioway.ir.progs import FuncProgram, ProgramIn
-from aioway.t import BoundArgs, render_torch_func_name
+from aioway.t import BoundArgs, Sign, render_torch_func_name
 
 from .intrptrs import Intrptr
 
-__all__ = ["CodeRender", "render_stateless_program"]
+__all__ = ["CodeRender", "StatelessCodePrint", "render_stateless_program"]
 
 
 class CodeRender(typing.Protocol):
@@ -29,14 +29,14 @@ class CodeRender(typing.Protocol):
 def render_stateless_program(
     program: FuncProgram, name: str, *args: str, **kwargs: str
 ) -> CodeRender:
-    interpret = _FuncProgramCode(program=program, name=name)
+    interpret = StatelessCodePrint(program=program, name=name)
     return interpret(*args, **kwargs)
 
 
 # The renderer itself ====
 
 
-class _FuncProgramCode(Intrptr[FuncCall, str, CodeRender]):
+class StatelessCodePrint(Intrptr[FuncCall, str, CodeRender]):
     """
     Render the function as a python function.
 
@@ -55,9 +55,11 @@ class _FuncProgramCode(Intrptr[FuncCall, str, CodeRender]):
 
     @typing.override
     def bind(self, inputs: ProgramIn, bound: BoundArgs) -> None:
-        for i, a in zip(inputs, bound.values()):
+        assert inputs.sign == bound.sign
+
+        for i, a in zip(inputs.values(), bound.values()):
             self._vars[i] = a
-            self._index_attr(i)
+            self._index_sub_attr(i)
 
     @typing.override
     def step(self, idx: int, instr: FuncCall) -> None:
@@ -67,12 +69,12 @@ class _FuncProgramCode(Intrptr[FuncCall, str, CodeRender]):
         args = pyt.tree_map_only(torch.Tensor, self.name, instr.args)
         kwargs = pyt.tree_map_only(torch.Tensor, self.name, instr.kwargs)
 
-        self._vars[instr.result] = self._new_name(instr.result)
-        self._index_attr(instr.result)
-        result = self.name(instr.result)
+        self._vars[instr.result] = self._new_var_name(instr.result)
+        self._index_sub_attr(instr.result)
+        var_name = self.name(instr.result)
 
         func_name = render_torch_func_name(instr.func)
-        self._steps.append(result + " = " + render_fcall(func_name, *args, **kwargs))
+        self._steps.append(var_name + " = " + render_fcall(func_name, *args, **kwargs))
 
     @typing.override
     def finalize(self) -> CodeRender:
@@ -81,7 +83,7 @@ class _FuncProgramCode(Intrptr[FuncCall, str, CodeRender]):
 
         return _FuncRender(
             name=self._func_name,
-            params=[self.name(var) for var in self.program.inputs],
+            params=self._renamed_signature(),
             lines=self._steps,
             returns=returns,
         )
@@ -91,19 +93,25 @@ class _FuncProgramCode(Intrptr[FuncCall, str, CodeRender]):
     def program(self) -> FuncProgram:
         return self._program
 
+    def _renamed_signature(self) -> Sign:
+        # Get the original inputs (with symbolic data), and find out their new names.
+        rename_map = {key: self.name(val) for key, val in self.program.inputs.items()}
+        return self.program.inputs.sign.rename(**rename_map)
+
     def name(self, var: typing.Any) -> str:
         r = self._vars[var]
         assert isinstance(r, str)
         return r
 
-    def _new_name(self, var: typing.Any) -> str:
+    def _new_var_name(self, var: typing.Any) -> str:
         "`tensor_<n>` for tensors, the lowercase type name for others."
 
         typ = torch.Tensor if isinstance(var, torch.Tensor) else type(var)
         prefix = typ.__name__.lower()
-        return f"{prefix}_{next(self._counter)}"
+        next_int = next(self._counter)
+        return f"{prefix}_{next_int}"
 
-    def _index_attr(self, var: typing.Any) -> None:
+    def _index_sub_attr(self, var: typing.Any) -> None:
         "Name the tensors inside `var` by their path from it, e.g. `tdict['a']`."
 
         for path, leaf in pyt.tree_flatten_with_path(var)[0]:
@@ -118,14 +126,14 @@ class _FuncProgramCode(Intrptr[FuncCall, str, CodeRender]):
 @dcls.dataclass(frozen=True, slots=False)
 class _FuncRender:
     name: str
-    params: list[str]
+    params: Sign
     lines: list[str]
     returns: str
 
     def __str__(self) -> str:
         return _function_renderer()(
             name=self.name,
-            params=", ".join(self.params),
+            params=str(self.params),
             body=self.lines,
             returns=self.returns,
         )
@@ -136,7 +144,7 @@ class _FuncRender:
 
 def _function_template():
     return """\
-def {{ name }}({{ params }}):
+def {{ name }}{{ params }}:
 {% for line in body %}
     {{ line }}
 {% endfor %}

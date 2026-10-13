@@ -254,6 +254,10 @@ class ProgramIn(PyTree):
 
         return self.bound.items()
 
+    def rebind(self, *args, **kwargs) -> BoundArgs:
+        "Rebind another set of inputs."
+        return self.sign.bind(*args, **kwargs)
+
     @property
     def bound(self) -> BoundArgs:
         return self._bound
