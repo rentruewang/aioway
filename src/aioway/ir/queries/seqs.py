@@ -102,7 +102,7 @@ def _prev_in_chain[I: Instr](program: Program[I], step: int) -> int:
     if len(inputs) != 1:
         raise _SeqMatchFailed
 
-    if (prev := program.output_of_step(inputs[0])) >= 0:
+    if (prev := program.tindex.output_of_step(inputs[0])) >= 0:
         return prev
 
     # `output_of_step` gives -1 for program inputs.

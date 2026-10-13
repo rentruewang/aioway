@@ -48,10 +48,10 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
         if not is_fake_tensor(tensor):
             return False
 
-        return tensor in self._prog.tensors
+        return tensor in self._prog.tindex.tensors
 
     def __iter__(self) -> cabc.Generator[torch.Tensor]:
-        yield from self._prog.tensors
+        yield from self._prog.tindex.tensors
 
     def __getitem__(self, fake: torch.Tensor) -> torch.Tensor | None:
         if not is_fake_tensor(fake):
@@ -98,7 +98,7 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
         thunk = self._prog[step]
 
         for input in thunk.tensor_inputs:
-            if self._prog.life(input).death == step:
+            if self._prog.tindex.life(input).death == step:
                 self.drop(input)
 
     def clear(self) -> None:

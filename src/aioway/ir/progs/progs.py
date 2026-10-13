@@ -17,7 +17,7 @@ from aioway.ir.instrs import Instr, InstrList
 from aioway.ir.queries import OrderedIndex, Query
 from aioway.t import TList, all_real, parse_attr
 
-__all__ = ["TensorRef", "Program", "TensorLifetime"]
+__all__ = ["TensorRef", "Program", "TensorIndex", "TensorLifetime"]
 
 # The Program class ====
 
@@ -25,6 +25,10 @@ __all__ = ["TensorRef", "Program", "TensorLifetime"]
 class Program[I: Instr = typing.Any]:
     """
     A program is a DAG of callables, that are linked by fake tensors.
+
+    The program owns the instructions and its signature (inputs and outputs).
+    Tensor-level bookkeeping (producers, consumers, lifetimes) lives in
+    `TensorIndex`, available as `Program.tindex`.
     """
 
     INSTR: typing.ClassVar[type[Instr]] = Instr
@@ -42,14 +46,8 @@ class Program[I: Instr = typing.Any]:
         self._inputs = TList.from_self_or_iter(inputs)
         self._outputs = TList.from_self_or_iter(outputs)
 
-        self._tensors = TList.from_iterable(self._all_tensors())
-        self._tensor_links = _build_tensor_refs(self.instrs, list(self.inputs))
-
-        # Validate if the inputs and outputs are valid.
-        self._validate_input_output()
-
-        if not self.tensors.all_fake:
-            raise ValueError("Contains non fake tensors.")
+        # Link producers / consumers, and validate inputs and outputs.
+        self.reset_tindex()
 
         if (base := self.instrs.base) and not issubclass(base, self.INSTR):
             raise TypeError(
@@ -107,27 +105,10 @@ class Program[I: Instr = typing.Any]:
         mutated = _replace_sub_prog(prog=self, query=query, sub_prog=subset)
 
         # Overwrite the references s.t. underlying data is not touched.
-        # This is not supposed to fail.
+        # This is not supposed to fail. Also rebuilds the tensor index.
         self.__init__(
             instrs=mutated.ilist, inputs=mutated.inputs, outputs=mutated.outputs
         )
-
-    @property
-    def tensor_links(self) -> AnyDict[torch.Tensor, TensorRef]:
-        "Mapping from tensors to refs (linking functions)."
-        return self._tensor_links
-
-    def life(self, t: torch.Tensor, /) -> TensorLifetime:
-        """
-        Compute the lifetime of a tensor.
-
-        birth = at which point we start keeping track of it.
-        death = at which point it is no longer needed.
-        """
-
-        birth = self.output_of_step(t) if t not in self.inputs else -1
-        death = max(self.input_to_step(t)) if t not in self.outputs else len(self)
-        return TensorLifetime(birth=birth, death=death)
 
     @property
     def instrs(self) -> InstrList[I]:
@@ -142,64 +123,19 @@ class Program[I: Instr = typing.Any]:
         return self._outputs
 
     @property
-    def tensors(self) -> TList:
-        "The tensors that exist in this program."
-        return self._tensors
+    def tindex(self) -> TensorIndex[I]:
+        "The tensor-level index: producers, consumers and lifetimes."
+        return self._tindex
 
-    def output_of_step(self, tensor: torch.Tensor) -> int:
-        """
-        Get the step number of step that produced output.
-
-        If not set (producer is None), return -1.
-        """
-
-        ins = self._instr_producing(tensor)
-        return self.instrs.index(ins) if ins is not None else -1
-
-    def input_to_step(self, tensor: torch.Tensor) -> cabc.Sequence[int]:
-        consuming = self._thunk_consuming(tensor)
-        return [self.instrs.index(thunk) for thunk in consuming]
-
-    def _all_tensors(self):
-        yield from self.inputs
-        yield from self.outputs
-
-        yield from _all_thunk_tensors(self.instrs)
-
-    def _validate_input_output(self) -> None:
-        for input in self.inputs:
-            # Input should not have a producer.
-            if not self._tensor_links[input].is_free:
-                raise ValueError("Input is not a free variable.")
-
-        for output in self.outputs:
-            # Output is not produced.
-            if output not in self._tensor_links:
-                raise ValueError("Output not discovered.")
-
-        if set(self.inputs) & set(self.outputs):
-            raise ValueError("Inputs are in the outputs. Not allowed yet.")
-
-    def _instr_producing(self, tensor: torch.Tensor, /) -> I | None:
-        """
-        Get the thunk that produces the producer.
-
-        If it's from the input, return `None`.
-        """
-
-        if tensor in self.inputs:
-            return None
-
-        else:
-            return self._tensor_links[tensor].producer
-
-    def _thunk_consuming(self, tensor: torch.Tensor, /) -> cabc.Generator[I]:
-        ref = self._tensor_links[tensor]
-        yield from ref.consumers
+    def reset_tindex(self) -> None:
+        "(Re)build the tensor index from the current instrs, inputs and outputs."
+        self._tindex = TensorIndex(self)
 
     def copy(self) -> typing.Self:
         "Do a shallow copy of `self`, for CoW."
-        return copy.copy(self)
+        copied = copy.copy(self)
+        copied.reset_tindex()
+        return copied
 
     @classmethod
     def from_instr_list(cls, instrs: cabc.Iterable[I], /) -> typing.Self:
@@ -216,6 +152,122 @@ class Program[I: Instr = typing.Any]:
         io_only = _InputOutputOnly.from_instrs(instrs)
 
         return cls(instrs=instrs, inputs=io_only.inputs, outputs=io_only.outputs)
+
+
+# The TensorIndex class ====
+
+
+class TensorIndex[I: Instr = typing.Any]:
+    """
+    Tensor-level index over a `Program`.
+
+    Maps every tensor to a `TensorRef` (its producer and consumers),
+    and answers step and lifetime queries about tensors.
+
+    `Program` builds this index on construction.
+    """
+
+    def __init__(self, program: Program[I], /) -> None:
+        self._program = program
+
+        self._tensors = TList.from_iterable(self._all_tensors())
+        self._links = _build_tensor_refs(program.instrs, list(program.inputs))
+
+        # Validate if the inputs and outputs are valid.
+        self._validate_input_output()
+
+        if not self._tensors.all_fake:
+            raise ValueError("Contains non fake tensors.")
+
+    def __contains__(self, tensor: torch.Tensor) -> bool:
+        return tensor in self._links
+
+    def __getitem__(self, tensor: torch.Tensor) -> TensorRef[I]:
+        "The ref (producer and consumers) of `tensor`."
+        return self._links[tensor]
+
+    @property
+    def program(self) -> Program[I]:
+        "The program being indexed."
+        return self._program
+
+    @property
+    def tensors(self) -> TList:
+        "The tensors that exist in the instructions, inputs and outputs."
+        return self._tensors
+
+    @property
+    def links(self) -> AnyDict[torch.Tensor, TensorRef[I]]:
+        "Mapping from tensors to refs (linking functions)."
+        return self._links
+
+    def life(self, t: torch.Tensor, /) -> TensorLifetime:
+        """
+        Compute the lifetime of a tensor.
+
+        birth = at which point we start keeping track of it.
+        death = at which point it is no longer needed.
+        """
+
+        prog = self._program
+        birth = self.output_of_step(t) if t not in prog.inputs else -1
+        death = max(self.input_to_step(t)) if t not in prog.outputs else len(prog)
+        return TensorLifetime(birth=birth, death=death)
+
+    def output_of_step(self, tensor: torch.Tensor) -> int:
+        """
+        Get the step number of step that produced output.
+
+        If not set (producer is None), return -1.
+        """
+
+        ins = self.producer_of(tensor)
+        return self._program.instrs.index(ins) if ins is not None else -1
+
+    def input_to_step(self, tensor: torch.Tensor) -> cabc.Sequence[int]:
+        "Get the step numbers of the steps that consume `tensor`."
+
+        instrs = self._program.instrs
+        return [instrs.index(thunk) for thunk in self.consumers_of(tensor)]
+
+    def producer_of(self, tensor: torch.Tensor, /) -> I | None:
+        """
+        Get the instr that produces the tensor.
+
+        If it's from the input, return `None`.
+        """
+
+        if tensor in self._program.inputs:
+            return None
+
+        return self[tensor].producer
+
+    def consumers_of(self, tensor: torch.Tensor, /) -> cabc.Generator[I]:
+        "Yield the instrs that consume the tensor."
+
+        yield from self[tensor].consumers
+
+    def _all_tensors(self) -> cabc.Generator[torch.Tensor]:
+        yield from self._program.inputs
+        yield from self._program.outputs
+
+        yield from _all_thunk_tensors(self._program.instrs)
+
+    def _validate_input_output(self) -> None:
+        prog = self._program
+
+        for input in prog.inputs:
+            # Input should not have a producer.
+            if not self[input].is_free:
+                raise ValueError("Input is not a free variable.")
+
+        for output in prog.outputs:
+            # Output is not produced.
+            if output not in self:
+                raise ValueError("Output not discovered.")
+
+        if set(prog.inputs) & set(prog.outputs):
+            raise ValueError("Inputs are in the outputs. Not allowed yet.")
 
 
 # The node classes ====
@@ -468,7 +520,7 @@ def _select_indices[I: Instr](
 
     # Inputs should not depend on intermediate.
     # Since `inputs_produced_by` represent intermediate, it can be empty.
-    inputs_produced_by = [prog.output_of_step(t) for t in inputs]
+    inputs_produced_by = [prog.tindex.output_of_step(t) for t in inputs]
     if inputs_produced_by and selection.min() < max(inputs_produced_by):
         raise ValueError("Illegal subset where input depend on intermediate.")
 
