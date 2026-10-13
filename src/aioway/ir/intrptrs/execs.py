@@ -48,10 +48,10 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
         if not is_fake_tensor(tensor):
             return False
 
-        return tensor in self._prog.tensors
+        return tensor in self._prog.tindex.tensors
 
     def __iter__(self) -> cabc.Generator[torch.Tensor]:
-        yield from self._prog.tensors
+        yield from self._prog.tindex.tensors
 
     def __getitem__(self, fake: torch.Tensor) -> torch.Tensor | None:
         if not is_fake_tensor(fake):
@@ -97,8 +97,8 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
 
         thunk = self._prog[step]
 
-        for input in thunk.inputs:
-            if self._prog.life(input).death == step:
+        for input in thunk.tensor_inputs:
+            if self._prog.tindex.life(input).death == step:
                 self.drop(input)
 
     def clear(self) -> None:
@@ -175,7 +175,7 @@ class Exec[F: cabc.Callable = typing.Any](
 
     TYPE = torch.Tensor
 
-    def __init__(self, program: Program) -> None:
+    def __init__(self, program: Program[FuncCall[F]]) -> None:
         self._prog = program
         self._scope = LocalScope(self._prog)
 
@@ -200,25 +200,21 @@ class Exec[F: cabc.Callable = typing.Any](
 
     @typing.override
     def step(self, idx: int, instr: FuncCall[F]) -> None:
-        args, kwargs = self._scope.map([instr.args, instr.kwargs])
-        real = instr.func(*args, **kwargs)
+        bounded = self._scope.map(instr.bounded)
+        real = instr.func(*bounded.args, **bounded.kwargs)
         self._scope.update(instr.result, real)
         self._scope.expire(idx)
 
     @typing.override
     def finalize(self) -> typing.Any:
-        result = self._scope.map(self._prog[-1].result)
+        result = self._scope.map(self[-1].result)
         self._scope.clear()
         return result
 
     @property
     @typing.override
-    def program(self) -> Program:
+    def program(self) -> Program[FuncCall[F]]:
         return self._prog
-
-    @property
-    def inputs(self):
-        return self._prog.inputs
 
 
 def _get_fake_id(fake: torch.Tensor | int, /) -> int:

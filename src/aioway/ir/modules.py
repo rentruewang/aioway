@@ -58,7 +58,7 @@ class ModuleHist:
         return self.history[idx]
 
     def append(self, thunk: ModuleCall) -> None:
-        outputs = tuple(thunk.outputs)
+        outputs = tuple(thunk.tensor_outputs)
 
         # Check if the keys already exists,
         # should be unique due to cloning in fake mode.

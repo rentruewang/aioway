@@ -223,7 +223,7 @@ class Sign:
     def params(self) -> dict[str, Param]:
         return {key: Param(param) for key, param in self._sign.parameters.items()}
 
-    @property
+    @functools.cached_property
     def param_list(self) -> list[Param]:
         "Convert parameters into a list."
         return list(self.params.values())
@@ -340,6 +340,9 @@ class BoundArgs(PyTreeDict, pytree_key=pyt.MappingKey):
     The `pyt` children are the bound arguments, keyed by parameter name.
     """
 
+    __iter__ = None
+    "Explicitly disallow iteration."
+
     def __init__(self, *, bounded: inspect.BoundArguments) -> None:
         self._bounded = bounded
 
@@ -371,11 +374,18 @@ class BoundArgs(PyTreeDict, pytree_key=pyt.MappingKey):
     def __len__(self) -> int:
         return len(self.arguments)
 
-    def __getitem__(self, key: str) -> int:
-        return self.arguments[key]
+    def __getitem__(self, key: int | str) -> typing.Any:
+        if isinstance(key, str):
+            return self.arguments[key]
 
-    def __iter__(self) -> cabc.Iterator[str]:
-        return iter(self.arguments)
+        if isinstance(key, int):
+            params = self.sign.param_list
+            return params[key]
+
+        raise TypeError(f"Only handles ints and strs. Got {type(key)=}.")
+
+    def keys(self) -> cabc.KeysView[str]:
+        return self.arguments.keys()
 
     @property
     def sign(self) -> Sign:

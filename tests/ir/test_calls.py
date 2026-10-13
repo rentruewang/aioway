@@ -202,9 +202,9 @@ def test_run_twice_new_data(trace):
 def test_inputs_are_traced_fakes(trace):
     exec, (x, y) = trace(lambda x, y: torch.add(x, y))
 
-    assert len(exec.inputs) == 2
+    assert len(exec.program.inputs) == 2
 
-    fx, fy = exec.inputs
+    fx, fy = exec.program.inputs
     assert _attr_eq(fx, x)
     assert _attr_eq(fy, y)
 

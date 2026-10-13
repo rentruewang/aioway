@@ -97,12 +97,12 @@ def _prev_in_chain[I: Instr](program: Program[I], step: int) -> int:
     `step` must have one input, made by an instr rather than given to the program.
     """
 
-    inputs = program.instrs[step].inputs
+    inputs = program.instrs[step].tensor_inputs
 
     if len(inputs) != 1:
         raise _SeqMatchFailed
 
-    if (prev := program.output_of_step(inputs[0])) >= 0:
+    if (prev := program.tindex.output_of_step(inputs[0])) >= 0:
         return prev
 
     # `output_of_step` gives -1 for program inputs.
