@@ -239,8 +239,20 @@ class ProgramIn(PyTree):
 
         return self.bound[key]
 
-    def values(self) -> cabc.Iterator[typing.Any]:
+    def keys(self) -> cabc.KeysView[str]:
+        "The keys. Only the arguments that are provided."
+
+        return self.bound.keys()
+
+    def values(self) -> cabc.ValuesView[typing.Any]:
+        "The values. Only the arguments that are provided."
+
         return self.bound.values()
+
+    def items(self) -> cabc.ItemsView[str, typing.Any]:
+        "The items. Only the arguments that are provided."
+
+        return self.bound.items()
 
     @property
     def bound(self) -> BoundArgs:

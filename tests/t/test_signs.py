@@ -264,8 +264,9 @@ class TestBoundArgs:
         bound = greet.bind("bob")
         assert bound.arguments == {"name": "bob"}
 
-        assert bound.apply_defaults() is not bound
-        assert bound.arguments == greet.apply("bob")
+        applied = bound.apply_defaults()
+        assert applied is not bound
+        assert applied.arguments == greet.apply("bob")
 
     def test_ne_dict(self, bound: BoundArgs):
         assert bound != {"name": "bob", "greeting": "bye"}
