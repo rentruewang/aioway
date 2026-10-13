@@ -6,6 +6,7 @@ import itertools
 import typing
 
 import jinja2 as j2
+import loguru as L
 import torch
 from rich import syntax
 from torch.utils import _pytree as pyt
@@ -15,9 +16,7 @@ from aioway.ir.instrs import FuncCall
 from aioway.ir.progs import FuncProgram, ProgramIn
 from aioway.t import BoundArgs, Sign, render_torch_func_name
 
-from .intrptrs import Intrptr
-
-__all__ = ["CodeRender", "StatelessCodePrint", "render_stateless_program"]
+__all__ = ["CodeRender", "render_stateless_program", "StatelessCodePrint"]
 
 
 class CodeRender(typing.Protocol):
@@ -26,17 +25,14 @@ class CodeRender(typing.Protocol):
     def __rich__(self) -> typing.Any: ...
 
 
-def render_stateless_program(
-    program: FuncProgram, name: str, *args: str, **kwargs: str
-) -> CodeRender:
-    interpret = StatelessCodePrint(program=program, name=name)
-    return interpret(*args, **kwargs)
+def render_stateless_program(program: FuncProgram, name: str) -> CodeRender:
+    return StatelessCodePrint(program=program, name=name)()
 
 
 # The renderer itself ====
 
 
-class StatelessCodePrint(Intrptr[FuncCall, str, CodeRender]):
+class StatelessCodePrint:
     """
     Render the function as a python function.
 
@@ -53,7 +49,30 @@ class StatelessCodePrint(Intrptr[FuncCall, str, CodeRender]):
         self._steps: list[str] = []
         self._counter = itertools.count(start=1)
 
-    @typing.override
+    @typing.final
+    def __call__(self):
+        # Assign bound argument's arguments to its name in signature.
+        for name, val in self.program.inputs.bound.items():
+            self._vars[val] = name
+            self._index_sub_attr(val)
+
+        L.logger.debug("Prepare walking the {} instructions.", len(self.program.instrs))
+
+        # Execute the steps one by one in topo sorted order.
+        for idx, instr in enumerate(self.program.instrs):
+            self.step(idx, instr)
+
+        L.logger.debug("Preparing the output.")
+        outputs = [self.name(var) for var in self.program.outputs]
+        returns = outputs[0] if len(outputs) == 1 else f"[{', '.join(outputs)}]"
+
+        return _FuncRender(
+            name=self._func_name,
+            params=self._renamed_signature(),
+            lines=self._steps,
+            returns=returns,
+        )
+
     def bind(self, inputs: ProgramIn, bound: BoundArgs) -> None:
         assert inputs.sign == bound.sign
 
@@ -61,7 +80,6 @@ class StatelessCodePrint(Intrptr[FuncCall, str, CodeRender]):
             self._vars[i] = a
             self._index_sub_attr(i)
 
-    @typing.override
     def step(self, idx: int, instr: FuncCall) -> None:
         # Rerun is not permitted.
         assert len(self._steps) == idx, "Length is not equal"
@@ -76,20 +94,7 @@ class StatelessCodePrint(Intrptr[FuncCall, str, CodeRender]):
         func_name = render_torch_func_name(instr.func)
         self._steps.append(var_name + " = " + render_fcall(func_name, *args, **kwargs))
 
-    @typing.override
-    def finalize(self) -> CodeRender:
-        outputs = [self.name(var) for var in self.program.outputs]
-        returns = outputs[0] if len(outputs) == 1 else f"[{', '.join(outputs)}]"
-
-        return _FuncRender(
-            name=self._func_name,
-            params=self._renamed_signature(),
-            lines=self._steps,
-            returns=returns,
-        )
-
     @property
-    @typing.override
     def program(self) -> FuncProgram:
         return self._program
 
