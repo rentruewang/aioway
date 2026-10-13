@@ -76,7 +76,7 @@ def test_all(graph: Graph):
 
     assert isinstance(sub, Program)
     assert len(sub) == 4
-    assert sub.inputs == {graph.x, graph.y}
+    assert sub.inputs.tensors == {graph.x, graph.y}
     assert sub.outputs == [graph.activated]
 
 
@@ -84,7 +84,7 @@ def test_prefix(graph: Graph):
     sub = graph.prog[IndexQuery([0, 1])]
 
     assert len(sub) == 2
-    assert sub.inputs == {graph.x, graph.y}
+    assert sub.inputs.tensors == {graph.x, graph.y}
     assert sub.outputs == {graph.summed, graph.product}
 
 
@@ -92,7 +92,7 @@ def test_suffix(graph: Graph):
     sub = graph.prog[IndexQuery([2, 3])]
 
     assert len(sub) == 2
-    assert sub.inputs == {graph.product, graph.summed}
+    assert sub.inputs.tensors == {graph.product, graph.summed}
     assert sub.outputs == [graph.activated]
 
 
@@ -100,14 +100,14 @@ def test_single_step(graph: Graph):
     sub = graph.prog[IndexQuery([3])]
 
     assert len(sub) == 1
-    assert sub.inputs == [graph.difference]
+    assert sub.inputs.tensors == [graph.difference]
     assert sub.outputs == [graph.activated]
 
 
 def test_numpy_idx(graph: Graph):
     sub = graph.prog[IndexQuery(np.array([2, 3]))]
 
-    assert sub.inputs == {graph.product, graph.summed}
+    assert sub.inputs.tensors == {graph.product, graph.summed}
     assert sub.outputs == [graph.activated]
 
 
@@ -259,7 +259,7 @@ def test_seqs_finds_chain(graph: Graph):
     assert funcs(sub) == [torch.sub, torch.relu]
 
     # Can compare this to a list, since the input is ordered.
-    assert sub.inputs == [graph.product, graph.summed]
+    assert sub.inputs.tensors == [graph.product, graph.summed]
     assert sub.outputs == [graph.activated]
 
 
