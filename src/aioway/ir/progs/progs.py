@@ -622,54 +622,28 @@ def _replace_sub_prog[I: Instr](
     """
 
     queried = _query_select(query=query, prog=prog)
-
-    # Inputs are matched by position, parameter names are not compared.
-    queried_ins = queried.inputs.tensors
-    sub_ins = sub_prog.inputs.tensors
-
-    if queried_ins.shapes() != sub_ins.shapes():
-        raise ValueError("Inputs have different shapes.")
-
-    if queried.outputs.shapes() != sub_prog.outputs.shapes():
-        raise ValueError("Outputs have different shapes.")
-
-    if queried_ins.dtypes() != sub_ins.dtypes():
-        raise ValueError("Inputs have different dtypes.")
-
-    if queried.outputs.dtypes() != sub_prog.outputs.dtypes():
-        raise ValueError("Outputs have different dtypes.")
-
-    # Get the indices of the queried subnet and minimum (useful in inserting).
-    qidx = {prog.instrs.index(q) for q in queried.ilist}
-    min_qidx = min(qidx)
-
-    # Inputs and outputs are not shared.
-    assert sub_ins.keys().isdisjoint(sub_prog.outputs.keys())
-
-    # Build mapping for replacement.
-    in_to_out = any_dict(torch.Tensor)
-    for before, after in zip(queried_ins, sub_ins):
-        in_to_out[before] = after
-    for before, after in zip(queried.outputs, sub_prog.outputs):
-        in_to_out[before] = after
+    rplc, queried_idx = _tensor_rplc(prog=prog, queried=queried, sub_prog=sub_prog)
 
     # Drop the ones that are queried.
     new_instrs: list[I] = [
-        thunk.tree_map_only(torch.Tensor, lambda t: in_to_out.get(t, t))
+        thunk.tree_map_only(torch.Tensor, lambda t: rplc.get(t, t))
         for i, thunk in enumerate(prog.instrs)
-        if i not in qidx
+        if i not in queried_idx
+    ]
+    min_queried_idx = min(queried_idx)
+
+    # Replace instructions.
+    new_instrs = [
+        *new_instrs[:min_queried_idx],
+        *sub_prog.instrs,
+        *new_instrs[min_queried_idx:],
     ]
 
-    # Replace with new.
-    pre = new_instrs[:min_qidx]
-    post = new_instrs[min_qidx:]
-    new_instrs = [*pre, *sub_prog.instrs, *post]
-
-    maybe_get = lambda t: in_to_out.get(t, t)
+    # Replace inputs and outputs.
+    maybe_get = lambda t: rplc.get(t, t)
     new_ins = pyt.tree_map_only(torch.Tensor, func=maybe_get, tree=prog.inputs)
     new_outs = pyt.tree_map_only(torch.Tensor, func=maybe_get, tree=prog.outputs)
 
-    # Keep the signature, only the tensors on the replaced boundary change.
     return _ProgramTuple(
         ilist=InstrList.build(new_instrs),
         inputs=new_ins,
@@ -719,6 +693,43 @@ def _select_indices[I: Instr](
         inputs=ProgramIn.from_tensors(inputs),
         outputs=outputs,
     )
+
+
+def _tensor_rplc[I: Instr](
+    prog: Program[I], queried: _ProgramTuple[I], sub_prog: Program[I]
+) -> tuple[AnyDict[torch.Tensor, torch.Tensor], set[int]]:
+    "Find the replacement tensors, before -> after."
+
+    # Inputs are matched by position, parameter names are not compared.
+    queried_ins = queried.inputs.tensors
+    sub_ins = sub_prog.inputs.tensors
+
+    if queried_ins.shapes() != sub_ins.shapes():
+        raise ValueError("Inputs have different shapes.")
+
+    if queried.outputs.shapes() != sub_prog.outputs.shapes():
+        raise ValueError("Outputs have different shapes.")
+
+    if queried_ins.dtypes() != sub_ins.dtypes():
+        raise ValueError("Inputs have different dtypes.")
+
+    if queried.outputs.dtypes() != sub_prog.outputs.dtypes():
+        raise ValueError("Outputs have different dtypes.")
+
+    # Get the indices of the queried subnet.
+    qidx = {prog.instrs.index(q) for q in queried.ilist}
+
+    # Inputs and outputs are not shared.
+    assert sub_ins.keys().isdisjoint(sub_prog.outputs.keys())
+
+    # Build mapping for replacement.
+    in_to_out = any_dict(torch.Tensor)
+    for before, after in zip(queried_ins, sub_ins):
+        in_to_out[before] = after
+    for before, after in zip(queried.outputs, sub_prog.outputs):
+        in_to_out[before] = after
+
+    return in_to_out, qidx
 
 
 @dcls.dataclass(frozen=True)
