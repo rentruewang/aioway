@@ -12,7 +12,7 @@ from rich import syntax
 from torch.utils import _pytree as pyt
 
 from aioway._utils import AnyDict, any_dict, render_fcall
-from aioway.ir.instrs import FuncCall, InstrList
+from aioway.ir.instrs import FuncCall
 from aioway.ir.progs import FuncProgram, ProgramIn
 from aioway.t import BoundArgs, Sign, render_torch_func_name
 
@@ -26,8 +26,7 @@ class CodeRender(typing.Protocol):
 
 
 def render_stateless_program(program: FuncProgram, name: str) -> CodeRender:
-    interpret = StatelessCodePrint(program=program, name=name)
-    return interpret()
+    return StatelessCodePrint(program=program, name=name)()
 
 
 # The renderer itself ====
@@ -52,15 +51,27 @@ class StatelessCodePrint:
 
     @typing.final
     def __call__(self):
+        # Assign bound argument's arguments to its name in signature.
         for name, val in self.program.inputs.bound.items():
             self._vars[val] = name
             self._index_sub_attr(val)
 
         L.logger.debug("Prepare walking the {} instructions.", len(self.program.instrs))
-        self.walk(self.program.instrs)
+
+        # Execute the steps one by one in topo sorted order.
+        for idx, instr in enumerate(self.program.instrs):
+            self.step(idx, instr)
 
         L.logger.debug("Preparing the output.")
-        return self.finalize()
+        outputs = [self.name(var) for var in self.program.outputs]
+        returns = outputs[0] if len(outputs) == 1 else f"[{', '.join(outputs)}]"
+
+        return _FuncRender(
+            name=self._func_name,
+            params=self._renamed_signature(),
+            lines=self._steps,
+            returns=returns,
+        )
 
     def bind(self, inputs: ProgramIn, bound: BoundArgs) -> None:
         assert inputs.sign == bound.sign
@@ -68,15 +79,6 @@ class StatelessCodePrint:
         for i, a in zip(inputs.values(), bound.values()):
             self._vars[i] = a
             self._index_sub_attr(i)
-
-    def walk(self, instrs: InstrList, /) -> None:
-        """
-        Walk over the program and update the states.
-        """
-
-        # Execute the steps one by one in topo sorted order.
-        for idx, instr in enumerate(instrs):
-            self.step(idx, instr)
 
     def step(self, idx: int, instr: FuncCall) -> None:
         # Rerun is not permitted.
@@ -91,17 +93,6 @@ class StatelessCodePrint:
 
         func_name = render_torch_func_name(instr.func)
         self._steps.append(var_name + " = " + render_fcall(func_name, *args, **kwargs))
-
-    def finalize(self) -> CodeRender:
-        outputs = [self.name(var) for var in self.program.outputs]
-        returns = outputs[0] if len(outputs) == 1 else f"[{', '.join(outputs)}]"
-
-        return _FuncRender(
-            name=self._func_name,
-            params=self._renamed_signature(),
-            lines=self._steps,
-            returns=returns,
-        )
 
     @property
     def program(self) -> FuncProgram:

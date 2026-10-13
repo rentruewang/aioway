@@ -24,7 +24,6 @@ from rich import pretty
 from aioway.ir import (
     FuncProgram,
     ProgramIn,
-    StatelessCodePrint,
     TorchFuncDag,
     render_stateless_program,
 )
@@ -60,7 +59,7 @@ iset = FuncProgram.from_instr_list(tracer.thunks)
 render_stateless_program(iset, "example_program")
 
 # %%
-rich.print(StatelessCodePrint(iset, "example_program")())
+rich.print(render_stateless_program(iset, "example"))
 
 # %%
 x, y = iset.inputs.tensors
@@ -74,4 +73,4 @@ another = FuncProgram(
 render_stateless_program(another, "another_program")
 
 # %%
-rich.print(StatelessCodePrint(another, "another_program")())
+rich.print(render_stateless_program(another, "another"))
