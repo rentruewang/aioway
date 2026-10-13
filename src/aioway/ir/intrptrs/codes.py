@@ -57,7 +57,7 @@ class _FuncProgramCode(Intrptr[FuncCall, str, CodeRender]):
     def bind(self, inputs: ProgramIn, bound: BoundArgs) -> None:
         for i, a in zip(inputs, bound.values()):
             self._vars[i] = a
-            self._decompose(i)
+            self._index_attr(i)
 
     @typing.override
     def step(self, idx: int, instr: FuncCall) -> None:
@@ -68,7 +68,7 @@ class _FuncProgramCode(Intrptr[FuncCall, str, CodeRender]):
         kwargs = pyt.tree_map_only(torch.Tensor, self.name, instr.kwargs)
 
         self._vars[instr.result] = self._new_name(instr.result)
-        self._decompose(instr.result)
+        self._index_attr(instr.result)
         result = self.name(instr.result)
 
         func_name = render_torch_func_name(instr.func)
@@ -76,12 +76,14 @@ class _FuncProgramCode(Intrptr[FuncCall, str, CodeRender]):
 
     @typing.override
     def finalize(self) -> CodeRender:
-        assert len(self.program.outputs) == 1, "Length is not 1."
+        outputs = [self.name(var) for var in self.program.outputs]
+        returns = outputs[0] if len(outputs) == 1 else f"[{', '.join(outputs)}]"
+
         return _FuncRender(
             name=self._func_name,
-            params=[self.name(t) for t in self.program.inputs],
+            params=[self.name(var) for var in self.program.inputs],
             lines=self._steps,
-            returns=self.name(self.program.outputs[0]),
+            returns=returns,
         )
 
     @property
@@ -101,7 +103,7 @@ class _FuncProgramCode(Intrptr[FuncCall, str, CodeRender]):
         prefix = typ.__name__.lower()
         return f"{prefix}_{next(self._counter)}"
 
-    def _decompose(self, var: typing.Any) -> None:
+    def _index_attr(self, var: typing.Any) -> None:
         "Name the tensors inside `var` by their path from it, e.g. `tdict['a']`."
 
         for path, leaf in pyt.tree_flatten_with_path(var)[0]:
