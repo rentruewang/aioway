@@ -18,7 +18,7 @@ from aioway.ir.instrs import Instr, InstrList
 from aioway.ir.queries import OrderedIndex, Query
 from aioway.t import (
     BoundArgs,
-    PyTree,
+    PyTreeMixin,
     PyTreeFlatten,
     PyTreeFlattenWithKey,
     Sign,
@@ -187,7 +187,7 @@ class Program[I: Instr = typing.Any]:
 # The ProgramIn class ====
 
 
-class ProgramIn(PyTree):
+class ProgramIn(PyTreeMixin):
     """
     The inputs of a `Program`: a `BoundArgs` whose arguments are all tensors.
 

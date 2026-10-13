@@ -8,7 +8,7 @@ from collections import abc as cabc
 
 from torch.utils import _pytree as pyt
 
-__all__ = ["PyTree", "PyTreeDict", "PyTreeFlatten", "PyTreeFlattenWithKey"]
+__all__ = ["PyTreeMixin", "PyTreeDictMixin", "PyTreeFlatten", "PyTreeFlattenWithKey"]
 
 type PyTreeFlatten = tuple[list, typing.Any]
 type PyTreeFlattenWithKey = tuple[list[tuple[pyt.KeyEntry, typing.Any]], typing.Any]
@@ -18,7 +18,7 @@ class PyTreeKeyFunc(typing.Protocol):
     def __call__(self, key: str, /) -> pyt.KeyEntry: ...
 
 
-class PyTree(abc.ABC):
+class PyTreeMixin(abc.ABC):
     """
     The mixin that enables the types to be compatible with `pytree` of `torch`.
 
@@ -52,7 +52,7 @@ class PyTree(abc.ABC):
         raise NotImplementedError
 
 
-class PyTreeDict(PyTree, abc.ABC):
+class PyTreeDictMixin(PyTreeMixin, abc.ABC):
     """
     The mixin that decompose objects with `pytree`,
     hanlding all types that serializes to `dict`.

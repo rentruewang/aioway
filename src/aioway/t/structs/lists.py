@@ -14,7 +14,7 @@ from aioway._utils import is_seq_of, is_set_of
 from aioway.t.attrs import parse_attr
 from aioway.t.overrides import has_fake
 
-from .bases import PyTree, PyTreeFlatten, PyTreeFlattenWithKey
+from .bases import PyTreeMixin, PyTreeFlatten, PyTreeFlattenWithKey
 
 if typing.TYPE_CHECKING:
     from aioway.t import Attr, Device, DType, Layout, Shape
@@ -23,7 +23,7 @@ __all__ = ["TList"]
 
 
 @typing.final
-class TList(PyTree):
+class TList(PyTreeMixin):
     """
     This is an immutable list of tensors, supporting fast lookups.
     It deduplicates the tensors it received.

@@ -19,7 +19,7 @@ from aioway._utils import is_any_type_hint, is_nn_type, is_seq_of
 from aioway.t.structs import TList
 
 from .guards import is_torch_function
-from .structs import PyTreeDict
+from .structs import PyTreeDictMixin
 
 __all__ = ["Param", "ParamKind", "Sign", "BoundArgs"]
 
@@ -348,7 +348,7 @@ class Sign:
         )
 
 
-class BoundArgs(PyTreeDict, pytree_key=pyt.MappingKey):
+class BoundArgs(PyTreeDictMixin, pytree_key=pyt.MappingKey):
     """
     Our version of `inspect.BoundArguments`.
 
