@@ -239,8 +239,24 @@ class ProgramIn(PyTree):
 
         return self.bound[key]
 
-    def values(self) -> cabc.Iterator[typing.Any]:
+    def keys(self) -> cabc.KeysView[str]:
+        "The keys. Only the arguments that are provided."
+
+        return self.bound.keys()
+
+    def values(self) -> cabc.ValuesView[typing.Any]:
+        "The values. Only the arguments that are provided."
+
         return self.bound.values()
+
+    def items(self) -> cabc.ItemsView[str, typing.Any]:
+        "The items. Only the arguments that are provided."
+
+        return self.bound.items()
+
+    def rebind(self, *args, **kwargs) -> BoundArgs:
+        "Rebind another set of inputs."
+        return self.sign.bind(*args, **kwargs)
 
     @property
     def bound(self) -> BoundArgs:
@@ -293,7 +309,7 @@ class ProgramIn(PyTree):
         assert isinstance(context, Sign)
 
         arguments = dict(zip(context.params, children, strict=True))
-        return cls(bound=BoundArgs.from_args(sign=context, args=arguments))
+        return cls(bound=BoundArgs.from_no_bind(sign=context, arguments=arguments))
 
     @classmethod
     def from_sign(

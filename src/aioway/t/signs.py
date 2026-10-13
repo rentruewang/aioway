@@ -409,9 +409,16 @@ class BoundArgs(PyTreeDict, pytree_key=pyt.MappingKey):
     def param_list(self) -> tuple[Param, ...]:
         return self.sign.param_list
 
-    @property
+    @functools.cached_property
     def arguments(self) -> dict[str, typing.Any]:
-        return self._bounded.arguments
+        """
+        An ordered copy of the `BoundArguments.arguments` dictionary.
+        """
+
+        # Only bind the provided arguments, and in order.
+        provided = self._bounded.arguments.keys()
+        names_in_order = [p.name for p in self.param_list]
+        return {n: self._bounded.arguments[n] for n in names_in_order if n in provided}
 
     @property
     def args(self) -> tuple:
@@ -435,22 +442,27 @@ class BoundArgs(PyTreeDict, pytree_key=pyt.MappingKey):
         return TList.from_iterable(tensors)
 
     def apply_defaults(self) -> typing.Self:
-        self = copy.copy(self)
-        self._bounded.apply_defaults()
-        return self
+        copied = copy.copy(self)
+        copied._bounded.apply_defaults()
+        return copied
 
-    def values(self):
-        for param in self.param_list:
-            yield self.arguments[param.name]
+    def keys(self) -> cabc.KeysView[str]:
+        return self.arguments.keys()
+
+    def values(self) -> cabc.ValuesView[typing.Any]:
+        return self.arguments.values()
+
+    def items(self) -> cabc.ItemsView[str, typing.Any]:
+        return self.arguments.items()
 
     def to_inspect(self) -> inspect.BoundArguments:
         return self._bounded
 
     @property
     @typing.override
-    def _tree_context(self) -> tuple[inspect.Signature, tuple[str, ...]]:
+    def _tree_context(self) -> tuple[Sign, tuple[str, ...]]:
         "The signature, and the names of the bound parameters."
-        return self._bounded.signature, tuple(self.arguments)
+        return self.sign, tuple(self.arguments)
 
     @typing.override
     def _tree_dict(self) -> dict[str, typing.Any]:
@@ -462,12 +474,12 @@ class BoundArgs(PyTreeDict, pytree_key=pyt.MappingKey):
         values = list(children)
         signature, names = context
 
-        assert isinstance(signature, inspect.Signature)
+        assert isinstance(signature, Sign)
         assert len(names) == len(values)
         assert is_seq_of(str)(names), names
 
         arguments = {key: val for key, val in zip(names, values)}
-        return cls(bounded=inspect.BoundArguments(signature, arguments))
+        return cls(bounded=inspect.BoundArguments(signature.to_inspect(), arguments))
 
     @classmethod
     def from_signs(cls, sign: Sign, *args, **kwargs) -> typing.Self:
@@ -475,12 +487,17 @@ class BoundArgs(PyTreeDict, pytree_key=pyt.MappingKey):
         return cls(bounded=bounded)
 
     @classmethod
-    def from_args(cls, sign: Sign, args: cabc.Mapping[str, typing.Any]) -> typing.Self:
-        "Construct from a signature and the args by parameter name, without binding."
+    def from_no_bind(
+        cls, sign: Sign, arguments: cabc.Mapping[str, typing.Any]
+    ) -> typing.Self:
+        """
+        Construct from a signature and the args by parameter name, without binding.
+        This avoids issues with positional only arguments with `.bind` method.
+        """
 
-        if unknown := args.keys() - sign.params.keys():
+        if unknown := arguments.keys() - sign.params.keys():
             raise TypeError(f"Unknown parameters: {sorted(unknown)}.")
 
         # Signature order, so `args` / `kwargs` / iteration follow the signature.
-        ordered = {name: args[name] for name in sign.params if name in args}
+        ordered = {name: arguments[name] for name in sign.params if name in arguments}
         return cls(bounded=inspect.BoundArguments(sign.to_inspect(), ordered))

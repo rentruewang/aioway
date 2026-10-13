@@ -191,12 +191,13 @@ class Exec[F: cabc.Callable = typing.Any](
 
     @typing.override
     def bind(self, inputs: ProgramIn, bound: BoundArgs) -> None:
-        tensors = bound.tensors
-        if self.program.inputs.tensors.attrs() != [parse_attr(t) for t in tensors]:
+        assert inputs.sign == bound.sign
+
+        if inputs.tensors.attrs() != bound.tensors.attrs():
             raise TypeError("Tensors do not look like they can be consumed by inputs.")
 
         try:
-            self._scope.update(inputs, tensors)
+            self._scope.update(inputs, bound)
         except ValueError as err:
             raise TypeError from err
 
