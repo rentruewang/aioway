@@ -14,7 +14,7 @@ from aioway._utils import is_seq_of, is_set_of
 from aioway.t.attrs import parse_attr
 from aioway.t.overrides import has_fake
 
-from .trees import PyTree, PyTreeFlatten, PyTreeFlattenWithKey
+from .bases import PyTree, PyTreeFlatten, PyTreeFlattenWithKey
 
 if typing.TYPE_CHECKING:
     from aioway.t import Attr, Device, DType, Layout, Shape
