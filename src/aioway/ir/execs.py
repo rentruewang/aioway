@@ -5,13 +5,13 @@
 import typing
 from collections import abc as cabc
 
+import loguru as L
 import torch
 from torch.utils import _pytree as pyt
 
+from aioway.ir.instrs import InstrList
 from aioway.ir.progs import ProgramIn
 from aioway.t import BoundArgs, has_fake, is_fake_tensor, is_real_tensor, parse_attr
-
-from .intrptrs import Intrptr
 
 if typing.TYPE_CHECKING:
     from aioway.ir import FuncCall, Program
@@ -162,9 +162,7 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
             raise ValueError("Real tensor in `fake` paired with a different value.")
 
 
-class Exec[F: cabc.Callable = typing.Any](
-    Intrptr["FuncCall[F]", torch.Tensor, typing.Any]
-):
+class Exec[F: cabc.Callable = typing.Any]:
     """
     This is the executor responsible for executing a traced thunk list on real data.
 
@@ -189,7 +187,16 @@ class Exec[F: cabc.Callable = typing.Any](
     def __iter__(self) -> cabc.Generator[FuncCall[F]]:
         yield from self._prog
 
-    @typing.override
+    def __call__(self, *args, **kwargs):
+        bound = self.program.inputs.sign.bind(*args, **kwargs)
+        self.bind(self.program.inputs, bound)
+
+        L.logger.debug("Prepare walking the {} instructions.", len(self.program.instrs))
+        self.walk(self.program.instrs)
+
+        L.logger.debug("Preparing the output.")
+        return self.finalize()
+
     def bind(self, inputs: ProgramIn, bound: BoundArgs) -> None:
         assert inputs.sign == bound.sign
 
@@ -201,22 +208,43 @@ class Exec[F: cabc.Callable = typing.Any](
         except ValueError as err:
             raise TypeError from err
 
-    @typing.override
+    def walk(self, instrs: InstrList[FuncCall[F]], /) -> None:
+        """
+        Walk over the program and update the states.
+
+        Right now, since we don't have jumps or returns,
+        we can just use a straight forward loop.
+        """
+
+        # Execute the steps one by one in topo sorted order.
+        for idx, instr in enumerate(instrs):
+            self.step(idx, instr)
+
     def step(self, idx: int, instr: FuncCall[F]) -> None:
+        """
+        Step over each `instr` one by one.
+        """
+
         bounded = self._scope.map(instr.bounded)
         real = instr.func(*bounded.args, **bounded.kwargs)
         self._scope.update(instr.result, real)
         self._scope.expire(idx)
 
-    @typing.override
     def finalize(self) -> typing.Any:
+        """
+        Finalize and return the result.
+        """
         result = self._scope.map(self[-1].result)
         self._scope.clear()
         return result
 
     @property
-    @typing.override
     def program(self) -> Program[FuncCall[F]]:
+        """
+        The property that signals that `Exec` is bound to a `Program`.
+        Exists for type safety.
+        """
+
         return self._prog
 
 
