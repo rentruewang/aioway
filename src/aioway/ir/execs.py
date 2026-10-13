@@ -9,7 +9,6 @@ import loguru as L
 import torch
 from torch.utils import _pytree as pyt
 
-from aioway.ir.instrs import InstrList
 from aioway.ir.progs import ProgramIn
 from aioway.t import BoundArgs, has_fake, is_fake_tensor, is_real_tensor, parse_attr
 
@@ -192,7 +191,11 @@ class Exec[F: cabc.Callable = typing.Any]:
         self.bind(self.program.inputs, bound)
 
         L.logger.debug("Prepare walking the {} instructions.", len(self.program.instrs))
-        self.walk(self.program.instrs)
+
+        # Execute the steps one by one in topo sorted order,
+        # since we do not have jumps, branches, or returns right now.
+        for idx, instr in enumerate(self.program.instrs):
+            self.step(idx, instr)
 
         L.logger.debug("Preparing the output.")
         return self.finalize()
@@ -207,18 +210,6 @@ class Exec[F: cabc.Callable = typing.Any]:
             self._scope.update(inputs, bound)
         except ValueError as err:
             raise TypeError from err
-
-    def walk(self, instrs: InstrList[FuncCall[F]], /) -> None:
-        """
-        Walk over the program and update the states.
-
-        Right now, since we don't have jumps or returns,
-        we can just use a straight forward loop.
-        """
-
-        # Execute the steps one by one in topo sorted order.
-        for idx, instr in enumerate(instrs):
-            self.step(idx, instr)
 
     def step(self, idx: int, instr: FuncCall[F]) -> None:
         """

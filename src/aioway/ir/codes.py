@@ -25,11 +25,9 @@ class CodeRender(typing.Protocol):
     def __rich__(self) -> typing.Any: ...
 
 
-def render_stateless_program(
-    program: FuncProgram, name: str, *args: str, **kwargs: str
-) -> CodeRender:
+def render_stateless_program(program: FuncProgram, name: str) -> CodeRender:
     interpret = StatelessCodePrint(program=program, name=name)
-    return interpret(*args, **kwargs)
+    return interpret()
 
 
 # The renderer itself ====
@@ -53,9 +51,10 @@ class StatelessCodePrint:
         self._counter = itertools.count(start=1)
 
     @typing.final
-    def __call__(self, *args, **kwargs):
-        bound = self.program.inputs.sign.bind(*args, **kwargs)
-        self.bind(self.program.inputs, bound)
+    def __call__(self):
+        for name, val in self.program.inputs.bound.items():
+            self._vars[val] = name
+            self._index_sub_attr(val)
 
         L.logger.debug("Prepare walking the {} instructions.", len(self.program.instrs))
         self.walk(self.program.instrs)
