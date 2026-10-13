@@ -253,7 +253,7 @@ class ProgramIn(PyTree):
     @functools.cached_property
     def names(self) -> tuple[str, ...]:
         "The parameter names, in signature order."
-        return tuple(self.keys())
+        return tuple(param.name for param in self.bound.param_list)
 
     @property
     def sign(self) -> Sign:
@@ -284,7 +284,7 @@ class ProgramIn(PyTree):
         return list(self.values()), self.bound.sign
 
     def _tree_flatten_with_keys(self) -> PyTreeFlattenWithKey:
-        with_path = [(_map_key(name), t) for name, t in self.items()]
+        with_path = [(_map_key(name), self.arguments[name]) for name in self.names]
         return with_path, self.bound.sign
 
     @classmethod
