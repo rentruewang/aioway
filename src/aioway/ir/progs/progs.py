@@ -38,13 +38,19 @@ class Program[I: Instr = typing.Any]:
         self,
         *,
         instrs: cabc.Iterable[I],
-        inputs: cabc.Iterable[torch.Tensor],
-        outputs: cabc.Iterable[torch.Tensor],
+        inputs: TList,
+        outputs: TList,
     ) -> None:
         self._instrs = InstrList.build(instrs)
 
-        self._inputs = TList.from_self_or_iter(inputs)
-        self._outputs = TList.from_self_or_iter(outputs)
+        if not isinstance(inputs, TList):
+            raise TypeError(f"{type(inputs)=} is not `TList`.")
+
+        if not isinstance(outputs, TList):
+            raise TypeError(f"{type(outputs)=} is not `TList`.")
+
+        self._inputs = inputs
+        self._outputs = outputs
 
         # Link producers / consumers, and validate inputs and outputs.
         self.reset_tindex()
