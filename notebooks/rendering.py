@@ -56,9 +56,9 @@ render_stateless_program(iset, "example_program", "x", "y")
 x, y = iset.inputs.tensors
 another = FuncProgram(
     instrs=iset.instrs,
-    inputs=ProgramIn.from_dict({"a": x, "b": y}),
+    inputs=ProgramIn.from_dict({"dict": {"a": x, "b": y}}),
     outputs=iset.outputs,
 )
 
 # %%
-render_stateless_program(another, "another_program", "x", "y")
+render_stateless_program(another, "another_program", "mapping")
