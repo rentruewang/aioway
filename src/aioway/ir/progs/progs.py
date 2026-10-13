@@ -239,14 +239,8 @@ class ProgramIn(PyTree):
 
         return self.bound[key]
 
-    def keys(self) -> cabc.KeysView[str]:
-        return self.arguments.keys()
-
-    def values(self) -> cabc.ValuesView[typing.Any]:
-        return self.arguments.values()
-
-    def items(self) -> cabc.ItemsView[str, typing.Any]:
-        return self.arguments.items()
+    def values(self) -> cabc.Iterator[typing.Any]:
+        return self.bound.values()
 
     @property
     def bound(self) -> BoundArgs:
@@ -271,11 +265,11 @@ class ProgramIn(PyTree):
         return self.bound.arguments
 
     @property
-    def tensors(self):
+    def tensors(self) -> TList:
         return self.bound.tensors
 
     @property
-    def signature(self):
+    def signature(self) -> Sign:
         return self.sign
 
     @property

@@ -9,7 +9,7 @@ import torch
 from torch.utils import _pytree as pyt
 
 from aioway.ir.progs import ProgramIn
-from aioway.t import has_fake, is_fake_tensor, is_real_tensor, parse_attr
+from aioway.t import BoundArgs, has_fake, is_fake_tensor, is_real_tensor, parse_attr
 
 from .intrptrs import Intrptr
 
@@ -190,12 +190,13 @@ class Exec[F: cabc.Callable = typing.Any](
         yield from self._prog
 
     @typing.override
-    def bind(self, inputs: ProgramIn, args: list[torch.Tensor]) -> None:
-        if self.program.inputs.tensors.attrs() != [parse_attr(t) for t in args]:
+    def bind(self, inputs: ProgramIn, bound: BoundArgs) -> None:
+        tensors = bound.tensors
+        if self.program.inputs.tensors.attrs() != [parse_attr(t) for t in tensors]:
             raise TypeError("Tensors do not look like they can be consumed by inputs.")
 
         try:
-            self._scope.update(inputs, args)
+            self._scope.update(inputs, tensors)
         except ValueError as err:
             raise TypeError from err
 
