@@ -12,8 +12,8 @@ from torch.utils import _pytree as pyt
 
 from aioway._utils import AnyDict, any_dict, render_fcall
 from aioway.ir.instrs import FuncCall
-from aioway.ir.progs import FuncProgram
-from aioway.t import TList, render_torch_func_name
+from aioway.ir.progs import FuncProgram, ProgramIn
+from aioway.t import render_torch_func_name
 
 from .intrptrs import Intrptr
 
@@ -53,7 +53,7 @@ class _FuncProgramCode(Intrptr[FuncCall, str, CodeRender]):
         self._counter = itertools.count(start=1)
 
     @typing.override
-    def bind(self, inputs: TList, args: list[str]) -> None:
+    def bind(self, inputs: ProgramIn, args: list[str]) -> None:
         for i, a in zip(inputs, args):
             self._vars[i] = a
 

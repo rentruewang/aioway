@@ -11,13 +11,23 @@ from collections import abc as cabc
 
 import numpy as np
 import torch
+from torch.utils import _pytree as pyt
 
 from aioway._utils import AnyDict, AnySet, IntArray, any_dict, any_set, is_list_of
 from aioway.ir.instrs import Instr, InstrList
 from aioway.ir.queries import OrderedIndex, Query
-from aioway.t import TList, all_real, parse_attr
+from aioway.t import (
+    BoundArgs,
+    PyTree,
+    PyTreeFlatten,
+    PyTreeFlattenWithKey,
+    Sign,
+    TList,
+    all_real,
+    parse_attr,
+)
 
-__all__ = ["TensorRef", "Program", "TensorIndex", "TensorLifetime"]
+__all__ = ["TensorRef", "Program", "ProgramIn", "TensorIndex", "TensorLifetime"]
 
 # The Program class ====
 
@@ -38,13 +48,19 @@ class Program[I: Instr = typing.Any]:
         self,
         *,
         instrs: cabc.Iterable[I],
-        inputs: cabc.Iterable[torch.Tensor],
-        outputs: cabc.Iterable[torch.Tensor],
+        inputs: ProgramIn,
+        outputs: TList,
     ) -> None:
+        if not isinstance(inputs, ProgramIn):
+            raise TypeError(f"Inputs should be a `ProgramIn`. Got {type(inputs)=}.")
+
+        if not isinstance(outputs, TList):
+            raise TypeError(f"Outputs should be a `TList`. Got {type(outputs)=}.")
+
         self._instrs = InstrList.build(instrs)
 
-        self._inputs = TList.from_self_or_iter(inputs)
-        self._outputs = TList.from_self_or_iter(outputs)
+        self._inputs = inputs
+        self._outputs = outputs
 
         # Link producers / consumers, and validate inputs and outputs.
         self.reset_tindex()
@@ -115,7 +131,8 @@ class Program[I: Instr = typing.Any]:
         return self._instrs
 
     @property
-    def inputs(self) -> TList:
+    def inputs(self) -> ProgramIn:
+        "The inputs, bound to the program's signature. Flat tensors: `.tensors`."
         return self._inputs
 
     @property
@@ -146,12 +163,176 @@ class Program[I: Instr = typing.Any]:
         Outputs = unused tensors in graph.
 
         Both are in order of first appearance, which decides the signature.
+        Inputs are bound positionally, to `t0`, `t1`, ...
         """
 
         instrs = tuple(instrs)
-        io_only = _InputOutputOnly.from_instrs(instrs)
 
-        return cls(instrs=instrs, inputs=io_only.inputs, outputs=io_only.outputs)
+        consumed = TList.empty()
+        produced = TList.empty()
+
+        for instr in instrs:
+            consumed += instr.tensor_inputs
+
+            assert produced.isdisjoint(outs := instr.tensor_outputs)
+            produced += outs
+
+        return cls(
+            instrs=instrs,
+            inputs=ProgramIn.from_tensors(consumed - produced),
+            outputs=produced - consumed,
+        )
+
+
+# The ProgramIn class ====
+
+
+class ProgramIn(PyTree):
+    """
+    The inputs of a `Program`: a `BoundArgs` whose arguments are all tensors.
+
+    It is ordered and a mapping: every parameter is bound to exactly one fake
+    tensor, looked up by name (`pin["x"]`) or by position (`pin[0]`).
+    The flat tensors, in signature order, are in `.tensors`.
+
+    The `pyt` children are the tensors in signature order, keyed by parameter name.
+    The context is the `Sign`.
+    """
+
+    def __init__(self, bound: BoundArgs) -> None:
+        self._bound = bound
+
+        for param in self.sign.param_list:
+            if param.is_var_positional or param.is_var_keyword:
+                raise TypeError(
+                    f"Variadic parameters are not (yet) supported: {param}."
+                )
+
+    def __contains__(self, obj: torch.Tensor) -> bool:
+        return obj in self.bound.tensors
+
+    def __repr__(self) -> str:
+        return repr(self._bound)
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, ProgramIn):
+            return NotImplemented
+
+        # Tensors are compared by identity, as `==` on tensors is elementwise.
+        return (
+            True
+            and self.sign == other.sign
+            and all(a is b for a, b in zip(self, other))
+        )
+
+    def __iter__(self):
+        return iter(self.values())
+
+    def __hash__(self) -> int:
+        return hash(self._bound)
+
+    def __len__(self) -> int:
+        return len(self.bound)
+
+    def __getitem__(self, key: int | str) -> typing.Any:
+        "The tensor bound to a parameter, by name or by position."
+
+        return self.bound[key]
+
+    def keys(self) -> cabc.KeysView[str]:
+        return self.arguments.keys()
+
+    def values(self) -> cabc.ValuesView[typing.Any]:
+        return self.arguments.values()
+
+    def items(self) -> cabc.ItemsView[str, typing.Any]:
+        return self.arguments.items()
+
+    @property
+    def bound(self) -> BoundArgs:
+        return self._bound
+
+    @property
+    def arguments(self):
+        return self.bound.arguments
+
+    @functools.cached_property
+    def names(self) -> tuple[str, ...]:
+        "The parameter names, in signature order."
+        return tuple(self.keys())
+
+    @property
+    def sign(self) -> Sign:
+        return self.bound.sign
+
+    @property
+    def arguments(self) -> dict[str, torch.Tensor]:
+        "A copy of the tensors by parameter name, in signature order."
+        return self.bound.arguments
+
+    @property
+    def tensors(self):
+        return self.bound.tensors
+
+    @property
+    def signature(self):
+        return self.sign
+
+    @property
+    def args(self) -> tuple[torch.Tensor, ...]:
+        return self.bound.args
+
+    @property
+    def kwargs(self) -> dict[str, torch.Tensor]:
+        return self.bound.kwargs
+
+    def _tree_flatten(self) -> PyTreeFlatten:
+        return list(self.values()), self.bound.sign
+
+    def _tree_flatten_with_keys(self) -> PyTreeFlattenWithKey:
+        with_path = [(_map_key(name), t) for name, t in self.items()]
+        return with_path, self.bound.sign
+
+    @classmethod
+    def _tree_unflatten(cls, children: cabc.Iterable, context) -> typing.Self:
+        # Every parameter is bound, so the signature also gives the names.
+        assert isinstance(context, Sign)
+
+        arguments = dict(zip(context.params, children, strict=True))
+        return cls(bound=BoundArgs.from_args(sign=context, args=arguments))
+
+    @classmethod
+    def from_sign(
+        cls, sign: Sign, /, *args: torch.Tensor, **kwargs: torch.Tensor
+    ) -> typing.Self:
+        """
+        Bind tensors to `sign`, like `Sign.bind`.
+
+        Raises:
+            TypeError: if binding failed.
+        """
+
+        return cls(bound=sign.bind(*args, **kwargs))
+
+    @classmethod
+    def from_dict(cls, tensors: cabc.Mapping[str, torch.Tensor], /) -> typing.Self:
+        "Bind tensors by name, in the order of the mapping."
+
+        return cls.from_sign(Sign.from_inputs(tensors.keys()), **tensors)
+
+    @classmethod
+    def from_tensors(
+        cls, tensors: cabc.Iterable[torch.Tensor], /, *, prefix: str = "t"
+    ) -> typing.Self:
+        "Bind tensors positionally, to parameters named `t0`, `t1`, ..."
+
+        tensors = tuple(tensors)
+        names = [f"{prefix}{i}" for i in range(len(tensors))]
+        return cls.from_sign(Sign.from_inputs(names), *tensors)
+
+
+def _map_key(name: str) -> pyt.KeyEntry:
+    return typing.cast(typing.Any, pyt.MappingKey)(name)
 
 
 # The TensorIndex class ====
@@ -172,7 +353,7 @@ class TensorIndex[I: Instr = typing.Any]:
         self._program = program
 
         self._tensors = TList.from_iterable(self._all_tensors())
-        self._links = _build_tensor_refs(program.instrs, list(program.inputs))
+        self._links = _build_tensor_refs(program.instrs, list(program.inputs.tensors))
 
         # Validate if the inputs and outputs are valid.
         self._validate_input_output()
@@ -211,7 +392,7 @@ class TensorIndex[I: Instr = typing.Any]:
         """
 
         prog = self._program
-        birth = self.output_of_step(t) if t not in prog.inputs else -1
+        birth = self.output_of_step(t) if t not in prog.inputs.tensors else -1
         death = max(self.input_to_step(t)) if t not in prog.outputs else len(prog)
         return TensorLifetime(birth=birth, death=death)
 
@@ -238,7 +419,7 @@ class TensorIndex[I: Instr = typing.Any]:
         If it's from the input, return `None`.
         """
 
-        if tensor in self._program.inputs:
+        if tensor in self._program.inputs.tensors:
             return None
 
         return self[tensor].producer
@@ -249,7 +430,7 @@ class TensorIndex[I: Instr = typing.Any]:
         yield from self[tensor].consumers
 
     def _all_tensors(self) -> cabc.Generator[torch.Tensor]:
-        yield from self._program.inputs
+        yield from self._program.inputs.tensors
         yield from self._program.outputs
 
         yield from _all_thunk_tensors(self._program.instrs)
@@ -257,7 +438,7 @@ class TensorIndex[I: Instr = typing.Any]:
     def _validate_input_output(self) -> None:
         prog = self._program
 
-        for input in prog.inputs:
+        for input in prog.inputs.tensors:
             # Input should not have a producer.
             if not self[input].is_free:
                 raise ValueError("Input is not a free variable.")
@@ -267,7 +448,7 @@ class TensorIndex[I: Instr = typing.Any]:
             if output not in self:
                 raise ValueError("Output not discovered.")
 
-        if set(prog.inputs) & set(prog.outputs):
+        if set(prog.inputs.tensors) & set(prog.outputs):
             raise ValueError("Inputs are in the outputs. Not allowed yet.")
 
 
@@ -429,7 +610,7 @@ class _ProgramTuple[I: Instr](typing.NamedTuple):
     "A namedtuple to avoid paying construction cost of `Program`."
 
     ilist: InstrList[I]
-    inputs: TList
+    inputs: ProgramIn
     outputs: TList
 
 
@@ -441,50 +622,31 @@ def _replace_sub_prog[I: Instr](
     """
 
     queried = _query_select(query=query, prog=prog)
-
-    if queried.inputs.shapes() != sub_prog.inputs.shapes():
-        raise ValueError("Inputs have different shapes.")
-
-    if queried.outputs.shapes() != sub_prog.outputs.shapes():
-        raise ValueError("Outputs have different shapes.")
-
-    if queried.inputs.dtypes() != sub_prog.inputs.dtypes():
-        raise ValueError("Inputs have different dtypes.")
-
-    if queried.outputs.dtypes() != sub_prog.outputs.dtypes():
-        raise ValueError("Outputs have different dtypes.")
-
-    # Get the indices of the queried subnet and minimum (useful in inserting).
-    qidx = {prog.instrs.index(q) for q in queried.ilist}
-    min_qidx = min(qidx)
-
-    # Inputs and outputs are not shared.
-    assert sub_prog.inputs.keys().isdisjoint(sub_prog.outputs.keys())
-
-    # Build mapping for replacement.
-    in_to_out = any_dict(torch.Tensor)
-    for before, after in zip(queried.inputs, sub_prog.inputs):
-        in_to_out[before] = after
-    for before, after in zip(queried.outputs, sub_prog.outputs):
-        in_to_out[before] = after
+    rplc, queried_idx = _tensor_rplc(prog=prog, queried=queried, sub_prog=sub_prog)
 
     # Drop the ones that are queried.
     new_instrs: list[I] = [
-        thunk.tree_map_only(torch.Tensor, lambda t: in_to_out.get(t, t))
+        thunk.tree_map_only(torch.Tensor, rplc)
         for i, thunk in enumerate(prog.instrs)
-        if i not in qidx
+        if i not in queried_idx
+    ]
+    min_queried_idx = min(queried_idx)
+
+    # Replace instructions.
+    new_instrs = [
+        *new_instrs[:min_queried_idx],
+        *sub_prog.instrs,
+        *new_instrs[min_queried_idx:],
     ]
 
-    # Replace with new.
-    pre = new_instrs[:min_qidx]
-    post = new_instrs[min_qidx:]
-    replaced = [*pre, *sub_prog.instrs, *post]
-    io_only = _InputOutputOnly.from_instrs(replaced)
+    # Replace inputs and outputs.
+    new_ins = pyt.tree_map_only(torch.Tensor, func=rplc, tree=prog.inputs)
+    new_outs = pyt.tree_map_only(torch.Tensor, func=rplc, tree=prog.outputs)
 
     return _ProgramTuple(
-        ilist=InstrList.build(replaced),
-        inputs=io_only.inputs,
-        outputs=io_only.outputs,
+        ilist=InstrList.build(new_instrs),
+        inputs=new_ins,
+        outputs=new_outs,
     )
 
 
@@ -525,36 +687,54 @@ def _select_indices[I: Instr](
     if inputs_produced_by and selection.min() < max(inputs_produced_by):
         raise ValueError("Illegal subset where input depend on intermediate.")
 
-    return _ProgramTuple(selected, inputs, outputs)
+    return _ProgramTuple(
+        ilist=selected,
+        inputs=ProgramIn.from_tensors(inputs),
+        outputs=outputs,
+    )
 
 
-# Helper classes ====
+def _tensor_rplc[I: Instr](
+    prog: Program[I], queried: _ProgramTuple[I], sub_prog: Program[I]
+) -> tuple[cabc.Callable[[torch.Tensor], torch.Tensor], set[int]]:
+    "Find the replacement tensors, before -> after."
 
+    # Inputs are matched by position, parameter names are not compared.
+    queried_ins = queried.inputs.tensors
+    sub_ins = sub_prog.inputs.tensors
 
-@dcls.dataclass(frozen=True)
-class _InputOutputOnly:
-    inputs: TList
-    outputs: TList
+    if queried_ins.shapes() != sub_ins.shapes():
+        raise ValueError("Inputs have different shapes.")
 
-    @classmethod
-    def from_instrs[I: Instr](cls, instrs: cabc.Sequence[I]) -> typing.Self:
-        # Inputs observed in the list of thunks.
-        tensor_in_list = TList.empty()
+    if queried.outputs.shapes() != sub_prog.outputs.shapes():
+        raise ValueError("Outputs have different shapes.")
 
-        # Output observed in the list of thunks.
-        tensor_out_list = TList.empty()
+    if queried_ins.dtypes() != sub_ins.dtypes():
+        raise ValueError("Inputs have different dtypes.")
 
-        for thunk in instrs:
-            tensor_in_list += thunk.tensor_inputs
+    if queried.outputs.dtypes() != sub_prog.outputs.dtypes():
+        raise ValueError("Outputs have different dtypes.")
 
-            # Output must be unique.
-            assert tensor_out_list.isdisjoint(thunk.tensor_outputs)
-            tensor_out_list += thunk.tensor_outputs
+    # Get the indices of the queried subnet.
+    queried_index = {prog.instrs.index(q) for q in queried.ilist}
 
-        input_only = tensor_in_list - tensor_out_list
-        output_only = tensor_out_list - tensor_in_list
+    # Inputs and outputs are not shared.
+    assert sub_ins.keys().isdisjoint(sub_prog.outputs.keys())
 
-        return cls(inputs=input_only, outputs=output_only)
+    # Build mapping for replacement.
+    in_to_out = any_dict(torch.Tensor)
+    for before, after in zip(queried_ins, sub_ins):
+        in_to_out[before] = after
+    for before, after in zip(queried.outputs, sub_prog.outputs):
+        in_to_out[before] = after
+
+    def replacer(t: torch.Tensor) -> torch.Tensor:
+        if not isinstance(t, torch.Tensor):
+            raise TypeError(type(t))
+
+        return in_to_out.get(t, t)
+
+    return replacer, queried_index
 
 
 @dcls.dataclass(frozen=True)

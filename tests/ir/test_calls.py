@@ -113,8 +113,8 @@ def test_dag_inputs_first_use_order():
 
     dag = Program.from_instr_list(tracer.thunks)
 
-    assert _attr_eq(dag.inputs[0], x)
-    assert _attr_eq(dag.inputs[1], y)
+    assert _attr_eq(dag.inputs.tensors[0], x)
+    assert _attr_eq(dag.inputs.tensors[1], y)
 
 
 def test_dag_inputs_many_same_step():

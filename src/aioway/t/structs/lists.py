@@ -70,10 +70,10 @@ class TList(PyTree):
         if isinstance(other, TList):
             return list(self._indexed.keys()) == list(other._indexed.keys())
 
-        if is_set_of(torch.Tensor):
+        if is_set_of(torch.Tensor)(other):
             return sorted(self._indexed.keys()) == sorted(id(t) for t in other)
 
-        if is_seq_of(torch.Tensor):
+        if is_seq_of(torch.Tensor)(other):
             return list(self._indexed.keys()) == [id(t) for t in other]
 
         return NotImplemented

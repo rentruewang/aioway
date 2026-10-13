@@ -8,7 +8,8 @@ from collections import abc as cabc
 import torch
 from torch.utils import _pytree as pyt
 
-from aioway.t import TList, has_fake, is_fake_tensor, is_real_tensor, parse_attr
+from aioway.ir.progs import ProgramIn
+from aioway.t import has_fake, is_fake_tensor, is_real_tensor, parse_attr
 
 from .intrptrs import Intrptr
 
@@ -189,8 +190,8 @@ class Exec[F: cabc.Callable = typing.Any](
         yield from self._prog
 
     @typing.override
-    def bind(self, inputs: TList, args: list[torch.Tensor]) -> None:
-        if self.program.inputs.attrs() != [parse_attr(t) for t in args]:
+    def bind(self, inputs: ProgramIn, args: list[torch.Tensor]) -> None:
+        if self.program.inputs.tensors.attrs() != [parse_attr(t) for t in args]:
             raise TypeError("Tensors do not look like they can be consumed by inputs.")
 
         try:
