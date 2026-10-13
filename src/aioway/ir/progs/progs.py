@@ -626,7 +626,7 @@ def _replace_sub_prog[I: Instr](
 
     # Drop the ones that are queried.
     new_instrs: list[I] = [
-        thunk.tree_map_only(torch.Tensor, lambda t: rplc.get(t, t))
+        thunk.tree_map_only(torch.Tensor, rplc)
         for i, thunk in enumerate(prog.instrs)
         if i not in queried_idx
     ]
@@ -640,9 +640,8 @@ def _replace_sub_prog[I: Instr](
     ]
 
     # Replace inputs and outputs.
-    maybe_get = lambda t: rplc.get(t, t)
-    new_ins = pyt.tree_map_only(torch.Tensor, func=maybe_get, tree=prog.inputs)
-    new_outs = pyt.tree_map_only(torch.Tensor, func=maybe_get, tree=prog.outputs)
+    new_ins = pyt.tree_map_only(torch.Tensor, func=rplc, tree=prog.inputs)
+    new_outs = pyt.tree_map_only(torch.Tensor, func=rplc, tree=prog.outputs)
 
     return _ProgramTuple(
         ilist=InstrList.build(new_instrs),
@@ -697,7 +696,7 @@ def _select_indices[I: Instr](
 
 def _tensor_rplc[I: Instr](
     prog: Program[I], queried: _ProgramTuple[I], sub_prog: Program[I]
-) -> tuple[AnyDict[torch.Tensor, torch.Tensor], set[int]]:
+) -> tuple[cabc.Callable[[torch.Tensor], torch.Tensor], set[int]]:
     "Find the replacement tensors, before -> after."
 
     # Inputs are matched by position, parameter names are not compared.
@@ -717,7 +716,7 @@ def _tensor_rplc[I: Instr](
         raise ValueError("Outputs have different dtypes.")
 
     # Get the indices of the queried subnet.
-    qidx = {prog.instrs.index(q) for q in queried.ilist}
+    queried_index = {prog.instrs.index(q) for q in queried.ilist}
 
     # Inputs and outputs are not shared.
     assert sub_ins.keys().isdisjoint(sub_prog.outputs.keys())
@@ -729,7 +728,13 @@ def _tensor_rplc[I: Instr](
     for before, after in zip(queried.outputs, sub_prog.outputs):
         in_to_out[before] = after
 
-    return in_to_out, qidx
+    def replacer(t: torch.Tensor) -> torch.Tensor:
+        if not isinstance(t, torch.Tensor):
+            raise TypeError(type(t))
+
+        return in_to_out.get(t, t)
+
+    return replacer, queried_index
 
 
 @dcls.dataclass(frozen=True)
