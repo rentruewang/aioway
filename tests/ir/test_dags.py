@@ -63,4 +63,4 @@ def test_dag_steps(dag: Program, fakes, thunks):
 
 def test_dag_output_unique(thunks, fakes):
     with pytest.raises(ValueError):
-        Program([thunks[0], thunks[0]], inputs=fakes, outputs=[thunks[0].result])
+        Program(instrs=[thunks[0], thunks[0]], inputs=fakes, outputs=[thunks[0].result])

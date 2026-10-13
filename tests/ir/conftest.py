@@ -37,4 +37,4 @@ def thunks(fakes) -> tuple[FuncCall, ...]:
 
 @pytest.fixture
 def dag(thunks, fakes) -> Program:
-    return Program(thunks, inputs=fakes, outputs=[thunks[-1].result])
+    return Program(instrs=thunks, inputs=fakes, outputs=[thunks[-1].result])

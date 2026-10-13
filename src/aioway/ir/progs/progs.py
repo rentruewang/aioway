@@ -32,6 +32,7 @@ class Program[I: Instr = typing.Any]:
 
     def __init__(
         self,
+        *,
         instrs: cabc.Iterable[I],
         inputs: cabc.Iterable[torch.Tensor],
         outputs: cabc.Iterable[torch.Tensor],
@@ -214,7 +215,7 @@ class Program[I: Instr = typing.Any]:
         instrs = tuple(instrs)
         io_only = _InputOutputOnly.from_instrs(instrs)
 
-        return cls(instrs, inputs=io_only.inputs, outputs=io_only.outputs)
+        return cls(instrs=instrs, inputs=io_only.inputs, outputs=io_only.outputs)
 
 
 # The node classes ====
