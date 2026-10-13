@@ -194,9 +194,9 @@ class TestBoundArgs:
 
     def test_mapping_like(self, bound: BoundArgs):
         assert len(bound) == 5
-        assert list(bound) == ["name", "greeting", "args", "loud", "kwargs"]
+        assert list(bound.keys()) == ["name", "greeting", "args", "loud", "kwargs"]
         assert bound["name"] == "bob"
-        assert {name: bound[name] for name in bound} == bound.arguments
+        assert {name: bound[name] for name in bound.keys()} == bound.arguments
 
     def test_eq(self, greet: Sign, bound: BoundArgs):
         assert bound == greet.bind("bob", "hey", 1, 2, loud=True, extra=3)

@@ -340,6 +340,9 @@ class BoundArgs(PyTreeDict, pytree_key=pyt.MappingKey):
     The `pyt` children are the bound arguments, keyed by parameter name.
     """
 
+    __iter__ = None
+    "Explicitly disallow iteration."
+
     def __init__(self, *, bounded: inspect.BoundArguments) -> None:
         self._bounded = bounded
 
@@ -381,8 +384,8 @@ class BoundArgs(PyTreeDict, pytree_key=pyt.MappingKey):
 
         raise TypeError(f"Only handles ints and strs. Got {type(key)=}.")
 
-    def __iter__(self) -> cabc.Iterator[str]:
-        return iter(self.arguments)
+    def keys(self) -> cabc.KeysView[str]:
+        return self.arguments.keys()
 
     @property
     def sign(self) -> Sign:

@@ -2,8 +2,6 @@
 
 "The `Program` that supports analysis."
 
-from aioway.t import Sign
-from aioway.t import BoundArgs
 import copy
 import dataclasses as dcls
 import functools
@@ -35,16 +33,16 @@ class Program[I: Instr = typing.Any]:
     def __init__(
         self,
         instrs: cabc.Iterable[I],
-        bounded: BoundArgs,
+        inputs: cabc.Iterable[torch.Tensor],
         outputs: cabc.Iterable[torch.Tensor],
     ) -> None:
         self._instrs = InstrList.build(instrs)
 
-        self._bounded = bounded
+        self._inputs = TList.from_self_or_iter(inputs)
         self._outputs = TList.from_self_or_iter(outputs)
 
         self._tensors = TList.from_iterable(self._all_tensors())
-        self._tensor_links = _build_tensor_refs(self.instrs, list(self.inputs))
+        self._tensor_links = _build_tensor_refs(self.instrs, list(self._inputs))
 
         # Validate if the inputs and outputs are valid.
         self._validate_input_output()
@@ -110,7 +108,7 @@ class Program[I: Instr = typing.Any]:
         # Overwrite the references s.t. underlying data is not touched.
         # This is not supposed to fail.
         self.__init__(
-            instrs=mutated.ilist, bounded=mutated.bounded, outputs=mutated.outputs
+            instrs=mutated.ilist, inputs=mutated.inputs, outputs=mutated.outputs
         )
 
     @property
@@ -135,16 +133,8 @@ class Program[I: Instr = typing.Any]:
         return self._instrs
 
     @property
-    def bounded(self) -> BoundArgs:
-        return self._bounded
-
-    @property
-    def sign(self) -> Sign:
-        return self.bounded.sign
-
-    @property
     def inputs(self) -> TList:
-        return self._bounded.tensors
+        return self._inputs
 
     @property
     def outputs(self) -> TList:
@@ -385,12 +375,8 @@ class _ProgramTuple[I: Instr](typing.NamedTuple):
     "A namedtuple to avoid paying construction cost of `Program`."
 
     ilist: InstrList[I]
-    bounded: BoundArgs
+    inputs: TList
     outputs: TList
-
-    @property
-    def inputs(self) -> TList:
-        return self.bounded.tensors
 
 
 def _replace_sub_prog[I: Instr](
