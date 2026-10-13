@@ -42,7 +42,7 @@ class Program[I: Instr = typing.Any]:
         self._outputs = TList.from_self_or_iter(outputs)
 
         self._tensors = TList.from_iterable(self._all_tensors())
-        self._tensor_links = _build_tensor_refs(self.instrs, list(self._inputs))
+        self._tensor_links = _build_tensor_refs(self.instrs, list(self.inputs))
 
         # Validate if the inputs and outputs are valid.
         self._validate_input_output()
@@ -160,23 +160,23 @@ class Program[I: Instr = typing.Any]:
         return [self.instrs.index(thunk) for thunk in consuming]
 
     def _all_tensors(self):
-        yield from self._inputs
-        yield from self._outputs
+        yield from self.inputs
+        yield from self.outputs
 
         yield from _all_thunk_tensors(self.instrs)
 
     def _validate_input_output(self) -> None:
-        for input in self._inputs:
+        for input in self.inputs:
             # Input should not have a producer.
             if not self._tensor_links[input].is_free:
                 raise ValueError("Input is not a free variable.")
 
-        for output in self._outputs:
+        for output in self.outputs:
             # Output is not produced.
             if output not in self._tensor_links:
                 raise ValueError("Output not discovered.")
 
-        if set(self._inputs) & set(self._outputs):
+        if set(self.inputs) & set(self.outputs):
             raise ValueError("Inputs are in the outputs. Not allowed yet.")
 
     def _instr_producing(self, tensor: torch.Tensor, /) -> I | None:
