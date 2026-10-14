@@ -10,13 +10,15 @@ from collections import abc as _cabc
 
 from torch.utils import _cxx_pytree, _pytree
 
-# Types.
+# Types. ====
+
 Context = _cxx_pytree.Context
 PyTree = _cxx_pytree.PyTree
 TreeSpec = _cxx_pytree.TreeSpec
 LeafSpec = _cxx_pytree.LeafSpec
 
 # Registration. Should work everywhere. ====
+
 SUPPORTED_NODES = _pytree.SUPPORTED_NODES
 SUPPORTED_SERIALIZED_TYPES = _pytree.SUPPORTED_SERIALIZED_TYPES
 SERIALIZED_TYPE_TO_PYTHON_TYPE = _pytree.SERIALIZED_TYPE_TO_PYTHON_TYPE
@@ -52,7 +54,7 @@ is_structseq = _cxx_pytree.is_structseq
 is_structseq_class = _cxx_pytree.is_structseq_class
 is_structseq_instance = _cxx_pytree.is_structseq_instance
 
-# Paths related ops are not supported by `_cxx_pytree`. ====
+# Paths related types and functions are not supported by `_cxx_pytree`. ====
 
 KeyEntry = _pytree.KeyEntry
 KeyPath = _pytree.KeyPath
@@ -60,11 +62,13 @@ MappingKey = _pytree.MappingKey
 SequenceKey = _pytree.SequenceKey
 GetAttrKey = _pytree.GetAttrKey
 
-
 keystr = _pytree.keystr
 tree_leaves_with_path = _pytree.tree_leaves_with_path
 tree_map_with_path = _pytree.tree_map_with_path
 key_get = _pytree.key_get
+
+
+# Path + spec, ensure compatibility between C++ and python. ====
 
 
 @_functools.wraps(_pytree.tree_flatten_with_path)
