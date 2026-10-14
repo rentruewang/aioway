@@ -8,13 +8,17 @@ import typing
 from collections import abc as cabc
 
 import torch
-from torch.utils import _pytree as pyt
 
+from aioway._pytrees import (
+    KeyEntry,
+    PyTreeFlatten,
+    PyTreeFlattenWithKey,
+    PyTreeMixin,
+    SequenceKey,
+)
 from aioway._utils import is_seq_of, is_set_of
 from aioway.t.attrs import parse_attr
 from aioway.t.overrides import has_fake
-
-from .trees import PyTree, PyTreeFlatten, PyTreeFlattenWithKey
 
 if typing.TYPE_CHECKING:
     from aioway.t import Attr, Device, DType, Layout, Shape
@@ -23,7 +27,7 @@ __all__ = ["TList"]
 
 
 @typing.final
-class TList(PyTree):
+class TList(PyTreeMixin):
     """
     This is an immutable list of tensors, supporting fast lookups.
     It deduplicates the tensors it received.
@@ -188,8 +192,8 @@ class TList(PyTree):
         return cls.from_indexed_tensors({})
 
 
-def _seq_key(idx: int) -> pyt.KeyEntry:
-    return typing.cast(typing.Any, pyt.SequenceKey)(idx)
+def _seq_key(idx: int) -> KeyEntry:
+    return typing.cast(typing.Any, SequenceKey)(idx)
 
 
 # Utility functions. ====

@@ -6,7 +6,8 @@ import typing
 
 import torch
 from torch._subclasses import fake_tensor as ft
-from torch.utils import _pytree as pyt
+
+from aioway._pytrees import tree_leaves, tree_map_only
 
 from .contexts import fake_mode
 
@@ -25,7 +26,7 @@ __all__ = [
 def to_fake[C](item: C) -> C:
     "Convert an item to its fake counterpart."
 
-    return pyt.tree_map_only(torch.Tensor, func=_to_fake_tensor, tree=item)
+    return tree_map_only(torch.Tensor, func=_to_fake_tensor, tree=item)
 
 
 def has_fake(item) -> bool:
@@ -33,7 +34,7 @@ def has_fake(item) -> bool:
     Check if the item is fake.
     """
 
-    for elem in pyt.tree_leaves(item):
+    for elem in tree_leaves(item):
         # This already checks if it's a tensor.
         if is_fake_tensor(elem):
             return True
@@ -46,7 +47,7 @@ def all_fake(item) -> bool:
     Check if all the tesnors in here are all fake tensors.
     """
 
-    for elem in pyt.tree_leaves(item):
+    for elem in tree_leaves(item):
         # May have other values not tensor, only care about tensors.
         if is_real_tensor(elem):
             return False
@@ -77,7 +78,7 @@ def clone_fake[T](item: T) -> T:
     This is useful in changing the `id` of fake values for uniqueness analysis.
     """
 
-    return pyt.tree_map_only(torch.Tensor, func=_clone_fake_tensor, tree=item)
+    return tree_map_only(torch.Tensor, func=_clone_fake_tensor, tree=item)
 
 
 def _to_fake_tensor(tensor: torch.Tensor) -> ft.FakeTensor:

@@ -11,21 +11,19 @@ from collections import abc as cabc
 
 import numpy as np
 import torch
-from torch.utils import _pytree as pyt
 
+from aioway._pytrees import (
+    KeyEntry,
+    MappingKey,
+    PyTreeFlatten,
+    PyTreeFlattenWithKey,
+    PyTreeMixin,
+    tree_map_only,
+)
 from aioway._utils import AnyDict, AnySet, IntArray, any_dict, any_set, is_list_of
 from aioway.ir.instrs import Instr, InstrList
 from aioway.ir.queries import OrderedIndex, Query
-from aioway.t import (
-    BoundArgs,
-    PyTree,
-    PyTreeFlatten,
-    PyTreeFlattenWithKey,
-    Sign,
-    TList,
-    all_real,
-    parse_attr,
-)
+from aioway.t import BoundArgs, Sign, TList, all_real, parse_attr
 
 __all__ = ["TensorRef", "Program", "ProgramIn", "TensorIndex", "TensorLifetime"]
 
@@ -187,7 +185,7 @@ class Program[I: Instr = typing.Any]:
 # The ProgramIn class ====
 
 
-class ProgramIn(PyTree):
+class ProgramIn(PyTreeMixin):
     """
     The inputs of a `Program`: a `BoundArgs` whose arguments are all tensors.
 
@@ -341,8 +339,8 @@ class ProgramIn(PyTree):
         return cls.from_sign(Sign.from_inputs(names), *tensors)
 
 
-def _map_key(name: str) -> pyt.KeyEntry:
-    return typing.cast(typing.Any, pyt.MappingKey)(name)
+def _map_key(name: str) -> KeyEntry:
+    return typing.cast(typing.Any, MappingKey)(name)
 
 
 # The TensorIndex class ====
@@ -650,8 +648,8 @@ def _replace_sub_prog[I: Instr](
     ]
 
     # Replace inputs and outputs.
-    new_ins = pyt.tree_map_only(torch.Tensor, func=rplc, tree=prog.inputs)
-    new_outs = pyt.tree_map_only(torch.Tensor, func=rplc, tree=prog.outputs)
+    new_ins = tree_map_only(torch.Tensor, func=rplc, tree=prog.inputs)
+    new_outs = tree_map_only(torch.Tensor, func=rplc, tree=prog.outputs)
 
     return _ProgramTuple(
         ilist=InstrList.build(new_instrs),

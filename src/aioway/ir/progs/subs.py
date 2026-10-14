@@ -2,8 +2,8 @@
 
 import torch
 from torch import nn
-from torch.utils import _pytree as pyt
 
+from aioway._pytrees import tree_map_only
 from aioway.ir.instrs import FuncCall, ModuleCall
 from aioway.t import is_fake_tensor, parse_attr
 
@@ -45,7 +45,7 @@ class NnProgramModule(nn.Module):
 
     def hashes_of_modules(self) -> list[dict[str, int]]:
         state_dicts = [module.state_dict() for module in self._module_list]
-        return pyt.tree_map_only(torch.Tensor, func=_hash_tensor, tree=state_dicts)
+        return tree_map_only(torch.Tensor, func=_hash_tensor, tree=state_dicts)
 
 
 def _hash_tensor(tensor: torch.Tensor) -> int:

@@ -9,8 +9,8 @@ import jinja2 as j2
 import loguru as L
 import torch
 from rich import syntax
-from torch.utils import _pytree as pyt
 
+from aioway._pytrees import keystr, tree_flatten_with_path, tree_map_only
 from aioway._utils import AnyDict, any_dict, render_fcall
 from aioway.ir.instrs import FuncCall
 from aioway.ir.progs import FuncProgram, ProgramIn
@@ -84,8 +84,8 @@ class StatelessCodePrint:
         # Rerun is not permitted.
         assert len(self._steps) == idx, "Length is not equal"
 
-        args = pyt.tree_map_only(torch.Tensor, self.name, instr.args)
-        kwargs = pyt.tree_map_only(torch.Tensor, self.name, instr.kwargs)
+        args = tree_map_only(torch.Tensor, self.name, instr.args)
+        kwargs = tree_map_only(torch.Tensor, self.name, instr.kwargs)
 
         self._vars[instr.result] = self._new_var_name(instr.result)
         self._index_sub_attr(instr.result)
@@ -119,10 +119,10 @@ class StatelessCodePrint:
     def _index_sub_attr(self, var: typing.Any) -> None:
         "Name the tensors inside `var` by their path from it, e.g. `tdict['a']`."
 
-        for path, leaf in pyt.tree_flatten_with_path(var)[0]:
+        for path, leaf in tree_flatten_with_path(var)[0]:
             # A tensor that already has a name keeps it.
             if isinstance(leaf, torch.Tensor) and leaf not in self._vars:
-                self._vars[leaf] = self.name(var) + pyt.keystr(path)
+                self._vars[leaf] = self.name(var) + keystr(path)
 
 
 # Convenient object that can be used in different contexts ====

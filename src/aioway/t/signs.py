@@ -13,13 +13,12 @@ from collections import abc as cabc
 
 import torch
 from torch import nn, overrides
-from torch.utils import _pytree as pyt
 
+from aioway._pytrees import MappingKey, PyTreeDictMixin, tree_leaves
 from aioway._utils import is_any_type_hint, is_nn_type, is_seq_of
-from aioway.t.structs import TList
+from aioway.t.lists import TList
 
 from .guards import is_torch_function
-from .structs import PyTreeDict
 
 __all__ = ["Param", "ParamKind", "Sign", "BoundArgs"]
 
@@ -348,7 +347,7 @@ class Sign:
         )
 
 
-class BoundArgs(PyTreeDict, pytree_key=pyt.MappingKey):
+class BoundArgs(PyTreeDictMixin):
     """
     Our version of `inspect.BoundArguments`.
 
@@ -357,6 +356,8 @@ class BoundArgs(PyTreeDict, pytree_key=pyt.MappingKey):
 
     __iter__ = None
     "Explicitly disallow iteration."
+
+    _PY_TREE_KEY = MappingKey
 
     def __init__(self, *, bounded: inspect.BoundArguments) -> None:
         self._bounded = bounded
@@ -436,7 +437,7 @@ class BoundArgs(PyTreeDict, pytree_key=pyt.MappingKey):
     def _tensor_list(self) -> TList:
         tensors = [
             tensor
-            for tensor in pyt.tree_leaves(self.arguments)
+            for tensor in tree_leaves(self.arguments)
             if isinstance(tensor, torch.Tensor)
         ]
         return TList.from_iterable(tensors)
@@ -460,19 +461,18 @@ class BoundArgs(PyTreeDict, pytree_key=pyt.MappingKey):
 
     @property
     @typing.override
-    def _tree_context(self) -> tuple[Sign, tuple[str, ...]]:
-        "The signature, and the names of the bound parameters."
-        return self.sign, tuple(self.arguments)
+    def _tree_context(self) -> Sign:
+        return self.sign
 
     @typing.override
     def _tree_dict(self) -> dict[str, typing.Any]:
         return self.arguments
 
     @classmethod
-    @typing.override
-    def _tree_unflatten(cls, children: cabc.Iterable, context) -> typing.Self:
-        values = list(children)
-        signature, names = context
+    def _tree_from_dict(cls, mapping: dict, context):
+        assert isinstance(context, Sign)
+        assert isinstance(mapping, dict)
+        return cls(bounded=inspect.BoundArguments(context.to_inspect(), mapping))
 
         assert isinstance(signature, Sign)
         assert len(names) == len(values)

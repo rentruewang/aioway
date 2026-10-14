@@ -6,8 +6,15 @@ from collections import abc as cabc
 import pytest
 import torch
 from torch import nn
-from torch.utils import _pytree as pyt
 
+from aioway._pytrees import (
+    keystr,
+    tree_flatten,
+    tree_flatten_with_path,
+    tree_map,
+    tree_structure,
+    tree_unflatten,
+)
 from aioway.t import BoundArgs, Param, ParamKind, Sign
 
 
@@ -218,20 +225,20 @@ class TestBoundArgs:
         assert bound.tensors == bound.tensors
 
     def test_tree_flatten(self, greet: Sign, bound: BoundArgs):
-        leaves, spec = pyt.tree_flatten(bound)
+        leaves, spec = tree_flatten(bound)
 
         # The `*args` tuple and the `**kwargs` dict are flattened as well.
         assert leaves == ["bob", "hey", 1, 2, True, 3]
 
-        rebuilt = pyt.tree_unflatten(leaves, spec)
+        rebuilt = tree_unflatten(leaves, spec)
         assert isinstance(rebuilt, BoundArgs)
         assert rebuilt == bound
         assert rebuilt.sign == greet
 
     def test_tree_flatten_with_path(self, bound: BoundArgs):
-        flat, _ = pyt.tree_flatten_with_path(bound)
+        flat, _ = tree_flatten_with_path(bound)
 
-        assert [pyt.keystr(path) for path, _ in flat] == [
+        assert [keystr(path) for path, _ in flat] == [
             "['name']",
             "['greeting']",
             "['args'][0]",
@@ -242,7 +249,7 @@ class TestBoundArgs:
 
     def test_tree_map(self, add: Sign):
         bound = add.bind(torch.ones(2), b=torch.ones(2))
-        doubled = pyt.tree_map(lambda t: t * 2, bound)
+        doubled = tree_map(lambda t: t * 2, bound)
 
         assert isinstance(doubled, BoundArgs)
         assert doubled.sign == add
@@ -254,9 +261,9 @@ class TestBoundArgs:
         first = greet.bind("bob", loud=True).apply_defaults()
         second = greet.bind("eve", "yo").apply_defaults()
 
-        assert pyt.tree_structure(first) == pyt.tree_structure(second)
+        assert tree_structure(first) == tree_structure(second)
 
-        picked = pyt.tree_map(lambda x, y: (x, y), first, second)
+        picked = tree_map(lambda x, y: (x, y), first, second)
         assert picked.arguments["name"] == ("bob", "eve")
         assert picked.arguments["loud"] == (True, False)
 

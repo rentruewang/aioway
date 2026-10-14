@@ -7,8 +7,8 @@ from collections import abc as cabc
 
 import loguru as L
 import torch
-from torch.utils import _pytree as pyt
 
+from aioway._pytrees import tree_leaves, tree_map_only
 from aioway.ir.progs import ProgramIn
 from aioway.t import BoundArgs, has_fake, is_fake_tensor, is_real_tensor, parse_attr
 
@@ -66,7 +66,7 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
         This tolerates real tensors in the input.
         """
 
-        return pyt.tree_map_only(torch.Tensor, func=self._map_maybe_fake, tree=fake)
+        return tree_map_only(torch.Tensor, func=self._map_maybe_fake, tree=fake)
 
     def update[T: typing.Any = typing.Any](self, fake: T, real: T) -> None:
         """
@@ -75,8 +75,8 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
         Both are guaranteed to have the same structure.
         """
 
-        fake_list = pyt.tree_leaves(fake, is_leaf=is_fake_tensor)
-        real_list = pyt.tree_leaves(real, is_leaf=is_real_tensor)
+        fake_list = tree_leaves(fake, is_leaf=is_fake_tensor)
+        real_list = tree_leaves(real, is_leaf=is_real_tensor)
 
         if len(fake_list) != len(real_list):
             raise ValueError(

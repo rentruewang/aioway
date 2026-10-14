@@ -6,8 +6,8 @@ import typing
 from collections import abc as cabc
 
 from torch import nn
-from torch.utils import _pytree as pyt
 
+from aioway._pytrees import GetAttrKey
 from aioway.t import (
     BoundArgs,
     Sign,
@@ -22,10 +22,12 @@ from .instrs import Instr
 __all__ = ["FuncCall", "ModuleCall"]
 
 
-class FuncCall[F: cabc.Callable](Instr, pytree_key=pyt.GetAttrKey):
+class FuncCall[F: cabc.Callable](Instr):
     """
     An instruction representing a function call.
     """
+
+    _PY_TREE_KEY = GetAttrKey
 
     def __init__(
         self,
@@ -113,22 +115,29 @@ class FuncCall[F: cabc.Callable](Instr, pytree_key=pyt.GetAttrKey):
         return self.func
 
     @classmethod
-    @typing.override
-    def _tree_unflatten(cls, children: cabc.Iterable, context) -> typing.Self:
-        bounded, result = children
+    def _tree_from_dict(cls, mapping: dict, context) -> typing.Self:
+        assert callable(context)
+
+        assert len(mapping) == 2
+        assert "bounded" in mapping
+        assert "result" in mapping
+        assert isinstance(bounded := mapping["bounded"], BoundArgs)
+
         return cls(
             func=context,
             args=bounded.args,
             kwargs=bounded.kwargs,
-            result=result,
+            result=mapping["result"],
         )
 
 
-class ModuleCall(FuncCall[nn.Module], pytree_key=pyt.GetAttrKey):
+class ModuleCall(FuncCall[nn.Module]):
     """
     The `nn.Module` version of `FCall` instruction.
     Handles the hierarchy of `nn.Module`s.
     """
+
+    _PY_TREE_KEY = GetAttrKey
 
     def __init__(
         self,
@@ -155,15 +164,20 @@ class ModuleCall(FuncCall[nn.Module], pytree_key=pyt.GetAttrKey):
     def _tree_context(self) -> typing.Any:
         return self.func, self.parents
 
-    @typing.override
     @classmethod
-    def _tree_unflatten(cls, children: cabc.Iterable, context) -> typing.Self:
-        bounded, result = children
-        func, parents = context
+    def _tree_from_dict(cls, mapping: dict, context) -> typing.Self:
+        module, parents = context
+
+        assert len(mapping) == 2
+        assert "bounded" in mapping
+        assert "result" in mapping
+        assert isinstance(bounded := mapping["bounded"], BoundArgs)
+        assert isinstance(module, nn.Module)
+
         return cls(
-            func=func,
+            func=module,
             args=bounded.args,
             kwargs=bounded.kwargs,
-            result=result,
+            result=mapping["result"],
             parents=parents,
         )
