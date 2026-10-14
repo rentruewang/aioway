@@ -20,6 +20,7 @@ LeafSpec = _cxx_pytree.LeafSpec
 # Registration. Should work everywhere. ====
 register_pytree_node = _pytree.register_pytree_node
 
+
 # C++ implementations ====
 
 tree_all = _cxx_pytree.tree_all
@@ -39,6 +40,15 @@ tree_unflatten = _cxx_pytree.tree_unflatten
 treespec_dumps = _cxx_pytree.treespec_dumps
 treespec_loads = _cxx_pytree.treespec_loads
 treespec_pprint = _cxx_pytree.treespec_pprint
+
+# Namedtuple / structseq checks. The same functions in both modules. ====
+
+is_namedtuple = _cxx_pytree.is_namedtuple
+is_namedtuple_class = _cxx_pytree.is_namedtuple_class
+is_namedtuple_instance = _cxx_pytree.is_namedtuple_instance
+is_structseq = _cxx_pytree.is_structseq
+is_structseq_class = _cxx_pytree.is_structseq_class
+is_structseq_instance = _cxx_pytree.is_structseq_instance
 
 # Paths related ops are not supported by `_cxx_pytree`. ====
 

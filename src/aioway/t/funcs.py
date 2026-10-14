@@ -2,13 +2,13 @@
 
 "Utility functions."
 
-import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
 import torch
 from torch.utils import _pytree as pyt
 
+from aioway._pytrees import is_namedtuple_class, is_structseq_class, tree_map
 from aioway._utils import AnyDict, any_dict
 
 __all__ = [
@@ -16,22 +16,9 @@ __all__ = [
     "tree_map_memo",
     "find_nested_tensors",
     "replace_tensors",
-    "register_pytree_dcls",
     "is_tensor_container",
     "is_tensor_container_type",
 ]
-
-
-def register_pytree_dcls[T: type](cls: T) -> T:
-    """
-    Decorator to register the dataclass into `pyt`.
-    """
-
-    if not isinstance(cls, type) or not dcls.is_dataclass(cls):
-        raise TypeError("The decorator can only be used on dataclasses.")
-
-    pyt.register_dataclass(cls)
-    return cls
 
 
 def tree_map_memo(
@@ -62,7 +49,7 @@ def tree_map_memo(
 
         return memo[item]
 
-    return pyt.tree_map(replace_cached, obj)
+    return tree_map(replace_cached, obj)
 
 
 def tree_leaves_typed(obj, *types: type) -> list[typing.Any]:
@@ -115,8 +102,8 @@ def is_tensor_container_type(cls: type) -> bool:
     return (
         False
         or cls in pyt.SUPPORTED_NODES
-        or pyt.is_namedtuple_class(cls)
-        or pyt.is_structseq_class(cls)
+        or is_namedtuple_class(cls)
+        or is_structseq_class(cls)
     )
 
 

@@ -7,9 +7,9 @@ import functools
 import typing
 from collections import abc as cabc
 
-from aioway._pytrees import tree_map, tree_map_only
+from aioway._pytrees import PyTreeDictMixin, tree_map, tree_map_only
 from aioway._utils import AnyDict, any_dict, find_common_base, is_list_of
-from aioway.t import PyTreeDictMixin, TList
+from aioway.t import TList
 
 __all__ = ["Instr", "InstrList"]
 

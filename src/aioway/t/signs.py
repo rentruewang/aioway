@@ -14,12 +14,11 @@ from collections import abc as cabc
 import torch
 from torch import nn, overrides
 
-from aioway._pytrees import MappingKey, tree_leaves
+from aioway._pytrees import MappingKey, PyTreeDictMixin, tree_leaves
 from aioway._utils import is_any_type_hint, is_nn_type, is_seq_of
-from aioway.t.structs import TList
+from aioway.t.lists import TList
 
 from .guards import is_torch_function
-from .structs import PyTreeDictMixin
 
 __all__ = ["Param", "ParamKind", "Sign", "BoundArgs"]
 

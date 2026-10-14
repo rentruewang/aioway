@@ -8,7 +8,7 @@ import typing
 import loguru as L
 import rich
 
-from aioway.t.structs import replace_tensors
+from aioway.t.funcs import replace_tensors
 
 from .aten import AtenThunk
 from .attrs import replace_tensors_with_attr

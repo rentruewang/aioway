@@ -12,20 +12,18 @@ from collections import abc as cabc
 import numpy as np
 import torch
 
-from aioway._pytrees import KeyEntry, MappingKey, tree_map_only
-from aioway._utils import AnyDict, AnySet, IntArray, any_dict, any_set, is_list_of
-from aioway.ir.instrs import Instr, InstrList
-from aioway.ir.queries import OrderedIndex, Query
-from aioway.t import (
-    BoundArgs,
+from aioway._pytrees import (
+    KeyEntry,
+    MappingKey,
     PyTreeFlatten,
     PyTreeFlattenWithKey,
     PyTreeMixin,
-    Sign,
-    TList,
-    all_real,
-    parse_attr,
+    tree_map_only,
 )
+from aioway._utils import AnyDict, AnySet, IntArray, any_dict, any_set, is_list_of
+from aioway.ir.instrs import Instr, InstrList
+from aioway.ir.queries import OrderedIndex, Query
+from aioway.t import BoundArgs, Sign, TList, all_real, parse_attr
 
 __all__ = ["TensorRef", "Program", "ProgramIn", "TensorIndex", "TensorLifetime"]
 

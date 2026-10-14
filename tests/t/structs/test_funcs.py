@@ -6,26 +6,24 @@ import typing
 import pytest
 import torch
 
+from aioway._pytrees import PyTreeDataclassMixin
 from aioway._utils import any_dict
 from aioway.t import (
     find_nested_tensors,
-    register_pytree_dcls,
     replace_tensors,
     tree_leaves_typed,
     tree_map_memo,
 )
 
 
-@register_pytree_dcls
 @dcls.dataclass(frozen=True)
-class NestedTensors:
+class NestedTensors(PyTreeDataclassMixin):
     lists: list[torch.Tensor]
     dicts: dict[str, list[torch.Tensor]]
 
 
-@register_pytree_dcls
 @dcls.dataclass(frozen=True)
-class NotNestedTensors:
+class NotNestedTensors(PyTreeDataclassMixin):
     lists: list[typing.Any]
     dicts: dict[str, typing.Any]
 

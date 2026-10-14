@@ -3,12 +3,19 @@
 "Extension of `pyt` from `torch`."
 
 import abc
+import dataclasses
 import typing
 from collections import abc as cabc
 
-from aioway._pytrees import KeyEntry, register_pytree_node
+from .compat import GetAttrKey, KeyEntry, register_pytree_node
 
-__all__ = ["PyTreeMixin", "PyTreeDictMixin", "PyTreeFlatten", "PyTreeFlattenWithKey"]
+__all__ = [
+    "PyTreeMixin",
+    "PyTreeDictMixin",
+    "PyTreeDataclassMixin",
+    "PyTreeFlatten",
+    "PyTreeFlattenWithKey",
+]
 
 type PyTreeFlatten = tuple[list, typing.Any]
 type PyTreeFlattenWithKey = tuple[list[tuple[KeyEntry, typing.Any]], typing.Any]
@@ -107,3 +114,36 @@ class PyTreeDictMixin(PyTreeMixin, abc.ABC):
             )
 
         return cls._PY_TREE_KEY(key)
+
+
+class PyTreeDataclassMixin(PyTreeDictMixin, abc.ABC):
+    """
+    Mixin for dataclasses. Since `cxx_pytree` cannot register data class.
+    """
+
+    _PY_TREE_KEY = GetAttrKey
+
+    @typing.override
+    def _tree_dict(self) -> dict[str, typing.Any]:
+        if not dataclasses.is_dataclass(self):
+            raise TypeError(
+                f"`{type(self).__qualname__}` uses `PyTreeDataclassMixin` "
+                "but is not a dataclass."
+            )
+
+        # If `init=False`, passing it to constructor crashes.
+        return {
+            field.name: getattr(self, field.name)
+            for field in dataclasses.fields(self)
+            if field.init
+        }
+
+    @property
+    @typing.override
+    def _tree_context(self) -> None:
+        return None
+
+    @classmethod
+    @typing.override
+    def _tree_from_dict(cls, mapping: dict[str, typing.Any], context) -> typing.Self:
+        return cls(**mapping)
