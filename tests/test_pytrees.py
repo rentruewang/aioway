@@ -5,9 +5,7 @@
 import dataclasses
 
 import pytest
-import tensordict as td
 import torch
-from IPython.core.guarded_eval import typing
 from torch.utils import _pytree
 
 from aioway._pytrees import (
@@ -163,8 +161,9 @@ def test_missing_key_no_paths():
 
 
 def test_tensordict_round_trip():
-    # To stop type checking errors here.
-    tdict_cls: typing.Any = td.TensorDict
+    # Use `importskip` because importing causes type check issues here.
+    td = pytest.importorskip("tensordict")
+    tdict_cls = td.TensorDict
     tdict = tdict_cls({"a": torch.zeros(2), "n": {"b": torch.ones(2)}}, batch_size=[2])
 
     leaves, spec = tree_flatten({"td": tdict})
