@@ -6,12 +6,13 @@ import typing
 from collections import abc as cabc
 
 import torch
-from torch.utils import _pytree as pyt
 
 from aioway._pytrees import (
     SUPPORTED_NODES,
     is_namedtuple_class,
     is_structseq_class,
+    tree_any,
+    tree_leaves,
     tree_map,
 )
 from aioway._utils import AnyDict, any_dict
@@ -63,7 +64,7 @@ def tree_leaves_typed(obj, *types: type) -> list[typing.Any]:
     found = lambda item: isinstance(item, types)
 
     # Tree leaves without decomposing the target types.
-    leaves = pyt.tree_leaves(obj, is_leaf=found)
+    leaves = tree_leaves(obj, is_leaf=found)
     return [elem for elem in leaves if found(elem)]
 
 
@@ -117,4 +118,4 @@ def is_tensor_container(obj) -> bool:
     Check if the `obj` given is considered a tensor container.
     """
 
-    return pyt.tree_any(lambda x: isinstance(x, torch.Tensor), obj)
+    return tree_any(lambda x: isinstance(x, torch.Tensor), obj)
