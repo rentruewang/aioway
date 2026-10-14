@@ -6,16 +6,16 @@ import abc
 import typing
 from collections import abc as cabc
 
-from torch.utils import _pytree as pyt
+from aioway._pytrees import KeyEntry, register_pytree_node
 
 __all__ = ["PyTreeMixin", "PyTreeDictMixin", "PyTreeFlatten", "PyTreeFlattenWithKey"]
 
 type PyTreeFlatten = tuple[list, typing.Any]
-type PyTreeFlattenWithKey = tuple[list[tuple[pyt.KeyEntry, typing.Any]], typing.Any]
+type PyTreeFlattenWithKey = tuple[list[tuple[KeyEntry, typing.Any]], typing.Any]
 
 
-class PyTreeKeyFunc(typing.Protocol):
-    def __call__(self, key: str, /) -> pyt.KeyEntry: ...
+class PyTreeDictKeyFunc(typing.Protocol):
+    def __call__(self, key, /) -> typing.Any: ...
 
 
 class PyTreeMixin(abc.ABC):
@@ -29,7 +29,7 @@ class PyTreeMixin(abc.ABC):
     def __init_subclass__(cls) -> None:
         super().__init_subclass__()
 
-        pyt.register_pytree_node(
+        register_pytree_node(
             cls,
             flatten_fn=cls._tree_flatten,
             unflatten_fn=cls._tree_unflatten,
@@ -58,19 +58,22 @@ class PyTreeDictMixin(PyTreeMixin, abc.ABC):
     hanlding all types that serializes to `dict`.
     """
 
-    def __init_subclass__(cls, pytree_key: PyTreeKeyFunc = NotImplemented) -> None:
-        super().__init_subclass__()
-
-        cls._PY_TREE_KEY = pytree_key
+    _PY_TREE_KEY: typing.ClassVar[PyTreeDictKeyFunc] = NotImplemented
 
     @typing.override
+    @typing.final
     def _tree_flatten(self) -> PyTreeFlatten:
-        return list(self._tree_dict().values()), self._tree_context
+        d = self._tree_dict()
+        return list(d.values()), (tuple(d), self._tree_context)
 
     @typing.override
+    @typing.final
     def _tree_flatten_with_keys(self) -> PyTreeFlattenWithKey:
-        values = [(self._tree_key(k), v) for k, v in self._tree_dict().items()]
-        return values, self._tree_context
+        d = self._tree_dict()
+        return [(self._tree_key(k), v) for k, v in d.items()], (
+            tuple(d),
+            self._tree_context,
+        )
 
     @property
     @abc.abstractmethod
@@ -83,12 +86,24 @@ class PyTreeDictMixin(PyTreeMixin, abc.ABC):
         "The dict to serailize. The values become flatten."
         raise NotImplementedError
 
+    @typing.override
+    @typing.final
     @classmethod
-    def _tree_key(cls, key: str) -> pyt.KeyEntry:
+    def _tree_unflatten(cls, children, context) -> typing.Self:
+        keys, ctx = context
+        return cls._tree_from_dict(dict(zip(keys, children, strict=True)), ctx)
+
+    @classmethod
+    @abc.abstractmethod
+    def _tree_from_dict(cls, mapping: dict[str, typing.Any], context) -> typing.Self:
+        "Rebuild from the dict `_tree_dict` returned."
+        raise NotImplementedError
+
+    @classmethod
+    def _tree_key(cls, key: str) -> KeyEntry:
         if cls._PY_TREE_KEY is NotImplemented:
             raise TypeError(
-                "In class definition `pytree_key` is not provided. "
-                "Class is abstract."
+                f"`{cls.__qualname__}._PY_TREE_KEY` is not set. Class is abstract."
             )
 
         return cls._PY_TREE_KEY(key)

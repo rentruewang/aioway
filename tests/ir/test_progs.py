@@ -4,8 +4,8 @@ import typing
 from collections import abc as cabc
 
 import pytest
-from torch.utils import _pytree as pyt
 
+from aioway._pytrees import tree_flatten, tree_unflatten
 from aioway.ir import FuncCall, Program, ProgramIn, TensorLifetime
 from aioway.t import TList
 
@@ -69,6 +69,6 @@ class TestTensorIndex:
 
 class TestProgramIn:
     def test_reconstruct(self, dag: Program):
-        data, spec = pyt.tree_flatten(dag.inputs)
-        recon = pyt.tree_unflatten(data, spec)
+        data, spec = tree_flatten(dag.inputs)
+        recon = tree_unflatten(data, spec)
         assert dag.inputs == recon

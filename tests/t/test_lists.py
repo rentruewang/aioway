@@ -2,8 +2,8 @@
 
 import pytest
 import torch
-from torch.utils import _pytree as pyt
 
+from aioway._pytrees import tree_flatten, tree_unflatten
 from aioway._utils import is_list_of
 from aioway.t import TList, fake_mode
 
@@ -83,10 +83,10 @@ def test_tlist_fake_check_mixed(x):
 
 
 def test_tlist_flatten_unflatten(tlist, x, y):
-    list_of_tensors, spec = pyt.tree_flatten(tlist)
+    list_of_tensors, spec = tree_flatten(tlist)
     assert is_list_of(torch.Tensor)(list_of_tensors)
     assert len(list_of_tensors) == 2
     assert list_of_tensors[0] is x
     assert list_of_tensors[1] is y
 
-    assert pyt.tree_unflatten(list_of_tensors, spec) == tlist
+    assert tree_unflatten(list_of_tensors, spec) == tlist

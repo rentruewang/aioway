@@ -7,8 +7,8 @@ import typing
 from collections import abc as cabc
 
 from torch import nn
-from torch.utils import _pytree as pyt
 
+from aioway._pytrees import tree_map_only
 from aioway._utils import AnyDict, any_dict, render_fcall
 from aioway.t import Sign, tree_leaves_typed
 
@@ -165,8 +165,8 @@ class ThunkBuilderNode(BuilderNode):
             assert isinstance(node, BuilderNode)
             return node(node_vals)
 
-        args = pyt.tree_map_only(BuilderNode, tree=self.args, func=compute_node)
-        kwargs = pyt.tree_map_only(BuilderNode, tree=self.kwargs, func=compute_node)
+        args = tree_map_only(BuilderNode, tree=self.args, func=compute_node)
+        kwargs = tree_map_only(BuilderNode, tree=self.kwargs, func=compute_node)
 
         return self.module(*args, **kwargs)
 

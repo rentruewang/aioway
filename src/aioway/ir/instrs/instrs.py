@@ -7,8 +7,7 @@ import functools
 import typing
 from collections import abc as cabc
 
-from torch.utils import _pytree as pyt
-
+from aioway._pytrees import tree_map, tree_map_only
 from aioway._utils import AnyDict, any_dict, find_common_base, is_list_of
 from aioway.t import PyTreeDictMixin, TList
 
@@ -26,14 +25,14 @@ class Instr(PyTreeDictMixin, abc.ABC):
         Call the `tree_map` function on the `Instr`.
         """
 
-        return pyt.tree_map(func=func, tree=self)
+        return tree_map(func=func, tree=self)
 
     def tree_map_only(self, types: type | tuple[type, ...], func: cabc.Callable):
         """
         Call the `tree_map_only` function on the `Instr`.
         """
 
-        return pyt.tree_map_only(types, func=func, tree=self)
+        return tree_map_only(types, func=func, tree=self)
 
     @functools.cached_property
     def tensor_inputs(self) -> TList:
