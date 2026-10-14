@@ -1,5 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import typing
+
 import pytest
 
 from aioway._utils import any_dict, any_set
@@ -39,7 +41,25 @@ class TestAnySet:
     def test_wrong_type_raises(self):
         s = any_set(int, 1)
         with pytest.raises(TypeError):
-            "a" in s
+            _ = "a" in s
+
+    def test_add_wrong_type_raises(self):
+        s = any_set(int)
+        bad: typing.Any = "a"  # deliberately the wrong type
+        with pytest.raises(TypeError):
+            s.add(bad)
+
+    def test_eq(self):
+        s = any_set(int, 1, 2)
+        assert s == [2, 1]
+        assert s != [1]
+        assert s != [1, 2, 3]
+
+    def test_eq_unhashable(self):
+        a = [1]
+        s = any_set(list, a)
+        assert s == [a]
+        assert s != [[1]]  # equal, but a different object
 
     def test_sub(self):
         a = any_set(int, 1, 2, 3)
@@ -51,6 +71,15 @@ class TestAnySet:
         a = any_set(int, 1, 2, 3)
         a -= any_set(int, 2)
         assert sorted(a) == [1, 3]
+
+    def test_isub_self(self):
+        s = any_set(int, 1, 2)
+        s -= s
+        assert len(s) == 0
+
+    def test_and(self):
+        s = any_set(int, 1, 2, 3) & any_set(int, 2, 3, 4)
+        assert sorted(s) == [2, 3]
 
     def test_isdisjoint(self):
         s = any_set(int, 1, 2)
@@ -93,9 +122,21 @@ class TestAnySet:
         assert len(s) == 1
         assert a in s
 
+    def test_id_is_not_hash(self):
+        u = [1]
+        s = any_set(object)
+        s.add(u)
+        assert id(u) not in s
+        s.add(id(u))
+        assert len(s) == 2
+
+    def test_hash_per_object(self):
+        any_set(object, (1, [2]))
+        s = any_set(tuple, (1, 2))
+        assert tuple([1, 2]) in s
+
 
 class TestAnyDict:
-
     def test_empty(self):
         d = any_dict()
         assert len(d) == 0
@@ -123,6 +164,12 @@ class TestAnyDict:
         with pytest.raises(KeyError):
             del d["a"]
 
+    def test_setitem_wrong_type(self):
+        d = any_dict(str)
+        bad: typing.Any = 1  # deliberately the wrong type
+        with pytest.raises(TypeError):
+            d[bad] = "x"
+
     def test_unhashable_keys(self):
         k1, k2 = [1], [1]
         d = any_dict(list, (k1, "x"))
@@ -141,6 +188,13 @@ class TestAnyDict:
         assert sorted(d.values()) == [1, 2]
         assert sorted(d.items()) == [("a", 1), ("b", 2)]
 
+    def test_eq(self):
+        a = any_dict(str, ("a", 1), ("b", 2))
+        assert a == any_dict(str, ("b", 2), ("a", 1))
+        assert a == {"a": 1, "b": 2}
+        assert a != {"a": 1, "b": 3}
+        assert a != {"a": 1}
+
     def test_or(self):
         a = any_dict(str, ("a", 1))
         b = any_dict(str, ("b", 2))
@@ -152,3 +206,16 @@ class TestAnyDict:
         a = any_dict(str, ("a", 1))
         a |= any_dict(str, ("a", 10), ("b", 2))
         assert sorted(a.items()) == [("a", 10), ("b", 2)]
+
+    def test_copy_copies(self):
+        a = any_dict(str, ("a", 1))
+        b = a.copy()
+        b["b"] = 2
+        del b["a"]
+        assert sorted(a.items()) == [("a", 1)]
+
+    def test_no_set_ops(self):
+        d = any_dict(str, ("a", 1))
+        assert not hasattr(d, "add")
+        assert not hasattr(d, "discard")
+        assert not hasattr(d, "__sub__")

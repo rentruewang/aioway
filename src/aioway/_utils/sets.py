@@ -1,12 +1,10 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from matplotlib.pyplot import isinteractive
 import typing
 from collections import abc as cabc
 
 __all__ = ["any_set", "AnySet", "any_dict", "AnyDict"]
 
-type AnyId = int
 
 # The convenient constructors, public ====
 
@@ -82,8 +80,8 @@ class _AnyBase[K: object = typing.Any]:
     Keys are stored under `_hash_or_id(key)`.
     """
 
-    def __init__(self, *, base: type | tuple[type, ...], keys: dict[AnyId, K]) -> None:
-        self._keys: dict[AnyId, K] = keys
+    def __init__(self, *, base: type | tuple[type, ...], keys: dict[int, K]) -> None:
+        self._keys: dict[int, K] = keys
         """
         The keys that has been stored.
         Using `dict` to avoid actually dereference `id`.
@@ -169,12 +167,12 @@ class AnyDict[K: object = typing.Any, V: object = typing.Any](_AnyBase[K]):
         self,
         *,
         base: type | tuple[type, ...],
-        keys: dict[AnyId, K],
-        vals: dict[AnyId, V],
+        keys: dict[int, K],
+        vals: dict[int, V],
     ) -> None:
         super().__init__(base=base, keys=keys)
 
-        self._vals: dict[AnyId, V] = vals
+        self._vals: dict[int, V] = vals
         """
         The values refered to by the `key`, using `id` as key.
         """
@@ -277,7 +275,7 @@ class _Id(int):
         return isinstance(other, _Id) and int(self) == int(other)
 
 
-def _hash_or_id(obj) -> AnyId:
+def _hash_or_id(obj) -> int:
     "`hash` for hashable objects, `id` otherwise. Decided per object, not per type."
 
     try:
