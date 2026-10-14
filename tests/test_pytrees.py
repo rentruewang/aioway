@@ -163,12 +163,14 @@ def test_missing_key_no_paths():
 def test_tensordict_round_trip():
     # Use `importskip` because importing causes type check issues here.
     td = pytest.importorskip("tensordict")
-    tdict_cls = td.TensorDict
-    tdict = tdict_cls({"a": torch.zeros(2), "n": {"b": torch.ones(2)}}, batch_size=[2])
+
+    tdict = td.TensorDict(
+        {"a": torch.zeros(2), "n": {"b": torch.ones(2)}}, batch_size=[2]
+    )
 
     leaves, spec = tree_flatten({"td": tdict})
     out = tree_unflatten([x + 1 for x in leaves], spec)["td"]
 
-    assert type(out) is tdict_cls
+    assert isinstance(out, td.TensorDict)
     assert out.batch_size == tdict.batch_size
     assert torch.equal(out["n", "b"], tdict["n", "b"] + 1)
