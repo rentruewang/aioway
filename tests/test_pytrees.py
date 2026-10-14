@@ -126,10 +126,10 @@ class TestTreeSpec:
     def test_eq(self):
         assert tree_structure(model()) == tree_structure(model())
 
-    def test_ne_keys(self):
+    def test_ne_field(self):
         assert tree_structure(Bag(a=1)) != tree_structure(Bag(b=1))
 
-    def test_ne_field(self):
+    def test_ne_type(self):
         assert tree_structure(Bag(a=1)) != tree_structure(SubBag(a=1))
 
 
