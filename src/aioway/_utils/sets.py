@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import dataclasses as dcls
+from matplotlib.pyplot import isinteractive
 import typing
 from collections import abc as cabc
 
@@ -76,15 +76,16 @@ def any_dict[K = typing.Any, V = typing.Any](
 # Class definitions, private. Exposed to `__all__` for type hints. ====
 
 
-class AnySet[K: object = typing.Any]:
+class _AnyBase[K: object = typing.Any]:
     """
-    `AnySet` allows to store a set of items, using their `id` or `hash` to compare equality.
+    The shared part of `AnySet` and `AnyDict`.
+    Keys are stored under `_hash_or_id(key)`.
     """
 
     def __init__(self, *, base: type | tuple[type, ...], keys: dict[AnyId, K]) -> None:
         self._keys: dict[AnyId, K] = keys
         """
-        The keys that has been stored in the `AnyDict`.
+        The keys that has been stored.
         Using `dict` to avoid actually dereference `id`.
         """
 
@@ -93,9 +94,6 @@ class AnySet[K: object = typing.Any]:
         Store the type for `isinstance` checks.
         """
 
-    def __repr__(self) -> str:
-        return "{" + ", ".join(map(repr, self._keys.values())) + "}"
-
     def __bool__(self) -> bool:
         return bool(len(self))
 
@@ -103,14 +101,27 @@ class AnySet[K: object = typing.Any]:
         return len(self._keys)
 
     def __contains__(self, key: object, /) -> bool:
-        if isinstance(key, self._type):
-            key_id = _HASH(key)
-            return key_id in self._keys
-
-        raise TypeError(f"{type(key)=} is not `{self._type}`.")
+        self._check_type(key)
+        return _hash_or_id(key) in self._keys
 
     def __iter__(self) -> cabc.Iterator[K]:
         return iter(self._keys.values())
+
+    def isdisjoint(self, other: cabc.Iterable[K]) -> bool:
+        return self._keys.keys().isdisjoint(_hash_or_id(item) for item in other)
+
+    def _check_type(self, key: object) -> None:
+        if not isinstance(key, self._type):
+            raise TypeError(f"{type(key)=} is not `{self._type}`.")
+
+
+class AnySet[K: object = typing.Any](_AnyBase[K]):
+    """
+    `AnySet` allows to store a set of items, using their `id` or `hash` to compare equality.
+    """
+
+    def __repr__(self) -> str:
+        return "{" + ", ".join(map(repr, self._keys.values())) + "}"
 
     def __sub__(self, other: AnySet[K]) -> AnySet[K]:
         copied = self.copy()
@@ -125,7 +136,8 @@ class AnySet[K: object = typing.Any]:
         return result
 
     def __isub__(self, other: AnySet[K]) -> AnySet[K]:
-        for item in other:
+        # `list` so that `s -= s` doesn't change `s` while iterating it.
+        for item in list(other):
             self.discard(item)
         return self
 
@@ -133,24 +145,21 @@ class AnySet[K: object = typing.Any]:
         if not isinstance(other, cabc.Iterable):
             return NotImplemented
 
-        other_ids = {id(elem) for elem in other}
+        other_ids = {_hash_or_id(elem) for elem in other}
         return self._keys.keys() == other_ids
 
-    def isdisjoint(self, other: cabc.Iterable[K]) -> bool:
-        return self._keys.keys().isdisjoint(_HASH(item) for item in other)
-
     def add(self, key: K) -> None:
-        self._keys[_HASH(key)] = key
+        self._check_type(key)
+        self._keys[_hash_or_id(key)] = key
 
     def discard(self, key: K) -> None:
-        if (key_hash := _HASH(key)) in self._keys:
-            del self._keys[key_hash]
+        self._keys.pop(_hash_or_id(key), None)
 
     def copy(self) -> typing.Self:
         return type(self)(base=self._type, keys=self._keys.copy())
 
 
-class AnyDict[K: object = typing.Any, V: object = typing.Any](AnySet[K]):
+class AnyDict[K: object = typing.Any, V: object = typing.Any](_AnyBase[K]):
     """
     `AnyDict` allows you to treat `T` as if it's `Hashable` (it's not).
     Each item would be compared with `is` rather than `==`.
@@ -174,7 +183,7 @@ class AnyDict[K: object = typing.Any, V: object = typing.Any](AnySet[K]):
         return "{" + ", ".join(f"{k}:{self[k]}" for k in self) + "}"
 
     def __eq__(self, other) -> bool:
-        if not isinstance(other, cabc.Mapping):
+        if not isinstance(other, (AnyDict, cabc.Mapping)):
             return NotImplemented
 
         if self.keys() != other.keys():
@@ -190,13 +199,15 @@ class AnyDict[K: object = typing.Any, V: object = typing.Any](AnySet[K]):
         if key not in self:
             raise KeyError(f"{key=} is not found in `AnyDict`.")
 
-        return self._vals[_HASH(key)]
+        return self._vals[_hash_or_id(key)]
 
     def __setitem__(self, key: K, val: V, /) -> None:
         self.__assert_same_length()
+        self._check_type(key)
 
-        super().add(key)
-        self._vals[_HASH(key)] = val
+        key_id = _hash_or_id(key)
+        self._keys[key_id] = key
+        self._vals[key_id] = val
 
     def __delitem__(self, key: K, /) -> None:
         self.__assert_same_length()
@@ -204,8 +215,9 @@ class AnyDict[K: object = typing.Any, V: object = typing.Any](AnySet[K]):
         if key not in self:
             raise KeyError(f"{key=} is not in `AnyDict`.")
 
-        super().discard(key)
-        del self._vals[_HASH(key)]
+        key_id = _hash_or_id(key)
+        del self._keys[key_id]
+        del self._vals[key_id]
 
     def __or__(self, other: typing.Self) -> typing.Self:
         copied = self.copy()
@@ -246,40 +258,29 @@ class AnyDict[K: object = typing.Any, V: object = typing.Any](AnySet[K]):
         )
 
     def __assert_same_length(self) -> None:
-        assert super().__len__() == len(self._vals)
-
-    # Delete these methods.
-    __sub__ = __isub__ = add = discard = typing.cast(typing.Any, None)
+        assert len(self._keys) == len(self._vals)
 
 
-# Helper hashing function. ====
+# Helpers. ====
 
 
-@dcls.dataclass
-class HashId:
+class _Id(int):
     """
-    The hasher that uses `id` for non hashable types.
+    The Id class.
+    An `id` used as a key. Never equal to a plain `int` (i.e. a `hash`),
+    so ids of unhashable objects cannot collide with hashes of hashable ones.
     """
 
-    no_hash: set[type] = dcls.field(default_factory=set)
-    """
-    The types that we don't want to hash.
-    """
+    __hash__ = int.__hash__
 
-    def __call__(self, obj) -> AnyId:
-        if (type_obj := type(obj)) in self.no_hash:
-            return id(obj)
-
-        try:
-            return hash(obj)
-
-        # Tried hash, but it's not hashable.
-        except TypeError:
-            self.no_hash.add(type_obj)
-            return id(obj)
+    def __eq__(self, other) -> bool:
+        return isinstance(other, _Id) and int(self) == int(other)
 
 
-_HASH = HashId()
-"""
-The global hasher for both hashable and non hashable objects.
-"""
+def _hash_or_id(obj) -> AnyId:
+    "`hash` for hashable objects, `id` otherwise. Decided per object, not per type."
+
+    try:
+        return hash(obj)
+    except Exception:
+        return _Id(id(obj))

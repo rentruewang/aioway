@@ -483,7 +483,7 @@ class TensorRef[F: Instr]:
 
         self._producer = producer
         self._tensor = tensor
-        self._consumers: AnySet[F] = typing.cast(typing.Any, any_set(F))
+        self._consumers: AnySet[F] = typing.cast(typing.Any, any_set(Instr))
 
         if not isinstance(tensor, torch.Tensor) or all_real(tensor):
             raise ValueError(
