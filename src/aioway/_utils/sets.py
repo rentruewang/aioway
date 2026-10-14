@@ -129,6 +129,13 @@ class AnySet[K: object = typing.Any]:
             self.discard(item)
         return self
 
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, cabc.Iterable):
+            return NotImplemented
+
+        other_ids = {id(elem) for elem in other}
+        return self._keys.keys() == other_ids
+
     def isdisjoint(self, other: cabc.Iterable[K]) -> bool:
         return self._keys.keys().isdisjoint(_HASH(item) for item in other)
 
@@ -165,6 +172,19 @@ class AnyDict[K: object = typing.Any, V: object = typing.Any](AnySet[K]):
 
     def __repr__(self) -> str:
         return "{" + ", ".join(f"{k}:{self[k]}" for k in self) + "}"
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, cabc.Mapping):
+            return NotImplemented
+
+        if self.keys() != other.keys():
+            return False
+
+        for key, val in self.items():
+            if other[key] != val:
+                return False
+
+        return True
 
     def __getitem__(self, key: K, /) -> V:
         if key not in self:
@@ -229,7 +249,7 @@ class AnyDict[K: object = typing.Any, V: object = typing.Any](AnySet[K]):
         assert super().__len__() == len(self._vals)
 
     # Delete these methods.
-    add = discard = typing.cast(typing.Any, None)
+    __sub__ = __isub__ = add = discard = typing.cast(typing.Any, None)
 
 
 # Helper hashing function. ====
