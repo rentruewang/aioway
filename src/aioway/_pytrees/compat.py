@@ -43,7 +43,7 @@ treespec_dumps = _cxx_pytree.treespec_dumps
 treespec_loads = _cxx_pytree.treespec_loads
 treespec_pprint = _cxx_pytree.treespec_pprint
 
-# Namedtuple / structseq checks. The same functions in both modules. ====
+# Namedtuple / structseq checks. ====
 
 is_namedtuple = _cxx_pytree.is_namedtuple
 is_namedtuple_class = _cxx_pytree.is_namedtuple_class
