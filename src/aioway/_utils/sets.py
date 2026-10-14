@@ -1,5 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
@@ -77,14 +78,15 @@ def any_dict[K = typing.Any, V = typing.Any](
 class _AnyBase[K: object = typing.Any]:
     """
     The shared part of `AnySet` and `AnyDict`.
-    Keys are stored under `_hash_or_id(key)`.
+    Keys are stored under `_hashable(key)`.
     """
 
-    def __init__(self, *, base: type | tuple[type, ...], keys: dict[int, K]) -> None:
-        self._keys: dict[int, K] = keys
+    def __init__(
+        self, *, base: type | tuple[type, ...], keys: dict[cabc.Hashable, K]
+    ) -> None:
+        self._keys: dict[cabc.Hashable, K] = keys
         """
-        The keys that has been stored.
-        Using `dict` to avoid actually dereference `id`.
+        The keys that has been stored, under `_hashable(key)`.
         """
 
         self._type = base
@@ -100,13 +102,13 @@ class _AnyBase[K: object = typing.Any]:
 
     def __contains__(self, key: object, /) -> bool:
         self._check_type(key)
-        return _hash_or_id(key) in self._keys
+        return _hashable(key) in self._keys
 
     def __iter__(self) -> cabc.Iterator[K]:
         return iter(self._keys.values())
 
     def isdisjoint(self, other: cabc.Iterable[K]) -> bool:
-        return self._keys.keys().isdisjoint(_hash_or_id(item) for item in other)
+        return self._keys.keys().isdisjoint(_hashable(item) for item in other)
 
     def _check_type(self, key: object) -> None:
         if not isinstance(key, self._type):
@@ -143,15 +145,15 @@ class AnySet[K: object = typing.Any](_AnyBase[K]):
         if not isinstance(other, cabc.Iterable):
             return NotImplemented
 
-        other_ids = {_hash_or_id(elem) for elem in other}
-        return self._keys.keys() == other_ids
+        other_keys = {_hashable(elem) for elem in other}
+        return self._keys.keys() == other_keys
 
     def add(self, key: K) -> None:
         self._check_type(key)
-        self._keys[_hash_or_id(key)] = key
+        self._keys[_hashable(key)] = key
 
     def discard(self, key: K) -> None:
-        self._keys.pop(_hash_or_id(key), None)
+        self._keys.pop(_hashable(key), None)
 
     def copy(self) -> typing.Self:
         return type(self)(base=self._type, keys=self._keys.copy())
@@ -167,14 +169,14 @@ class AnyDict[K: object = typing.Any, V: object = typing.Any](_AnyBase[K]):
         self,
         *,
         base: type | tuple[type, ...],
-        keys: dict[int, K],
-        vals: dict[int, V],
+        keys: dict[cabc.Hashable, K],
+        vals: dict[cabc.Hashable, V],
     ) -> None:
         super().__init__(base=base, keys=keys)
 
-        self._vals: dict[int, V] = vals
+        self._vals: dict[cabc.Hashable, V] = vals
         """
-        The values refered to by the `key`, using `id` as key.
+        The values refered to by the `key`, under `_hashable(key)`.
         """
 
     def __repr__(self) -> str:
@@ -197,15 +199,15 @@ class AnyDict[K: object = typing.Any, V: object = typing.Any](_AnyBase[K]):
         if key not in self:
             raise KeyError(f"{key=} is not found in `AnyDict`.")
 
-        return self._vals[_hash_or_id(key)]
+        return self._vals[_hashable(key)]
 
     def __setitem__(self, key: K, val: V, /) -> None:
         self.__assert_same_length()
         self._check_type(key)
 
-        key_id = _hash_or_id(key)
-        self._keys[key_id] = key
-        self._vals[key_id] = val
+        hkey = _hashable(key)
+        self._keys[hkey] = key
+        self._vals[hkey] = val
 
     def __delitem__(self, key: K, /) -> None:
         self.__assert_same_length()
@@ -213,9 +215,9 @@ class AnyDict[K: object = typing.Any, V: object = typing.Any](_AnyBase[K]):
         if key not in self:
             raise KeyError(f"{key=} is not in `AnyDict`.")
 
-        key_id = _hash_or_id(key)
-        del self._keys[key_id]
-        del self._vals[key_id]
+        hkey = _hashable(key)
+        del self._keys[hkey]
+        del self._vals[hkey]
 
     def __or__(self, other: typing.Self) -> typing.Self:
         copied = self.copy()
@@ -262,23 +264,28 @@ class AnyDict[K: object = typing.Any, V: object = typing.Any](_AnyBase[K]):
 # Helpers. ====
 
 
-class _Id(int):
+@dcls.dataclass(frozen=True, slots=True)
+class _Id:
     """
-    The Id class.
-    An `id` used as a key. Never equal to a plain `int` (i.e. a `hash`),
-    so ids of unhashable objects cannot collide with hashes of hashable ones.
+    Wraps an unhashable object so it can be a `dict` key, compared with `is`.
+    Never equal to anything but another `_Id` of the same object.
     """
 
-    __hash__ = int.__hash__
+    obj: object
+
+    def __hash__(self):
+        return id(self.obj)
 
     def __eq__(self, other) -> bool:
-        return isinstance(other, _Id) and int(self) == int(other)
+        return isinstance(other, _Id) and self.obj is other.obj
 
 
-def _hash_or_id(obj) -> int:
-    "`hash` for hashable objects, `id` otherwise. Decided per object, not per type."
+def _hashable(obj) -> cabc.Hashable:
+    "Make the object hashable."
 
     try:
-        return hash(obj)
+        _ = hash(obj)
     except Exception:
-        return _Id(id(obj))
+        return _Id(obj)
+    else:
+        return obj
