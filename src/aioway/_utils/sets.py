@@ -183,17 +183,19 @@ class AnyDict[K: object = typing.Any, V: object = typing.Any](_AnyBase[K]):
         return "{" + ", ".join(f"{k}:{self[k]}" for k in self) + "}"
 
     def __eq__(self, other) -> bool:
-        if not isinstance(other, (AnyDict, cabc.Mapping)):
-            return NotImplemented
+        # `_vals` is a plain `dict` keyed by `_hashable(key)`,
+        # so let `dict.__eq__` do the work in C (values compared `is`, then `==`).
+        if isinstance(other, AnyDict):
+            return self._vals == other._vals
 
-        if self.keys() != other.keys():
-            return False
+        # Keys of a `dict` are hashable, so `_hashable(key) is key`.
+        if isinstance(other, dict):
+            return self._vals == other
 
-        for key, val in self.items():
-            if other[key] != val:
-                return False
+        if isinstance(other, cabc.Mapping):
+            return self._vals == {_hashable(k): v for k, v in other.items()}
 
-        return True
+        return NotImplemented
 
     def __getitem__(self, key: K, /) -> V:
         if key not in self:
