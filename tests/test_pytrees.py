@@ -2,7 +2,7 @@
 
 "Tests for `aioway._pytrees` and the pytree mixins."
 
-import dataclasses
+import dataclasses as dcls
 
 import pytest
 import torch
@@ -26,17 +26,17 @@ from aioway._pytrees import (
 )
 
 
-@dataclasses.dataclass
+@dcls.dataclass
 class Linear(PyTreeDataclassMixin):
     weight: torch.Tensor
     bias: torch.Tensor | None = None
-    numel: int = dataclasses.field(init=False)
+    numel: int = dcls.field(init=False)
 
     def __post_init__(self) -> None:
         self.numel = self.weight.numel()
 
 
-@dataclasses.dataclass(frozen=True, slots=True)
+@dcls.dataclass(frozen=True, slots=True)
 class Model(PyTreeDataclassMixin):
     layers: list[Linear]
     head: Linear
