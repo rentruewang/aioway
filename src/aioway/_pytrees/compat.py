@@ -16,8 +16,10 @@ PyTree = _cxx_pytree.PyTree
 TreeSpec = _cxx_pytree.TreeSpec
 LeafSpec = _cxx_pytree.LeafSpec
 
-
 # Registration. Should work everywhere. ====
+SUPPORTED_NODES = _pytree.SUPPORTED_NODES
+SUPPORTED_SERIALIZED_TYPES = _pytree.SUPPORTED_SERIALIZED_TYPES
+SERIALIZED_TYPE_TO_PYTHON_TYPE = _pytree.SERIALIZED_TYPE_TO_PYTHON_TYPE
 register_pytree_node = _pytree.register_pytree_node
 
 

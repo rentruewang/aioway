@@ -8,7 +8,12 @@ from collections import abc as cabc
 import torch
 from torch.utils import _pytree as pyt
 
-from aioway._pytrees import is_namedtuple_class, is_structseq_class, tree_map
+from aioway._pytrees import (
+    SUPPORTED_NODES,
+    is_namedtuple_class,
+    is_structseq_class,
+    tree_map,
+)
 from aioway._utils import AnyDict, any_dict
 
 __all__ = [
@@ -101,7 +106,7 @@ def is_tensor_container_type(cls: type) -> bool:
 
     return (
         False
-        or cls in pyt.SUPPORTED_NODES
+        or cls in SUPPORTED_NODES
         or is_namedtuple_class(cls)
         or is_structseq_class(cls)
     )
