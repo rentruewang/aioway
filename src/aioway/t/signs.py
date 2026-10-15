@@ -347,6 +347,10 @@ class Sign:
         )
 
 
+def _prefix_t(idx: int) -> str:
+    return f"t{idx}"
+
+
 class BoundArgs(PyTreeDictMixin):
     """
     Our version of `inspect.BoundArguments`.
@@ -497,12 +501,19 @@ class BoundArgs(PyTreeDictMixin):
 
     @classmethod
     def from_iters(
-        cls, items: cabc.Iterable[typing.Any], /, *, prefix: str = "t"
+        cls,
+        items: cabc.Iterable[typing.Any],
+        /,
+        *,
+        key_func: cabc.Callable[[int], str] = _prefix_t,
     ) -> typing.Self:
-        "Bind tensors positionally, to parameters named `t0`, `t1`, ..."
+        """
+        Bind tensors positionally, to parameters named `t0`, `t1` (by default),
+        or you can choose to name them with a `(int) -> str` function.
+        """
 
         tensors = tuple(items)
-        names = [f"{prefix}{i}" for i in range(len(tensors))]
+        names = [key_func(i) for i in range(len(tensors))]
         return cls.from_sign(Sign.from_inputs(names), *tensors)
 
     @classmethod
