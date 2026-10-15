@@ -46,24 +46,10 @@ def any_dict() -> AnyDict[typing.Any, typing.Any]: ...
 
 
 @typing.overload
-def any_dict[T](base: type[T], /) -> AnyDict[T, typing.Any]: ...
+def any_dict[K, V](*default: tuple[K, V]) -> AnyDict[K, V]: ...
 
 
-@typing.overload
-def any_dict(base: tuple[type, ...], /) -> AnyDict[typing.Any, typing.Any]: ...
-
-
-@typing.overload
-def any_dict[K, V](base: typing.Any, /, *default: tuple[K, V]) -> AnyDict[K, V]: ...
-
-
-@typing.overload
-def any_dict(base, /, *default) -> AnyDict: ...
-
-
-def any_dict[K = typing.Any, V = typing.Any](
-    base: type | tuple[type, ...] = object, /, *default: tuple[K, V]
-):
+def any_dict[K, V](*default: tuple[K, V]):
     adict = AnyDict(data={})
 
     # Add all default values.
@@ -139,7 +125,7 @@ class AnySet[K: object = typing.Any]:
         return type(self)(data=self._data.copy())
 
 
-class AnyDict[K: object = typing.Any, V: object = typing.Any]:
+class AnyDict[K, V]:
     """
     `AnyDict` allows you to treat `K` as if it's `Hashable` (it may not be).
     Hashable keys are compared with `hash` and `==`, unhashable ones with `is`.

@@ -20,7 +20,7 @@ from aioway._pytrees import (
     PyTreeMixin,
     tree_map_only,
 )
-from aioway._utils import AnyDict, AnySet, IntArray, any_dict, any_set, is_list_of
+from aioway._utils import AnySet, IntArray, any_set, is_list_of
 from aioway.ir.instrs import Instr, InstrList
 from aioway.ir.queries import OrderedIndex, Query
 from aioway.t import BoundArgs, Sign, TList, all_real, parse_attr
@@ -387,7 +387,7 @@ class TensorIndex[I: Instr = typing.Any]:
         return self._tensors
 
     @property
-    def links(self) -> AnyDict[torch.Tensor, TensorRef[I]]:
+    def links(self) -> dict[torch.Tensor, TensorRef[I]]:
         "Mapping from tensors to refs (linking functions)."
         return self._links
 
@@ -483,7 +483,7 @@ class TensorRef[F: Instr]:
 
         self._producer = producer
         self._tensor = tensor
-        self._consumers: AnySet[F] = typing.cast(typing.Any, any_set(Instr))
+        self._consumers: AnySet[F] = any_set()
 
         if not isinstance(tensor, torch.Tensor) or all_real(tensor):
             raise ValueError(
@@ -498,7 +498,7 @@ class TensorRef[F: Instr]:
         "Add consumers for the info. Allow duplication."
 
         for consumer in consumers:
-            self._consumers.add(consumer)
+            self.consumers.add(consumer)
 
     @property
     def producer(self) -> F:
@@ -536,11 +536,11 @@ def _all_thunk_tensors(thunks: cabc.Iterable[Instr]) -> cabc.Generator[torch.Ten
 
 def _build_tensor_refs(
     thunks: cabc.Iterable[Instr], inputs: cabc.Sequence[torch.Tensor]
-) -> AnyDict[torch.Tensor, TensorRef]:
+) -> dict[torch.Tensor, TensorRef]:
     "Get the mapping from id of `torch.Tensor` to corresponding tensor ref."
 
     # Register all inputs.
-    mapping: AnyDict[torch.Tensor, TensorRef] = _tensor_refs_inputs(inputs)
+    mapping: dict[torch.Tensor, TensorRef] = _tensor_refs_inputs(inputs)
 
     # Register all outputs of thunks.
     mapping |= _tensor_refs_outputs(thunks)
@@ -553,8 +553,8 @@ def _build_tensor_refs(
 
 def _tensor_refs_inputs(
     inputs: cabc.Sequence[torch.Tensor],
-) -> AnyDict[torch.Tensor, TensorRef]:
-    mapping: AnyDict[torch.Tensor, TensorRef] = any_dict(torch.Tensor)
+) -> dict[torch.Tensor, TensorRef]:
+    mapping: dict[torch.Tensor, TensorRef] = {}
 
     for input in inputs:
         ref = TensorRef(producer=None, tensor=input)
@@ -565,8 +565,8 @@ def _tensor_refs_inputs(
 
 def _tensor_refs_outputs[I: Instr](
     thunks: cabc.Iterable[I],
-) -> AnyDict[torch.Tensor, TensorRef[I]]:
-    mapping: AnyDict[torch.Tensor, TensorRef[I]] = any_dict(torch.Tensor)
+) -> dict[torch.Tensor, TensorRef[I]]:
+    mapping: dict[torch.Tensor, TensorRef[I]] = {}
 
     for thunk in thunks:
         for output in thunk.tensor_outputs:
@@ -579,9 +579,10 @@ def _tensor_refs_outputs[I: Instr](
 
 
 def _link_inputs_for_mapping(
-    mapping: AnyDict[torch.Tensor, TensorRef], thunks: cabc.Iterable[Instr]
+    mapping: dict[torch.Tensor, TensorRef], thunks: cabc.Iterable[Instr]
 ) -> None:
     for thunk in thunks:
+        assert isinstance(thunk, Instr)
         for input in thunk.tensor_inputs:
             assert input in mapping
             mapping[input].add_consumers(thunk)
@@ -730,7 +731,7 @@ def _tensor_rplc[I: Instr](
     assert sub_ins.keys().isdisjoint(sub_prog.outputs.keys())
 
     # Build mapping for replacement.
-    in_to_out = any_dict(torch.Tensor)
+    in_to_out = {}
     for before, after in zip(queried_ins, sub_ins):
         in_to_out[before] = after
     for before, after in zip(queried.outputs, sub_prog.outputs):

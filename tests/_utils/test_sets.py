@@ -131,13 +131,13 @@ class TestAnyDict:
         assert not d
 
     def test_with_defaults(self):
-        d = any_dict(str, ("a", 1), ("b", 2))
+        d = any_dict(("a", 1), ("b", 2))
         assert d["a"] == 1
         assert d["b"] == 2
         assert len(d) == 2
 
     def test_set_get_del(self):
-        d = any_dict(str)
+        d = any_dict()
         d["a"] = 1
         assert d["a"] == 1
         d["a"] = 2
@@ -146,7 +146,7 @@ class TestAnyDict:
         assert "a" not in d
 
     def test_missing_key_raises(self):
-        d = any_dict(str)
+        d = any_dict()
         with pytest.raises(KeyError):
             d["a"]
         with pytest.raises(KeyError):
@@ -154,50 +154,50 @@ class TestAnyDict:
 
     def test_unhashable_keys(self):
         k1, k2 = [1], [1]
-        d = any_dict(list, (k1, "x"))
+        d = any_dict((k1, "x"))
         assert d[k1] == "x"
         assert k2 not in d
 
     def test_get(self):
-        d = any_dict(str, ("a", 1))
+        d = any_dict(("a", 1))
         assert d.get("a") == 1
         assert d.get("b") is None
         assert d.get("b", 0) == 0
 
     def test_keys_values_items(self):
-        d = any_dict(str, ("a", 1), ("b", 2))
+        d = any_dict(("a", 1), ("b", 2))
         assert sorted(d.keys()) == ["a", "b"]
         assert sorted(d.values()) == [1, 2]
         assert sorted(d.items()) == [("a", 1), ("b", 2)]
 
     def test_eq(self):
-        a = any_dict(str, ("a", 1), ("b", 2))
-        assert a == any_dict(str, ("b", 2), ("a", 1))
+        a = any_dict(("a", 1), ("b", 2))
+        assert a == any_dict(("b", 2), ("a", 1))
         assert a == {"a": 1, "b": 2}
         assert a != {"a": 1, "b": 3}
         assert a != {"a": 1}
 
     def test_or(self):
-        a = any_dict(str, ("a", 1))
-        b = any_dict(str, ("b", 2))
+        a = any_dict(("a", 1))
+        b = any_dict(("b", 2))
         c = a | b
         assert sorted(c.items()) == [("a", 1), ("b", 2)]
         assert sorted(a.items()) == [("a", 1)]  # original untouched
 
     def test_ior(self):
-        a = any_dict(str, ("a", 1))
-        a |= any_dict(str, ("a", 10), ("b", 2))
+        a = any_dict(("a", 1))
+        a |= any_dict(("a", 10), ("b", 2))
         assert sorted(a.items()) == [("a", 10), ("b", 2)]
 
     def test_copy_copies(self):
-        a = any_dict(str, ("a", 1))
+        a = any_dict(("a", 1))
         b = a.copy()
         b["b"] = 2
         del b["a"]
         assert sorted(a.items()) == [("a", 1)]
 
     def test_no_set_ops(self):
-        d = any_dict(str, ("a", 1))
+        d = any_dict(("a", 1))
         assert not hasattr(d, "add")
         assert not hasattr(d, "discard")
         assert not hasattr(d, "__sub__")
