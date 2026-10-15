@@ -9,7 +9,6 @@ import torch
 from torch import nn, optim
 
 from aioway._pytrees import tree_leaves
-from aioway._utils import AnySet, any_set
 
 __all__ = ["Mopt"]
 
@@ -31,16 +30,14 @@ class Mopt:
         return self._parameters
 
     @functools.cached_property
-    def _parameters(self) -> AnySet[torch.Tensor]:
-        aset = any_set(torch.Tensor)
-        for param in self.mod.parameters():
-            aset.add(param)
+    def _parameters(self) -> set[torch.Tensor]:
+        sets: set[torch.Tensor] = {*self.mod.parameters()}
 
-        tensors = [
+        tensors = {
             t for t in tree_leaves(self.opt.param_groups) if isinstance(t, torch.Tensor)
-        ]
+        }
 
-        if aset != tensors:
+        if sets != tensors:
             raise ValueError("The optimizer is not built for the module.")
 
-        return aset
+        return sets

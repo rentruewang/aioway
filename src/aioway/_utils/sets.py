@@ -4,7 +4,16 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-__all__ = ["any_set", "AnySet", "any_dict", "AnyDict"]
+__all__ = [
+    "any_set",
+    "AnySet",
+    "any_dict",
+    "AnyDict",
+    "AnyKey",
+    "HashableKey",
+    "UnhashableKey",
+    "wrap_any",
+]
 
 
 # The convenient constructors, public ====
@@ -15,23 +24,15 @@ def any_set() -> AnySet: ...
 
 
 @typing.overload
-def any_set[T](base: type[T], /) -> AnySet[T]: ...
+def any_set[T](*default: T) -> AnySet[T]: ...
 
 
 @typing.overload
-def any_set[T](base: tuple[type, ...], /) -> AnySet: ...
+def any_set(*default) -> AnySet: ...
 
 
-@typing.overload
-def any_set[T](base: typing.Any, /, *default: T) -> AnySet[T]: ...
-
-
-@typing.overload
-def any_set(base, /, *default) -> AnySet: ...
-
-
-def any_set(base=object, /, *default) -> AnySet:
-    aset = AnySet(base=base, keys={})
+def any_set(*default) -> AnySet:
+    aset = AnySet(data={})
 
     # Add all the default values.
     for key in default:
@@ -45,25 +46,11 @@ def any_dict() -> AnyDict[typing.Any, typing.Any]: ...
 
 
 @typing.overload
-def any_dict[T](base: type[T], /) -> AnyDict[T, typing.Any]: ...
+def any_dict[K, V](*default: tuple[K, V]) -> AnyDict[K, V]: ...
 
 
-@typing.overload
-def any_dict(base: tuple[type, ...], /) -> AnyDict[typing.Any, typing.Any]: ...
-
-
-@typing.overload
-def any_dict[K, V](base: typing.Any, /, *default: tuple[K, V]) -> AnyDict[K, V]: ...
-
-
-@typing.overload
-def any_dict(base, /, *default) -> AnyDict: ...
-
-
-def any_dict[K = typing.Any, V = typing.Any](
-    base: type | tuple[type, ...] = object, /, *default: tuple[K, V]
-):
-    adict = AnyDict(base=base, keys={}, vals={})
+def any_dict[K, V](*default: tuple[K, V]):
+    adict = AnyDict(data={})
 
     # Add all default values.
     for key, val in default:
@@ -72,154 +59,124 @@ def any_dict[K = typing.Any, V = typing.Any](
     return adict
 
 
-# Class definitions, private. Exposed to `__all__` for type hints. ====
+# Class definitions. ====
 
 
-class _AnyBase[K: object = typing.Any]:
+class AnySet[K: object = typing.Any]:
     """
-    The shared part of `AnySet` and `AnyDict`.
-    Keys are stored under `_hashable(key)`.
+    `AnySet` allows to store a set of any items.
+    Hashable items are compared with `hash` and `==`, unhashable ones with `is`.
     """
 
-    def __init__(
-        self, *, base: type | tuple[type, ...], keys: dict[cabc.Hashable, K]
-    ) -> None:
-        self._keys: dict[cabc.Hashable, K] = keys
+    def __init__(self, *, data: dict[AnyKey[K], None]) -> None:
+        self._data: dict[AnyKey[K], None] = data
         """
-        The keys that has been stored, under `_hashable(key)`.
+        The wrapped items. A `dict` rather than a `set`, to keep insertion order.
         """
-
-        self._type = base
-        """
-        Store the type for `isinstance` checks.
-        """
-
-    def __bool__(self) -> bool:
-        return bool(len(self))
-
-    def __len__(self) -> int:
-        return len(self._keys)
-
-    def __contains__(self, key: object, /) -> bool:
-        self._check_type(key)
-        return _hashable(key) in self._keys
-
-    def __iter__(self) -> cabc.Iterator[K]:
-        return iter(self._keys.values())
-
-    def isdisjoint(self, other: cabc.Iterable[K]) -> bool:
-        return self._keys.keys().isdisjoint(_hashable(item) for item in other)
-
-    def _check_type(self, key: object) -> None:
-        if not isinstance(key, self._type):
-            raise TypeError(f"{type(key)=} is not `{self._type}`.")
-
-
-class AnySet[K: object = typing.Any](_AnyBase[K]):
-    """
-    `AnySet` allows to store a set of items, using their `id` or `hash` to compare equality.
-    """
 
     def __repr__(self) -> str:
-        return "{" + ", ".join(map(repr, self._keys.values())) + "}"
+        return "{" + ", ".join(map(repr, self)) + "}"
 
-    def __sub__(self, other: AnySet[K]) -> AnySet[K]:
-        copied = self.copy()
-        copied -= other
-        return copied
+    def __bool__(self) -> bool:
+        return bool(self._data)
 
-    def __and__(self, other: AnySet[K]) -> AnySet[K]:
-        result = any_set(self._type)
-        for item in self:
-            if item in other:
-                result.add(item)
-        return result
+    def __len__(self) -> int:
+        return len(self._data)
 
-    def __isub__(self, other: AnySet[K]) -> AnySet[K]:
-        # `list` so that `s -= s` doesn't change `s` while iterating it.
-        for item in list(other):
-            self.discard(item)
-        return self
+    def __contains__(self, key: object, /) -> bool:
+        return wrap_any(key) in self._data
+
+    def __iter__(self) -> cabc.Iterator[K]:
+        return (key.obj for key in self._data)
 
     def __eq__(self, other) -> bool:
+        if isinstance(other, AnySet):
+            return self._data.keys() == other._data.keys()
+
         if not isinstance(other, cabc.Iterable):
             return NotImplemented
 
-        other_keys = {_hashable(elem) for elem in other}
-        return self._keys.keys() == other_keys
+        return self._data.keys() == {wrap_any(elem) for elem in other}
+
+    def __sub__(self, other: AnySet[K]) -> AnySet[K]:
+        data = {key: None for key in self._data if key not in other._data}
+        return type(self)(data=data)
+
+    def __and__(self, other: AnySet[K]) -> AnySet[K]:
+        data = {key: None for key in self._data if key in other._data}
+        return type(self)(data=data)
+
+    def __isub__(self, other: AnySet[K]) -> AnySet[K]:
+        # `list` so that `s -= s` doesn't change `s` while iterating it.
+        for key in list(other._data):
+            self._data.pop(key, None)
+        return self
+
+    def isdisjoint(self, other: cabc.Iterable[K]) -> bool:
+        return self._data.keys().isdisjoint(wrap_any(item) for item in other)
 
     def add(self, key: K) -> None:
-        self._check_type(key)
-        self._keys[_hashable(key)] = key
+        self._data[wrap_any(key)] = None
 
     def discard(self, key: K) -> None:
-        self._keys.pop(_hashable(key), None)
+        self._data.pop(wrap_any(key), None)
 
     def copy(self) -> typing.Self:
-        return type(self)(base=self._type, keys=self._keys.copy())
+        return type(self)(data=self._data.copy())
 
 
-class AnyDict[K: object = typing.Any, V: object = typing.Any](_AnyBase[K]):
+class AnyDict[K, V]:
     """
-    `AnyDict` allows you to treat `T` as if it's `Hashable` (it's not).
-    Each item would be compared with `is` rather than `==`.
+    `AnyDict` allows you to treat `K` as if it's `Hashable` (it may not be).
+    Hashable keys are compared with `hash` and `==`, unhashable ones with `is`.
     """
 
-    def __init__(
-        self,
-        *,
-        base: type | tuple[type, ...],
-        keys: dict[cabc.Hashable, K],
-        vals: dict[cabc.Hashable, V],
-    ) -> None:
-        super().__init__(base=base, keys=keys)
-
-        self._vals: dict[cabc.Hashable, V] = vals
+    def __init__(self, *, data: dict[AnyKey[K], V]) -> None:
+        self._data: dict[AnyKey[K], V] = data
         """
-        The values refered to by the `key`, under `_hashable(key)`.
+        The wrapped keys, mapped to their values.
         """
 
     def __repr__(self) -> str:
-        return "{" + ", ".join(f"{k}:{self[k]}" for k in self) + "}"
+        return "{" + ", ".join(f"{k}:{v}" for k, v in self.items()) + "}"
+
+    def __bool__(self) -> bool:
+        return bool(self._data)
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+    def __contains__(self, key: object, /) -> bool:
+        return wrap_any(key) in self._data
+
+    def __iter__(self) -> cabc.Iterator[K]:
+        return (key.obj for key in self._data)
 
     def __eq__(self, other) -> bool:
-        # `_vals` is a plain `dict` keyed by `_hashable(key)`,
-        # so let `dict.__eq__` do the work in C (values compared `is`, then `==`).
+        # Both sides keyed by `wrap_any(key)`: `dict.__eq__` does the rest,
+        # comparing values with `is`, then `==`.
         if isinstance(other, AnyDict):
-            return self._vals == other._vals
-
-        # Keys of a `dict` are hashable, so `_hashable(key) is key`.
-        if isinstance(other, dict):
-            return self._vals == other
+            return self._data == other._data
 
         if isinstance(other, cabc.Mapping):
-            return self._vals == {_hashable(k): v for k, v in other.items()}
+            return self._data == {wrap_any(k): v for k, v in other.items()}
 
         return NotImplemented
 
     def __getitem__(self, key: K, /) -> V:
-        if key not in self:
-            raise KeyError(f"{key=} is not found in `AnyDict`.")
-
-        return self._vals[_hashable(key)]
+        try:
+            return self._data[wrap_any(key)]
+        except KeyError:
+            raise KeyError(f"{key=} is not found in `AnyDict`.") from None
 
     def __setitem__(self, key: K, val: V, /) -> None:
-        self.__assert_same_length()
-        self._check_type(key)
-
-        hkey = _hashable(key)
-        self._keys[hkey] = key
-        self._vals[hkey] = val
+        self._data[wrap_any(key)] = val
 
     def __delitem__(self, key: K, /) -> None:
-        self.__assert_same_length()
-
-        if key not in self:
-            raise KeyError(f"{key=} is not in `AnyDict`.")
-
-        hkey = _hashable(key)
-        del self._keys[hkey]
-        del self._vals[hkey]
+        try:
+            del self._data[wrap_any(key)]
+        except KeyError:
+            raise KeyError(f"{key=} is not in `AnyDict`.") from None
 
     def __or__(self, other: typing.Self) -> typing.Self:
         copied = self.copy()
@@ -232,15 +189,14 @@ class AnyDict[K: object = typing.Any, V: object = typing.Any](_AnyBase[K]):
         return self
 
     def keys(self) -> AnySet[K]:
-        return AnySet(base=self._type, keys=self._keys.copy())
+        data: dict[AnyKey[K], None] = dict.fromkeys(self._data)
+        return AnySet(data=data)
 
     def values(self) -> cabc.Iterable[V]:
-        for key in self.keys():
-            yield self[key]
+        return list(self._data.values())
 
     def items(self) -> cabc.Iterable[tuple[K, V]]:
-        for key in self.keys():
-            yield key, self[key]
+        return [(key.obj, val) for key, val in self._data.items()]
 
     @typing.overload
     def get(self, key: K) -> V | None: ...
@@ -249,45 +205,78 @@ class AnyDict[K: object = typing.Any, V: object = typing.Any](_AnyBase[K]):
     def get[D](self, key: K, default: D) -> V | D: ...
 
     def get(self, key, default=None):
-        if key in self:
-            return self[key]
-        else:
-            return default
+        return self._data.get(wrap_any(key), default)
 
     def copy(self) -> typing.Self:
-        return type(self)(
-            base=self._type, keys=self._keys.copy(), vals=self._vals.copy()
-        )
-
-    def __assert_same_length(self) -> None:
-        assert len(self._keys) == len(self._vals)
+        return type(self)(data=self._data.copy())
 
 
 # Helpers. ====
 
 
+class AnyKey[T = object](typing.Protocol):
+    "The keys used in `AnySet` and `AnyDict`."
+
+    def __hash__(self) -> int: ...
+
+    def __eq__(self, other) -> bool: ...
+
+    @property
+    def obj(self) -> T: ...
+
+
 @dcls.dataclass(frozen=True, slots=True)
-class _Id:
+class UnhashableKey[T = object]:
     """
-    Wraps an unhashable object so it can be a `dict` key, compared with `is`.
-    Never equal to anything but another `_Id` of the same object.
+    Wraps an unhashable object to be hashed, comparing with `is`.
     """
 
-    obj: object
+    obj: T
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return id(self.obj)
 
     def __eq__(self, other) -> bool:
-        return isinstance(other, _Id) and self.obj is other.obj
+        return isinstance(other, UnhashableKey) and self.obj is other.obj
 
 
-def _hashable(obj) -> cabc.Hashable:
-    "Make the object hashable."
+@dcls.dataclass(frozen=True, slots=True)
+class HashableKey[T = object]:
+    """
+    Wraps a hashable object to avoid recomputation.
+
+    It delegates `==` to be `hash == hash` and `is` or `==` on the object.
+    """
+
+    obj: T
+
+    key: int
+
+    def __hash__(self) -> int:
+        return self.key
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, HashableKey):
+            return False
+
+        if self.key != other.key:
+            return False
+
+        if self.obj is other.obj:
+            return True
+
+        if self.obj == other.obj:
+            return True
+
+        return False
+
+
+def wrap_any[T = object](obj: T) -> AnyKey[T]:
+    "Convenient function to wrap the object as an internal key."
 
     try:
-        _ = hash(obj)
+        key = hash(obj)
     except Exception:
-        return _Id(obj)
+        return UnhashableKey(obj)
     else:
-        return obj
+        return HashableKey(obj, key)

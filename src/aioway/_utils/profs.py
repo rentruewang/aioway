@@ -67,7 +67,7 @@ class ProfilerStack:
         The global profiler stack, cached.
         """
 
-        stack_dict = any_dict(Profiler)
+        stack_dict: AnyDict[Profiler, typing.Any] = any_dict()
         return cls(stack_dict)
 
 

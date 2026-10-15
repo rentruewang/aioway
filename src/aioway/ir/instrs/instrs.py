@@ -100,7 +100,7 @@ class InstrList[I: Instr = typing.Any]:
     def _instr_to_step(self) -> AnyDict[I, int]:
         "Mapping from thunks to their indices."
 
-        return any_dict(Instr, *((thunk, idx) for idx, thunk in enumerate(self._seq)))
+        return any_dict(*[(thunk, idx) for idx, thunk in enumerate(self._seq)])
 
     @property
     def base(self) -> type[Instr] | None:

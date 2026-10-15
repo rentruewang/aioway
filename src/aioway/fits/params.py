@@ -6,8 +6,6 @@ import typing
 import torch
 from torch import nn, optim
 
-from aioway._utils import AnyDict, any_dict
-
 __all__ = [
     "ParamOptimInfo",
     "index_optim_params",
@@ -48,10 +46,10 @@ class ParamOptimInfo:
         return self.opt.state[self.param]
 
 
-def index_optim_params(opt: optim.Optimizer) -> AnyDict[torch.Tensor, ParamOptimInfo]:
+def index_optim_params(opt: optim.Optimizer) -> dict[torch.Tensor, ParamOptimInfo]:
     "Map each parameter managed by `opt` to its ParamInfo."
 
-    result: AnyDict[torch.Tensor, ParamOptimInfo] = any_dict(torch.Tensor)
+    result: dict[torch.Tensor, ParamOptimInfo] = {}
 
     for index, group in enumerate(opt.param_groups):
         for param in group[_OPT_PARAM]:
@@ -86,10 +84,10 @@ class ParamModuleInfo:
         return self.path.rpartition(".")[2]
 
 
-def index_module_params(module: nn.Module) -> AnyDict[torch.Tensor, ParamModuleInfo]:
+def index_module_params(module: nn.Module) -> dict[torch.Tensor, ParamModuleInfo]:
     "Map each parameter of `module` to its ParamModuleInfo."
 
-    result: AnyDict[torch.Tensor, ParamModuleInfo] = any_dict(torch.Tensor)
+    result: dict[torch.Tensor, ParamModuleInfo] = {}
 
     for path, param in module.named_parameters():
         result[param] = ParamModuleInfo(param=param, path=path, module=module)
