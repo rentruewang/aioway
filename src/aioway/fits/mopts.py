@@ -32,7 +32,7 @@ class Mopt:
 
     @functools.cached_property
     def _parameters(self) -> AnySet[torch.Tensor]:
-        aset = any_set(torch.Tensor)
+        aset: AnySet[torch.Tensor] = any_set()
         for param in self.mod.parameters():
             aset.add(param)
 
