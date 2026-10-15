@@ -57,7 +57,7 @@ class NetMorphLinearSeqDeeper(Rewriter):
         first, middle, last = _modules(sub)
         inserted = _identity_linear(first.out_features)
 
-        (x,) = sub.inputs
+        (x,) = sub.inputs.values()
         assert sub.inputs.tensors.all_fake
 
         # By tracing additional 2 sets of `middles` and `inserted`,

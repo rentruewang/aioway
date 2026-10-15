@@ -128,7 +128,7 @@ def test_dag_inputs_many_same_step():
 
     dag = Program.from_instr_list(tracer.thunks)
 
-    assert all(_attr_eq(got, want) for got, want in zip(dag.inputs, xs))
+    assert all(_attr_eq(got, want) for got, want in zip(dag.inputs.values(), xs))
 
 
 def trace_func(fn: cabc.Callable) -> tuple[Exec, Fakes]:

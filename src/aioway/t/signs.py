@@ -15,7 +15,7 @@ import torch
 from torch import nn, overrides
 
 from aioway._pytrees import MappingKey, PyTreeDictMixin, tree_leaves
-from aioway._utils import is_any_type_hint, is_nn_type, is_seq_of
+from aioway._utils import is_any_type_hint, is_nn_type
 from aioway.t.lists import TList
 
 from .guards import is_torch_function
@@ -270,7 +270,7 @@ class Sign:
             TypeError: if binding failed.
         """
 
-        return BoundArgs.from_signs(self, *args, **kwargs)
+        return BoundArgs.from_sign(self, *args, **kwargs)
 
     def apply(self, *args, **kwargs) -> dict[str, typing.Any]:
         "Apply the signature on the *args, **kwargs and get the argument dict."
@@ -474,15 +474,8 @@ class BoundArgs(PyTreeDictMixin):
         assert isinstance(mapping, dict)
         return cls(bounded=inspect.BoundArguments(context.to_inspect(), mapping))
 
-        assert isinstance(signature, Sign)
-        assert len(names) == len(values)
-        assert is_seq_of(str)(names), names
-
-        arguments = {key: val for key, val in zip(names, values)}
-        return cls(bounded=inspect.BoundArguments(signature.to_inspect(), arguments))
-
     @classmethod
-    def from_signs(cls, sign: Sign, *args, **kwargs) -> typing.Self:
+    def from_sign(cls, sign: Sign, *args, **kwargs) -> typing.Self:
         bounded = sign.to_inspect().bind(*args, **kwargs)
         return cls(bounded=bounded)
 
@@ -501,3 +494,19 @@ class BoundArgs(PyTreeDictMixin):
         # Signature order, so `args` / `kwargs` / iteration follow the signature.
         ordered = {name: arguments[name] for name in sign.params if name in arguments}
         return cls(bounded=inspect.BoundArguments(sign.to_inspect(), ordered))
+
+    @classmethod
+    def from_iters(
+        cls, items: cabc.Iterable[typing.Any], /, *, prefix: str = "t"
+    ) -> typing.Self:
+        "Bind tensors positionally, to parameters named `t0`, `t1`, ..."
+
+        tensors = tuple(items)
+        names = [f"{prefix}{i}" for i in range(len(tensors))]
+        return cls.from_sign(Sign.from_inputs(names), *tensors)
+
+    @classmethod
+    def from_dict(cls, mapping: cabc.Mapping[str, typing.Any], /) -> typing.Self:
+        "Bind tensors by name, in the order of the mapping."
+
+        return cls.from_sign(Sign.from_inputs(mapping.keys()), **mapping)

@@ -9,7 +9,6 @@ import loguru as L
 import torch
 
 from aioway._pytrees import tree_leaves, tree_map_only
-from aioway.ir.progs import ProgramIn
 from aioway.t import BoundArgs, has_fake, is_fake_tensor, is_real_tensor, parse_attr
 
 if typing.TYPE_CHECKING:
@@ -200,7 +199,7 @@ class Exec[F: cabc.Callable = typing.Any]:
         L.logger.debug("Preparing the output.")
         return self.finalize()
 
-    def bind(self, inputs: ProgramIn, bound: BoundArgs) -> None:
+    def bind(self, inputs: BoundArgs, bound: BoundArgs) -> None:
         assert inputs.sign == bound.sign
 
         if inputs.tensors.attrs() != bound.tensors.attrs():

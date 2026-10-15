@@ -24,7 +24,7 @@ def test_iter(exec: Exec, thunks):
 
 
 def test_inputs_are_fakes(exec: Exec, fakes):
-    assert set(exec.program.inputs) == set(fakes)
+    assert set(exec.program.inputs.values()) == set(fakes)
 
 
 def test_call_runs(exec: Exec):

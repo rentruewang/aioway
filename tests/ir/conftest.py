@@ -3,8 +3,8 @@
 import pytest
 import torch
 
-from aioway.ir import FuncCall, Program, ProgramIn
-from aioway.t import TList, fake_mode
+from aioway.ir import FuncCall, Program
+from aioway.t import BoundArgs, TList, fake_mode
 
 
 def add(left: torch.Tensor, right: torch.Tensor) -> torch.Tensor:
@@ -39,6 +39,6 @@ def thunks(fakes) -> tuple[FuncCall, ...]:
 def dag(thunks, fakes) -> Program:
     return Program(
         instrs=thunks,
-        inputs=ProgramIn.from_iters(fakes),
+        inputs=BoundArgs.from_iters(fakes),
         outputs=TList.from_iterable([thunks[-1].result]),
     )

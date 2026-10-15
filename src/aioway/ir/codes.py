@@ -13,7 +13,7 @@ from rich import syntax
 from aioway._pytrees import keystr, tree_flatten_with_path, tree_map_only
 from aioway._utils import AnyDict, any_dict, render_fcall
 from aioway.ir.instrs import FuncCall
-from aioway.ir.progs import FuncProgram, ProgramIn
+from aioway.ir.progs import FuncProgram
 from aioway.t import BoundArgs, Sign, render_torch_func_name
 
 __all__ = ["CodeRender", "render_stateless_program", "StatelessCodePrint"]
@@ -52,7 +52,7 @@ class StatelessCodePrint:
     @typing.final
     def __call__(self):
         # Assign bound argument's arguments to its name in signature.
-        for name, val in self.program.inputs.bound.items():
+        for name, val in self.program.inputs.items():
             self._vars[val] = name
             self._index_sub_attr(val)
 
@@ -73,7 +73,7 @@ class StatelessCodePrint:
             returns=returns,
         )
 
-    def bind(self, inputs: ProgramIn, bound: BoundArgs) -> None:
+    def bind(self, inputs: BoundArgs, bound: BoundArgs) -> None:
         assert inputs.sign == bound.sign
 
         for i, a in zip(inputs.values(), bound.values()):

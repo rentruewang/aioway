@@ -15,17 +15,14 @@ import torch
 from aioway._pytrees import (
     KeyEntry,
     MappingKey,
-    PyTreeFlatten,
-    PyTreeFlattenWithKey,
-    PyTreeMixin,
     tree_map_only,
 )
 from aioway._utils import AnySet, IntArray, any_set, is_list_of
 from aioway.ir.instrs import Instr, InstrList
 from aioway.ir.queries import OrderedIndex, Query
-from aioway.t import BoundArgs, Sign, TList, all_real, parse_attr
+from aioway.t import BoundArgs, TList, all_real, parse_attr
 
-__all__ = ["TensorRef", "Program", "ProgramIn", "TensorIndex", "TensorLifetime"]
+__all__ = ["TensorRef", "Program", "TensorIndex", "TensorLifetime"]
 
 # The Program class ====
 
@@ -46,11 +43,11 @@ class Program[I: Instr = typing.Any]:
         self,
         *,
         instrs: cabc.Iterable[I],
-        inputs: ProgramIn,
+        inputs: BoundArgs,
         outputs: TList,
     ) -> None:
-        if not isinstance(inputs, ProgramIn):
-            raise TypeError(f"Inputs should be a `ProgramIn`. Got {type(inputs)=}.")
+        if not isinstance(inputs, BoundArgs):
+            raise TypeError(f"Inputs should be a `BoundArgs`. Got {type(inputs)=}.")
 
         if not isinstance(outputs, TList):
             raise TypeError(f"Outputs should be a `TList`. Got {type(outputs)=}.")
@@ -129,7 +126,7 @@ class Program[I: Instr = typing.Any]:
         return self._instrs
 
     @property
-    def inputs(self) -> ProgramIn:
+    def inputs(self) -> BoundArgs:
         "The inputs, bound to the program's signature. Flat tensors: `.tensors`."
         return self._inputs
 
@@ -177,166 +174,9 @@ class Program[I: Instr = typing.Any]:
 
         return cls(
             instrs=instrs,
-            inputs=ProgramIn.from_iters(consumed - produced),
+            inputs=BoundArgs.from_iters(consumed - produced),
             outputs=produced - consumed,
         )
-
-
-# The ProgramIn class ====
-
-
-class ProgramIn(PyTreeMixin):
-    """
-    The inputs of a `Program`: a `BoundArgs` whose arguments are all tensors.
-
-    It is ordered and a mapping: every parameter is bound to exactly one fake
-    tensor, looked up by name (`pin["x"]`) or by position (`pin[0]`).
-    The flat tensors, in signature order, are in `.tensors`.
-
-    The `pyt` children are the tensors in signature order, keyed by parameter name.
-    The context is the `Sign`.
-    """
-
-    def __init__(self, bound: BoundArgs) -> None:
-        self._bound = bound
-
-        for param in self.sign.param_list:
-            if param.is_var_positional or param.is_var_keyword:
-                raise TypeError(
-                    f"Variadic parameters are not (yet) supported: {param}."
-                )
-
-    def __contains__(self, obj: torch.Tensor) -> bool:
-        return obj in self.bound.tensors
-
-    def __repr__(self) -> str:
-        return repr(self._bound)
-
-    def __eq__(self, other) -> bool:
-        if not isinstance(other, ProgramIn):
-            return NotImplemented
-
-        # Tensors are compared by identity, as `==` on tensors is elementwise.
-        return (
-            True
-            and self.sign == other.sign
-            and all(a is b for a, b in zip(self, other))
-        )
-
-    def __iter__(self):
-        return iter(self.values())
-
-    def __hash__(self) -> int:
-        return hash(self._bound)
-
-    def __len__(self) -> int:
-        return len(self.bound)
-
-    def __getitem__(self, key: int | str) -> typing.Any:
-        "The tensor bound to a parameter, by name or by position."
-
-        return self.bound[key]
-
-    def keys(self) -> cabc.KeysView[str]:
-        "The keys. Only the arguments that are provided."
-
-        return self.bound.keys()
-
-    def values(self) -> cabc.ValuesView[typing.Any]:
-        "The values. Only the arguments that are provided."
-
-        return self.bound.values()
-
-    def items(self) -> cabc.ItemsView[str, typing.Any]:
-        "The items. Only the arguments that are provided."
-
-        return self.bound.items()
-
-    def rebind(self, *args, **kwargs) -> BoundArgs:
-        "Rebind another set of inputs."
-        return self.sign.bind(*args, **kwargs)
-
-    @property
-    def bound(self) -> BoundArgs:
-        return self._bound
-
-    @property
-    def arguments(self):
-        return self.bound.arguments
-
-    @functools.cached_property
-    def names(self) -> tuple[str, ...]:
-        "The parameter names, in signature order."
-        return tuple(param.name for param in self.bound.param_list)
-
-    @property
-    def sign(self) -> Sign:
-        return self.bound.sign
-
-    @property
-    def arguments(self) -> dict[str, torch.Tensor]:
-        "A copy of the tensors by parameter name, in signature order."
-        return self.bound.arguments
-
-    @property
-    def tensors(self) -> TList:
-        return self.bound.tensors
-
-    @property
-    def signature(self) -> Sign:
-        return self.sign
-
-    @property
-    def args(self) -> tuple[torch.Tensor, ...]:
-        return self.bound.args
-
-    @property
-    def kwargs(self) -> dict[str, torch.Tensor]:
-        return self.bound.kwargs
-
-    def _tree_flatten(self) -> PyTreeFlatten:
-        return list(self.values()), self.bound.sign
-
-    def _tree_flatten_with_keys(self) -> PyTreeFlattenWithKey:
-        with_path = [(_map_key(name), self.arguments[name]) for name in self.names]
-        return with_path, self.bound.sign
-
-    @classmethod
-    def _tree_unflatten(cls, children: cabc.Iterable, context) -> typing.Self:
-        # Every parameter is bound, so the signature also gives the names.
-        assert isinstance(context, Sign)
-
-        arguments = dict(zip(context.params, children, strict=True))
-        return cls(bound=BoundArgs.from_no_bind(sign=context, arguments=arguments))
-
-    @classmethod
-    def from_sign(
-        cls, sign: Sign, /, *args: torch.Tensor, **kwargs: torch.Tensor
-    ) -> typing.Self:
-        """
-        Bind tensors to `sign`, like `Sign.bind`.
-
-        Raises:
-            TypeError: if binding failed.
-        """
-
-        return cls(bound=sign.bind(*args, **kwargs))
-
-    @classmethod
-    def from_dict(cls, mapping: cabc.Mapping[str, typing.Any], /) -> typing.Self:
-        "Bind tensors by name, in the order of the mapping."
-
-        return cls.from_sign(Sign.from_inputs(mapping.keys()), **mapping)
-
-    @classmethod
-    def from_iters(
-        cls, items: cabc.Iterable[typing.Any], /, *, prefix: str = "t"
-    ) -> typing.Self:
-        "Bind tensors positionally, to parameters named `t0`, `t1`, ..."
-
-        tensors = tuple(items)
-        names = [f"{prefix}{i}" for i in range(len(tensors))]
-        return cls.from_sign(Sign.from_inputs(names), *tensors)
 
 
 def _map_key(name: str) -> KeyEntry:
@@ -619,7 +459,7 @@ class _ProgramTuple[I: Instr](typing.NamedTuple):
     "A namedtuple to avoid paying construction cost of `Program`."
 
     ilist: InstrList[I]
-    inputs: ProgramIn
+    inputs: BoundArgs
     outputs: TList
 
 
@@ -698,7 +538,7 @@ def _select_indices[I: Instr](
 
     return _ProgramTuple(
         ilist=selected,
-        inputs=ProgramIn.from_iters(inputs),
+        inputs=BoundArgs.from_iters(inputs),
         outputs=outputs,
     )
 

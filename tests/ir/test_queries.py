@@ -210,7 +210,7 @@ def test_rewrite_keeps_io_attrs(graph: Graph):
     assert len(result.outputs) == len(graph.prog.outputs)
     assert all(
         parse_attr(got) == parse_attr(want)
-        for got, want in zip(result.inputs, graph.prog.inputs)
+        for got, want in zip(result.inputs.values(), graph.prog.inputs.values())
     )
 
 
