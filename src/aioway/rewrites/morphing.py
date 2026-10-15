@@ -50,14 +50,15 @@ class NetMorphLinearSeqDeeper(Rewriter):
         "A copy of `prog` with the first match deepened. Check `handle` first."
 
         result = prog.copy()
-        result[self.part] = self._build_deeper_net(prog[self.part])
+        queried = prog[self.part]
+        result[self.part] = self._build_deeper_net(queried)
         return result
 
     def _build_deeper_net(self, sub: NnProgram) -> NnProgram:
         first, middle, last = _modules(sub)
         inserted = _identity_linear(first.out_features)
 
-        (x,) = sub.inputs
+        (x,) = sub.inputs.values()
         assert sub.inputs.tensors.all_fake
 
         # By tracing additional 2 sets of `middles` and `inserted`,

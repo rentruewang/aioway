@@ -13,7 +13,6 @@
 #     name: python3
 # ---
 
-# %%
 import rich
 
 # %%
@@ -23,11 +22,12 @@ from rich import pretty
 # %%
 from aioway.ir import (
     FuncProgram,
-    ProgramIn,
     TorchFuncDag,
     render_stateless_program,
 )
-from aioway.t import fake_mode
+
+# %%
+from aioway.t import BoundArgs, fake_mode
 
 pretty.install()
 
@@ -65,7 +65,7 @@ rich.print(render_stateless_program(iset, "example"))
 x, y = iset.inputs.tensors
 another = FuncProgram(
     instrs=iset.instrs,
-    inputs=ProgramIn.from_dict({"mapping": {"a": x, "b": y}}),
+    inputs=BoundArgs.from_dict({"mapping": {"a": x, "b": y}}),
     outputs=iset.outputs,
 )
 

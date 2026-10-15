@@ -18,11 +18,11 @@ from aioway._pytrees import (
 from aioway.t import BoundArgs, Param, ParamKind, Sign
 
 
-def _add_i(a: int, b: int):
+def _add_i(a: int, b: int) -> int:
     return a + b
 
 
-def _add_f(a: float, b: float):
+def _add_f(a: float, b: float) -> float:
     return a + b
 
 
@@ -291,6 +291,38 @@ class TestBoundArgs:
 
         bound = bound.apply_defaults()
         assert len(bound.tensors) == 2
+
+    def test_from_no_bind(self, greet: Sign):
+        # `.bind` can't pass the positional-only `name` by name.
+        with pytest.raises(TypeError):
+            greet.bind(name="bob", greeting="yo")
+
+        bound = BoundArgs.from_no_bind(greet, {"greeting": "yo", "name": "bob"})
+
+        assert list(bound.keys()) == ["name", "greeting"]  # signature order
+        assert _greet(*bound.args, **bound.kwargs) == "yo bob"
+
+        with pytest.raises(TypeError):
+            BoundArgs.from_no_bind(greet, {"nope": 1})
+
+    def test_from_iters(self):
+        a, b = torch.ones(1), torch.zeros(1)
+        bound = BoundArgs.from_iters(iter([a, b]))
+
+        assert list(bound.keys()) == ["t0", "t1"]
+        assert bound["t0"] is a and bound["t1"] is b
+
+        prefix_x = lambda i: f"x{i}"
+        assert list(BoundArgs.from_iters([a], key_func=prefix_x).keys()) == ["x0"]
+
+    def test_from_dict(self):
+        x, y = torch.ones(1), torch.zeros(1)
+        bound = BoundArgs.from_dict({"y": y, "x": x})
+
+        # Parameters follow the mapping's order, not alphabetical.
+        assert bound.sign == Sign.from_inputs(["y", "x"])
+        assert bound["y"] is y and bound["x"] is x
+        assert [id(t) for t in bound.tensors] == [id(y), id(x)]
 
 
 class TestParamKind:

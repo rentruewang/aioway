@@ -6,8 +6,8 @@ from collections import abc as cabc
 import pytest
 
 from aioway._pytrees import tree_flatten, tree_unflatten
-from aioway.ir import FuncCall, Program, ProgramIn, TensorLifetime
-from aioway.t import TList
+from aioway.ir import FuncCall, Program, TensorLifetime
+from aioway.t import BoundArgs, TList
 
 
 class TestInstr:
@@ -35,7 +35,7 @@ class TestProgram:
         assert list(dag) == list(thunks)
 
     def test_inputs(self, dag: Program, fakes):
-        assert set(dag.inputs) == set(fakes)
+        assert set(dag.inputs.values()) == set(fakes)
 
     def test_outputs(self, dag: Program, thunks):
         assert set(dag.outputs) == {thunks[-1].result}
@@ -44,7 +44,7 @@ class TestProgram:
         with pytest.raises(ValueError):
             Program(
                 instrs=[thunks[0], thunks[0]],
-                inputs=ProgramIn.from_iters(fakes),
+                inputs=BoundArgs.from_iters(fakes),
                 outputs=TList.from_iterable([thunks[0].result]),
             )
 
