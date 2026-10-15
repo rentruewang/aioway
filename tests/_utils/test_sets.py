@@ -2,8 +2,9 @@
 
 
 import pytest
+import torch
 
-from aioway._utils import any_dict, any_set
+from aioway._utils import HashableKey, UnhashableKey, any_dict, any_set, wrap_any
 
 
 class TestAnySet:
@@ -201,3 +202,49 @@ class TestAnyDict:
         assert not hasattr(d, "add")
         assert not hasattr(d, "discard")
         assert not hasattr(d, "__sub__")
+
+
+class TestAnyKey:
+    def test_wrap_any(self):
+        u = [1]
+        assert isinstance(wrap_any(u), UnhashableKey)
+        assert isinstance(wrap_any("ab"), HashableKey)
+
+        assert wrap_any(u) == wrap_any(u)
+
+        # equal list, different object
+        assert wrap_any(u) != wrap_any([1])
+
+        # equal str, different object
+        assert wrap_any("".join(["a", "b"])) == wrap_any("ab")
+
+        # same hash in CPython, different value
+        assert wrap_any(-1) != wrap_any(-2)
+
+        # an id never matches a hash
+        assert wrap_any(id(u)) != wrap_any(u)
+
+    def test_is_before_eq(self):
+        class Elementwise:
+            "Like a tensor: hashed by id, `==` is not a usable bool."
+
+            def __hash__(self) -> int:
+                return id(self)
+
+            def __eq__(self, other: object) -> bool:
+                raise RuntimeError("ambiguous")
+
+        t = Elementwise()
+        assert wrap_any(t) == wrap_any(t)
+
+    def test_tensor(self):
+        a = torch.tensor([1, 2])
+        b = torch.tensor([1, 2])
+
+        assert isinstance(wrap_any(a), HashableKey)  # tensors hash by `id`
+
+        # same tensor, despite elementwise `==`
+        assert wrap_any(a) == wrap_any(a)
+
+        # equal values, different tensor
+        assert wrap_any(a) != wrap_any(b)
