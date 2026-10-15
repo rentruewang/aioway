@@ -50,7 +50,8 @@ class NetMorphLinearSeqDeeper(Rewriter):
         "A copy of `prog` with the first match deepened. Check `handle` first."
 
         result = prog.copy()
-        result[self.part] = self._build_deeper_net(prog[self.part])
+        queried = prog[self.part]
+        result[self.part] = self._build_deeper_net(queried)
         return result
 
     def _build_deeper_net(self, sub: NnProgram) -> NnProgram:

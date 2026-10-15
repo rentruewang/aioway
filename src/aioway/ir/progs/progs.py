@@ -112,7 +112,7 @@ class Program[I: Instr = typing.Any]:
         sel, inputs, outputs = _select_indices(selection=idx, prog=self)
         return type(self)(instrs=sel, inputs=inputs, outputs=outputs)
 
-    def __setitem__(self, query: Query, subset: Program) -> None:
+    def __setitem__(self, query: Query, subset: typing.Self) -> None:
         mutated = _replace_sub_prog(prog=self, query=query, sub_prog=subset)
 
         # Overwrite the references s.t. underlying data is not touched.

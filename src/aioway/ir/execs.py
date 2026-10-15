@@ -29,8 +29,8 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
     Tracks the currently in scope tensors.
     """
 
-    def __init__(self, dag: Program) -> None:
-        self._prog = dag
+    def __init__(self, prog: Program) -> None:
+        self._prog = prog
         "The variable list."
 
         self._alive: dict[int, torch.Tensor] = {}

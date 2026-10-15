@@ -93,7 +93,7 @@ def test_dag_from_trace():
 
     assert len(dag) == 1
     assert len(dag.inputs) == 2
-    dix, diy = dag.inputs
+    dix, diy = dag.inputs.values()
     assert _attr_eq(dix, x)
     assert _attr_eq(diy, y)
 
@@ -204,7 +204,7 @@ def test_inputs_are_traced_fakes(trace):
 
     assert len(exec.program.inputs) == 2
 
-    fx, fy = exec.program.inputs
+    fx, fy = exec.program.inputs.values()
     assert _attr_eq(fx, x)
     assert _attr_eq(fy, y)
 
