@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"The `Query` type for `Program`."
+"The `Query` type for `Proc`."
 
 import abc
 import dataclasses as dcls
@@ -22,13 +22,13 @@ type _OrderedIndexLike = OrderedIndex | list[int] | IntArray
 
 class Query[I: Instr = typing.Any](abc.ABC):
     @abc.abstractmethod
-    def __call__(self, program: Proc[I], /) -> OrderedIndex:
+    def __call__(self, proc: Proc[I], /) -> OrderedIndex:
         raise NotImplementedError
 
 
 @typing.runtime_checkable
 class QueryLike[I: Instr = typing.Any](typing.Protocol):
-    def __call__(self, program: Proc[I], /) -> _OrderedIndexLike: ...
+    def __call__(self, proc: Proc[I], /) -> _OrderedIndexLike: ...
 
 
 def register_query_function[I: Instr](function: QueryLike[I]) -> Query[I]:

@@ -28,10 +28,10 @@ class NnProcModule(nn.Module):
     def __init__(self, program: NnProc) -> None:
         super().__init__()
 
-        self._program = program
+        self._proc = program
 
         # Register the modules in `NnProc` into a module.
-        self._module_list = nn.ModuleList(instr.func for instr in self._program)
+        self._module_list = nn.ModuleList(instr.func for instr in self._proc)
 
     def __len__(self) -> int:
         return len(self._module_list)
@@ -40,8 +40,8 @@ class NnProcModule(nn.Module):
         return self._module_list[idx]
 
     @property
-    def program(self) -> NnProc:
-        return self._program
+    def proc(self) -> NnProc:
+        return self._proc
 
     def hashes_of_modules(self) -> list[dict[str, int]]:
         state_dicts = [module.state_dict() for module in self._module_list]
