@@ -4,7 +4,7 @@ import pytest
 import torch
 from torch import nn
 
-from aioway.ir import ExactSequential, NnProgram, TypeSequential, track_module_thunks
+from aioway.ir import ExactSequential, NnProc, TypeSequential, track_module_thunks
 from aioway.rewrites import NetMorphLinearSeqDeeper
 from aioway.t import fake_mode
 
@@ -17,19 +17,19 @@ def fake():
         yield
 
 
-def trace(module: nn.Module, *shape: int) -> NnProgram:
+def trace(module: nn.Module, *shape: int) -> NnProc:
     with track_module_thunks() as hist:
         module(torch.zeros(*shape))
 
-    return hist.program
+    return hist.procedure
 
 
-def modules(prog: NnProgram) -> list[nn.Module]:
-    return [thunk.func for thunk in prog]
+def modules(proc: NnProc) -> list[nn.Module]:
+    return [thunk.func for thunk in proc]
 
 
-def types(prog: NnProgram) -> list[type[nn.Module]]:
-    return [type(module) for module in modules(prog)]
+def types(proc: NnProc) -> list[type[nn.Module]]:
+    return [type(module) for module in modules(proc)]
 
 
 def by_type(*pattern: type[nn.Module]) -> TypeSequential:
@@ -113,26 +113,26 @@ class SideOutput(nn.Module):
 
 
 def test_trace_leaves_only():
-    prog = trace(Net(nn.ReLU()), 2, 3)
+    proc = trace(Net(nn.ReLU()), 2, 3)
 
-    assert isinstance(prog, NnProgram)
-    assert types(prog) == [nn.Linear, nn.Linear, nn.ReLU, nn.Linear, nn.Tanh]
+    assert isinstance(proc, NnProc)
+    assert types(proc) == [nn.Linear, nn.Linear, nn.ReLU, nn.Linear, nn.Tanh]
 
 
 # Querying ====
 
 
 def test_type_query_whole():
-    prog = trace(Block(nn.ReLU()), 2, 4)
+    proc = trace(Block(nn.ReLU()), 2, 4)
 
-    assert by_type(nn.Linear, nn.ReLU, nn.Linear)(prog).tolist() == [0, 1, 2]
+    assert by_type(nn.Linear, nn.ReLU, nn.Linear)(proc).tolist() == [0, 1, 2]
 
 
 def test_type_query_finds_block():
     model = Net(nn.ReLU())
-    prog = trace(model, 2, 3)
+    proc = trace(model, 2, 3)
 
-    sub = prog[by_type(nn.Linear, nn.ReLU, nn.Linear)]
+    sub = proc[by_type(nn.Linear, nn.ReLU, nn.Linear)]
 
     block = model.block
     assert modules(sub) == [block.up, *block.middle, block.down]
@@ -141,82 +141,82 @@ def test_type_query_finds_block():
 
 def test_exact_query_by_instance():
     model = Net(nn.ReLU())
-    prog = trace(model, 2, 3)
+    proc = trace(model, 2, 3)
     block = model.block
 
-    assert by_module(block.up, *block.middle, block.down)(prog).tolist() == [1, 2, 3]
+    assert by_module(block.up, *block.middle, block.down)(proc).tolist() == [1, 2, 3]
 
     # Same type, different instance.
     with pytest.raises(LookupError):
-        by_module(nn.Linear(4, 8))(prog)
+        by_module(nn.Linear(4, 8))(proc)
 
 
 def test_exact_query_module_called_twice():
     relu = nn.ReLU()
     second = nn.Linear(4, 4)
-    prog = trace(nn.Sequential(nn.Linear(4, 4), relu, second, relu), 2, 4)
+    proc = trace(nn.Sequential(nn.Linear(4, 4), relu, second, relu), 2, 4)
 
-    assert by_type(nn.Linear, nn.ReLU)(prog).tolist() == [0, 1]
-    assert by_module(second, relu)(prog).tolist() == [2, 3]
+    assert by_type(nn.Linear, nn.ReLU)(proc).tolist() == [0, 1]
+    assert by_module(second, relu)(proc).tolist() == [2, 3]
 
 
 def test_needs_single_dependency():
     # `join` reads both `left` and `right`.
-    prog = trace(TwoInputs(), 2, 4)
+    proc = trace(TwoInputs(), 2, 4)
 
-    assert by_type(nn.Bilinear)(prog).tolist() == [2]
+    assert by_type(nn.Bilinear)(proc).tolist() == [2]
 
     with pytest.raises(LookupError):
-        by_type(nn.Linear, nn.Bilinear)(prog)
+        by_type(nn.Linear, nn.Bilinear)(proc)
 
 
 def test_shared_output():
     # `linear` feeds both `relu` and `tanh`. Each still depends on it alone.
-    prog = trace(Fork(), 2, 4)
+    proc = trace(Fork(), 2, 4)
 
-    assert by_type(nn.Linear, nn.ReLU)(prog).tolist() == [0, 1]
-    assert by_type(nn.Linear, nn.Tanh)(prog).tolist() == [0, 2]
+    assert by_type(nn.Linear, nn.ReLU)(proc).tolist() == [0, 1]
+    assert by_type(nn.Linear, nn.Tanh)(proc).tolist() == [0, 2]
 
 
 def test_no_match():
-    prog = trace(Block(nn.ReLU()), 2, 4)
+    proc = trace(Block(nn.ReLU()), 2, 4)
 
     with pytest.raises(LookupError):
-        by_type(nn.Linear, nn.Tanh)(prog)
+        by_type(nn.Linear, nn.Tanh)(proc)
 
 
 # Rewriting with `NetMorphLinearSeqDeeper` ====
 
 
 def test_netmorph_handles():
-    prog = trace(Net(nn.ReLU()), 2, 3)
+    proc = trace(Net(nn.ReLU()), 2, 3)
 
-    assert NetMorphLinearSeqDeeper().handle(prog)
+    assert NetMorphLinearSeqDeeper().handle(proc)
 
 
 def test_netmorph_no_match():
-    prog = trace(Net(nn.Tanh()), 2, 3)
+    proc = trace(Net(nn.Tanh()), 2, 3)
 
-    assert not NetMorphLinearSeqDeeper().handle(prog)
+    assert not NetMorphLinearSeqDeeper().handle(proc)
 
 
 def test_netmorph_skips_shared_intermediate():
-    prog = trace(SideOutput(), 2, 4)
+    proc = trace(SideOutput(), 2, 4)
 
-    assert not NetMorphLinearSeqDeeper().handle(prog)
+    assert not NetMorphLinearSeqDeeper().handle(proc)
 
 
 def test_netmorph_skips_shape_change():
     # The middle `Linear(4, 8)` changes the width.
-    prog = trace(nn.Sequential(nn.Linear(3, 4), nn.Linear(4, 8), nn.Linear(8, 4)), 2, 3)
+    proc = trace(nn.Sequential(nn.Linear(3, 4), nn.Linear(4, 8), nn.Linear(8, 4)), 2, 3)
 
-    assert not NetMorphLinearSeqDeeper(middle=(nn.Linear,)).handle(prog)
+    assert not NetMorphLinearSeqDeeper(middle=(nn.Linear,)).handle(proc)
 
 
 def test_netmorph_rewrite():
-    prog = trace(Net(nn.ReLU()), 2, 3)
+    proc = trace(Net(nn.ReLU()), 2, 3)
 
-    result = NetMorphLinearSeqDeeper().rewrite(prog)
+    result = NetMorphLinearSeqDeeper().rewrite(proc)
 
     assert types(result) == [
         nn.Linear,
@@ -233,9 +233,9 @@ def test_netmorph_rewrite():
 
 
 def test_netmorph_rewrite_longer_middle():
-    prog = trace(Net(nn.LayerNorm(8), nn.ReLU()), 2, 3)
+    proc = trace(Net(nn.LayerNorm(8), nn.ReLU()), 2, 3)
 
-    result = NetMorphLinearSeqDeeper(middle=(nn.LayerNorm, nn.ReLU)).rewrite(prog)
+    result = NetMorphLinearSeqDeeper(middle=(nn.LayerNorm, nn.ReLU)).rewrite(proc)
 
     assert types(result) == [
         nn.Linear,
@@ -251,18 +251,18 @@ def test_netmorph_rewrite_longer_middle():
 
 
 def test_netmorph_rewrite_keeps_io():
-    prog = trace(Net(nn.ReLU()), 2, 3)
+    proc = trace(Net(nn.ReLU()), 2, 3)
 
-    result = NetMorphLinearSeqDeeper().rewrite(prog)
+    result = NetMorphLinearSeqDeeper().rewrite(proc)
 
-    assert result.inputs.tensors == list(prog.inputs.values())
-    assert result.outputs == list(prog.outputs)
+    assert result.inputs.tensors == list(proc.inputs.values())
+    assert result.outputs == list(proc.outputs)
 
 
 def test_netmorph_rewrite_keeps_original():
-    prog = trace(Net(nn.ReLU()), 2, 3)
-    before = modules(prog)
+    proc = trace(Net(nn.ReLU()), 2, 3)
+    before = modules(proc)
 
-    NetMorphLinearSeqDeeper().rewrite(prog)
+    NetMorphLinearSeqDeeper().rewrite(proc)
 
-    assert modules(prog) == before
+    assert modules(proc) == before

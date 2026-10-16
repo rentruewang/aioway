@@ -7,31 +7,31 @@ from aioway._pytrees import tree_map_only
 from aioway.ir.instrs import FuncCall, ModuleCall
 from aioway.t import is_fake_tensor, parse_attr
 
-from .progs import Program
+from .procs import Proc
 
-__all__ = ["FuncProgram", "NnProgram", "NnProgramModule"]
+__all__ = ["FuncProc", "NnProc", "NnProcModule"]
 
 
-class FuncProgram(Program[FuncCall]):
+class FuncProc(Proc[FuncCall]):
     INSTR = FuncCall
 
 
-class NnProgram(Program[ModuleCall]):
+class NnProc(Proc[ModuleCall]):
     INSTR = ModuleCall
 
     @property
-    def module(self) -> NnProgramModule:
-        return NnProgramModule(self)
+    def module(self) -> NnProcModule:
+        return NnProcModule(self)
 
 
-class NnProgramModule(nn.Module):
-    def __init__(self, program: NnProgram) -> None:
+class NnProcModule(nn.Module):
+    def __init__(self, program: NnProc) -> None:
         super().__init__()
 
-        self._program = program
+        self._proc = program
 
-        # Register the modules in `NnProgram` into a module.
-        self._module_list = nn.ModuleList(instr.func for instr in self._program)
+        # Register the modules in `NnProc` into a module.
+        self._module_list = nn.ModuleList(instr.func for instr in self._proc)
 
     def __len__(self) -> int:
         return len(self._module_list)
@@ -40,8 +40,8 @@ class NnProgramModule(nn.Module):
         return self._module_list[idx]
 
     @property
-    def program(self) -> NnProgram:
-        return self._program
+    def proc(self) -> NnProc:
+        return self._proc
 
     def hashes_of_modules(self) -> list[dict[str, int]]:
         state_dicts = [module.state_dict() for module in self._module_list]

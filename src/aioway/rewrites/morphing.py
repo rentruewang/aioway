@@ -8,7 +8,7 @@ import torch
 from IPython.core.guarded_eval import typing
 from torch import nn
 
-from aioway.ir import ModuleCall, NnProgram, TypeSequential, track_module_thunks
+from aioway.ir import ModuleCall, NnProc, TypeSequential, track_module_thunks
 from aioway.t import fake_mode
 
 from .rewrites import Rewriter
@@ -19,7 +19,7 @@ __all__ = ["NetMorphLinearSeqDeeper"]
 @dcls.dataclass(frozen=True)
 class NetMorphLinearSeqDeeper(Rewriter):
     """
-    Deepens `Linear -> *middle -> Linear` in an `NnProgram` into
+    Deepens `Linear -> *middle -> Linear` in an `NnProc` into
     `Linear -> *middle -> identity Linear -> *middle -> Linear`.
 
     Like `NetMorphLinearDeeper`, but the part is found by querying the traced
@@ -35,9 +35,9 @@ class NetMorphLinearSeqDeeper(Rewriter):
             raise ValueError("Middle is empty.")
 
     @typing.override
-    def handle(self, prog: NnProgram) -> bool:
+    def handle(self, proc: NnProc) -> bool:
         try:
-            sub = prog[self.part]
+            sub = proc[self.part]
         except LookupError:
             return False
 
@@ -46,15 +46,15 @@ class NetMorphLinearSeqDeeper(Rewriter):
         # Only the last output may leave the part, and the middle keeps the shape.
         return len(sub.outputs) == 1 and first.out_features == last.in_features
 
-    def rewrite(self, prog: NnProgram) -> NnProgram:
-        "A copy of `prog` with the first match deepened. Check `handle` first."
+    def rewrite(self, proc: NnProc) -> NnProc:
+        "A copy of `proc` with the first match deepened. Check `handle` first."
 
-        result = prog.copy()
-        queried = prog[self.part]
+        result = proc.copy()
+        queried = proc[self.part]
         result[self.part] = self._build_deeper_net(queried)
         return result
 
-    def _build_deeper_net(self, sub: NnProgram) -> NnProgram:
+    def _build_deeper_net(self, sub: NnProc) -> NnProc:
         first, middle, last = _modules(sub)
         inserted = _identity_linear(first.out_features)
 
@@ -68,7 +68,7 @@ class NetMorphLinearSeqDeeper(Rewriter):
                 x = module(x)
                 assert isinstance(x, torch.Tensor)
 
-        return hist.program
+        return hist.procedure
 
     @property
     def part(self) -> TypeSequential[ModuleCall]:
@@ -82,8 +82,8 @@ class _SequentialDecomosed(typing.NamedTuple):
     last: nn.Linear
 
 
-def _modules(prog: NnProgram) -> _SequentialDecomosed:
-    first, *middle, last = [call.func for call in prog]
+def _modules(proc: NnProc) -> _SequentialDecomosed:
+    first, *middle, last = [call.func for call in proc]
     assert isinstance(first, nn.Linear)
     assert isinstance(last, nn.Linear)
     assert all(isinstance(m, nn.Module) for m in middle)

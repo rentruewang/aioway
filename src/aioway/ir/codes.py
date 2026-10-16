@@ -13,10 +13,10 @@ from rich import syntax
 from aioway._pytrees import keystr, tree_flatten_with_path, tree_map_only
 from aioway._utils import AnyDict, any_dict, render_fcall
 from aioway.ir.instrs import FuncCall
-from aioway.ir.progs import FuncProgram
+from aioway.ir.procs import FuncProc
 from aioway.t import BoundArgs, Sign, render_torch_func_name
 
-__all__ = ["CodeRender", "render_stateless_program", "StatelessCodePrint"]
+__all__ = ["CodeRender", "render_func_proc"]
 
 
 class CodeRender(typing.Protocol):
@@ -25,8 +25,8 @@ class CodeRender(typing.Protocol):
     def __rich__(self) -> typing.Any: ...
 
 
-def render_stateless_program(program: FuncProgram, name: str) -> CodeRender:
-    return StatelessCodePrint(program=program, name=name)()
+def render_func_proc(proc: FuncProc, name: str) -> CodeRender:
+    return StatelessCodePrint(proc=proc, name=name)()
 
 
 # The renderer itself ====
@@ -42,8 +42,8 @@ class StatelessCodePrint:
 
     TYPE = str
 
-    def __init__(self, program: FuncProgram, name: str) -> None:
-        self._program = program
+    def __init__(self, proc: FuncProc, name: str) -> None:
+        self._proc = proc
         self._func_name = name
         self._vars: AnyDict[typing.Any, str] = any_dict()
         self._steps: list[str] = []
@@ -52,18 +52,18 @@ class StatelessCodePrint:
     @typing.final
     def __call__(self):
         # Assign bound argument's arguments to its name in signature.
-        for name, val in self.program.inputs.items():
+        for name, val in self.proc.inputs.items():
             self._vars[val] = name
             self._index_sub_attr(val)
 
-        L.logger.debug("Prepare walking the {} instructions.", len(self.program.instrs))
+        L.logger.debug("Prepare walking the {} instructions.", len(self.proc.instrs))
 
         # Execute the steps one by one in topo sorted order.
-        for idx, instr in enumerate(self.program.instrs):
+        for idx, instr in enumerate(self.proc.instrs):
             self.step(idx, instr)
 
         L.logger.debug("Preparing the output.")
-        outputs = [self.name(var) for var in self.program.outputs]
+        outputs = [self.name(var) for var in self.proc.outputs]
         returns = outputs[0] if len(outputs) == 1 else f"[{', '.join(outputs)}]"
 
         return _FuncRender(
@@ -95,13 +95,13 @@ class StatelessCodePrint:
         self._steps.append(var_name + " = " + render_fcall(func_name, *args, **kwargs))
 
     @property
-    def program(self) -> FuncProgram:
-        return self._program
+    def proc(self) -> FuncProc:
+        return self._proc
 
     def _renamed_signature(self) -> Sign:
         # Get the original inputs (with symbolic data), and find out their new names.
-        rename_map = {key: self.name(val) for key, val in self.program.inputs.items()}
-        return self.program.inputs.sign.rename(**rename_map)
+        rename_map = {key: self.name(val) for key, val in self.proc.inputs.items()}
+        return self.proc.inputs.sign.rename(**rename_map)
 
     def name(self, var: typing.Any) -> str:
         r = self._vars[var]

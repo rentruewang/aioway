@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"The `Program` that supports analysis."
+"The `Proc` that supports analysis."
 
 import copy
 import dataclasses as dcls
@@ -22,18 +22,21 @@ from aioway.ir.instrs import Instr, InstrList
 from aioway.ir.queries import OrderedIndex, Query
 from aioway.t import BoundArgs, TList, all_real, parse_attr
 
-__all__ = ["TensorRef", "Program", "TensorIndex", "TensorLifetime"]
+__all__ = ["TensorRef", "Proc", "TensorIndex", "TensorLifetime"]
 
-# The Program class ====
+# The Proc class ====
 
 
-class Program[I: Instr = typing.Any]:
+class Proc[I: Instr = typing.Any]:
     """
-    A program is a DAG of callables, that are linked by fake tensors.
+    A `Proc` is a "procedure".
 
-    The program owns the instructions and its signature (inputs and outputs).
+    In the simplest form, it's a DAG (list of topo sorted nodes),
+    and edges (nodes referencing the same fake tensor).
+
+    The `Proc` owns the instructions and its signature (inputs and outputs).
     Tensor-level bookkeeping (producers, consumers, lifetimes) lives in
-    `TensorIndex`, available as `Program.tindex`.
+    `TensorIndex`, available as `Proc.tindex`.
     """
 
     INSTR: typing.ClassVar[type[Instr]] = Instr
@@ -113,7 +116,7 @@ class Program[I: Instr = typing.Any]:
         return type(self)(instrs=sel, inputs=inputs, outputs=outputs)
 
     def __setitem__(self, query: Query, subset: typing.Self) -> None:
-        mutated = _replace_sub_prog(prog=self, query=query, sub_prog=subset)
+        mutated = _replace_sub_proc(proc=self, query=query, sub_proc=subset)
 
         # Overwrite the references s.t. underlying data is not touched.
         # This is not supposed to fail. Also rebuilds the tensor index.
@@ -127,7 +130,7 @@ class Program[I: Instr = typing.Any]:
 
     @property
     def inputs(self) -> BoundArgs:
-        "The inputs, bound to the program's signature. Flat tensors: `.tensors`."
+        "The inputs, bound to the procedure's signature. Flat tensors: `.tensors`."
         return self._inputs
 
     @property
@@ -188,20 +191,22 @@ def _map_key(name: str) -> KeyEntry:
 
 class TensorIndex[I: Instr = typing.Any]:
     """
-    Tensor-level index over a `Program`,
+    Tensor-level index over a `Proc`,
     to decouple input output from lifetimes.
 
     Maps every tensor to a `TensorRef` (its producer and consumers),
     and provide info step and lifetime queries about tensors.
 
-    `Program` builds this index on construction.
+    `Proc` builds this index on construction.
     """
 
-    def __init__(self, program: Program[I], /) -> None:
-        self._program = program
+    def __init__(self, procedure: Proc[I], /) -> None:
+        self._proc = procedure
 
         self._tensors = TList.from_iterable(self._all_tensors())
-        self._links = _build_tensor_refs(program.instrs, list(program.inputs.tensors))
+        self._links = _build_tensor_refs(
+            procedure.instrs, list(procedure.inputs.tensors)
+        )
 
         # Validate if the inputs and outputs are valid.
         self._validate_input_output()
@@ -217,9 +222,9 @@ class TensorIndex[I: Instr = typing.Any]:
         return self._links[tensor]
 
     @property
-    def program(self) -> Program[I]:
-        "The program being indexed."
-        return self._program
+    def proc(self) -> Proc[I]:
+        "The procedure being indexed."
+        return self._proc
 
     @property
     def tensors(self) -> TList:
@@ -239,9 +244,9 @@ class TensorIndex[I: Instr = typing.Any]:
         death = at which point it is no longer needed.
         """
 
-        prog = self._program
-        birth = self.output_of_step(t) if t not in prog.inputs.tensors else -1
-        death = max(self.input_to_step(t)) if t not in prog.outputs else len(prog)
+        proc = self._proc
+        birth = self.output_of_step(t) if t not in proc.inputs.tensors else -1
+        death = max(self.input_to_step(t)) if t not in proc.outputs else len(proc)
         return TensorLifetime(birth=birth, death=death)
 
     def output_of_step(self, tensor: torch.Tensor) -> int:
@@ -252,12 +257,12 @@ class TensorIndex[I: Instr = typing.Any]:
         """
 
         ins = self.producer_of(tensor)
-        return self._program.instrs.index(ins) if ins is not None else -1
+        return self._proc.instrs.index(ins) if ins is not None else -1
 
     def input_to_step(self, tensor: torch.Tensor) -> cabc.Sequence[int]:
         "Get the step numbers of the steps that consume `tensor`."
 
-        instrs = self._program.instrs
+        instrs = self._proc.instrs
         return [instrs.index(thunk) for thunk in self.consumers_of(tensor)]
 
     def producer_of(self, tensor: torch.Tensor, /) -> I | None:
@@ -267,7 +272,7 @@ class TensorIndex[I: Instr = typing.Any]:
         If it's from the input, return `None`.
         """
 
-        if tensor in self._program.inputs.tensors:
+        if tensor in self._proc.inputs.tensors:
             return None
 
         return self[tensor].producer
@@ -278,25 +283,25 @@ class TensorIndex[I: Instr = typing.Any]:
         yield from self[tensor].consumers
 
     def _all_tensors(self) -> cabc.Generator[torch.Tensor]:
-        yield from self._program.inputs.tensors
-        yield from self._program.outputs
+        yield from self._proc.inputs.tensors
+        yield from self._proc.outputs
 
-        yield from _all_thunk_tensors(self._program.instrs)
+        yield from _all_thunk_tensors(self._proc.instrs)
 
     def _validate_input_output(self) -> None:
-        prog = self._program
+        proc = self._proc
 
-        for input in prog.inputs.tensors:
+        for input in proc.inputs.tensors:
             # Input should not have a producer.
             if not self[input].is_free:
                 raise ValueError("Input is not a free variable.")
 
-        for output in prog.outputs:
+        for output in proc.outputs:
             # Output is not produced.
             if output not in self:
                 raise ValueError("Output not discovered.")
 
-        if set(prog.inputs.tensors) & set(prog.outputs):
+        if set(proc.inputs.tensors) & set(proc.outputs):
             raise ValueError("Inputs are in the outputs. Not allowed yet.")
 
 
@@ -428,26 +433,26 @@ def _link_inputs_for_mapping(
             mapping[input].add_consumers(thunk)
 
 
-def _used_outside[I: Instr](prog: Program[I], selected: OrderedIndex) -> TList:
+def _used_outside[I: Instr](proc: Proc[I], selected: OrderedIndex) -> TList:
     """
     Add all tensors used outside of selected region.
 
     Args:
-        prog: The program.
+        proc: The procedure.
         selected: Indices that are selected.
     """
 
     used = TList.empty()
 
     # Only check those that occur after, as this is a DAG.
-    for i in range(selected.min() + 1, len(prog)):
+    for i in range(selected.min() + 1, len(proc)):
         if i in selected:
             continue
 
-        used += prog[i].tensor_inputs
+        used += proc[i].tensor_inputs
 
     # Populate the outputs as it's considered "consumed".
-    used += prog.outputs
+    used += proc.outputs
 
     return used
 
@@ -455,28 +460,28 @@ def _used_outside[I: Instr](prog: Program[I], selected: OrderedIndex) -> TList:
 # The querying related utilities ====
 
 
-class _ProgramTuple[I: Instr](typing.NamedTuple):
-    "A namedtuple to avoid paying construction cost of `Program`."
+class _ProcTuple[I: Instr](typing.NamedTuple):
+    "A namedtuple to avoid paying construction cost of `Proc`."
 
     ilist: InstrList[I]
     inputs: BoundArgs
     outputs: TList
 
 
-def _replace_sub_prog[I: Instr](
-    *, prog: Program[I], query: Query[I], sub_prog: Program[I]
-) -> _ProgramTuple[I]:
+def _replace_sub_proc[I: Instr](
+    *, proc: Proc[I], query: Query[I], sub_proc: Proc[I]
+) -> _ProcTuple[I]:
     """
     Replace the query with a new subset.
     """
 
-    queried = _query_select(query=query, prog=prog)
-    rplc, queried_idx = _tensor_rplc(prog=prog, queried=queried, sub_prog=sub_prog)
+    queried = _query_select(query=query, proc=proc)
+    rplc, queried_idx = _tensor_rplc(proc=proc, queried=queried, sub_proc=sub_proc)
 
     # Drop the ones that are queried.
     new_instrs: list[I] = [
         thunk.tree_map_only(torch.Tensor, rplc)
-        for i, thunk in enumerate(prog.instrs)
+        for i, thunk in enumerate(proc.instrs)
         if i not in queried_idx
     ]
     min_queried_idx = min(queried_idx)
@@ -484,30 +489,30 @@ def _replace_sub_prog[I: Instr](
     # Replace instructions.
     new_instrs = [
         *new_instrs[:min_queried_idx],
-        *sub_prog.instrs,
+        *sub_proc.instrs,
         *new_instrs[min_queried_idx:],
     ]
 
     # Replace inputs and outputs.
-    new_ins = tree_map_only(torch.Tensor, func=rplc, tree=prog.inputs)
-    new_outs = tree_map_only(torch.Tensor, func=rplc, tree=prog.outputs)
+    new_ins = tree_map_only(torch.Tensor, func=rplc, tree=proc.inputs)
+    new_outs = tree_map_only(torch.Tensor, func=rplc, tree=proc.outputs)
 
-    return _ProgramTuple(
+    return _ProcTuple(
         ilist=InstrList.build(new_instrs),
         inputs=new_ins,
         outputs=new_outs,
     )
 
 
-def _query_select[I: Instr](*, query: Query[I], prog: Program[I]) -> _ProgramTuple[I]:
+def _query_select[I: Instr](*, query: Query[I], proc: Proc[I]) -> _ProcTuple[I]:
     # Sorted and deduplicated, so `selected` is in step order.
-    indices = query(prog)
-    return _select_indices(selection=indices, prog=prog)
+    indices = query(proc)
+    return _select_indices(selection=indices, prog=proc)
 
 
 def _select_indices[I: Instr](
-    *, selection: OrderedIndex, prog: Program[I]
-) -> _ProgramTuple[I]:
+    *, selection: OrderedIndex, prog: Proc[I]
+) -> _ProcTuple[I]:
     """
     Produce a subprogram whose:
     Input is any tensor used in this scope but not defined in the scope.
@@ -536,7 +541,7 @@ def _select_indices[I: Instr](
     if inputs_produced_by and selection.min() < max(inputs_produced_by):
         raise ValueError("Illegal subset where input depend on intermediate.")
 
-    return _ProgramTuple(
+    return _ProcTuple(
         ilist=selected,
         inputs=BoundArgs.from_iters(inputs),
         outputs=outputs,
@@ -544,37 +549,37 @@ def _select_indices[I: Instr](
 
 
 def _tensor_rplc[I: Instr](
-    prog: Program[I], queried: _ProgramTuple[I], sub_prog: Program[I]
+    proc: Proc[I], queried: _ProcTuple[I], sub_proc: Proc[I]
 ) -> tuple[cabc.Callable[[torch.Tensor], torch.Tensor], set[int]]:
     "Find the replacement tensors, before -> after."
 
     # Inputs are matched by position, parameter names are not compared.
     queried_ins = queried.inputs.tensors
-    sub_ins = sub_prog.inputs.tensors
+    sub_ins = sub_proc.inputs.tensors
 
     if queried_ins.shapes() != sub_ins.shapes():
         raise ValueError("Inputs have different shapes.")
 
-    if queried.outputs.shapes() != sub_prog.outputs.shapes():
+    if queried.outputs.shapes() != sub_proc.outputs.shapes():
         raise ValueError("Outputs have different shapes.")
 
     if queried_ins.dtypes() != sub_ins.dtypes():
         raise ValueError("Inputs have different dtypes.")
 
-    if queried.outputs.dtypes() != sub_prog.outputs.dtypes():
+    if queried.outputs.dtypes() != sub_proc.outputs.dtypes():
         raise ValueError("Outputs have different dtypes.")
 
     # Get the indices of the queried subnet.
-    queried_index = {prog.instrs.index(q) for q in queried.ilist}
+    queried_index = {proc.instrs.index(q) for q in queried.ilist}
 
     # Inputs and outputs are not shared.
-    assert sub_ins.keys().isdisjoint(sub_prog.outputs.keys())
+    assert sub_ins.keys().isdisjoint(sub_proc.outputs.keys())
 
     # Build mapping for replacement.
     in_to_out = {}
     for before, after in zip(queried_ins, sub_ins):
         in_to_out[before] = after
-    for before, after in zip(queried.outputs, sub_prog.outputs):
+    for before, after in zip(queried.outputs, sub_proc.outputs):
         in_to_out[before] = after
 
     def replacer(t: torch.Tensor) -> torch.Tensor:

@@ -20,11 +20,7 @@ import torch
 from rich import pretty
 
 # %%
-from aioway.ir import (
-    FuncProgram,
-    TorchFuncDag,
-    render_stateless_program,
-)
+from aioway.ir import FuncProc, TorchFuncDag, render_func_proc
 
 # %%
 from aioway.t import BoundArgs, fake_mode
@@ -53,24 +49,24 @@ with fake_mode():
         difference = torch.sub(product, summed)
         activated = torch.relu(difference)
 
-iset = FuncProgram.from_instr_list(tracer.thunks)
+iset = FuncProc.from_instr_list(tracer.thunks)
 
 # %%
-render_stateless_program(iset, "example_program")
+render_func_proc(iset, "example_program")
 
 # %%
-rich.print(render_stateless_program(iset, "example"))
+rich.print(render_func_proc(iset, "example"))
 
 # %%
 x, y = iset.inputs.tensors
-another = FuncProgram(
+another = FuncProc(
     instrs=iset.instrs,
     inputs=BoundArgs.from_dict({"mapping": {"a": x, "b": y}}),
     outputs=iset.outputs,
 )
 
 # %%
-render_stateless_program(another, "another_program")
+render_func_proc(another, "another_program")
 
 # %%
-rich.print(render_stateless_program(another, "another"))
+rich.print(render_func_proc(another, "another"))
