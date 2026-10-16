@@ -51,7 +51,7 @@ class SequentialQuery[I: Instr = typing.Any](Query[I]):
 
         raise LookupError(f"No match for {self.pattern}.")
 
-    def _chain(self, program: Proc[I], end: int) -> list[int]:
+    def _chain(self, procedure: Proc[I], end: int) -> list[int]:
         "The chain ending at `end`. Raises `_SeqMatchFailed` if it doesn't match."
 
         step = end
@@ -59,7 +59,7 @@ class SequentialQuery[I: Instr = typing.Any](Query[I]):
 
         for item in reversed(self.pattern):
             # Stop if does not match.
-            if not self._match(self.key(program[step]), item):
+            if not self._match(self.key(procedure[step]), item):
                 raise _SeqMatchFailed
 
             reverse_chain.append(step)
@@ -67,7 +67,7 @@ class SequentialQuery[I: Instr = typing.Any](Query[I]):
             if len(reverse_chain) == len(self.pattern):
                 break
 
-            step = _prev_in_chain(program, step)
+            step = _prev_in_chain(procedure, step)
 
         return reverse_chain[::-1]
 

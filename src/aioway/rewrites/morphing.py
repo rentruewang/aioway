@@ -19,7 +19,7 @@ __all__ = ["NetMorphLinearSeqDeeper"]
 @dcls.dataclass(frozen=True)
 class NetMorphLinearSeqDeeper(Rewriter):
     """
-    Deepens `Linear -> *middle -> Linear` in an `NnProgram` into
+    Deepens `Linear -> *middle -> Linear` in an `NnProc` into
     `Linear -> *middle -> identity Linear -> *middle -> Linear`.
 
     Like `NetMorphLinearDeeper`, but the part is found by querying the traced

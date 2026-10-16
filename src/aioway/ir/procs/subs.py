@@ -30,7 +30,7 @@ class NnProcModule(nn.Module):
 
         self._program = program
 
-        # Register the modules in `NnProgram` into a module.
+        # Register the modules in `NnProc` into a module.
         self._module_list = nn.ModuleList(instr.func for instr in self._program)
 
     def __len__(self) -> int:
