@@ -23,16 +23,16 @@ from aioway.t import fake_mode, parse_attr
 # Shared utilities ====
 
 
-def cow_rewrite(query: Query, prog: Proc, sub: Proc) -> Proc:
-    "A copy of `prog` with the part picked out by `query` replaced by `sub`."
+def cow_rewrite(query: Query, proc: Proc, sub: Proc) -> Proc:
+    "A copy of `proc` with the part picked out by `query` replaced by `sub`."
 
-    prog = prog.copy()
-    prog[query] = sub
-    return prog
+    proc = proc.copy()
+    proc[query] = sub
+    return proc
 
 
 class Graph(typing.NamedTuple):
-    prog: Proc
+    proc: Proc
     x: torch.Tensor
     y: torch.Tensor
     summed: torch.Tensor
@@ -72,7 +72,7 @@ def graph() -> Graph:
 
 
 def test_all(graph: Graph):
-    sub = graph.prog[IndexQuery([0, 1, 2, 3])]
+    sub = graph.proc[IndexQuery([0, 1, 2, 3])]
 
     assert isinstance(sub, Proc)
     assert len(sub) == 4
@@ -81,7 +81,7 @@ def test_all(graph: Graph):
 
 
 def test_prefix(graph: Graph):
-    sub = graph.prog[IndexQuery([0, 1])]
+    sub = graph.proc[IndexQuery([0, 1])]
 
     assert len(sub) == 2
     assert sub.inputs.tensors == {graph.x, graph.y}
@@ -89,7 +89,7 @@ def test_prefix(graph: Graph):
 
 
 def test_suffix(graph: Graph):
-    sub = graph.prog[IndexQuery([2, 3])]
+    sub = graph.proc[IndexQuery([2, 3])]
 
     assert len(sub) == 2
     assert sub.inputs.tensors == {graph.product, graph.summed}
@@ -97,7 +97,7 @@ def test_suffix(graph: Graph):
 
 
 def test_single_step(graph: Graph):
-    sub = graph.prog[IndexQuery([3])]
+    sub = graph.proc[IndexQuery([3])]
 
     assert len(sub) == 1
     assert sub.inputs.tensors == [graph.difference]
@@ -105,7 +105,7 @@ def test_single_step(graph: Graph):
 
 
 def test_numpy_idx(graph: Graph):
-    sub = graph.prog[IndexQuery(np.array([2, 3]))]
+    sub = graph.proc[IndexQuery(np.array([2, 3]))]
 
     assert sub.inputs.tensors == {graph.product, graph.summed}
     assert sub.outputs == [graph.activated]
@@ -115,17 +115,17 @@ def test_no_depending_on_intermediate(graph: Graph):
     # Step 2 needs `product` from step 1, which is skipped but comes after step 0,
     # this means the subgraph is not complte.
     with pytest.raises(ValueError):
-        graph.prog[IndexQuery([0, 2])]
+        graph.proc[IndexQuery([0, 2])]
 
 
 def test_no_neg_idx(graph: Graph):
     with pytest.raises(IndexError):
-        graph.prog[IndexQuery([-1])]
+        graph.proc[IndexQuery([-1])]
 
 
 def test_out_of_bounds(graph: Graph):
     with pytest.raises(IndexError):
-        graph.prog[IndexQuery([4])]
+        graph.proc[IndexQuery([4])]
 
 
 def trace(fn, *shapes: tuple[int, ...]) -> Proc:
@@ -149,30 +149,30 @@ def funcs(iset: Proc) -> list:
 def test_rewrite_with_itself(graph: Graph):
     query = IndexQuery([1, 2])
 
-    result = cow_rewrite(query, graph.prog, graph.prog[query])
+    result = cow_rewrite(query, graph.proc, graph.proc[query])
 
-    assert funcs(result) == funcs(graph.prog)
+    assert funcs(result) == funcs(graph.proc)
 
 
 def test_rewrite_with_itself_setitem(graph: Graph):
     query = IndexQuery([1, 2])
-    before = funcs(graph.prog)
-    graph.prog[query] = graph.prog[query]
-    assert before == funcs(graph.prog)
-    assert before is not funcs(graph.prog)
+    before = funcs(graph.proc)
+    graph.proc[query] = graph.proc[query]
+    assert before == funcs(graph.proc)
+    assert before is not funcs(graph.proc)
 
 
 def test_rewrite_last(graph: Graph):
     # Step 3 takes one tensor (difference) and returns one.
     replacement = trace(lambda difference: torch.abs(difference), (3,))
-    result = cow_rewrite(IndexQuery([3]), graph.prog, replacement)
+    result = cow_rewrite(IndexQuery([3]), graph.proc, replacement)
 
     assert funcs(result) == [torch.add, torch.mul, torch.sub, torch.abs]
 
 
 def test_rewrite_last_runs(graph: Graph):
     replacement = trace(lambda difference: torch.abs(difference), (3,))
-    result = cow_rewrite(IndexQuery([3]), graph.prog, replacement)
+    result = cow_rewrite(IndexQuery([3]), graph.proc, replacement)
 
     x_real, y_real = torch.randn(3), torch.randn(3)
     summed = x_real + y_real
@@ -185,7 +185,7 @@ def test_rewrite_middle(graph: Graph):
     replacement = trace(
         lambda summed, x: torch.sub(torch.add(summed, x), summed), (3,), (3,)
     )
-    result = cow_rewrite(IndexQuery([1, 2]), graph.prog, replacement)
+    result = cow_rewrite(IndexQuery([1, 2]), graph.proc, replacement)
 
     assert funcs(result) == [torch.add, torch.add, torch.sub, torch.relu]
 
@@ -194,7 +194,7 @@ def test_rewrite_middle_runs(graph: Graph):
     replacement = trace(
         lambda summed, x: torch.sub(torch.add(summed, x), summed), (3,), (3,)
     )
-    result = cow_rewrite(IndexQuery([1, 2]), graph.prog, replacement)
+    result = cow_rewrite(IndexQuery([1, 2]), graph.proc, replacement)
 
     x_real, y_real = torch.randn(3), torch.randn(3)
 
@@ -204,26 +204,26 @@ def test_rewrite_middle_runs(graph: Graph):
 
 def test_rewrite_keeps_io_attrs(graph: Graph):
     replacement = trace(lambda difference: torch.abs(difference), (3,))
-    result = cow_rewrite(IndexQuery([3]), graph.prog, replacement)
+    result = cow_rewrite(IndexQuery([3]), graph.proc, replacement)
 
-    assert len(result.inputs) == len(graph.prog.inputs)
-    assert len(result.outputs) == len(graph.prog.outputs)
+    assert len(result.inputs) == len(graph.proc.inputs)
+    assert len(result.outputs) == len(graph.proc.outputs)
     assert all(
         parse_attr(got) == parse_attr(want)
-        for got, want in zip(result.inputs.values(), graph.prog.inputs.values())
+        for got, want in zip(result.inputs.values(), graph.proc.inputs.values())
     )
 
 
 def test_rewrite_keeps_original(graph: Graph):
-    before = funcs(graph.prog)
+    before = funcs(graph.proc)
 
     cow_rewrite(
         IndexQuery([3]),
-        graph.prog,
+        graph.proc,
         trace(lambda difference: torch.abs(difference), (3,)),
     )
 
-    assert funcs(graph.prog) == before
+    assert funcs(graph.proc) == before
 
 
 def test_rewrite_rejects_wrong_shape(graph: Graph):
@@ -231,7 +231,7 @@ def test_rewrite_rejects_wrong_shape(graph: Graph):
     replacement = trace(lambda difference: torch.abs(difference), (4,))
 
     with pytest.raises(ValueError):
-        cow_rewrite(IndexQuery([3]), graph.prog, replacement)
+        cow_rewrite(IndexQuery([3]), graph.proc, replacement)
 
 
 def test_rewrite_rejects_wrong_arity(graph: Graph):
@@ -239,7 +239,7 @@ def test_rewrite_rejects_wrong_arity(graph: Graph):
     replacement = trace(lambda lhs, rhs: torch.add(lhs, rhs), (3,), (3,))
 
     with pytest.raises(ValueError):
-        cow_rewrite(IndexQuery([3]), graph.prog, replacement)
+        cow_rewrite(IndexQuery([3]), graph.proc, replacement)
 
 
 # `aioway.ir.seqs` queries ====
@@ -254,7 +254,7 @@ def seq_exact(*pattern) -> ExactSequential:
 
 def test_seqs_finds_chain(graph: Graph):
     # sub -> relu is a chain.
-    sub = graph.prog[seq_exact(torch.sub, torch.relu)]
+    sub = graph.proc[seq_exact(torch.sub, torch.relu)]
 
     assert funcs(sub) == [torch.sub, torch.relu]
 
@@ -264,43 +264,43 @@ def test_seqs_finds_chain(graph: Graph):
 
 
 def test_seqs_single_step(graph: Graph):
-    indices = seq_exact(torch.mul)(graph.prog)
+    indices = seq_exact(torch.mul)(graph.proc)
     assert indices.tolist() == [1]
 
 
 def test_seqs_requires_chain(graph: Graph):
     # sub reads both `product` and `summed`, so mul -> sub is not a chain.
     with pytest.raises(LookupError):
-        graph.prog[seq_exact(torch.mul, torch.sub)]
+        graph.proc[seq_exact(torch.mul, torch.sub)]
 
 
 def test_seqs_whole_program_fail(graph: Graph):
     with pytest.raises(LookupError):
-        graph.prog[seq_exact(torch.add, torch.mul, torch.sub, torch.relu)]
+        graph.proc[seq_exact(torch.add, torch.mul, torch.sub, torch.relu)]
 
 
 def test_seqs_is_ordered(graph: Graph):
     with pytest.raises(LookupError):
-        graph.prog[seq_exact(torch.relu, torch.sub)]
+        graph.proc[seq_exact(torch.relu, torch.sub)]
 
 
 def test_seqs_longer_than_program(graph: Graph):
     with pytest.raises(LookupError):
-        graph.prog[seq_exact(torch.sub, torch.relu, torch.relu, torch.relu, torch.relu)]
+        graph.proc[seq_exact(torch.sub, torch.relu, torch.relu, torch.relu, torch.relu)]
 
 
 def test_seqs_by_type(graph: Graph):
     # only sub -> relu is a chain.
     query = TypeSequential((cabc.Callable, cabc.Callable), key=lambda thunk: thunk.func)
 
-    assert query(graph.prog).tolist() == [2, 3]
+    assert query(graph.proc).tolist() == [2, 3]
 
 
 def test_seqs_by_type_no_match(graph: Graph):
     query = TypeSequential((int,), key=lambda thunk: thunk.func)
 
     with pytest.raises(LookupError):
-        query(graph.prog)
+        query(graph.proc)
 
 
 def test_seqs_shared_output():
@@ -310,13 +310,13 @@ def test_seqs_shared_output():
         torch.relu(e)
         torch.tanh(e)
 
-    prog = trace(fn, (3,))
+    proc = trace(fn, (3,))
 
-    assert seq_exact(torch.exp, torch.relu)(prog).tolist() == [0, 1]
-    assert seq_exact(torch.exp, torch.tanh)(prog).tolist() == [0, 2]
+    assert seq_exact(torch.exp, torch.relu)(proc).tolist() == [0, 1]
+    assert seq_exact(torch.exp, torch.tanh)(proc).tolist() == [0, 2]
 
     # relu still reads `e`, so `e` is an extra output of the exp -> tanh part.
-    assert len(prog[seq_exact(torch.exp, torch.tanh)].outputs) == 2
+    assert len(proc[seq_exact(torch.exp, torch.tanh)].outputs) == 2
 
 
 def _build_new_program(graph):
@@ -324,7 +324,7 @@ def _build_new_program(graph):
     replacement = trace(
         lambda product, summed: torch.abs(torch.sub(product, summed)), (3,), (3,)
     )
-    return cow_rewrite(seq_exact(torch.sub, torch.relu), graph.prog, replacement)
+    return cow_rewrite(seq_exact(torch.sub, torch.relu), graph.proc, replacement)
 
 
 def test_seqs_rewrite(graph: Graph):
