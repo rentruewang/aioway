@@ -13,7 +13,7 @@ from rich import syntax
 from aioway._pytrees import keystr, tree_flatten_with_path, tree_map_only
 from aioway._utils import AnyDict, any_dict, render_fcall
 from aioway.ir.instrs import FuncCall
-from aioway.ir.progs import FuncProc
+from aioway.ir.procs import FuncProc
 from aioway.t import BoundArgs, Sign, render_torch_func_name
 
 __all__ = ["CodeRender", "render_func_proc"]

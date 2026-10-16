@@ -13,7 +13,7 @@ from aioway.ir import InstrList
 from aioway.t import register_module_forward_hook, register_module_forward_pre_hook
 
 from .instrs import ModuleCall
-from .progs import NnProc
+from .procs import NnProc
 
 __all__ = ["ModuleTracker", "ModuleHist", "track_module_thunks"]
 

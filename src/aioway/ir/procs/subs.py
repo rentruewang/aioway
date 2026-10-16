@@ -7,7 +7,7 @@ from aioway._pytrees import tree_map_only
 from aioway.ir.instrs import FuncCall, ModuleCall
 from aioway.t import is_fake_tensor, parse_attr
 
-from .progs import Proc
+from .procs import Proc
 
 __all__ = ["FuncProc", "NnProc", "NnProcModule"]
 

@@ -5,5 +5,5 @@ from .codes import *
 from .execs import *
 from .instrs import *
 from .modules import *
-from .progs import *
+from .procs import *
 from .queries import *
