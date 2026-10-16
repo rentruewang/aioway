@@ -8,7 +8,7 @@ import torch
 from IPython.core.guarded_eval import typing
 from torch import nn
 
-from aioway.ir import ModuleCall, NnProgram, TypeSequential, track_module_thunks
+from aioway.ir import ModuleCall, NnProc, TypeSequential, track_module_thunks
 from aioway.t import fake_mode
 
 from .rewrites import Rewriter
@@ -35,7 +35,7 @@ class NetMorphLinearSeqDeeper(Rewriter):
             raise ValueError("Middle is empty.")
 
     @typing.override
-    def handle(self, prog: NnProgram) -> bool:
+    def handle(self, prog: NnProc) -> bool:
         try:
             sub = prog[self.part]
         except LookupError:
@@ -46,7 +46,7 @@ class NetMorphLinearSeqDeeper(Rewriter):
         # Only the last output may leave the part, and the middle keeps the shape.
         return len(sub.outputs) == 1 and first.out_features == last.in_features
 
-    def rewrite(self, prog: NnProgram) -> NnProgram:
+    def rewrite(self, prog: NnProc) -> NnProc:
         "A copy of `prog` with the first match deepened. Check `handle` first."
 
         result = prog.copy()
@@ -54,7 +54,7 @@ class NetMorphLinearSeqDeeper(Rewriter):
         result[self.part] = self._build_deeper_net(queried)
         return result
 
-    def _build_deeper_net(self, sub: NnProgram) -> NnProgram:
+    def _build_deeper_net(self, sub: NnProc) -> NnProc:
         first, middle, last = _modules(sub)
         inserted = _identity_linear(first.out_features)
 
@@ -68,7 +68,7 @@ class NetMorphLinearSeqDeeper(Rewriter):
                 x = module(x)
                 assert isinstance(x, torch.Tensor)
 
-        return hist.program
+        return hist.procedure
 
     @property
     def part(self) -> TypeSequential[ModuleCall]:
@@ -82,7 +82,7 @@ class _SequentialDecomosed(typing.NamedTuple):
     last: nn.Linear
 
 
-def _modules(prog: NnProgram) -> _SequentialDecomosed:
+def _modules(prog: NnProc) -> _SequentialDecomosed:
     first, *middle, last = [call.func for call in prog]
     assert isinstance(first, nn.Linear)
     assert isinstance(last, nn.Linear)

@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from aioway.ir import FuncCall, Program
+from aioway.ir import FuncCall, Proc
 from aioway.t import BoundArgs, TList, fake_mode
 
 
@@ -36,8 +36,8 @@ def thunks(fakes) -> tuple[FuncCall, ...]:
 
 
 @pytest.fixture
-def dag(thunks, fakes) -> Program:
-    return Program(
+def dag(thunks, fakes) -> Proc:
+    return Proc(
         instrs=thunks,
         inputs=BoundArgs.from_iters(fakes),
         outputs=TList.from_iterable([thunks[-1].result]),

@@ -4,7 +4,7 @@ import pytest
 import torch
 from torch import nn
 
-from aioway.ir import ExactSequential, NnProgram, TypeSequential, track_module_thunks
+from aioway.ir import ExactSequential, NnProc, TypeSequential, track_module_thunks
 from aioway.rewrites import NetMorphLinearSeqDeeper
 from aioway.t import fake_mode
 
@@ -17,18 +17,18 @@ def fake():
         yield
 
 
-def trace(module: nn.Module, *shape: int) -> NnProgram:
+def trace(module: nn.Module, *shape: int) -> NnProc:
     with track_module_thunks() as hist:
         module(torch.zeros(*shape))
 
-    return hist.program
+    return hist.procedure
 
 
-def modules(prog: NnProgram) -> list[nn.Module]:
+def modules(prog: NnProc) -> list[nn.Module]:
     return [thunk.func for thunk in prog]
 
 
-def types(prog: NnProgram) -> list[type[nn.Module]]:
+def types(prog: NnProc) -> list[type[nn.Module]]:
     return [type(module) for module in modules(prog)]
 
 
@@ -115,7 +115,7 @@ class SideOutput(nn.Module):
 def test_trace_leaves_only():
     prog = trace(Net(nn.ReLU()), 2, 3)
 
-    assert isinstance(prog, NnProgram)
+    assert isinstance(prog, NnProc)
     assert types(prog) == [nn.Linear, nn.Linear, nn.ReLU, nn.Linear, nn.Tanh]
 
 

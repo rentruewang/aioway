@@ -3,11 +3,11 @@
 import pytest
 import torch
 
-from aioway.ir import Exec, Program
+from aioway.ir import Exec, Proc
 
 
 @pytest.fixture
-def exec(dag: Program) -> Exec:
+def exec(dag: Proc) -> Exec:
     return Exec(dag)
 
 
@@ -24,7 +24,7 @@ def test_iter(exec: Exec, thunks):
 
 
 def test_inputs_are_fakes(exec: Exec, fakes):
-    assert set(exec.program.inputs.values()) == set(fakes)
+    assert set(exec.proc.inputs.values()) == set(fakes)
 
 
 def test_call_runs(exec: Exec):

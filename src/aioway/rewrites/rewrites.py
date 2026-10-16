@@ -5,7 +5,7 @@
 import abc
 import typing
 
-from aioway.ir import NnProgram
+from aioway.ir import NnProc
 
 __all__ = ["Rewriter"]
 
@@ -16,14 +16,14 @@ class Rewriter(abc.ABC):
     """
 
     @typing.no_type_check
-    def __call__(self, module: NnProgram) -> NnProgram:
+    def __call__(self, module: NnProc) -> NnProc:
         if not self.handle(module):
             return NotImplemented
 
         return self.rewrite(module)
 
     @abc.abstractmethod
-    def handle(self, module: NnProgram, /) -> bool:
+    def handle(self, module: NnProc, /) -> bool:
         """
         Check whether the `Rewriter` handles the module or not.
         """
@@ -31,7 +31,7 @@ class Rewriter(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def rewrite(self, module: typing.Any, /) -> NnProgram:
+    def rewrite(self, module: typing.Any, /) -> NnProc:
         """
         Perform the rewrite. Should not modify the input module.
 

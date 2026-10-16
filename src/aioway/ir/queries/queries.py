@@ -13,7 +13,7 @@ from aioway._utils import IntArray, is_list_of
 from aioway.ir.instrs import Instr
 
 if typing.TYPE_CHECKING:
-    from aioway.ir import Program
+    from aioway.ir import Proc
 
 __all__ = ["Query", "OrderedIndex", "IndexQuery"]
 
@@ -22,13 +22,13 @@ type _OrderedIndexLike = OrderedIndex | list[int] | IntArray
 
 class Query[I: Instr = typing.Any](abc.ABC):
     @abc.abstractmethod
-    def __call__(self, program: Program[I], /) -> OrderedIndex:
+    def __call__(self, program: Proc[I], /) -> OrderedIndex:
         raise NotImplementedError
 
 
 @typing.runtime_checkable
 class QueryLike[I: Instr = typing.Any](typing.Protocol):
-    def __call__(self, program: Program[I], /) -> _OrderedIndexLike: ...
+    def __call__(self, program: Proc[I], /) -> _OrderedIndexLike: ...
 
 
 def register_query_function[I: Instr](function: QueryLike[I]) -> Query[I]:
@@ -146,7 +146,7 @@ class IndexQuery(Query):
     """
 
     @typing.override
-    def __call__(self, prog: Program, /) -> OrderedIndex:
+    def __call__(self, prog: Proc, /) -> OrderedIndex:
         idx: IntArray = np.asarray(self.indices)
 
         if (idx < 0).any():

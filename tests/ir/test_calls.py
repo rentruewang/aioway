@@ -7,7 +7,7 @@ import torch
 from torch import ops
 from torch import testing as tt
 
-from aioway.ir import Exec, Program, TorchFuncDag, fake_aten_dag
+from aioway.ir import Exec, Proc, TorchFuncDag, fake_aten_dag
 from aioway.t import fake_mode, has_fake, is_aten_op, parse_attr
 
 type Fakes = tuple[torch.Tensor, torch.Tensor]
@@ -89,7 +89,7 @@ def test_dag_from_trace():
         with tracer.activate():
             z = torch.add(x, y)
 
-    dag = Program.from_instr_list(tracer.thunks)
+    dag = Proc.from_instr_list(tracer.thunks)
 
     assert len(dag) == 1
     assert len(dag.inputs) == 2
@@ -111,7 +111,7 @@ def test_dag_inputs_first_use_order():
         with tracer.activate():
             torch.add(torch.mul(x, y), x)
 
-    dag = Program.from_instr_list(tracer.thunks)
+    dag = Proc.from_instr_list(tracer.thunks)
 
     assert _attr_eq(dag.inputs.tensors[0], x)
     assert _attr_eq(dag.inputs.tensors[1], y)
@@ -126,7 +126,7 @@ def test_dag_inputs_many_same_step():
         with tracer.activate():
             torch.stack(xs)
 
-    dag = Program.from_instr_list(tracer.thunks)
+    dag = Proc.from_instr_list(tracer.thunks)
 
     assert all(_attr_eq(got, want) for got, want in zip(dag.inputs.values(), xs))
 
@@ -202,9 +202,9 @@ def test_run_twice_new_data(trace):
 def test_inputs_are_traced_fakes(trace):
     exec, (x, y) = trace(lambda x, y: torch.add(x, y))
 
-    assert len(exec.program.inputs) == 2
+    assert len(exec.proc.inputs) == 2
 
-    fx, fy = exec.program.inputs.values()
+    fx, fy = exec.proc.inputs.values()
     assert _attr_eq(fx, x)
     assert _attr_eq(fy, y)
 

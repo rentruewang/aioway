@@ -44,7 +44,7 @@ with track_module_thunks() as hist:
 hist
 
 # %%
-list(hist.program)
+list(hist.procedure)
 
 # %%
-list(hist.program[IndexQuery([0, 1, 2])])
+list(hist.procedure[IndexQuery([0, 1, 2])])

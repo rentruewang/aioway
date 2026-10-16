@@ -17,7 +17,7 @@ from aioway.t import (
 
 from .execs import Exec
 from .instrs import FuncCall
-from .progs import FuncProgram
+from .progs import FuncProc
 
 __all__ = ["TorchFuncDag", "fake_aten_dag"]
 
@@ -55,12 +55,12 @@ class _TorchCallDag(abc.ABC):
         raise NotImplementedError
 
     @property
-    def program(self) -> FuncProgram:
-        return FuncProgram.from_instr_list(self.thunks)
+    def proc(self) -> FuncProc:
+        return FuncProc.from_instr_list(self.thunks)
 
     @property
     def exec(self) -> Exec:
-        return Exec(self.program)
+        return Exec(self.proc)
 
 
 @typing.final

@@ -22,16 +22,19 @@ from aioway.ir.instrs import Instr, InstrList
 from aioway.ir.queries import OrderedIndex, Query
 from aioway.t import BoundArgs, TList, all_real, parse_attr
 
-__all__ = ["TensorRef", "Program", "TensorIndex", "TensorLifetime"]
+__all__ = ["TensorRef", "Proc", "TensorIndex", "TensorLifetime"]
 
-# The Program class ====
+# The Proc class ====
 
 
-class Program[I: Instr = typing.Any]:
+class Proc[I: Instr = typing.Any]:
     """
-    A program is a DAG of callables, that are linked by fake tensors.
+    A `Proc` is a "procedure".
 
-    The program owns the instructions and its signature (inputs and outputs).
+    In the simplest form, it's a DAG (list of topo sorted nodes),
+    and edges (nodes referencing the same fake tensor).
+
+    The `Proc` owns the instructions and its signature (inputs and outputs).
     Tensor-level bookkeeping (producers, consumers, lifetimes) lives in
     `TensorIndex`, available as `Program.tindex`.
     """
@@ -113,7 +116,7 @@ class Program[I: Instr = typing.Any]:
         return type(self)(instrs=sel, inputs=inputs, outputs=outputs)
 
     def __setitem__(self, query: Query, subset: typing.Self) -> None:
-        mutated = _replace_sub_prog(prog=self, query=query, sub_prog=subset)
+        mutated = _replace_sub_proc(proc=self, query=query, sub_prog=subset)
 
         # Overwrite the references s.t. underlying data is not touched.
         # This is not supposed to fail. Also rebuilds the tensor index.
@@ -127,7 +130,7 @@ class Program[I: Instr = typing.Any]:
 
     @property
     def inputs(self) -> BoundArgs:
-        "The inputs, bound to the program's signature. Flat tensors: `.tensors`."
+        "The inputs, bound to the procedure's signature. Flat tensors: `.tensors`."
         return self._inputs
 
     @property
@@ -197,7 +200,7 @@ class TensorIndex[I: Instr = typing.Any]:
     `Program` builds this index on construction.
     """
 
-    def __init__(self, program: Program[I], /) -> None:
+    def __init__(self, program: Proc[I], /) -> None:
         self._program = program
 
         self._tensors = TList.from_iterable(self._all_tensors())
@@ -217,7 +220,7 @@ class TensorIndex[I: Instr = typing.Any]:
         return self._links[tensor]
 
     @property
-    def program(self) -> Program[I]:
+    def program(self) -> Proc[I]:
         "The program being indexed."
         return self._program
 
@@ -428,7 +431,7 @@ def _link_inputs_for_mapping(
             mapping[input].add_consumers(thunk)
 
 
-def _used_outside[I: Instr](prog: Program[I], selected: OrderedIndex) -> TList:
+def _used_outside[I: Instr](prog: Proc[I], selected: OrderedIndex) -> TList:
     """
     Add all tensors used outside of selected region.
 
@@ -463,20 +466,20 @@ class _ProgramTuple[I: Instr](typing.NamedTuple):
     outputs: TList
 
 
-def _replace_sub_prog[I: Instr](
-    *, prog: Program[I], query: Query[I], sub_prog: Program[I]
+def _replace_sub_proc[I: Instr](
+    *, proc: Proc[I], query: Query[I], sub_prog: Proc[I]
 ) -> _ProgramTuple[I]:
     """
     Replace the query with a new subset.
     """
 
-    queried = _query_select(query=query, prog=prog)
-    rplc, queried_idx = _tensor_rplc(prog=prog, queried=queried, sub_prog=sub_prog)
+    queried = _query_select(query=query, prog=proc)
+    rplc, queried_idx = _tensor_rplc(prog=proc, queried=queried, sub_prog=sub_prog)
 
     # Drop the ones that are queried.
     new_instrs: list[I] = [
         thunk.tree_map_only(torch.Tensor, rplc)
-        for i, thunk in enumerate(prog.instrs)
+        for i, thunk in enumerate(proc.instrs)
         if i not in queried_idx
     ]
     min_queried_idx = min(queried_idx)
@@ -489,8 +492,8 @@ def _replace_sub_prog[I: Instr](
     ]
 
     # Replace inputs and outputs.
-    new_ins = tree_map_only(torch.Tensor, func=rplc, tree=prog.inputs)
-    new_outs = tree_map_only(torch.Tensor, func=rplc, tree=prog.outputs)
+    new_ins = tree_map_only(torch.Tensor, func=rplc, tree=proc.inputs)
+    new_outs = tree_map_only(torch.Tensor, func=rplc, tree=proc.outputs)
 
     return _ProgramTuple(
         ilist=InstrList.build(new_instrs),
@@ -499,14 +502,14 @@ def _replace_sub_prog[I: Instr](
     )
 
 
-def _query_select[I: Instr](*, query: Query[I], prog: Program[I]) -> _ProgramTuple[I]:
+def _query_select[I: Instr](*, query: Query[I], prog: Proc[I]) -> _ProgramTuple[I]:
     # Sorted and deduplicated, so `selected` is in step order.
     indices = query(prog)
     return _select_indices(selection=indices, prog=prog)
 
 
 def _select_indices[I: Instr](
-    *, selection: OrderedIndex, prog: Program[I]
+    *, selection: OrderedIndex, prog: Proc[I]
 ) -> _ProgramTuple[I]:
     """
     Produce a subprogram whose:
@@ -544,7 +547,7 @@ def _select_indices[I: Instr](
 
 
 def _tensor_rplc[I: Instr](
-    prog: Program[I], queried: _ProgramTuple[I], sub_prog: Program[I]
+    prog: Proc[I], queried: _ProgramTuple[I], sub_prog: Proc[I]
 ) -> tuple[cabc.Callable[[torch.Tensor], torch.Tensor], set[int]]:
     "Find the replacement tensors, before -> after."
 

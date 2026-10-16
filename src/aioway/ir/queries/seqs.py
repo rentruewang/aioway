@@ -11,7 +11,7 @@ from aioway.ir.instrs import Instr
 from aioway.ir.queries import OrderedIndex, Query
 
 if typing.TYPE_CHECKING:
-    from aioway.ir import Program
+    from aioway.ir import Proc
 
 __all__ = ["SequentialQuery", "ExactSequential", "TypeSequential"]
 
@@ -36,7 +36,7 @@ class SequentialQuery[I: Instr = typing.Any](Query[I]):
     key: cabc.Callable[[I], typing.Any]
     "Gets the value to match from an instr, e.g. `lambda thunk: thunk.func`."
 
-    def __call__(self, program: Program[I], /) -> OrderedIndex:
+    def __call__(self, program: Proc[I], /) -> OrderedIndex:
         # Try every end, walking back from it. The first few steps can't end
         # a chain, as it needs `len(pattern) - 1` steps before its end.
         # A partial match that fails just moves on to the next.
@@ -51,7 +51,7 @@ class SequentialQuery[I: Instr = typing.Any](Query[I]):
 
         raise LookupError(f"No match for {self.pattern}.")
 
-    def _chain(self, program: Program[I], end: int) -> list[int]:
+    def _chain(self, program: Proc[I], end: int) -> list[int]:
         "The chain ending at `end`. Raises `_SeqMatchFailed` if it doesn't match."
 
         step = end
@@ -90,7 +90,7 @@ class TypeSequential[I: Instr = typing.Any](SequentialQuery[I]):
         return isinstance(value, pat)
 
 
-def _prev_in_chain[I: Instr](program: Program[I], step: int) -> int:
+def _prev_in_chain[I: Instr](program: Proc[I], step: int) -> int:
     """
     The step before `step` in a chain. Raises `_SeqMatchFailed` if there is none.
 

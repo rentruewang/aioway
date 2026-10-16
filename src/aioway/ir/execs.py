@@ -12,7 +12,7 @@ from aioway._pytrees import tree_leaves, tree_map_only
 from aioway.t import BoundArgs, has_fake, is_fake_tensor, is_real_tensor, parse_attr
 
 if typing.TYPE_CHECKING:
-    from aioway.ir import FuncCall, Program
+    from aioway.ir import FuncCall, Proc
 
 __all__ = ["Exec", "LocalScope"]
 
@@ -29,8 +29,8 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
     Tracks the currently in scope tensors.
     """
 
-    def __init__(self, prog: Program) -> None:
-        self._prog = prog
+    def __init__(self, proc: Proc) -> None:
+        self._proc = proc
         "The variable list."
 
         self._alive: dict[int, torch.Tensor] = {}
@@ -41,16 +41,16 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
         Count the total variables tracked.
         """
 
-        return len(self._prog)
+        return len(self._proc)
 
     def __contains__(self, tensor) -> bool:
         if not is_fake_tensor(tensor):
             return False
 
-        return tensor in self._prog.tindex.tensors
+        return tensor in self._proc.tindex.tensors
 
     def __iter__(self) -> cabc.Generator[torch.Tensor]:
-        yield from self._prog.tindex.tensors
+        yield from self._proc.tindex.tensors
 
     def __getitem__(self, fake: torch.Tensor) -> torch.Tensor | None:
         if not is_fake_tensor(fake):
@@ -94,10 +94,10 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
         Expire those variables that is not used after step = `step`.
         """
 
-        thunk = self._prog[step]
+        thunk = self._proc[step]
 
         for input in thunk.tensor_inputs:
-            if self._prog.tindex.life(input).death == step:
+            if self._proc.tindex.life(input).death == step:
                 self.drop(input)
 
     def clear(self) -> None:
@@ -172,28 +172,28 @@ class Exec[F: cabc.Callable = typing.Any]:
 
     TYPE = torch.Tensor
 
-    def __init__(self, program: Program[FuncCall[F]]) -> None:
-        self._prog = program
-        self._scope = LocalScope(self._prog)
+    def __init__(self, procedure: Proc[FuncCall[F]]) -> None:
+        self._proc = procedure
+        self._scope = LocalScope(self._proc)
 
     def __len__(self) -> int:
-        return len(self._prog)
+        return len(self._proc)
 
     def __getitem__(self, idx: int) -> FuncCall[F]:
-        return self._prog.instrs[idx]
+        return self._proc.instrs[idx]
 
     def __iter__(self) -> cabc.Generator[FuncCall[F]]:
-        yield from self._prog
+        yield from self._proc
 
     def __call__(self, *args, **kwargs):
-        bound = self.program.inputs.sign.bind(*args, **kwargs)
-        self.bind(self.program.inputs, bound)
+        bound = self.proc.inputs.sign.bind(*args, **kwargs)
+        self.bind(self.proc.inputs, bound)
 
-        L.logger.debug("Prepare walking the {} instructions.", len(self.program.instrs))
+        L.logger.debug("Prepare walking the {} instructions.", len(self.proc.instrs))
 
         # Execute the steps one by one in topo sorted order,
         # since we do not have jumps, branches, or returns right now.
-        for idx, instr in enumerate(self.program.instrs):
+        for idx, instr in enumerate(self.proc.instrs):
             self.step(idx, instr)
 
         L.logger.debug("Preparing the output.")
@@ -229,13 +229,12 @@ class Exec[F: cabc.Callable = typing.Any]:
         return result
 
     @property
-    def program(self) -> Program[FuncCall[F]]:
+    def proc(self) -> Proc[FuncCall[F]]:
         """
-        The property that signals that `Exec` is bound to a `Program`.
-        Exists for type safety.
+        The property that signals that `Exec` is bound to a `Proc`.
         """
 
-        return self._prog
+        return self._proc
 
 
 def _get_fake_id(fake: torch.Tensor | int, /) -> int:

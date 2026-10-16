@@ -13,7 +13,7 @@ from aioway.ir import InstrList
 from aioway.t import register_module_forward_hook, register_module_forward_pre_hook
 
 from .instrs import ModuleCall
-from .progs import NnProgram
+from .progs import NnProc
 
 __all__ = ["ModuleTracker", "ModuleHist", "track_module_thunks"]
 
@@ -88,8 +88,8 @@ class ModuleHist:
         return InstrList.build(self.history)
 
     @property
-    def program(self) -> NnProgram:
-        return NnProgram.from_instr_list(self.history)
+    def procedure(self) -> NnProc:
+        return NnProc.from_instr_list(self.history)
 
 
 @dcls.dataclass(frozen=True)

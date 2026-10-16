@@ -7,25 +7,25 @@ from aioway._pytrees import tree_map_only
 from aioway.ir.instrs import FuncCall, ModuleCall
 from aioway.t import is_fake_tensor, parse_attr
 
-from .progs import Program
+from .progs import Proc
 
-__all__ = ["FuncProgram", "NnProgram", "NnProgramModule"]
+__all__ = ["FuncProc", "NnProc", "NnProcModule"]
 
 
-class FuncProgram(Program[FuncCall]):
+class FuncProc(Proc[FuncCall]):
     INSTR = FuncCall
 
 
-class NnProgram(Program[ModuleCall]):
+class NnProc(Proc[ModuleCall]):
     INSTR = ModuleCall
 
     @property
-    def module(self) -> NnProgramModule:
-        return NnProgramModule(self)
+    def module(self) -> NnProcModule:
+        return NnProcModule(self)
 
 
-class NnProgramModule(nn.Module):
-    def __init__(self, program: NnProgram) -> None:
+class NnProcModule(nn.Module):
+    def __init__(self, program: NnProc) -> None:
         super().__init__()
 
         self._program = program
@@ -40,7 +40,7 @@ class NnProgramModule(nn.Module):
         return self._module_list[idx]
 
     @property
-    def program(self) -> NnProgram:
+    def program(self) -> NnProc:
         return self._program
 
     def hashes_of_modules(self) -> list[dict[str, int]]:

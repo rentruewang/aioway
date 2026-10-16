@@ -6,7 +6,7 @@ from collections import abc as cabc
 import pytest
 
 from aioway._pytrees import tree_flatten, tree_unflatten
-from aioway.ir import FuncCall, Program, TensorLifetime
+from aioway.ir import FuncCall, Proc, TensorLifetime
 from aioway.t import BoundArgs, TList
 
 
@@ -24,25 +24,25 @@ class TestInstr:
 
 
 class TestProgram:
-    def test_len(self, dag: Program):
+    def test_len(self, dag: Proc):
         assert len(dag) == 2
 
-    def test_getitem(self, dag: Program, thunks: cabc.Sequence[FuncCall]):
+    def test_getitem(self, dag: Proc, thunks: cabc.Sequence[FuncCall]):
         assert dag[0] is thunks[0]
         assert dag[-1] is thunks[1]
 
-    def test_iter(self, dag: Program, thunks):
+    def test_iter(self, dag: Proc, thunks):
         assert list(dag) == list(thunks)
 
-    def test_inputs(self, dag: Program, fakes):
+    def test_inputs(self, dag: Proc, fakes):
         assert set(dag.inputs.values()) == set(fakes)
 
-    def test_outputs(self, dag: Program, thunks):
+    def test_outputs(self, dag: Proc, thunks):
         assert set(dag.outputs) == {thunks[-1].result}
 
     def test_output_unique(self, thunks, fakes):
         with pytest.raises(ValueError):
-            Program(
+            Proc(
                 instrs=[thunks[0], thunks[0]],
                 inputs=BoundArgs.from_iters(fakes),
                 outputs=TList.from_iterable([thunks[0].result]),
@@ -50,10 +50,10 @@ class TestProgram:
 
 
 class TestTensorIndex:
-    def test_tensors(self, dag: Program):
+    def test_tensors(self, dag: Proc):
         assert len(dag.tindex.tensors) == 4
 
-    def test_tensor_index_steps(self, dag: Program, fakes, thunks):
+    def test_tensor_index_steps(self, dag: Proc, fakes, thunks):
         x0, _ = fakes
         y, z = thunks[0].result, thunks[1].result
 
@@ -68,7 +68,7 @@ class TestTensorIndex:
 
 
 class TestProgramIn:
-    def test_reconstruct(self, dag: Program):
+    def test_reconstruct(self, dag: Proc):
         data, spec = tree_flatten(dag.inputs)
         recon = tree_unflatten(data, spec)
         assert dag.inputs == recon

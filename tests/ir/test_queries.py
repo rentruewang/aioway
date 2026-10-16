@@ -13,7 +13,7 @@ from aioway.ir import (
     Exec,
     FuncCall,
     IndexQuery,
-    Program,
+    Proc,
     Query,
     TorchFuncDag,
     TypeSequential,
@@ -23,7 +23,7 @@ from aioway.t import fake_mode, parse_attr
 # Shared utilities ====
 
 
-def cow_rewrite(query: Query, prog: Program, sub: Program) -> Program:
+def cow_rewrite(query: Query, prog: Proc, sub: Proc) -> Proc:
     "A copy of `prog` with the part picked out by `query` replaced by `sub`."
 
     prog = prog.copy()
@@ -32,7 +32,7 @@ def cow_rewrite(query: Query, prog: Program, sub: Program) -> Program:
 
 
 class Graph(typing.NamedTuple):
-    prog: Program
+    prog: Proc
     x: torch.Tensor
     y: torch.Tensor
     summed: torch.Tensor
@@ -64,7 +64,7 @@ def graph() -> Graph:
             difference = torch.sub(product, summed)
             activated = torch.relu(difference)
 
-    iset = Program.from_instr_list(tracer.thunks)
+    iset = Proc.from_instr_list(tracer.thunks)
     return Graph(iset, x, y, summed, product, difference, activated)
 
 
@@ -74,7 +74,7 @@ def graph() -> Graph:
 def test_all(graph: Graph):
     sub = graph.prog[IndexQuery([0, 1, 2, 3])]
 
-    assert isinstance(sub, Program)
+    assert isinstance(sub, Proc)
     assert len(sub) == 4
     assert sub.inputs.tensors == {graph.x, graph.y}
     assert sub.outputs == [graph.activated]
@@ -128,7 +128,7 @@ def test_out_of_bounds(graph: Graph):
         graph.prog[IndexQuery([4])]
 
 
-def trace(fn, *shapes: tuple[int, ...]) -> Program:
+def trace(fn, *shapes: tuple[int, ...]) -> Proc:
     "Trace `fn` on fresh fakes of `shapes` into its own instruction set."
 
     tracer = TorchFuncDag()
@@ -139,10 +139,10 @@ def trace(fn, *shapes: tuple[int, ...]) -> Program:
         with tracer.activate():
             fn(*fakes)
 
-    return Program.from_instr_list(tracer.thunks)
+    return Proc.from_instr_list(tracer.thunks)
 
 
-def funcs(iset: Program) -> list:
+def funcs(iset: Proc) -> list:
     return [thunk.func for thunk in iset]
 
 
