@@ -35,9 +35,9 @@ class NetMorphLinearSeqDeeper(Rewriter):
             raise ValueError("Middle is empty.")
 
     @typing.override
-    def handle(self, prog: NnProc) -> bool:
+    def handle(self, proc: NnProc) -> bool:
         try:
-            sub = prog[self.part]
+            sub = proc[self.part]
         except LookupError:
             return False
 
@@ -46,11 +46,11 @@ class NetMorphLinearSeqDeeper(Rewriter):
         # Only the last output may leave the part, and the middle keeps the shape.
         return len(sub.outputs) == 1 and first.out_features == last.in_features
 
-    def rewrite(self, prog: NnProc) -> NnProc:
-        "A copy of `prog` with the first match deepened. Check `handle` first."
+    def rewrite(self, proc: NnProc) -> NnProc:
+        "A copy of `proc` with the first match deepened. Check `handle` first."
 
-        result = prog.copy()
-        queried = prog[self.part]
+        result = proc.copy()
+        queried = proc[self.part]
         result[self.part] = self._build_deeper_net(queried)
         return result
 
@@ -82,8 +82,8 @@ class _SequentialDecomosed(typing.NamedTuple):
     last: nn.Linear
 
 
-def _modules(prog: NnProc) -> _SequentialDecomosed:
-    first, *middle, last = [call.func for call in prog]
+def _modules(proc: NnProc) -> _SequentialDecomosed:
+    first, *middle, last = [call.func for call in proc]
     assert isinstance(first, nn.Linear)
     assert isinstance(last, nn.Linear)
     assert all(isinstance(m, nn.Module) for m in middle)
