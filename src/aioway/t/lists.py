@@ -64,11 +64,15 @@ class TList(PyTreeMixin):
         def ids(tensors: cabc.Sequence[torch.Tensor]) -> list[int]:
             return [id(t) for t in tensors]
 
+        # If the RHS is a `list` or `TList`, care about ordering.
+
         if isinstance(other, TList):
             return ids(self._tensors) == ids(other._tensors)
 
         if is_seq_of(torch.Tensor)(other):
             return ids(self._tensors) == ids(other)
+
+        # If the RHS is a `set`, don't care about ordering.
 
         if is_set_of(torch.Tensor)(other):
             return frozenset(self._tensors) == frozenset(other)
