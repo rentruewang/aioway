@@ -2,17 +2,16 @@
 
 "Utility functions."
 
-from aioway._pytrees.compat import tree_all
 import typing
 from collections import abc as cabc
 
 import torch
 
 from aioway._pytrees import (
-    tree_any,
     tree_leaves,
     tree_map,
 )
+from aioway._pytrees.compat import tree_all
 from aioway._utils import AnyDict, any_dict
 
 __all__ = [
