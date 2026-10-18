@@ -118,9 +118,7 @@ class TList(PyTreeMixin, cabc.Sequence[torch.Tensor]):
     ) -> int:
         "Get the index of the tensor. O(n)."
 
-        start, stop, _ = slice(start, stop).indices(len(self))
-
-        for i in range(start, stop):
+        for i in range(len(self))[start:stop]:
             elem = self[i]
 
             if tensor is elem:
