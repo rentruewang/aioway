@@ -18,7 +18,7 @@ from aioway.ir.instrs import Instr, InstrList
 from aioway.ir.queries import OrderedIndex, Query
 from aioway.t import BoundArgs, TList, all_real, parse_attr
 
-__all__ = ["TensorRef", "Proc", "TensorIndex", "TensorLifetime"]
+__all__ = ["Proc", "TensorRef", "TensorIndex", "TensorLifetime"]
 
 # The Proc class ====
 

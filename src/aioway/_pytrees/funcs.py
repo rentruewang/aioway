@@ -8,9 +8,6 @@ from collections import abc as cabc
 import torch
 
 from aioway._pytrees import (
-    SUPPORTED_NODES,
-    is_namedtuple_class,
-    is_structseq_class,
     tree_any,
     tree_leaves,
     tree_map,
