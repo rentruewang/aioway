@@ -85,8 +85,10 @@ class TList(PyTreeMixin, cabc.Sequence[torch.Tensor]):
 
     @typing.overload
     def __getitem__(self, i: int) -> torch.Tensor: ...
+
     @typing.overload
     def __getitem__(self, i: slice) -> typing.Self: ...
+
     def __getitem__(self, i):
         if isinstance(i, int):
             return self._tensors[i]
@@ -111,11 +113,13 @@ class TList(PyTreeMixin, cabc.Sequence[torch.Tensor]):
     def isdisjoint(self, other: TList) -> bool:
         return set(self).isdisjoint(other)
 
-    def index(self, tensor: torch.Tensor, start: int = 0, stop: int = -1, /) -> int:
+    def index(
+        self, tensor: torch.Tensor, start: int = 0, stop: int | None = None, /
+    ) -> int:
         "Get the index of the tensor. O(n)."
 
-        start = start % len(self)
-        stop = stop % len(self)
+        start, stop, _ = slice(start, stop).indices(len(self))
+
         for i in range(start, stop):
             elem = self[i]
 
