@@ -72,13 +72,13 @@ def test_tlist_order_dependent(x, y):
 
 def test_tlist_fake_check_all(tlist: TList):
     assert tlist.all_fake
-    assert tlist.any_fake
+    assert tlist.has_fake
 
 
 def test_tlist_fake_check_mixed(x):
     mixed = TList.deduplicate([x, _make_real()])
 
-    assert mixed.any_fake
+    assert mixed.has_fake
     assert not mixed.all_fake
 
 

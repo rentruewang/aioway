@@ -2,6 +2,7 @@
 
 "A utility for a list of tensor."
 
+import dataclasses as dcls
 import functools
 import typing
 from collections import abc as cabc
@@ -17,7 +18,7 @@ from aioway._pytrees import (
 )
 from aioway._utils import is_seq_of, is_set_of
 from aioway.t.attrs import parse_attr
-from aioway.t.overrides import has_fake
+from aioway.t.overrides import is_fake_tensor
 
 if typing.TYPE_CHECKING:
     from aioway.t import Attr, Device, DType, Layout, Shape
@@ -110,14 +111,17 @@ class TList(PyTreeMixin):
         raise ValueError("TList.index(tensor): tensor not in list.")
 
     @functools.cached_property
-    def any_fake(self) -> bool:
-        "Check if this contains any fake items."
-        return any(has_fake(t) for t in self)
+    def fakeness(self) -> FakeNess:
+        "Return the fake ness of the tensors."
+        return FakeNess.from_tensors(self)
 
-    @functools.cached_property
+    @property
+    def has_fake(self) -> bool:
+        return self.fakeness.has_fake
+
+    @property
     def all_fake(self) -> bool:
-        "Check if all items are fake."
-        return all(has_fake(t) for t in self)
+        return self.fakeness.all_fake
 
     def attrs(self) -> list[Attr]:
         """
@@ -172,3 +176,25 @@ class TList(PyTreeMixin):
 
 def _seq_key(idx: int) -> KeyEntry:
     return typing.cast(typing.Any, SequenceKey)(idx)
+
+
+# Helper objects ====
+
+
+@dcls.dataclass(frozen=True)
+class FakeNess:
+    all_fake: bool
+    has_fake: bool
+
+    @property
+    def all_real(self) -> bool:
+        return not self.has_fake
+
+    @property
+    def has_real(self) -> bool:
+        return not self.all_fake
+
+    @classmethod
+    def from_tensors(cls, tensors: cabc.Iterable[torch.Tensor], /) -> typing.Self:
+        fakes = [is_fake_tensor(t) for t in tensors]
+        return cls(all_fake=all(fakes), has_fake=any(fakes))
