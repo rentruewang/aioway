@@ -12,7 +12,7 @@ from collections import abc as cabc
 import numpy as np
 import torch
 
-from aioway._pytrees import KeyEntry, MappingKey, tree_map_only
+from aioway._pytrees import KeyEntry, MappingKey, is_tensor_container, tree_map_only
 from aioway._utils import AnySet, IntArray, any_set, is_list_of
 from aioway.ir.instrs import Instr, InstrList
 from aioway.ir.queries import OrderedIndex, Query
@@ -48,8 +48,10 @@ class Proc[I: Instr = typing.Any]:
         if not isinstance(inputs, BoundArgs):
             raise TypeError(f"Inputs should be a `BoundArgs`. Got {type(inputs)=}.")
 
-        if not isinstance(outputs, TList):
-            raise TypeError(f"Outputs should be a `TList`. Got {type(outputs)=}.")
+        if not is_tensor_container(outputs):
+            raise TypeError(
+                f"Outputs must be a container of tensors. Got {type(outputs)=}."
+            )
 
         self._instrs = InstrList.build(instrs)
 
@@ -130,7 +132,7 @@ class Proc[I: Instr = typing.Any]:
         return self._inputs
 
     @property
-    def outputs(self) -> TList:
+    def outputs(self) -> typing.Any:
         return self._outputs
 
     @property
