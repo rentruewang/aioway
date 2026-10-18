@@ -14,6 +14,7 @@ import loguru as L
 from torch import _ops, overrides
 from torch.utils import _python_dispatch as pyd
 
+from aioway._pytrees import find_nested_tensors
 from aioway._utils import Stack
 from aioway.t.attrs import render_function_body_prefix
 
@@ -65,8 +66,6 @@ class ModeThunk[**P = ..., T = typing.Any]:
         return self.func(*self.args, **self.kwargs)
 
     def inputs(self):
-        from aioway.t import find_nested_tensors
-
         yield from find_nested_tensors(self.args)
         yield from find_nested_tensors(self.kwargs)
 

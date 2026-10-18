@@ -8,13 +8,10 @@ from collections import abc as cabc
 import torch
 
 from aioway._pytrees import (
-    SUPPORTED_NODES,
-    is_namedtuple_class,
-    is_structseq_class,
-    tree_any,
     tree_leaves,
     tree_map,
 )
+from aioway._pytrees.compat import tree_all
 from aioway._utils import AnyDict, any_dict
 
 __all__ = [
@@ -23,7 +20,6 @@ __all__ = [
     "find_nested_tensors",
     "replace_tensors",
     "is_tensor_container",
-    "is_tensor_container_type",
 ]
 
 
@@ -100,22 +96,9 @@ def replace_tensors(
         return tree_map_memo(obj, maybe_replace)
 
 
-def is_tensor_container_type(cls: type) -> bool:
-    """
-    Check if an instance of `cls` is considered tensor containers.
-    """
-
-    return (
-        False
-        or cls in SUPPORTED_NODES
-        or is_namedtuple_class(cls)
-        or is_structseq_class(cls)
-    )
-
-
 def is_tensor_container(obj) -> bool:
     """
     Check if the `obj` given is considered a tensor container.
     """
 
-    return tree_any(lambda x: isinstance(x, torch.Tensor), obj)
+    return tree_all(lambda x: isinstance(x, torch.Tensor), obj)

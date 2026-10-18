@@ -6,14 +6,14 @@ import typing
 import pytest
 import torch
 
-from aioway._pytrees import PyTreeDataclassMixin
-from aioway._utils import any_dict
-from aioway.t import (
+from aioway._pytrees import (
+    PyTreeDataclassMixin,
     find_nested_tensors,
     replace_tensors,
     tree_leaves_typed,
     tree_map_memo,
 )
+from aioway._utils import any_dict
 
 
 @dcls.dataclass(frozen=True)

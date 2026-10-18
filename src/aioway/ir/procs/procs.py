@@ -12,13 +12,19 @@ from collections import abc as cabc
 import numpy as np
 import torch
 
-from aioway._pytrees import KeyEntry, MappingKey, tree_map_only
+from aioway._pytrees import (
+    KeyEntry,
+    MappingKey,
+    is_tensor_container,
+    tree_leaves,
+    tree_map_only,
+)
 from aioway._utils import AnySet, IntArray, any_set, is_list_of
 from aioway.ir.instrs import Instr, InstrList
 from aioway.ir.queries import OrderedIndex, Query
 from aioway.t import BoundArgs, TList, all_real, parse_attr
 
-__all__ = ["TensorRef", "Proc", "TensorIndex", "TensorLifetime"]
+__all__ = ["Proc", "TensorRef", "TensorIndex", "TensorLifetime"]
 
 # The Proc class ====
 
@@ -43,13 +49,15 @@ class Proc[I: Instr = typing.Any]:
         *,
         instrs: cabc.Iterable[I],
         inputs: BoundArgs,
-        outputs: TList,
+        outputs: typing.Any,
     ) -> None:
         if not isinstance(inputs, BoundArgs):
             raise TypeError(f"Inputs should be a `BoundArgs`. Got {type(inputs)=}.")
 
-        if not isinstance(outputs, TList):
-            raise TypeError(f"Outputs should be a `TList`. Got {type(outputs)=}.")
+        if not is_tensor_container(outputs):
+            raise TypeError(
+                f"Outputs must be a container of tensors. Got {type(outputs)=}."
+            )
 
         self._instrs = InstrList.build(instrs)
 
@@ -130,7 +138,7 @@ class Proc[I: Instr = typing.Any]:
         return self._inputs
 
     @property
-    def outputs(self) -> TList:
+    def outputs(self) -> typing.Any:
         return self._outputs
 
     @property
@@ -279,10 +287,18 @@ class TensorIndex[I: Instr = typing.Any]:
         yield from self[tensor].consumers
 
     def _all_tensors(self) -> cabc.Generator[torch.Tensor]:
-        yield from self._proc.inputs.tensors
-        yield from self._proc.outputs
+        yield from self.input_tensors
+        yield from self.output_tensors
 
         yield from _all_thunk_tensors(self._proc.instrs)
+
+    @property
+    def input_tensors(self):
+        return self.proc.inputs.tensors
+
+    @property
+    def output_tensors(self):
+        return tree_leaves(self.proc.outputs)
 
     def _validate_input_output(self) -> None:
         proc = self._proc
@@ -292,12 +308,12 @@ class TensorIndex[I: Instr = typing.Any]:
             if not self[input].is_free:
                 raise ValueError("Input is not a free variable.")
 
-        for output in proc.outputs:
+        for output in self.output_tensors:
             # Output is not produced.
             if output not in self:
                 raise ValueError("Output not discovered.")
 
-        if set(proc.inputs.tensors) & set(proc.outputs):
+        if set(proc.inputs.tensors) & set(self.output_tensors):
             raise ValueError("Inputs are in the outputs. Not allowed yet.")
 
 
@@ -448,7 +464,7 @@ def _used_outside[I: Instr](proc: Proc[I], selected: OrderedIndex) -> TList:
         used |= proc[i].tensor_inputs
 
     # Populate the outputs as it's considered "consumed".
-    used |= proc.outputs
+    used |= TList.deduplicate(proc.tindex.output_tensors)
 
     return used
 

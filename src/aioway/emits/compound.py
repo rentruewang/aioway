@@ -8,9 +8,9 @@ from collections import abc as cabc
 
 from torch import nn
 
-from aioway._pytrees import tree_map_only
+from aioway._pytrees import tree_leaves_typed, tree_map_only
 from aioway._utils import AnyDict, any_dict, render_fcall
-from aioway.t import Sign, tree_leaves_typed
+from aioway.t import Sign
 
 __all__ = ["CompoundBuilder", "BuilderNode", "BuiltModule"]
 
