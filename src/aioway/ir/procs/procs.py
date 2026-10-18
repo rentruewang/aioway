@@ -12,11 +12,7 @@ from collections import abc as cabc
 import numpy as np
 import torch
 
-from aioway._pytrees import (
-    KeyEntry,
-    MappingKey,
-    tree_map_only,
-)
+from aioway._pytrees import KeyEntry, MappingKey, tree_map_only
 from aioway._utils import AnySet, IntArray, any_set, is_list_of
 from aioway.ir.instrs import Instr, InstrList
 from aioway.ir.queries import OrderedIndex, Query
@@ -166,14 +162,14 @@ class Proc[I: Instr = typing.Any]:
 
         instrs = tuple(instrs)
 
-        consumed = TList.empty()
-        produced = TList.empty()
+        consumed = TList()
+        produced = TList()
 
         for instr in instrs:
-            consumed += instr.tensor_inputs
+            consumed |= instr.tensor_inputs
 
             assert produced.isdisjoint(outs := instr.tensor_outputs)
-            produced += outs
+            produced |= outs
 
         return cls(
             instrs=instrs,
@@ -203,7 +199,7 @@ class TensorIndex[I: Instr = typing.Any]:
     def __init__(self, procedure: Proc[I], /) -> None:
         self._proc = procedure
 
-        self._tensors = TList.from_iterable(self._all_tensors())
+        self._tensors = TList.deduplicate(self._all_tensors())
         self._links = _build_tensor_refs(
             procedure.instrs, list(procedure.inputs.tensors)
         )
@@ -442,17 +438,17 @@ def _used_outside[I: Instr](proc: Proc[I], selected: OrderedIndex) -> TList:
         selected: Indices that are selected.
     """
 
-    used = TList.empty()
+    used = TList()
 
     # Only check those that occur after, as this is a DAG.
     for i in range(selected.min() + 1, len(proc)):
         if i in selected:
             continue
 
-        used += proc[i].tensor_inputs
+        used |= proc[i].tensor_inputs
 
     # Populate the outputs as it's considered "consumed".
-    used += proc.outputs
+    used |= proc.outputs
 
     return used
 
@@ -521,17 +517,16 @@ def _select_indices[I: Instr](
 
     selected = prog.instrs[selection.tolist()]
 
-    # Using `TList` as it has fast lookups and ergonomic operations.
-    produced_here = functools.reduce(operator.add, (i.tensor_outputs for i in selected))
+    produced_here = functools.reduce(operator.or_, (i.tensor_outputs for i in selected))
     used_outside = _used_outside(prog, selection)
 
     # Inputs: used by our selected by not produced inside the region.
-    inputs = TList.from_iterable(
+    inputs = TList.deduplicate(
         t for i in selected for t in i.tensor_inputs if t not in produced_here
     )
 
     # Outputs: produced by our selected and used by outside thunks.
-    outputs = TList.from_iterable(
+    outputs = TList.deduplicate(
         t for i in selected for t in i.tensor_outputs if t in used_outside
     )
 
@@ -573,7 +568,7 @@ def _tensor_rplc[I: Instr](
     queried_index = {proc.instrs.index(q) for q in queried.ilist}
 
     # Inputs and outputs are not shared.
-    assert sub_ins.keys().isdisjoint(sub_proc.outputs.keys())
+    assert sub_ins.isdisjoint(sub_proc.outputs)
 
     # Build mapping for replacement.
     in_to_out = {}

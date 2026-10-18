@@ -444,7 +444,7 @@ class BoundArgs(PyTreeDictMixin):
             for tensor in tree_leaves(self.arguments)
             if isinstance(tensor, torch.Tensor)
         ]
-        return TList.from_iterable(tensors)
+        return TList.deduplicate(tensors)
 
     def apply_defaults(self) -> typing.Self:
         copied = copy.copy(self)

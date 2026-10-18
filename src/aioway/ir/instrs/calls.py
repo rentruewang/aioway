@@ -66,12 +66,12 @@ class FuncCall[F: cabc.Callable](Instr):
     @typing.override
     def _inputs(self) -> TList:
         "Get the (unique) dependencies of the current thunk."
-        return TList.from_iterable(find_nested_tensors(self.bounded))
+        return TList.deduplicate(find_nested_tensors(self.bounded))
 
     @typing.override
     def _outputs(self) -> TList:
         "Get the output list of (unique) tensors of the current thunk."
-        return TList.from_iterable(find_nested_tensors(self.result))
+        return TList.deduplicate(find_nested_tensors(self.result))
 
     @property
     def args(self):

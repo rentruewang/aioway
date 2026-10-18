@@ -45,7 +45,7 @@ class TestProgram:
             Proc(
                 instrs=[thunks[0], thunks[0]],
                 inputs=BoundArgs.from_iters(fakes),
-                outputs=TList.from_iterable([thunks[0].result]),
+                outputs=TList.deduplicate([thunks[0].result]),
             )
 
 
