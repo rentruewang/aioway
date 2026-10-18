@@ -2,3 +2,4 @@
 
 from .bases import *
 from .compat import *
+from .funcs import *

@@ -7,12 +7,11 @@ from collections import abc as cabc
 
 from torch import nn
 
-from aioway._pytrees import GetAttrKey
+from aioway._pytrees import GetAttrKey, find_nested_tensors
 from aioway.t import (
     BoundArgs,
     Sign,
     TList,
-    find_nested_tensors,
     render_tensor_func_short,
     replace_tensors_with_attr,
 )

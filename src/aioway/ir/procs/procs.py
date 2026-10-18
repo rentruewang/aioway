@@ -43,7 +43,7 @@ class Proc[I: Instr = typing.Any]:
         *,
         instrs: cabc.Iterable[I],
         inputs: BoundArgs,
-        outputs: TList,
+        outputs: typing.Any,
     ) -> None:
         if not isinstance(inputs, BoundArgs):
             raise TypeError(f"Inputs should be a `BoundArgs`. Got {type(inputs)=}.")
