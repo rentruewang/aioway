@@ -167,7 +167,7 @@ class TList(PyTreeMixin):
     @classmethod
     def _tree_unflatten(cls, children: cabc.Iterable, context) -> typing.Self:
         assert context is None
-        return TList.deduplicate(children)
+        return TList(tuple(children))
 
 
 def _seq_key(idx: int) -> KeyEntry:
