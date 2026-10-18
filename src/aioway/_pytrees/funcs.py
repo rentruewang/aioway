@@ -2,6 +2,7 @@
 
 "Utility functions."
 
+from aioway._pytrees.compat import tree_all
 import typing
 from collections import abc as cabc
 
@@ -101,4 +102,4 @@ def is_tensor_container(obj) -> bool:
     Check if the `obj` given is considered a tensor container.
     """
 
-    return tree_any(lambda x: isinstance(x, torch.Tensor), obj)
+    return tree_all(lambda x: isinstance(x, torch.Tensor), obj)
