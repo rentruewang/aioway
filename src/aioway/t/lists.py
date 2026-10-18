@@ -84,12 +84,14 @@ class TList(PyTreeMixin):
     def __iter__(self) -> cabc.Iterator[torch.Tensor]:
         return iter(self._tensors)
 
+    def __add__(self, other: typing.Self) -> typing.Self:
+        return type(self)(self._tensors + other._tensors)
+
     def __sub__(self, other: typing.Self) -> typing.Self:
         return type(self)([tensor for tensor in self if tensor not in other])
 
     def __or__(self, other: typing.Self) -> typing.Self:
-        joint = [*self, *other]
-        return self.deduplicate(joint)
+        return self.deduplicate(self + other)
 
     def isdisjoint(self, other: TList) -> bool:
         return set(self).isdisjoint(other)
