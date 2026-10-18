@@ -23,7 +23,6 @@ __all__ = [
     "find_nested_tensors",
     "replace_tensors",
     "is_tensor_container",
-    "is_tensor_container_type",
 ]
 
 
@@ -98,19 +97,6 @@ def replace_tensors(
 
     with mode_off():
         return tree_map_memo(obj, maybe_replace)
-
-
-def is_tensor_container_type(cls: type) -> bool:
-    """
-    Check if an instance of `cls` is considered tensor containers.
-    """
-
-    return (
-        False
-        or cls in SUPPORTED_NODES
-        or is_namedtuple_class(cls)
-        or is_structseq_class(cls)
-    )
 
 
 def is_tensor_container(obj) -> bool:
