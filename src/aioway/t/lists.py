@@ -27,7 +27,7 @@ __all__ = ["TList"]
 
 
 @typing.final
-class TList(PyTreeMixin):
+class TList(PyTreeMixin, cabc.Sequence[torch.Tensor]):
     """
     This is an immutable list of tensors, supporting fast lookups.
     It deduplicates the tensors it received.
@@ -51,7 +51,7 @@ class TList(PyTreeMixin):
     def __hash__(self) -> int:
         return hash(self._tensors)
 
-    def __contains__(self, item: object) -> int:
+    def __contains__(self, item: object) -> bool:
         if not isinstance(item, torch.Tensor):
             return False
 
@@ -83,8 +83,18 @@ class TList(PyTreeMixin):
     def __len__(self) -> int:
         return len(self._tensors)
 
-    def __getitem__(self, idx: int) -> torch.Tensor:
-        return self._tensors[idx]
+    @typing.overload
+    def __getitem__(self, i: int) -> torch.Tensor: ...
+    @typing.overload
+    def __getitem__(self, i: slice) -> typing.Self: ...
+    def __getitem__(self, i):
+        if isinstance(i, int):
+            return self._tensors[i]
+
+        if isinstance(i, slice):
+            return type(self)(self._tensors[i])
+
+        raise IndexError(type(i))
 
     def __iter__(self) -> cabc.Iterator[torch.Tensor]:
         return iter(self._tensors)
@@ -101,12 +111,16 @@ class TList(PyTreeMixin):
     def isdisjoint(self, other: TList) -> bool:
         return set(self).isdisjoint(other)
 
-    def index(self, tensor: torch.Tensor) -> int:
+    def index(self, tensor: torch.Tensor, start: int = 0, stop: int = -1, /) -> int:
         "Get the index of the tensor. O(n)."
 
-        for idx, t in enumerate(self._tensors):
-            if tensor is t:
-                return idx
+        start = start % len(self)
+        stop = stop % len(self)
+        for i in range(start, stop):
+            elem = self[i]
+
+            if tensor is elem:
+                return i
 
         raise ValueError("TList.index(tensor): tensor not in list.")
 

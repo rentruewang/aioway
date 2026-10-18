@@ -51,6 +51,9 @@ with fake_mode():
 
 iset = FuncProc.from_instr_list(tracer.thunks)
 
+# For rendering, output doesn't need to be a list.
+iset = FuncProc(instrs=iset.instrs, inputs=iset.inputs, outputs=iset.outputs[0])
+
 # %%
 render_func_proc(iset, "example_program")
 

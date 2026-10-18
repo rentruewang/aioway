@@ -4,6 +4,7 @@ import dataclasses as dcls
 import functools
 import itertools
 import typing
+from collections import abc as cabc
 
 import jinja2 as j2
 import loguru as L
@@ -14,7 +15,7 @@ from aioway._pytrees import keystr, tree_flatten_with_path, tree_map_only
 from aioway._utils import AnyDict, any_dict, render_fcall
 from aioway.ir.instrs import FuncCall
 from aioway.ir.procs import FuncProc
-from aioway.t import BoundArgs, Sign, render_torch_func_name
+from aioway.t import Sign, render_torch_func_name
 
 __all__ = ["CodeRender", "render_func_proc"]
 
@@ -63,22 +64,13 @@ class StatelessCodePrint:
             self.step(idx, instr)
 
         L.logger.debug("Preparing the output.")
-        outputs = [self.name(var) for var in self.proc.outputs]
-        returns = outputs[0] if len(outputs) == 1 else f"[{', '.join(outputs)}]"
 
         return _FuncRender(
             name=self._func_name,
             params=self._renamed_signature(),
             lines=self._steps,
-            returns=returns,
+            returns=self._render_return_obj_init(),
         )
-
-    def bind(self, inputs: BoundArgs, bound: BoundArgs) -> None:
-        assert inputs.sign == bound.sign
-
-        for i, a in zip(inputs.values(), bound.values()):
-            self._vars[i] = a
-            self._index_sub_attr(i)
 
     def step(self, idx: int, instr: FuncCall) -> None:
         # Rerun is not permitted.
@@ -97,6 +89,53 @@ class StatelessCodePrint:
     @property
     def proc(self) -> FuncProc:
         return self._proc
+
+    def _render_return_obj_init(self) -> str:
+        # No pytree decomposition because some values we want may be decomposed.
+        # E.g. mapping will not show up if we use pytree.
+        def render(obj) -> str:
+            # If the object is named, stop decomposing.
+            try:
+                return self.name(obj)
+            except KeyError:
+                pass
+
+            # Tensors must be input or indexed already.
+            if isinstance(obj, torch.Tensor):
+                return self.name(obj)
+
+            if isinstance(obj, cabc.Mapping):
+                builder = ["{"]
+                for key, val in obj.items():
+                    render_val = render(val)
+                    builder.append(f"{key!r}:{render_val}")
+                    builder.append(",")
+
+                # Drop the `,`, but be careful about empty dicts.
+                if len(builder) > 1:
+                    assert builder[-1] == ","
+                    builder.pop()
+                builder.append("}")
+                return "".join(builder)
+
+            if isinstance(obj, cabc.Set):
+                body = ", ".join(render(elem) for elem in obj)
+                return "{" + body + "}"
+
+            if isinstance(obj, cabc.Sequence):
+                body = ", ".join(render(elem) for elem in obj)
+                return "[" + body + "]"
+
+            if dcls.is_dataclass(obj):
+                obj_type = type(obj).__name__
+                fields = dcls.fields(obj)
+                body = ",".join(f"{f.name}={getattr(obj,f.name)}" for f in fields)
+                return obj_type + "(" + body + ")"
+
+            # Default, I give up trying.
+            return repr(obj)
+
+        return render(self.proc.outputs)
 
     def _renamed_signature(self) -> Sign:
         # Get the original inputs (with symbolic data), and find out their new names.
