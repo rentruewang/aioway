@@ -183,8 +183,13 @@ def _seq_key(idx: int) -> KeyEntry:
 
 @dcls.dataclass(frozen=True)
 class FakeNess:
+    "The fakeness of a list of tensors."
+
     all_fake: bool
+    "All of them is fake."
+
     has_fake: bool
+    "Some of them is fake."
 
     @property
     def all_real(self) -> bool:
