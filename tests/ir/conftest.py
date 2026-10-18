@@ -40,5 +40,5 @@ def dag(thunks, fakes) -> Proc:
     return Proc(
         instrs=thunks,
         inputs=BoundArgs.from_iters(fakes),
-        outputs=TList.from_iterable([thunks[-1].result]),
+        outputs=TList.deduplicate([thunks[-1].result]),
     )

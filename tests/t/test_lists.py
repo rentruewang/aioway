@@ -29,7 +29,7 @@ def y() -> torch.Tensor:
 
 @pytest.fixture
 def tlist(x, y) -> TList:
-    return TList.from_iterable([x, y])
+    return TList.deduplicate([x, y])
 
 
 def test_tlist_len(tlist: TList):
@@ -37,12 +37,12 @@ def test_tlist_len(tlist: TList):
 
 
 def test_tlist_dedup(x):
-    assert len(TList.from_iterable([x, x])) == 1
+    assert len(TList.deduplicate([x, x])) == 1
 
 
 def test_tlist_contains(tlist: TList, x, y):
     assert x in tlist
-    assert id(y) in tlist
+    assert y in tlist
     assert _make_fake() not in tlist
     assert "x" not in tlist
 
@@ -57,7 +57,7 @@ def test_tlist_iter(tlist: TList, x, y):
 
 def test_tlist_index(tlist: TList, x, y):
     assert tlist[tlist.index(x)] is x
-    assert tlist[tlist.index(id(y))] is y
+    assert tlist[tlist.index(y)] is y
 
 
 def test_tlist_index_missing(tlist: TList):
@@ -66,8 +66,8 @@ def test_tlist_index_missing(tlist: TList):
 
 
 def test_tlist_order_dependent(x, y):
-    assert TList.from_iterable([x, y]) != TList.from_iterable([y, x])
-    assert hash(TList.from_iterable([x, y])) != hash(TList.from_iterable([y, x]))
+    assert TList.deduplicate([x, y]) != TList.deduplicate([y, x])
+    assert hash(TList.deduplicate([x, y])) != hash(TList.deduplicate([y, x]))
 
 
 def test_tlist_fake_check_all(tlist: TList):
@@ -76,7 +76,7 @@ def test_tlist_fake_check_all(tlist: TList):
 
 
 def test_tlist_fake_check_mixed(x):
-    mixed = TList.from_iterable([x, _make_real()])
+    mixed = TList.deduplicate([x, _make_real()])
 
     assert mixed.any_fake
     assert not mixed.all_fake
