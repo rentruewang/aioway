@@ -3,8 +3,8 @@
 import pytest
 from torch import nn
 
-from aioway.emits import emit_one
-from aioway.emits.convs import ImageRegressorEmitter
+from aioway.ir import emit_one
+from aioway.ir.emits.convs import ImageRegressorEmitter
 from aioway.t import (
     Shape,
     TSpec,
