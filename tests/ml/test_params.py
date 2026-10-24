@@ -3,7 +3,7 @@
 import torch
 from torch import nn, optim
 
-from aioway.fits import index_module_params, index_optim_params
+from aioway.ml import index_module_params, index_optim_params
 
 
 def test_index_optim_params():
