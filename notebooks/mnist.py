@@ -23,9 +23,9 @@ from torch.utils import data as dutils
 from torchrl.data import tensor_specs as tspecs
 
 from aioway.contrib.mnist import MnistDataset
-from aioway.em import StaticTrainer, TrainCfg
 from aioway.io import DatasetIdxDset, Dset, InputTarget
 from aioway.ir import ClfLogitHead, linear_regression
+from aioway.ml import StaticTrainer, TrainCfg
 from aioway.t import as_tspec
 
 
