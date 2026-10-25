@@ -13,7 +13,6 @@ from torch import nn, optim
 from torch.utils import data as dutils
 from torchrl.data import tensor_specs as tspecs
 
-from aioway._thunks import Thunk
 from aioway._utils import FloatArray
 from aioway.io import Dset, InputTarget, InputTargetLikeDset
 from aioway.t import TSpecLike
@@ -22,7 +21,6 @@ if typing.TYPE_CHECKING:
     import lightning as L
 
 __all__ = [
-    "Step",
     "ValidateStep",
     "TrainStep",
     "IncSkLearnStep",
@@ -248,24 +246,6 @@ class StaticTrainer:
         return IterableBatchIter(loader, dataset.__tspec__())
 
 
-class Step[T](Thunk[T], abc.ABC):
-    """
-    The training step function. Invoking the `Step` updates the modules.
-
-    Since the concept of stepping as computation is more or less the same,
-    but not the data, data is stored in `Step` subclass's attributes,
-    to maintain a consistent API across multiple different types of steps.
-    """
-
-    @abc.abstractmethod
-    def __call__(self) -> T:
-        """
-        Perform the stepping.
-        """
-
-        raise NotImplementedError
-
-
 class LossFunc[I, T](typing.Protocol):
     """
     A loss function should have the format (input, target) -> loss.
@@ -285,7 +265,7 @@ class PredLossPair[O](typing.NamedTuple):
 
 
 @dcls.dataclass(frozen=True)
-class ValidateStep[I, T](Step[PredLossPair]):
+class ValidateStep[I, T]:
     module: nn.Module
     "The module to validate."
 
@@ -298,7 +278,6 @@ class ValidateStep[I, T](Step[PredLossPair]):
     target: T
     "The target label."
 
-    @typing.override
     def __call__(self) -> PredLossPair:
         pred = self.module(self.input)
         loss = self.loss_func(pred, self.target)
@@ -306,12 +285,14 @@ class ValidateStep[I, T](Step[PredLossPair]):
 
 
 @dcls.dataclass(frozen=True)
-class TrainStep(Step[PredLossPair]):
+class TrainStep:
     """
     A supervised training step has input and target.
     """
 
     validate: ValidateStep
+    "The validator."
+
     optimizer: optim.Optimizer
     "The optimizer with the parameters."
 
@@ -359,7 +340,7 @@ class IncSkLearn(typing.Protocol):
     def transform(self, x: FloatArray, /) -> typing.Any: ...
 
 
-class IncSkLearnStep(Step[FloatArray]):
+class IncSkLearnStep:
     algo: IncSkLearn
     "The algorithm that supports partial fitting."
 
