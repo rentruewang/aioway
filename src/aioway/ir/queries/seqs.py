@@ -36,7 +36,8 @@ class SequentialQuery[I: Instr = typing.Any](Query[I]):
     key: cabc.Callable[[I], typing.Any]
     "Gets the value to match from an instr, e.g. `lambda thunk: thunk.func`."
 
-    def __call__(self, program: Proc[I], /) -> OrderedIndex:
+    @typing.override
+    def _find(self, program: Proc[I], /) -> OrderedIndex:
         # Try every end, walking back from it. The first few steps can't end
         # a chain, as it needs `len(pattern) - 1` steps before its end.
         # A partial match that fails just moves on to the next.

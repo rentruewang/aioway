@@ -5,37 +5,42 @@
 import abc
 import typing
 
-from aioway.ir import NnProc
+from aioway.ir import Proc
+from aioway.ir.queries import Query
 
-__all__ = ["Rewriter"]
+__all__ = ["Rewriter", "RewriteRule"]
 
 
-class Rewriter(abc.ABC):
-    """
-    The rewriter rewrites an `Instr` into another.
-    """
-
-    @typing.no_type_check
-    def __call__(self, module: NnProc) -> NnProc:
-        if not self.handle(module):
-            return NotImplemented
-
-        return self.rewrite(module)
-
+class RewriteRule[P: Proc = typing.Any](typing.Protocol):
     @abc.abstractmethod
-    def handle(self, module: NnProc, /) -> bool:
+    def map(self, proc: P, /) -> P:
+        "Transforms from a matched `Proc` to another."
+        ...
+
+    @property
+    def query(self) -> Query:
+        "The queries that matches the subgraph to rewrite."
+        ...
+
+
+@typing.final
+class Rewriter[P: Proc = typing.Any]:
+    """
+    The rewriter rewrites a part of `Proc` to another.
+    """
+
+    rule: RewriteRule[P]
+    "The underlying rule."
+
+    def __call__(self, proc: P, /) -> P:
         """
-        Check whether the `Rewriter` handles the module or not.
+        Match the subgraph, then rewrite it with the rule given.
+
+        A `QueryError` would be raised if querying failed.
         """
 
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def rewrite(self, module: typing.Any, /) -> NnProc:
-        """
-        Perform the rewrite. Should not modify the input module.
-
-        This shall not raise an exception, as it assumes input is valid.
-        """
-
-        raise NotImplementedError
+        proc = proc.copy()
+        matched: typing.Any = proc[self.rule.query]
+        sub = self.rule.map(matched)
+        proc[self.rule.query] = sub
+        return proc

@@ -15,14 +15,38 @@ from aioway.ir.instrs import Instr
 if typing.TYPE_CHECKING:
     from aioway.ir import Proc
 
-__all__ = ["Query", "OrderedIndex", "IndexQuery"]
+__all__ = ["Query", "QueryError", "OrderedIndex", "IndexQuery"]
 
 type _OrderedIndexLike = OrderedIndex | list[int] | IntArray
 
 
+class QueryError(IndexError):
+    """
+    The error type that would be raised if no match is found.
+    """
+
+
 class Query[I: Instr = typing.Any](abc.ABC):
-    @abc.abstractmethod
+    """
+    The base class for querying.
+    """
+
+    @typing.final
     def __call__(self, proc: Proc[I], /) -> OrderedIndex:
+        try:
+            return self._find(proc)
+        except Exception as e:
+            raise QueryError from e
+
+    @abc.abstractmethod
+    def _find(self, proc: Proc[I], /) -> OrderedIndex:
+        """
+        The implementation for `__call__` that handles generating the indices.
+
+        Raise an exception (`Exception` subclass) if the state is invalid,
+        which would be re-raised by `__call__` into a `QueryError`.
+        """
+
         raise NotImplementedError
 
 
@@ -146,7 +170,7 @@ class IndexQuery(Query):
     """
 
     @typing.override
-    def __call__(self, prog: Proc, /) -> OrderedIndex:
+    def _find(self, prog: Proc, /) -> OrderedIndex:
         idx: IntArray = np.asarray(self.indices)
 
         if (idx < 0).any():
