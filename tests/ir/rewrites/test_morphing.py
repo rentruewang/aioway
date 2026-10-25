@@ -190,38 +190,10 @@ def test_no_match():
         by_type(nn.Linear, nn.Tanh)(proc)
 
 
-# Rewriting with `NetMorphLinearSeqDeeper` ====
-
-
-def test_netmorph_handles():
-    proc = trace(Net(nn.ReLU()), 2, 3)
-
-    assert NetMorphLinearSeqDeeper().handle(proc)
-
-
-def test_netmorph_no_match():
-    proc = trace(Net(nn.Tanh()), 2, 3)
-
-    assert not NetMorphLinearSeqDeeper().handle(proc)
-
-
-def test_netmorph_skips_shared_intermediate():
-    proc = trace(SideOutput(), 2, 4)
-
-    assert not NetMorphLinearSeqDeeper().handle(proc)
-
-
-def test_netmorph_skips_shape_change():
-    # The middle `Linear(4, 8)` changes the width.
-    proc = trace(nn.Sequential(nn.Linear(3, 4), nn.Linear(4, 8), nn.Linear(8, 4)), 2, 3)
-
-    assert not NetMorphLinearSeqDeeper(middle=(nn.Linear,)).handle(proc)
-
-
 def test_netmorph_rewrite():
     proc = trace(Net(nn.ReLU()), 2, 3)
 
-    result = NetMorphLinearSeqDeeper().rewrite(proc)
+    result = NetMorphLinearSeqDeeper().map(proc)
 
     assert types(result) == [
         nn.Linear,
@@ -240,7 +212,7 @@ def test_netmorph_rewrite():
 def test_netmorph_rewrite_longer_middle():
     proc = trace(Net(nn.LayerNorm(8), nn.ReLU()), 2, 3)
 
-    result = NetMorphLinearSeqDeeper(middle=(nn.LayerNorm, nn.ReLU)).rewrite(proc)
+    result = NetMorphLinearSeqDeeper(middle=(nn.LayerNorm, nn.ReLU)).map(proc)
 
     assert types(result) == [
         nn.Linear,
@@ -258,7 +230,7 @@ def test_netmorph_rewrite_longer_middle():
 def test_netmorph_rewrite_keeps_io():
     proc = trace(Net(nn.ReLU()), 2, 3)
 
-    result = NetMorphLinearSeqDeeper().rewrite(proc)
+    result = NetMorphLinearSeqDeeper().map(proc)
 
     assert result.inputs.tensors == list(proc.inputs.values())
     assert result.outputs == list(proc.outputs)
@@ -268,6 +240,6 @@ def test_netmorph_rewrite_keeps_original():
     proc = trace(Net(nn.ReLU()), 2, 3)
     before = modules(proc)
 
-    NetMorphLinearSeqDeeper().rewrite(proc)
+    NetMorphLinearSeqDeeper().map(proc)
 
     assert modules(proc) == before

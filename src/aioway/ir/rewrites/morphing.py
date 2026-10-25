@@ -3,21 +3,24 @@
 "`NetMorphLinearDeeper` on traced programs instead of `nn.Sequential`."
 
 import dataclasses as dcls
+import typing
 
 import torch
-from IPython.core.guarded_eval import typing
 from torch import nn
 
-from aioway.ir import ModuleCall, NnProc, TypeSequential, track_module_thunks
+from aioway.ir.modules import ModuleCall, track_module_thunks
+from aioway.ir.procs import NnProc, Proc
+from aioway.ir.queries import Query, TypeSequential
+from aioway.ir.queries.queries import OrderedIndex
 from aioway.t import fake_mode
 
-from .rewrites import Rewriter
+from .rewrites import RewriteRule
 
 __all__ = ["NetMorphLinearSeqDeeper"]
 
 
 @dcls.dataclass(frozen=True)
-class NetMorphLinearSeqDeeper(Rewriter):
+class NetMorphLinearSeqDeeper(RewriteRule):
     """
     Deepens `Linear -> *middle -> Linear` in an `NnProc` into
     `Linear -> *middle -> identity Linear -> *middle -> Linear`.
@@ -30,28 +33,12 @@ class NetMorphLinearSeqDeeper(Rewriter):
     middle: tuple[type[nn.Module], ...] = (nn.ReLU,)
     "Types of the modules between the two `nn.Linear`, in order."
 
-    def __post_init__(self) -> None:
-        if not self.middle:
-            raise ValueError("Middle is empty.")
-
-    @typing.override
-    def handle(self, proc: NnProc) -> bool:
-        try:
-            sub = proc[self.part]
-        except LookupError:
-            return False
-
-        first, *_, last = _modules(sub)
-
-        # Only the last output may leave the part, and the middle keeps the shape.
-        return len(sub.outputs) == 1 and first.out_features == last.in_features
-
-    def rewrite(self, proc: NnProc) -> NnProc:
+    def map(self, proc: NnProc) -> NnProc:
         "A copy of `proc` with the first match deepened. Check `handle` first."
 
         result = proc.copy()
-        queried = proc[self.part]
-        result[self.part] = self._build_deeper_net(queried)
+        queried = proc[self.query]
+        result[self.query] = self._build_deeper_net(queried)
         return result
 
     def _build_deeper_net(self, sub: NnProc) -> NnProc:
@@ -71,8 +58,32 @@ class NetMorphLinearSeqDeeper(Rewriter):
         return hist.procedure
 
     @property
-    def part(self) -> TypeSequential[ModuleCall]:
-        pattern = nn.Linear, *self.middle, nn.Linear
+    def query(self) -> _DeeperQuery:
+        return _DeeperQuery(self)
+
+
+@dcls.dataclass(frozen=True)
+class _DeeperQuery(Query[ModuleCall]):
+    "The custom query that only matches modules between `nn.Linear`s."
+
+    deeper: NetMorphLinearSeqDeeper
+
+    @typing.override
+    def _find(self, proc: Proc[ModuleCall]) -> OrderedIndex:
+        indices = self.query(proc)
+        sub = proc[indices]
+
+        first, *_, last = _modules(sub)
+
+        # Only the last output may leave the part, and the middle keeps the shape.
+        assert len(sub.outputs) == 1
+        assert first.out_features == last.in_features
+
+        return indices
+
+    @property
+    def query(self) -> TypeSequential[ModuleCall]:
+        pattern = nn.Linear, *self.deeper.middle, nn.Linear
         return TypeSequential(pattern, key=lambda call: call.func)
 
 
@@ -82,7 +93,7 @@ class _SequentialDecomosed(typing.NamedTuple):
     last: nn.Linear
 
 
-def _modules(proc: NnProc) -> _SequentialDecomosed:
+def _modules(proc: Proc[ModuleCall]) -> _SequentialDecomosed:
     first, *middle, last = [call.func for call in proc]
     assert isinstance(first, nn.Linear)
     assert isinstance(last, nn.Linear)
