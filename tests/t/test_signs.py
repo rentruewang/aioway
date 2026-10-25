@@ -7,7 +7,11 @@ import pytest
 import torch
 from torch import nn
 
-from aioway._pytrees import (
+from aioway.t import (
+    BoundArgs,
+    Param,
+    ParamKind,
+    Sign,
     keystr,
     tree_flatten,
     tree_flatten_with_path,
@@ -15,7 +19,6 @@ from aioway._pytrees import (
     tree_structure,
     tree_unflatten,
 )
-from aioway.t import BoundArgs, Param, ParamKind, Sign
 
 
 def _add_i(a: int, b: int) -> int:

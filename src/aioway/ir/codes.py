@@ -11,11 +11,16 @@ import loguru as L
 import torch
 from rich import syntax
 
-from aioway._pytrees import keystr, tree_flatten_with_path, tree_map_only
 from aioway._utils import AnyDict, any_dict, render_fcall
 from aioway.ir.instrs import FuncCall
 from aioway.ir.procs import FuncProc
-from aioway.t import Sign, render_torch_func_name
+from aioway.t import (
+    Sign,
+    keystr,
+    render_torch_func_name,
+    tree_flatten_with_path,
+    tree_map_only,
+)
 
 __all__ = ["CodeRender", "render_func_proc"]
 

@@ -5,9 +5,9 @@
 import typing
 from collections import abc as cabc
 
-from aioway._pytrees import replace_tensors
 from aioway._utils import render_fcall
 from aioway.t._utils import render_torch_func_name
+from aioway.t.pytrees import replace_tensors
 
 from .attrs import parse_attr
 
