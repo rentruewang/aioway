@@ -10,7 +10,9 @@ from torchrl.data import tensor_specs as tspecs
 from aioway.t import TSpec
 
 
-class TaskType(enum.StrEnum):
+class FitType(enum.StrEnum):
+    "The type of fitting to use."
+
     REGRESSION = "regression"
     "Where the output is a floating vector."
 

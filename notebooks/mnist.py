@@ -23,9 +23,9 @@ from torch.utils import data as dutils
 from torchrl.data import tensor_specs as tspecs
 
 from aioway.contrib.mnist import MnistDataset
-from aioway.em import StaticTrainer, TrainCfg
 from aioway.io import DatasetIdxDset, Dset, InputTarget
 from aioway.ir import ClfLogitHead, linear_regression
+from aioway.ml import StaticTrainer, TrainCfg
 from aioway.t import as_tspec
 
 
@@ -76,9 +76,9 @@ def main(batch_size: int):
     cfg = TrainCfg(batch_size=batch_size, fabric=fabric)
     trainer = StaticTrainer(cfg, module, optimizer, loss_func)
 
-    for pred in trainer.train_dataset_epoch(train_dset):
+    for pred in trainer.train_dataset_epoch(train_dset, module):
         print(pred.loss)
-    for pred in trainer.validate_dataset_epoch(test_dset):
+    for pred in trainer.validate_dataset_epoch(test_dset, module):
         print(pred.loss)
 
 
