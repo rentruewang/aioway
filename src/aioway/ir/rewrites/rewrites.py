@@ -11,9 +11,6 @@ from aioway.ir.queries import Query
 __all__ = ["Rewriter", "RewriteRule"]
 
 
-_REWRITE_RULES: set[RewriteRule] = set()
-
-
 class RewriteRule[P: Proc = typing.Any](typing.Protocol):
     @abc.abstractmethod
     def map(self, proc: P, /) -> P:
@@ -33,6 +30,7 @@ class Rewriter[P: Proc = typing.Any]:
     """
 
     rule: RewriteRule[P]
+    "The underlying rule."
 
     def __call__(self, proc: P, /) -> P:
         """
