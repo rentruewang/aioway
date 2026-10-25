@@ -102,6 +102,7 @@ class LoopState:
 
 
 type NnInput = torch.Tensor | td.TensorClass | td.TensorDict
+type TensorPair = tuple[torch.Tensor, torch.Tensor]
 
 
 class BatchIter[T: NnInput = typing.Any](typing.Protocol):
@@ -169,19 +170,19 @@ class StaticTrainer:
         self._loss_func = loss_func
 
     def train_dataset_epoch(
-        self, dataset: InputTargetLikeDset
+        self, dataset: InputTargetLikeDset, module: nn.Module
     ) -> cabc.Generator[PredLossPair]:
         iterable = self._data_loader(dataset)
-        yield from self.train_epoch(iterable)
+        yield from self.train_epoch(iterable, module)
 
-    def train_epoch(self, batch_iter: BatchIter[InputTarget]):
+    def train_epoch(self, batch_iter: BatchIter[InputTarget], module: nn.Module):
         for pair in batch_iter:
             x, y = pair.input, pair.target
             assert isinstance(x, torch.Tensor)
             assert isinstance(y, torch.Tensor)
 
             try:
-                inferred = self.train_step(x, y)
+                inferred = self.train_step((x, y), module)
             except TerminateTraining as tt:
                 yield tt.value
                 return
@@ -189,33 +190,34 @@ class StaticTrainer:
                 yield inferred
 
     def validate_dataset_epoch(
-        self, dataset: InputTargetLikeDset
+        self, dataset: InputTargetLikeDset, module: nn.Module
     ) -> cabc.Generator[PredLossPair]:
         iterable = self._data_loader(dataset)
-        yield from self.validate_epoch(iterable)
+        yield from self.validate_epoch(iterable, module)
 
-    def validate_epoch(self, batch_iter: BatchIter[InputTarget]):
+    def validate_epoch(self, batch_iter: BatchIter[InputTarget], module: nn.Module):
         for pair in batch_iter:
             x, y = pair.input, pair.target
             assert isinstance(x, torch.Tensor)
             assert isinstance(y, torch.Tensor)
-            inferred = self.infer_step(x, y)
+            inferred = self.infer_step((x, y), module)
             yield inferred
 
-    def train_step(self, x: torch.Tensor, y: torch.Tensor) -> PredLossPair:
+    def train_step(self, xy: TensorPair, module: nn.Module) -> PredLossPair:
         "Train a module in a static (non interactive) manner."
 
         stepper = TrainStep(
-            ValidateStep(self.module, self.loss_func, x, y),
+            ValidateStep(self.loss_func),
             self.optimizer,
             self.cfg.fabric,
             max_norm=self.cfg.max_grad_norm,
         )
-        return stepper()
+        return stepper(xy, self.module)
 
-    def infer_step(self, x: torch.Tensor, y: torch.Tensor) -> PredLossPair:
-        validator = ValidateStep(self.module, self.loss_func, x, y)
-        return validator()
+    def infer_step(self, xy: TensorPair, module: nn.Module) -> PredLossPair:
+        x, y = xy
+        validator = ValidateStep(self.loss_func)
+        return validator(xy, module)
 
     @property
     def cfg(self) -> TrainCfg:
@@ -266,31 +268,24 @@ class PredLossPair[O](typing.NamedTuple):
 
 @dcls.dataclass(frozen=True)
 class ValidateStep[I, T]:
-    module: nn.Module
-    "The module to validate."
 
     loss_func: LossFunc
     "The loss function to compute the losses."
 
-    input: I
-    "The input data."
-
-    target: T
-    "The target label."
-
-    def __call__(self) -> PredLossPair:
-        pred = self.module(self.input)
-        loss = self.loss_func(pred, self.target)
+    def __call__(self, batch: tuple[I, T], module: nn.Module) -> PredLossPair:
+        input, target = batch
+        pred = module(input)
+        loss = self.loss_func(pred, target)
         return PredLossPair(pred, loss)
 
 
 @dcls.dataclass(frozen=True)
-class TrainStep:
+class TrainStep[I, T]:
     """
     A supervised training step has input and target.
     """
 
-    validate: ValidateStep
+    validate: ValidateStep[I, T]
     "The validator."
 
     optimizer: optim.Optimizer
@@ -302,14 +297,14 @@ class TrainStep:
     max_norm: float | None = None
     "The maximum norm."
 
-    def __call__(self) -> PredLossPair:
+    def __call__(self, batch: tuple[I, T], module: nn.Module) -> PredLossPair:
         "Train a module in a static (non interactive) manner."
 
-        inferred = self.validate()
+        inferred = self.validate(batch, module)
 
         self.optimizer.zero_grad()
         self.backward(inferred.loss)
-        self.clip_gradients()
+        self.clip_gradients(module)
         self.optimizer.step()
 
         return inferred
@@ -317,17 +312,11 @@ class TrainStep:
     def backward(self, loss: torch.Tensor) -> None:
         self.fabric.backward(loss)
 
-    def clip_gradients(self) -> None:
+    def clip_gradients(self, module: nn.Module) -> None:
         if self.max_norm is None:
             return
 
-        self.fabric.clip_gradients(self.module, self.optimizer, max_norm=self.max_norm)
-
-    @property
-    def module(self) -> nn.Module:
-        "The module to train."
-
-        return self.validate.module
+        self.fabric.clip_gradients(module, self.optimizer, max_norm=self.max_norm)
 
 
 class IncSkLearn(typing.Protocol):
