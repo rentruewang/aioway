@@ -14,9 +14,9 @@ from collections import abc as cabc
 import torch
 from torch import nn, overrides
 
-from aioway._pytrees import MappingKey, PyTreeDictMixin, tree_leaves
 from aioway._utils import is_any_type_hint, is_nn_type
 from aioway.t.lists import TList
+from aioway.t.pytrees import MappingKey, PyTreeDictMixin, tree_leaves
 
 from .guards import is_torch_function
 

@@ -6,7 +6,7 @@ import torch
 from numpy import typing as npt
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.t import DeviceLike, DTypeLike, ShapeLike
+from aioway.t.attrs import DeviceLike, DTypeLike, ShapeLike
 
 from ._utils import exec_if_not_none, parse_device, parse_dtype, parse_shape
 

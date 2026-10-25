@@ -7,7 +7,7 @@ import typing
 import torch
 from torch._subclasses import fake_tensor as ft
 
-from aioway._pytrees import tree_leaves, tree_map_only
+from aioway.t.pytrees import tree_leaves, tree_map_only
 
 from .contexts import fake_mode
 

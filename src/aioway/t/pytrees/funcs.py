@@ -7,12 +7,9 @@ from collections import abc as cabc
 
 import torch
 
-from aioway._pytrees import (
-    tree_leaves,
-    tree_map,
-)
-from aioway._pytrees.compat import tree_all
 from aioway._utils import AnyDict, any_dict
+
+from .compat import tree_all, tree_leaves, tree_map
 
 __all__ = [
     "tree_leaves_typed",

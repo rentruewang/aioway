@@ -3,9 +3,8 @@
 import torch
 from torch import nn
 
-from aioway._pytrees import tree_map_only
 from aioway.ir.instrs import FuncCall, ModuleCall
-from aioway.t import is_fake_tensor, parse_attr
+from aioway.t import is_fake_tensor, parse_attr, tree_map_only
 
 from .procs import Proc
 

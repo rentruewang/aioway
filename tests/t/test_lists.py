@@ -3,9 +3,8 @@
 import pytest
 import torch
 
-from aioway._pytrees import tree_flatten, tree_unflatten
 from aioway._utils import is_list_of
-from aioway.t import TList, fake_mode
+from aioway.t import TList, fake_mode, tree_flatten, tree_unflatten
 
 
 def _make_fake() -> torch.Tensor:

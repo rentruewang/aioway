@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"Tests for `aioway._pytrees` and the pytree mixins."
+"Tests for `aioway.t` and the pytree mixins."
 
 import dataclasses as dcls
 
@@ -8,7 +8,7 @@ import pytest
 import torch
 from torch.utils import _pytree
 
-from aioway._pytrees import (
+from aioway.t import (
     SUPPORTED_NODES,
     MappingKey,
     PyTreeDataclassMixin,
