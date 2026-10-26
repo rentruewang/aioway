@@ -10,7 +10,11 @@ from torch import nn
 
 from aioway._utils import AnyDict, Stack, any_dict
 from aioway.ir import InstrList
-from aioway.t import register_module_forward_hook, register_module_forward_pre_hook
+from aioway.t import (
+    register_module_forward_hook,
+    register_module_forward_pre_hook,
+    clone_fake_tensor,
+)
 
 from .instrs import ModuleCall
 from .procs import NnProc
@@ -133,15 +137,15 @@ class ModuleTracker:
         if not _is_leaf_module(module):
             return
 
-        self.hist.append(
-            ModuleCall(
-                func=module,
-                args=input,
-                kwargs={},
-                result=output,
-                parents=tuple(module for module, _ in self.stack),
-            )
+        call = ModuleCall(
+            func=module,
+            args=input,
+            kwargs={},
+            result=clone_fake_tensor(output),
+            parents=tuple(module for module, _ in self.stack),
         )
+
+        self.hist.append(call)
 
     def _fwd_post_stack(self, module: nn.Module, input):
         module_input = self.stack.top()

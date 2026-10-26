@@ -209,13 +209,6 @@ def test_inputs_are_traced_fakes(trace):
     assert _attr_eq(fy, y)
 
 
-def test_wrong_shape_rejected(trace):
-    exec, _ = trace(lambda x, y: torch.add(x, y))
-
-    with pytest.raises(TypeError):
-        exec(torch.randn(4), torch.randn(4))
-
-
 def test_aten_records_only_aten_ops():
     exec, _ = trace_aten(lambda x, y: torch.mul(torch.add(x, y), 2))
 

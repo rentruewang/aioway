@@ -1,6 +1,8 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from aioway.t import route_aten_thunk
+from aioway.t import clone_in_fake_mode
+from aioway.t import clone_fake_tensor
+from aioway.t import route_aten_mode
 import enum
 
 from torch import nn
@@ -19,13 +21,18 @@ def module_tspec_to_proc(module: nn.Module, *tspecs: TSpecLike) -> NnProc:
     This makes migration from `emit -> nn.Module` to `emit -> NnProc` easier.
     """
 
-    with track_module_thunks() as thunks, fake_mode(), route_aten_thunk.activate():
+    with (
+        fake_mode(),
+        track_module_thunks() as thunks,
+        route_aten_mode.activate(),
+        clone_in_fake_mode.activate(),
+    ):
         with set_batch_size(1):
             inputs = tuple(sample_from_tspec(as_tspec(t)) for t in tspecs)
 
         _ = module(*inputs)
 
-    return thunks.procedure
+        return thunks.procedure
 
 
 class Activation(enum.StrEnum):

@@ -17,13 +17,13 @@ import contextlib as ctxl
 # %%
 import torch
 
-from aioway.t import PrintTorchDisp, PrintTorchFunc, fake_mode, route_aten_thunk
+from aioway.t import PrintTorchDisp, PrintTorchFunc, fake_mode, route_aten_mode
 
 
 # %%
 @ctxl.contextmanager
 def track_torch_fake_thunks():
-    with fake_mode(), route_aten_thunk.activate():
+    with fake_mode(), route_aten_mode.activate():
         yield
 
 

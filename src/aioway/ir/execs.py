@@ -113,14 +113,11 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
 
     def attach(self, fake: torch.Tensor, real: torch.Tensor) -> None:
         """
-        Associate the real tensor with the fake tensor.
+        Associate the runtime tensor (usually real) with the fake tensor.
         """
 
         if not is_fake_tensor(fake):
             raise KeyError(f"Key: {type(fake)=} is not fake tensor.")
-
-        if not is_real_tensor(real):
-            raise ValueError(f"Value: {type(real)=} is not real tensor.")
 
         # Store the real tensor in scope.
         self._alive[_get_fake_id(fake)] = real

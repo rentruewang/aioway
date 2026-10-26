@@ -19,7 +19,7 @@ __all__ = [
     "is_fake_tensor",
     "is_real_tensor",
     "to_fake",
-    "clone_fake",
+    "clone_fake_tensor",
 ]
 
 
@@ -71,7 +71,7 @@ def is_real_tensor(item) -> bool:
     return isinstance(item, torch.Tensor) and not is_fake_tensor(item)
 
 
-def clone_fake[T](item: T) -> T:
+def clone_fake_tensor[T](item: T) -> T:
     """
     Call `.clone()` on `torch` / `tensordict` fake values.
 

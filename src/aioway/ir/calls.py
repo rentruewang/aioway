@@ -12,7 +12,7 @@ from aioway.t import (
     is_aten_op,
     is_tensor_method,
     is_torch_function,
-    route_aten_thunk,
+    route_aten_mode,
 )
 
 from .execs import Exec
@@ -95,5 +95,5 @@ def fake_aten_dag():
 
     dag = _AtenDag()
 
-    with fake_mode(), route_aten_thunk.activate(), dag.activate():
+    with fake_mode(), route_aten_mode.activate(), dag.activate():
         yield dag

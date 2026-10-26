@@ -14,6 +14,7 @@ from .aten import AtenThunk
 from .attrs import replace_tensors_with_attr
 from .overrides import (
     TorchDispMode,
+    clone_fake_tensor,
     TorchDispThunk,
     TorchFuncMode,
     TorchFuncThunk,
@@ -21,7 +22,7 @@ from .overrides import (
 )
 
 __all__ = [
-    "route_aten_thunk",
+    "route_aten_mode",
     "clone_in_fake_mode",
     "PrintTorchFunc",
     "PrintTorchDisp",
@@ -31,7 +32,7 @@ __all__ = [
 
 
 @TorchDispMode.function
-def route_aten_thunk(thunk: TorchDispThunk) -> object:
+def route_aten_mode(thunk: TorchDispThunk) -> object:
     """
     Route `torch.aten` calls to `AtenThunk` for some `aioway` specific functionalities.
     """
@@ -62,13 +63,11 @@ def clone_in_fake_mode(thunk: TorchDispThunk) -> object:
 
     This is useful to force a new `id` s.t. the tracking won't fail.
     """
+
     result = thunk()
 
-    if not is_fake_mode_on():
-        return result
-
-    # In fake mode, clone the tensor to prevent `FakeTensor` reuse. Should be cheap.
-    return replace_tensors(result, lambda tensor: tensor.clone())
+    # Clone the fake tensors, to prevent `FakeTensor` reuse. Should be cheap.
+    return clone_fake_tensor(result)
 
 
 class _HasRichFlagMixin:

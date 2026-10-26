@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.5
+#       jupytext_version: 1.19.6
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -26,6 +26,11 @@ from aioway.cc import ClfLogitHead, as_tspec, linear_regression
 from aioway.contrib.mnist import MnistDataset
 from aioway.io import DatasetIdxDset, Dset, InputTarget
 from aioway.ml import StaticTrainer, TrainCfg
+
+# %%
+from rich import pretty
+
+pretty.install()
 
 
 # %%
@@ -82,4 +87,6 @@ def main(batch_size: int):
 
 
 # %%
+# %pdb on
+
 main(1024)
