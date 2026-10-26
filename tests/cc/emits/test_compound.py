@@ -4,7 +4,7 @@ import pytest
 import torch
 from torch import nn
 
-from aioway.ir import BuiltModule, CompoundBuilder
+from aioway.cc import BuiltModule, CompoundBuilder
 
 
 @pytest.fixture

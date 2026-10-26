@@ -8,10 +8,15 @@ import typing
 import torch
 from torch import nn
 
-from aioway.ir.modules import ModuleCall, track_module_thunks
-from aioway.ir.procs import NnProc, Proc
-from aioway.ir.queries import Query, TypeSequential
-from aioway.ir.queries.queries import OrderedIndex
+from aioway.ir import (
+    ModuleCall,
+    NnProc,
+    OrderedIndex,
+    Proc,
+    Query,
+    TypeSequential,
+    track_module_thunks,
+)
 from aioway.t import fake_mode
 
 from .rewrites import RewriteRule

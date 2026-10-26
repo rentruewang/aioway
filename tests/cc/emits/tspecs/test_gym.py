@@ -28,7 +28,7 @@ def gs(gym):
 
 @pytest.fixture
 def gym_space_tspec():
-    from aioway.t import gym_space_tspec
+    from aioway.cc import gym_space_tspec
 
     return gym_space_tspec
 
