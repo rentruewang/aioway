@@ -5,8 +5,7 @@
 import abc
 import typing
 
-from aioway.ir import Proc
-from aioway.ir.queries import Query
+from aioway.ir import Proc, Query
 
 __all__ = ["Rewriter", "RewriteRule"]
 

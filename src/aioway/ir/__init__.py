@@ -8,4 +8,3 @@ from .instrs import *
 from .modules import *
 from .procs import *
 from .queries import *
-from .rewrites import *
