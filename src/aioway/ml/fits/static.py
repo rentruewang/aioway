@@ -14,8 +14,8 @@ from torch.utils import data as dutils
 from torchrl.data import tensor_specs as tspecs
 
 from aioway._utils import FloatArray
+from aioway.cc import TSpecLike
 from aioway.io import Dset, InputTarget, InputTargetLikeDset
-from aioway.t import TSpecLike
 
 if typing.TYPE_CHECKING:
     import lightning as L

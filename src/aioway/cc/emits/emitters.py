@@ -9,7 +9,7 @@ from collections import abc as cabc
 from torch import nn
 
 from aioway._utils import AnySet, any_set
-from aioway.t import TSpec
+from aioway.cc.tspecs import TSpec
 
 __all__ = [
     "emitter_dcls",

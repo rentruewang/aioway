@@ -3,7 +3,7 @@
 import pytest
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.t import is_tspec_like
+from aioway.cc import is_tspec_like
 
 
 def _tspecs():

@@ -11,11 +11,13 @@ from torchrl.data import tensor_specs as tspecs
 from aioway.cc import (
     MlpCompoundEmitter,
     MlpEmitter,
+    TSpec,
     emit,
     emit_one,
     linear_regression,
+    unbounded_box_tspec,
 )
-from aioway.t import Shape, TSpec, unbounded_box_tspec
+from aioway.t import Shape
 
 
 @pytest.fixture

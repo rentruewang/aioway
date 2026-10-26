@@ -5,7 +5,6 @@
 from ._utils import *
 from .aten import *
 from .attrs import *
-from .discovery import *
 from .guards import *
 from .hooks import *
 from .lists import *
@@ -14,4 +13,3 @@ from .pytrees import *
 from .routes import *
 from .sessions import *
 from .signs import *
-from .tspecs import *
