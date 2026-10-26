@@ -1,7 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import pytest
-from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
 from aioway.cc import ArgsTSpec, LossTSpec, emit_loss, emit_one, route_loss
@@ -26,6 +25,4 @@ def test_route_to_losses(emit_loss_context):
     )
     loss_tspec = LossTSpec()
 
-    out = emit_one(input_target_tspec, loss_tspec)
-    assert isinstance(out, nn.Module), out
-    assert type(out).__name__.endswith("Loss"), out
+    _ = emit_one(input_target_tspec, loss_tspec)

@@ -8,8 +8,10 @@ import torch
 from torch import nn, optim
 from torch.nn import functional as F
 
+from aioway.cc.emits._utils import module_tspec_to_proc
 from aioway.cc.emits.emitters import Emitter, emitter_dcls
 from aioway.cc.tspecs import TSpec
+from aioway.ir import NnProc
 
 __all__ = ["ContrastiveLoss", "ContrastiveLossEmitter"]
 
@@ -53,12 +55,12 @@ class ContrastiveLossEmitter(Emitter):
     emitter: Emitter
     "The default emitter when it's time to emit."
 
-    def __call__(self, observ: TSpec, action: TSpec, /) -> nn.Module:
+    def __call__(self, observ: TSpec, action: TSpec, /) -> NnProc:
         # In batch negative is a reconstruction error.
         if observ != action:
             return NotImplemented
 
         emission = self.emitter(observ, action)
 
-        assert isinstance(emission, nn.Module), type(emission)
-        return ContrastiveLoss(emission, nn.MSELoss(), optim.Adam)
+        module = ContrastiveLoss(emission.module, nn.MSELoss(), optim.Adam)
+        return module_tspec_to_proc(module, observ)

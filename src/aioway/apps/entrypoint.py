@@ -3,11 +3,12 @@
 import operator
 from collections import abc as cabc
 
-from torch import nn, optim
+from torch import optim
 
 from aioway.cc import TSpec, as_tspec, emit, route_loss
 from aioway.contrib.dsets import route_dset
 from aioway.io import Dset
+from aioway.ir import NnProc
 from aioway.ml import StaticTrainer, TrainCfg
 
 from .server import serve
@@ -49,7 +50,7 @@ def add_output(name: str, spec: TSpec) -> None:
     _OUTPUT_SPECS[name] = spec
 
 
-def add_module(input: str, output: str) -> cabc.Generator[nn.Module]:
+def add_module(input: str, output: str) -> cabc.Generator[NnProc]:
     input_dataset = _INPUT_DATASETS[input]
     output_spec = _OUTPUT_SPECS[output]
 
@@ -69,10 +70,11 @@ def add_trainer(
             "because they have different lengths."
         )
 
-    for module in add_module(input, output):
+    for proc in add_module(input, output):
+        module = proc.module
         yield StaticTrainer(
             cfg=cfg,
             module=module,
             optimizer=optim.AdamW(module.parameters()),
-            loss_func=next(route_loss(output_spec, label_dataset.__tspec__())),
+            loss_func=next(route_loss(output_spec, label_dataset.__tspec__())).module,
         )

@@ -2,13 +2,12 @@
 
 "Some pre-bundled implementations for thunks."
 
+import contextlib as ctxl
 import dataclasses as dcls
 import typing
 
 import loguru as L
 import rich
-
-from aioway.t.pytrees import replace_tensors
 
 from .aten import AtenThunk
 from .attrs import replace_tensors_with_attr
@@ -17,11 +16,11 @@ from .overrides import (
     TorchDispThunk,
     TorchFuncMode,
     TorchFuncThunk,
-    is_fake_mode_on,
+    clone_fake_tensor,
 )
 
 __all__ = [
-    "route_aten_thunk",
+    "route_aten_mode",
     "clone_in_fake_mode",
     "PrintTorchFunc",
     "PrintTorchDisp",
@@ -31,7 +30,7 @@ __all__ = [
 
 
 @TorchDispMode.function
-def route_aten_thunk(thunk: TorchDispThunk) -> object:
+def route_aten_mode(thunk: TorchDispThunk) -> object:
     """
     Route `torch.aten` calls to `AtenThunk` for some `aioway` specific functionalities.
     """
@@ -55,20 +54,32 @@ def route_aten_thunk(thunk: TorchDispThunk) -> object:
         raise RuntimeError(f"{fn!r}") from e
 
 
-@TorchDispMode.function
-def clone_in_fake_mode(thunk: TorchDispThunk) -> object:
+@ctxl.contextmanager
+def clone_in_fake_mode():
     """
     Automatically call `.clone()` on all tensors in the torch dispatch mode.
 
     This is useful to force a new `id` s.t. the tracking won't fail.
     """
+
+    # Clone the fake tensors, to prevent `FakeTensor` reuse. Should be cheap.
+    #
+    # Note: activate both function mode and dispatch mode,
+    # because some times torch bypass dispatch mode as an optimization.
+    with clone_in_fake_function.activate(), clone_in_fake_dispatch.activate():
+        yield
+
+
+@TorchDispMode.function
+def clone_in_fake_dispatch(thunk: TorchDispThunk) -> object:
     result = thunk()
+    return clone_fake_tensor(result)
 
-    if not is_fake_mode_on():
-        return result
 
-    # In fake mode, clone the tensor to prevent `FakeTensor` reuse. Should be cheap.
-    return replace_tensors(result, lambda tensor: tensor.clone())
+@TorchFuncMode.function
+def clone_in_fake_function(thunk: TorchFuncThunk) -> object:
+    result = thunk()
+    return clone_fake_tensor(result)
 
 
 class _HasRichFlagMixin:

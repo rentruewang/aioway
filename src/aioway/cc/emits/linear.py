@@ -5,10 +5,11 @@ from torch import nn
 from torchrl import modules as rlmods
 from torchrl.data import tensor_specs as tspecs
 
+from aioway.cc.emits._utils import chain_sequential_proc, module_tspec_to_proc
 from aioway.cc.tspecs import TSpec
+from aioway.ir import NnProc
 
 from ._utils import Activation
-from .compound import BuilderNode, BuiltModule, CompoundBuilder
 from .emitters import Emitter, emitter_dcls, emitter_function
 
 __all__ = [
@@ -16,12 +17,11 @@ __all__ = [
     "ClfLogitHead",
     "MlpEmitter",
     "TorchRlMlpEmitter",
-    "MlpCompoundEmitter",
 ]
 
 
 @emitter_function
-def linear_regression(observ: TSpec, action: TSpec) -> nn.Module:
+def linear_regression(observ: TSpec, action: TSpec) -> NnProc:
     """
     `Linear` module from `ShapeSpace`s.
     """
@@ -31,6 +31,14 @@ def linear_regression(observ: TSpec, action: TSpec) -> nn.Module:
 
     if not isinstance(action, tspecs.Unbounded):
         return NotImplemented
+
+    module = _linear_regression_module(observ, action)
+    return module_tspec_to_proc(module, observ)
+
+
+def _linear_regression_module(
+    observ: tspecs.Unbounded, action: tspecs.Unbounded
+) -> nn.Module:
 
     # The simple case where the `ndim` are all 1.
     if observ.ndim == action.ndim == 1:
@@ -60,7 +68,7 @@ class ClfLogitHead(Emitter):
     emitter: Emitter
     "Emits a regression model."
 
-    def __call__(self, observ: TSpec, action: TSpec) -> nn.Module:
+    def __call__(self, observ: TSpec, action: TSpec) -> NnProc:
 
         if not isinstance(observ, tspecs.Unbounded):
             return NotImplemented
@@ -72,16 +80,17 @@ class ClfLogitHead(Emitter):
 
     def _get_module(
         self, observ: tspecs.Unbounded, action: tspecs.BoundedDiscrete
-    ) -> nn.Sequential:
+    ) -> NnProc:
         action_count = int(action.high - action.low + 1)
 
-        module = nn.Sequential(
-            self.emitter(observ, observ),
+        first = self.emitter(observ, observ)
+
+        seq = nn.Sequential(
             nn.Flatten(),
             nn.Linear(observ.shape.numel(), action_count),
         )
-
-        return module
+        rest = module_tspec_to_proc(seq, observ)
+        return chain_sequential_proc(first, rest)
 
 
 @emitter_dcls
@@ -105,13 +114,14 @@ class _MlpEmitter(Emitter):
 class TorchRlMlpEmitter(_MlpEmitter):
     "Emits a `torchrl.modules.MLP`."
 
-    def __call__(self, observ: TSpec, action: TSpec) -> nn.Module:
-        return rlmods.MLP(
+    def __call__(self, observ: TSpec, action: TSpec) -> NnProc:
+        module = rlmods.MLP(
             in_features=observ.shape[-1],
             out_features=action.shape[-1],
             num_cells=self.hidden_sizes,
             activation_class=Activation(self.activation).nn_type,
         )
+        return module_tspec_to_proc(module, observ)
 
 
 @emitter_dcls
@@ -120,7 +130,11 @@ class MlpEmitter(_MlpEmitter):
     Emits a `nn.Sequential` module.
     """
 
-    def __call__(self, observ: TSpec, action: TSpec) -> nn.Sequential:
+    def __call__(self, observ: TSpec, action: TSpec) -> NnProc:
+        module = self._module(observ, action)
+        return module_tspec_to_proc(module, observ)
+
+    def _module(self, observ: TSpec, action: TSpec) -> nn.Module:
         if not isinstance(observ, tspecs.Unbounded):
             return NotImplemented
 
@@ -143,35 +157,3 @@ class MlpEmitter(_MlpEmitter):
             modules.pop()
 
         return nn.Sequential(*modules)
-
-
-@emitter_dcls
-class MlpCompoundEmitter(_MlpEmitter):
-    """
-    Emits a simple MLP with hidden sizes and activation.
-    """
-
-    def __call__(self, observ: TSpec, action: TSpec) -> BuiltModule:
-        if not isinstance(observ, tspecs.Unbounded):
-            return NotImplemented
-
-        if not isinstance(action, tspecs.Unbounded):
-            return NotImplemented
-
-        sizes = [observ.shape[-1], *self.hidden_sizes, action.shape[-1]]
-
-        builder = CompoundBuilder()
-
-        x: BuilderNode = builder.input("input")
-        activ = Activation(self.activation).nn_type()
-
-        for in_feats, out_feats in zip(sizes[:-1], sizes[1:]):
-            x = builder.thunk(
-                nn.Linear(in_features=in_feats, out_features=out_feats),
-                x,
-            )
-
-            if activ is not NotImplemented:
-                x = builder.thunk(activ, x)
-
-        return builder.output(x)

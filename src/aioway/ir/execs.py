@@ -13,7 +13,6 @@ from aioway.t import (
     has_fake,
     is_fake_tensor,
     is_real_tensor,
-    parse_attr,
     tree_leaves,
     tree_map_only,
 )
@@ -89,9 +88,6 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
                 "The real and fake provided does not have the same structure."
             )
 
-        if any(parse_attr(f) != parse_attr(t) for f, t in zip(fake_list, real_list)):
-            raise ValueError("The parsed lists are not really compatible.")
-
         # Update every reference. If real tensor exists in `fake_list`, skip.
         for fake_tensor, real_tensor in zip(fake_list, real_list):
             self._update_maybe_fake(fake_tensor, real_tensor)
@@ -116,19 +112,11 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
 
     def attach(self, fake: torch.Tensor, real: torch.Tensor) -> None:
         """
-        Associate the real tensor with the fake tensor.
+        Associate the runtime tensor (usually real) with the fake tensor.
         """
 
         if not is_fake_tensor(fake):
             raise KeyError(f"Key: {type(fake)=} is not fake tensor.")
-
-        if not is_real_tensor(real):
-            raise ValueError(f"Value: {type(real)=} is not real tensor.")
-
-        if (fake_attr := parse_attr(fake)) != (real_attr := parse_attr(real)):
-            raise ValueError(
-                f"Fake {fake_attr} and real {real_attr} have different `Attr` (incompatible)."
-            )
 
         # Store the real tensor in scope.
         self._alive[_get_fake_id(fake)] = real
@@ -179,7 +167,7 @@ class Exec[F: cabc.Callable = typing.Any]:
 
     TYPE = torch.Tensor
 
-    def __init__(self, procedure: Proc[FuncCall[F]]) -> None:
+    def __init__(self, procedure: Proc) -> None:
         self._proc = procedure
         self._scope = LocalScope(self._proc)
 
@@ -189,7 +177,7 @@ class Exec[F: cabc.Callable = typing.Any]:
     def __getitem__(self, idx: int) -> FuncCall[F]:
         return self._proc.instrs[idx]
 
-    def __iter__(self) -> cabc.Generator[FuncCall[F]]:
+    def __iter__(self) -> cabc.Generator:
         yield from self._proc
 
     def __call__(self, *args, **kwargs):
@@ -208,9 +196,6 @@ class Exec[F: cabc.Callable = typing.Any]:
 
     def bind(self, inputs: BoundArgs, bound: BoundArgs) -> None:
         assert inputs.sign == bound.sign
-
-        if inputs.tensors.attrs() != bound.tensors.attrs():
-            raise TypeError("Tensors do not look like they can be consumed by inputs.")
 
         try:
             self._scope.update(inputs, bound)

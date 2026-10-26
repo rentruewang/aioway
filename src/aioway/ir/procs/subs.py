@@ -38,6 +38,12 @@ class NnProcModule(nn.Module):
     def __getitem__(self, idx: int) -> nn.Module:
         return self._module_list[idx]
 
+    def forward(self, *args, **kwargs):
+        from aioway.ir import Exec
+
+        executor = Exec(self._proc)
+        return executor(*args, **kwargs)
+
     @property
     def proc(self) -> NnProc:
         return self._proc

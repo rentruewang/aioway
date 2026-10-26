@@ -7,9 +7,11 @@ from collections import abc as cabc
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
+from aioway.cc.emits._utils import module_tspec_to_proc
 from aioway.cc.emits.args import ArgsTSpec
 from aioway.cc.emits.emitters import emitter_function
 from aioway.cc.tspecs import LossTSpec, TSpec, TSpecLike, as_tspec, is_tspec_like
+from aioway.ir import NnProc
 
 __all__ = ["emit_loss", "route_loss"]
 
@@ -18,7 +20,7 @@ _TARGET = "target"
 
 
 @emitter_function
-def emit_loss(observ: TSpec, action: TSpec) -> nn.Module:
+def emit_loss(observ: TSpec, action: TSpec) -> NnProc:
     "Get the next loss type with an `Emitter` API."
 
     if not isinstance(observ, ArgsTSpec):
@@ -39,7 +41,7 @@ def emit_loss(observ: TSpec, action: TSpec) -> nn.Module:
         return NotImplemented
 
 
-def route_loss(input: TSpecLike, target: TSpecLike) -> cabc.Generator[nn.Module]:
+def route_loss(input: TSpecLike, target: TSpecLike) -> cabc.Generator[NnProc]:
     """
     This is the API that mimicks `emit` for networks, but for losses.
     """
@@ -47,6 +49,11 @@ def route_loss(input: TSpecLike, target: TSpecLike) -> cabc.Generator[nn.Module]
     input = as_tspec(input)
     target = as_tspec(target)
 
+    for module in _route_loss(input, target):
+        yield module_tspec_to_proc(module, input, target)
+
+
+def _route_loss(input: TSpec, target: TSpec) -> cabc.Generator[nn.Module]:
     if is_categorical(input, target):
         yield nn.CrossEntropyLoss()
 

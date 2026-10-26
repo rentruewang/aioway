@@ -12,7 +12,7 @@ from torch._subclasses import fake_tensor as ft
 from aioway.t import (
     all_fake,
     all_real,
-    clone_fake,
+    clone_fake_tensor,
     fake_mode,
     has_fake,
     has_real,
@@ -216,7 +216,7 @@ def test_all_fake_tcls(fake):
 def test_clone_fake_tensor(fake):
     assert has_fake(fake)
 
-    out = clone_fake(fake)
+    out = clone_fake_tensor(fake)
 
     assert has_fake(out)
     assert out is not fake
@@ -227,13 +227,13 @@ def test_clone_fake_tensor(fake):
 def test_clone_fake_real_same():
     real = torch.ones(2, 3)
 
-    assert clone_fake(real) is real
+    assert clone_fake_tensor(real) is real
 
 
 def test_clone_fake_mapping(fake):
     real = torch.ones(2, 3)
 
-    out = clone_fake({"fake": fake, "real": real})
+    out = clone_fake_tensor({"fake": fake, "real": real})
 
     assert out.keys() == {"fake", "real"}
     assert out["fake"] is not fake
@@ -241,7 +241,7 @@ def test_clone_fake_mapping(fake):
 
 
 def test_clone_fake_sequence(fake):
-    out = clone_fake([fake])
+    out = clone_fake_tensor([fake])
 
     assert isinstance(out, list)
     assert out[0] is not fake
@@ -251,7 +251,7 @@ def test_clone_fake_sequence(fake):
 def test_clone_fake_tdict(fake):
     tdict = td.TensorDict({"a": fake}, batch_size=[])
 
-    out = clone_fake(tdict)
+    out = clone_fake_tensor(tdict)
 
     assert out is not tdict
     assert has_fake(out)
@@ -260,7 +260,7 @@ def test_clone_fake_tdict(fake):
 def test_clone_fake_tdict_entries(fake):
     "Entries get new ids, same shape."
 
-    out = clone_fake(td.TensorDict({"a": fake}, batch_size=[]))
+    out = clone_fake_tensor(td.TensorDict({"a": fake}, batch_size=[]))
 
     assert isinstance(out, td.TensorDict)
     assert out["a"] is not fake
@@ -271,7 +271,7 @@ def test_clone_fake_tdict_entries(fake):
 def test_clone_fake_tcls(fake):
     point = Point(x=fake, y=fake)
 
-    out = clone_fake(point)
+    out = clone_fake_tensor(point)
 
     assert isinstance(out, Point)
     assert out.x is not fake
