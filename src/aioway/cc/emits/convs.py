@@ -8,7 +8,9 @@ from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
 from aioway._utils import is_list_of
+from aioway.cc.emits._utils import module_tspec_to_proc
 from aioway.cc.tspecs import TSpec, sample_from_tspec, unbounded_box_tspec
+from aioway.ir import NnProc
 from aioway.t import Shape
 
 from ._utils import Activation
@@ -42,7 +44,7 @@ class ImageRegressorEmitter(Emitter):
     def __len__(self) -> int:
         return self._size
 
-    def __call__(self, observ: TSpec, action: TSpec) -> nn.Sequential:
+    def __call__(self, observ: TSpec, action: TSpec) -> NnProc:
         if not isinstance(observ, tspecs.BoundedContinuous):
             return NotImplemented
 
@@ -82,9 +84,9 @@ class ImageRegressorEmitter(Emitter):
             unbounded_box_tspec(shape=Shape.parse(sim_out.shape[1:])), action
         )
 
-        seq.append(linear)
+        seq.append(linear.module)
 
-        return seq
+        return module_tspec_to_proc(seq, observ)
 
     @functools.cached_property
     def _size(self) -> int:

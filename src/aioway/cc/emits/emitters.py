@@ -6,10 +6,9 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-from torch import nn
-
 from aioway._utils import AnySet, any_set
 from aioway.cc.tspecs import TSpec
+from aioway.ir import NnProc
 
 __all__ = [
     "emitter_dcls",
@@ -26,7 +25,7 @@ _EMITTERS: AnySet[Emitter] = any_set()
 "The emitters that are considered."
 
 
-def emit_one(observ: TSpec, action: TSpec) -> nn.Module:
+def emit_one(observ: TSpec, action: TSpec) -> NnProc:
     """
     A convenient wrapper to only emit the first target found.
     """
@@ -35,7 +34,7 @@ def emit_one(observ: TSpec, action: TSpec) -> nn.Module:
     return route_emitter(observ, action)
 
 
-def emit(observ: TSpec, action: TSpec, /) -> cabc.Generator[nn.Module]:
+def emit(observ: TSpec, action: TSpec, /) -> cabc.Generator[NnProc]:
     """
     Emit some candidates based on the given spaces.
     """
@@ -51,7 +50,7 @@ class EmitterLike(typing.Protocol):
     """
 
     @abc.abstractmethod
-    def __call__(self, observ: TSpec, action: TSpec, /) -> nn.Module:
+    def __call__(self, observ: TSpec, action: TSpec, /) -> NnProc:
         raise NotImplementedError
 
 
@@ -100,14 +99,14 @@ class RouteEmitter(Emitter):
     The emitters to choose to emit from.
     """
 
-    def __call__(self, observ: TSpec, action: TSpec) -> nn.Module:
+    def __call__(self, observ: TSpec, action: TSpec) -> NnProc:
         for module in self.candidates(observ, action):
             return module
 
         else:
             raise ValueError(f"No candidate found for {observ=} and {action=}.")
 
-    def candidates(self, observ: TSpec, action: TSpec) -> cabc.Generator[nn.Module]:
+    def candidates(self, observ: TSpec, action: TSpec) -> cabc.Generator[NnProc]:
         """
         Emit all possible candidates.
         """
@@ -134,7 +133,7 @@ class _FuncEmitter(Emitter):
     The function to wrap.
     """
 
-    def __call__(self, observ: TSpec, action: TSpec, /) -> nn.Module:
+    def __call__(self, observ: TSpec, action: TSpec, /) -> NnProc:
         return self.function(observ, action)
 
 

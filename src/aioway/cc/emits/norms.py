@@ -7,7 +7,9 @@ import typing
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
+from aioway.cc.emits._utils import module_tspec_to_proc
 from aioway.cc.tspecs import TSpec
+from aioway.ir import NnProc
 
 from .emitters import Emitter, emitter_dcls, emitter_function
 
@@ -21,7 +23,7 @@ class NormEmitter(Emitter):
     norm_type: NormType
     "The type of normalization layer."
 
-    def __call__(self, observ: TSpec, action: TSpec) -> nn.Module:
+    def __call__(self, observ: TSpec, action: TSpec) -> NnProc:
 
         if not isinstance(observ, tspecs.Unbounded):
             return NotImplemented
@@ -32,7 +34,8 @@ class NormEmitter(Emitter):
         if observ != action:
             return NotImplemented
 
-        return self._get_norm(observ.ndim - 1, observ.shape[0])
+        module = self._get_norm(observ.ndim - 1, observ.shape[0])
+        return module_tspec_to_proc(module, observ)
 
     def _get_norm(self, non_channel_ndim: int, num_features: int) -> nn.Module:
         klass = getattr(nn, f"{self.norm_type.capitalize()}Norm{non_channel_ndim}d")
@@ -51,4 +54,5 @@ def layer_norm_emitter(observ, action):
     if observ != action:
         return NotImplemented
 
-    return nn.LayerNorm(observ.shape)
+    module = nn.LayerNorm(observ.shape)
+    return module_tspec_to_proc(module, observ)
