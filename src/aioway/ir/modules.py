@@ -13,7 +13,6 @@ from aioway.ir import InstrList
 from aioway.t import (
     register_module_forward_hook,
     register_module_forward_pre_hook,
-    clone_fake_tensor,
 )
 
 from .instrs import ModuleCall
@@ -141,7 +140,7 @@ class ModuleTracker:
             func=module,
             args=input,
             kwargs={},
-            result=clone_fake_tensor(output),
+            result=output,
             parents=tuple(module for module, _ in self.stack),
         )
 

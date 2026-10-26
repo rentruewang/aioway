@@ -6,6 +6,8 @@ from collections import abc as cabc
 
 import torch
 
+from aioway.t import is_fake_mode_on
+
 from .tspecs import TSpec
 
 __all__ = ["sample_from_tspec", "set_batch_size"]
@@ -31,4 +33,8 @@ def sample_from_tspec(spec: TSpec, /) -> typing.Any:
     "Sample from the `spec` with the batch size configured by `with_batch_size`."
 
     assert _batch_size
-    return spec.sample(torch.Size(_batch_size))
+
+    if is_fake_mode_on():
+        return torch.zeros([*_batch_size, *spec.shape])
+    else:
+        return spec.sample(torch.Size(_batch_size))

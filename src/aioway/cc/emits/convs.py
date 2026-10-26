@@ -8,7 +8,7 @@ from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
 from aioway._utils import is_list_of
-from aioway.cc.emits._utils import module_tspec_to_proc
+from aioway.cc.emits._utils import chain_sequential_proc, module_tspec_to_proc
 from aioway.cc.tspecs import TSpec, sample_from_tspec, unbounded_box_tspec
 from aioway.ir import NnProc
 from aioway.t import Shape
@@ -57,14 +57,16 @@ class ImageRegressorEmitter(Emitter):
 
         seq = nn.Sequential()
 
-        channels = self._as_list(self.channels)
+        out_channels = self._as_list(self.channels)
+        in_channels = [observ.shape[0], *out_channels[:-1]]
         kernels = self._as_list(self.kernels)
         strides = self._as_list(self.strides)
 
         for i in range(len(self)):
             seq.append(
-                nn.LazyConv2d(
-                    out_channels=channels[i],
+                nn.Conv2d(
+                    in_channels=in_channels[i],
+                    out_channels=out_channels[i],
                     kernel_size=kernels[i],
                     stride=strides[i],
                 )
@@ -84,9 +86,8 @@ class ImageRegressorEmitter(Emitter):
             unbounded_box_tspec(shape=Shape.parse(sim_out.shape[1:])), action
         )
 
-        seq.append(linear.module)
-
-        return module_tspec_to_proc(seq, observ)
+        seq_proc = module_tspec_to_proc(seq, observ)
+        return chain_sequential_proc(seq_proc, linear)
 
     @functools.cached_property
     def _size(self) -> int:

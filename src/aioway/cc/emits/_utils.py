@@ -1,17 +1,35 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from aioway.t import clone_in_fake_mode
-from aioway.t import clone_fake_tensor
-from aioway.t import route_aten_mode
 import enum
 
+import torch
 from torch import nn
 
 from aioway.cc.tspecs import TSpecLike, as_tspec, sample_from_tspec, set_batch_size
 from aioway.ir import NnProc, track_module_thunks
-from aioway.t import fake_mode
+from aioway.t import TList, clone_in_fake_mode, fake_mode, route_aten_mode
 
-__all__ = ["module_tspec_to_proc", "Activation"]
+__all__ = ["module_tspec_to_proc", "chain_sequential_proc", "Activation"]
+
+
+def chain_sequential_proc(prev: NnProc, after: NnProc) -> NnProc:
+    if not isinstance(outs := prev.outputs, TList) or len(outs) != 1:
+        breakpoint()
+        raise RuntimeError
+
+    if len(after.inputs) != 1 or len(after.inputs.tensors) != 1:
+        raise RuntimeError
+
+    [prev_output_tensor] = outs
+    [after_input_tensor] = after.inputs.tensors
+
+    def swap_input(tensor: torch.Tensor) -> torch.Tensor:
+        return prev_output_tensor if tensor is after_input_tensor else tensor
+
+    new_list = [t.tree_map_only(torch.Tensor, swap_input) for t in after.instrs]
+    return NnProc(
+        instrs=[*prev.instrs, *new_list], inputs=prev.inputs, outputs=after.outputs
+    )
 
 
 def module_tspec_to_proc(module: nn.Module, *tspecs: TSpecLike) -> NnProc:

@@ -18,6 +18,9 @@ import typing
 
 import lightning as L
 import torch
+
+# %%
+from rich import pretty
 from torch import nn, optim
 from torch.utils import data as dutils
 from torchrl.data import tensor_specs as tspecs
@@ -26,9 +29,6 @@ from aioway.cc import ClfLogitHead, as_tspec, linear_regression
 from aioway.contrib.mnist import MnistDataset
 from aioway.io import DatasetIdxDset, Dset, InputTarget
 from aioway.ml import StaticTrainer, TrainCfg
-
-# %%
-from rich import pretty
 
 pretty.install()
 

@@ -1,7 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import pytest
-from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
 from aioway.cc import ArgsTSpec, LossTSpec, emit_loss, emit_one, route_loss

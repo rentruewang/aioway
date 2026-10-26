@@ -8,17 +8,14 @@ import typing
 import loguru as L
 import rich
 
-from aioway.t.pytrees import replace_tensors
-
 from .aten import AtenThunk
 from .attrs import replace_tensors_with_attr
 from .overrides import (
     TorchDispMode,
-    clone_fake_tensor,
     TorchDispThunk,
     TorchFuncMode,
     TorchFuncThunk,
-    is_fake_mode_on,
+    clone_fake_tensor,
 )
 
 __all__ = [

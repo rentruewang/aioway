@@ -13,7 +13,6 @@ from aioway.t import (
     has_fake,
     is_fake_tensor,
     is_real_tensor,
-    parse_attr,
     tree_leaves,
     tree_map_only,
 )
