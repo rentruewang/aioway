@@ -62,6 +62,5 @@ class ContrastiveLossEmitter(Emitter):
 
         emission = self.emitter(observ, action)
 
-        assert isinstance(emission, nn.Module), type(emission)
-        module = ContrastiveLoss(emission, nn.MSELoss(), optim.Adam)
+        module = ContrastiveLoss(emission.module, nn.MSELoss(), optim.Adam)
         return module_tspec_to_proc(module, observ)

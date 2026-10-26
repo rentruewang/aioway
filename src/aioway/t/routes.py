@@ -2,6 +2,7 @@
 
 "Some pre-bundled implementations for thunks."
 
+import contextlib as ctxl
 import dataclasses as dcls
 import typing
 
@@ -53,17 +54,31 @@ def route_aten_mode(thunk: TorchDispThunk) -> object:
         raise RuntimeError(f"{fn!r}") from e
 
 
-@TorchDispMode.function
-def clone_in_fake_mode(thunk: TorchDispThunk) -> object:
+@ctxl.contextmanager
+def clone_in_fake_mode():
     """
     Automatically call `.clone()` on all tensors in the torch dispatch mode.
 
     This is useful to force a new `id` s.t. the tracking won't fail.
     """
 
-    result = thunk()
-
     # Clone the fake tensors, to prevent `FakeTensor` reuse. Should be cheap.
+    #
+    # Note: activate both function mode and dispatch mode,
+    # because some times torch bypass dispatch mode as an optimization.
+    with clone_in_fake_function.activate(), clone_in_fake_dispatch.activate():
+        yield
+
+
+@TorchDispMode.function
+def clone_in_fake_dispatch(thunk: TorchDispThunk) -> object:
+    result = thunk()
+    return clone_fake_tensor(result)
+
+
+@TorchFuncMode.function
+def clone_in_fake_function(thunk: TorchFuncThunk) -> object:
+    result = thunk()
     return clone_fake_tensor(result)
 
 

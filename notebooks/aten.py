@@ -5,17 +5,19 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.3
+#       jupytext_version: 1.19.6
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
 
+# %%
 import contextlib as ctxl
 
 # %%
 import torch
+from torch import nn
 
 from aioway.t import PrintTorchDisp, PrintTorchFunc, fake_mode, route_aten_mode
 
@@ -76,3 +78,13 @@ s = (a + 2 * b).sum()
 # %%
 with dispatch_print.activate(), function_print.activate():
     s.backward()
+
+# %%
+with dispatch_print.activate(), function_print.activate():
+    s.flatten()
+
+# %%
+with fake_mode():
+    input = torch.zeros(100, 100)
+    with dispatch_print.activate(), function_print.activate():
+        nn.Flatten()(input)

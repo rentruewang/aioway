@@ -14,7 +14,6 @@ __all__ = ["module_tspec_to_proc", "chain_sequential_proc", "Activation"]
 
 def chain_sequential_proc(prev: NnProc, after: NnProc) -> NnProc:
     if not isinstance(outs := prev.outputs, TList) or len(outs) != 1:
-        breakpoint()
         raise RuntimeError
 
     if len(after.inputs) != 1 or len(after.inputs.tensors) != 1:
@@ -43,13 +42,12 @@ def module_tspec_to_proc(module: nn.Module, *tspecs: TSpecLike) -> NnProc:
         fake_mode(),
         track_module_thunks() as thunks,
         route_aten_mode.activate(),
-        clone_in_fake_mode.activate(),
+        clone_in_fake_mode(),
     ):
         with set_batch_size(1):
             inputs = tuple(sample_from_tspec(as_tspec(t)) for t in tspecs)
 
         _ = module(*inputs)
-
         return thunks.procedure
 
 

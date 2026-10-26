@@ -5,7 +5,7 @@ from torch import nn
 from torchrl import modules as rlmods
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.cc.emits._utils import module_tspec_to_proc
+from aioway.cc.emits._utils import chain_sequential_proc, module_tspec_to_proc
 from aioway.cc.tspecs import TSpec
 from aioway.ir import NnProc
 
@@ -76,21 +76,21 @@ class ClfLogitHead(Emitter):
         if not isinstance(action, tspecs.BoundedDiscrete):
             return NotImplemented
 
-        module = self._get_module(observ, action)
-        return module_tspec_to_proc(module, observ)
+        return self._get_module(observ, action)
 
     def _get_module(
         self, observ: tspecs.Unbounded, action: tspecs.BoundedDiscrete
-    ) -> nn.Sequential:
+    ) -> NnProc:
         action_count = int(action.high - action.low + 1)
 
-        module = nn.Sequential(
-            self.emitter(observ, observ).module,
+        first = self.emitter(observ, observ)
+
+        seq = nn.Sequential(
             nn.Flatten(),
             nn.Linear(observ.shape.numel(), action_count),
         )
-
-        return module
+        rest = module_tspec_to_proc(seq, observ)
+        return chain_sequential_proc(first, rest)
 
 
 @emitter_dcls

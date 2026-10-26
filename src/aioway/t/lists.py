@@ -161,6 +161,10 @@ class TList(PyTreeMixin, cabc.Sequence[torch.Tensor]):
     def requires_grads(self) -> list[bool]:
         return [attr.requires_grad for attr in self.attrs()]
 
+    @property
+    def ids(self) -> list[int]:
+        return [id(t) for t in self]
+
     @classmethod
     def deduplicate(cls, tensors: cabc.Iterable[torch.Tensor], /) -> typing.Self:
         "Convert from an iterable of tensors."
