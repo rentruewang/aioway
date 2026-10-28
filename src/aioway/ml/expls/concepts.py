@@ -90,26 +90,22 @@ class CaptumConceptTask(Task):
 
         adaptor = AttrAdaptor(module)
 
-        loaders = [
-            du.DataLoader(
-                cd,
+        def adaptor_dataloader(dataset: du.Dataset, y: bool = False):
+            collate_fn = AttrRemains.collate_fn_xy if y else AttrRemains.collate_fn
+            return du.DataLoader(
+                dataset,
                 batch_size=self.batch_size,
-                collate_fn=AttrRemains.collate_fn,
+                collate_fn=collate_fn,
             )
-            for cd in self.concepts.values()
-        ]
+
+        loaders = [adaptor_dataloader(cd) for cd in self.concepts.values()]
+
         concepts = [
             concept.Concept(i, name, dl)
             for i, (name, dl) in enumerate(zip(self.concepts, loaders))
         ]
         random = concept.Concept(
-            len(concepts),
-            "random",
-            du.DataLoader(
-                self.random,
-                batch_size=self.batch_size,
-                collate_fn=AttrRemains.collate_fn,
-            ),
+            len(concepts), "random", adaptor_dataloader(self.random)
         )
         sets = [[c, random] for c in concepts]
 
@@ -119,11 +115,7 @@ class CaptumConceptTask(Task):
         # A new folder per current weights.
         with tempfile.TemporaryDirectory() as file:
             method = self.cfg(adaptor, file)
-            loader = du.DataLoader(
-                dset,
-                batch_size=self.batch_size,
-                collate_fn=AttrRemains.collate_fn_xy,
-            )
+            loader = adaptor_dataloader(dset, y=True)
             for *x, remains, y in loader:
                 assert isinstance(remains, AttrRemains)
                 result = remains.invoke(method.interpret, x, y, experimental_sets=sets)
