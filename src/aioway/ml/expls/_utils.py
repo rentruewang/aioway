@@ -121,7 +121,8 @@ class AttrRemains:
         )
         """
 
-        tensors, remains = cls.split(du.default_collate(items))
+        batch = du.default_collate(items)
+        tensors, remains = cls.split(batch)
         return *tensors, remains
 
     @classmethod
