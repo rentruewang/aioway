@@ -15,11 +15,7 @@ from torch.utils import data as du
 
 from aioway.ml.tasks import Task
 
-__all__ = [
-    "CaptumConceptTask",
-    "build_concept_dcls",
-    "BuildTCAV",
-]
+__all__ = ["CaptumConceptTask", "build_concept_dcls", "BuildTCAV"]
 
 
 @typing.dataclass_transform(frozen_default=True, kw_only_default=True)
@@ -59,13 +55,11 @@ class CaptumConceptTask(Task):
 
         @abc.abstractmethod
         def score(
-            self,
-            method: concept.ConceptInterpreter,
-            x: torch.Tensor,
-            y: torch.Tensor,
-            sets: list[list[concept.Concept]],
+            self, result: dict, sets: list[list[concept.Concept]]
         ) -> torch.Tensor:
             "Each set's score on the batch, a mean over its examples. Shape (len(sets), layers)."
+
+            raise NotImplementedError
 
         def as_kwargs(self) -> dict[str, typing.Any]:
             "The fields, as keyword arguments to the constructor."
@@ -114,7 +108,8 @@ class CaptumConceptTask(Task):
             method = self.cfg(module, file)
 
             for x, y in du.DataLoader(dset, batch_size=self.batch_size):
-                total += self.cfg.score(method, x, y, sets) * len(x)
+                result = method.interpret(x, experimental_sets=sets, target=y)
+                total += self.cfg.score(result, sets) * len(x)
                 n += len(x)
 
         assert isinstance(total, torch.Tensor)
@@ -147,13 +142,6 @@ class BuildTCAV(CaptumConceptTask.Strategy):
     attribute_to_layer_input: bool = False
     "Fit the directions on each layer's input instead of its output."
 
-    def score(
-        self,
-        method: concept.ConceptInterpreter,
-        x: torch.Tensor,
-        y: torch.Tensor,
-        sets: list[list[concept.Concept]],
-    ) -> torch.Tensor:
-        result = method.interpret(x, experimental_sets=sets, target=y)
+    def score(self, result: dict, sets: list[list[concept.Concept]]) -> torch.Tensor:
         keys = ["-".join(str(c.id) for c in s) for s in sets]
         return torch.tensor([_score(self.layers, result, k) for k in keys])
