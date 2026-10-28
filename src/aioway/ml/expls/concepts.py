@@ -15,6 +15,8 @@ from torch.utils import data as du
 
 from aioway.ml.tasks import Task
 
+from ._utils import AttrAdaptor, AttrRemains
+
 __all__ = ["CaptumConceptTask", "build_concept_dcls", "BuildTCAV"]
 
 
@@ -86,31 +88,41 @@ class CaptumConceptTask(Task):
             module: An `nn.Module` that outputs one score per class, shape (batch, classes).
         """
 
-        loaders = [
-            du.DataLoader(d, batch_size=self.batch_size) for d in self.concepts.values()
-        ]
-        concepts = [
-            concept.Concept(i, name, dl)
-            for i, (name, dl) in enumerate(zip(self.concepts, loaders))
-        ]
+        adaptor = AttrAdaptor(module)
+
+        def adaptor_dataloader(dataset: du.Dataset, y: bool = False):
+            collate_fn = AttrRemains.collate_fn_xy if y else AttrRemains.collate_fn
+            return du.DataLoader(
+                dataset,
+                batch_size=self.batch_size,
+                collate_fn=collate_fn,
+            )
+
+        # Set up the concepts.
         random = concept.Concept(
-            len(concepts),
-            "random",
-            du.DataLoader(self.random, batch_size=self.batch_size),
+            len(self.concepts), "random", adaptor_dataloader(self.random)
         )
-        sets = [[c, random] for c in concepts]
+        concepts: list[concept.Concept] = []
+        sets: list[list[concept.Concept]] = []
+        for idx, [name, dset_per] in enumerate(self.concepts.items()):
+            concepts.append(
+                con := concept.Concept(idx, name, adaptor_dataloader(dset_per))
+            )
+            sets.append([con, random])
 
         total: torch.Tensor | float = 0.0
         n = 0
 
         # A new folder per current weights.
         with tempfile.TemporaryDirectory() as file:
-            method = self.cfg(module, file)
+            method = self.cfg(adaptor, file)
+            loader = adaptor_dataloader(dset, y=True)
 
-            for x, y in du.DataLoader(dset, batch_size=self.batch_size):
-                result = method.interpret(x, experimental_sets=sets, target=y)
-                total += self.cfg.score(result, sets) * len(x)
-                n += len(x)
+            for *x, remains, y in loader:
+                assert isinstance(remains, AttrRemains)
+                result = remains.invoke(method.interpret, x, y, experimental_sets=sets)
+                n += len(y)
+                total += self.cfg.score(result, sets) * len(y)
 
         assert isinstance(total, torch.Tensor)
         return total / n

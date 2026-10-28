@@ -7,7 +7,16 @@ from torch.utils import data as du
 
 from aioway.ml import BuildTCAV, CaptumConceptTask
 
-pytest.importorskip("sklearn")  # Captum's default concept classifier
+
+class _Dataset(du.Dataset):
+    def __init__(self, tensors: torch.Tensor | list[torch.Tensor]) -> None:
+        self.tensors = tensors
+
+    def __len__(self):
+        return len(self.tensors)
+
+    def __getitem__(self, index):
+        return self.tensors[index]
 
 
 @pytest.fixture
@@ -18,14 +27,14 @@ def mlp():
 @pytest.fixture
 def concepts():
     return {
-        "high": du.TensorDataset(torch.randn(16, 4) + 1),
-        "low": du.TensorDataset(torch.randn(16, 4) - 1),
+        "high": _Dataset(torch.randn(16, 4) + 1),
+        "low": _Dataset(torch.randn(16, 4) - 1),
     }
 
 
 @pytest.fixture
 def random_set():
-    return du.TensorDataset(torch.randn(16, 4))
+    return _Dataset(torch.randn(16, 4))
 
 
 @pytest.fixture
@@ -34,7 +43,7 @@ def dset():
 
 
 def _builds():
-    yield BuildTCAV(layers=["0", "2"])
+    yield BuildTCAV(layers=["module.0", "module.2"])
 
 
 @pytest.fixture(params=_builds())
@@ -49,5 +58,6 @@ def test_concept_on_module(
     dset: du.Dataset,
     build: CaptumConceptTask.Strategy,
 ):
-    scores = CaptumConceptTask(build, concepts, random_set, batch_size=8)(dset, mlp)
+    task = CaptumConceptTask(build, concepts, random_set, batch_size=8)
+    scores = task(dset, mlp)
     assert scores.shape == (2, 2)
