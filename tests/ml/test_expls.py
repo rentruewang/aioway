@@ -39,6 +39,16 @@ def build(request):
     return request.param
 
 
-def test_attr_on_module(linear: nn.Module, dset: du.Dataset, build: BuildAttr):
-    attribution = CaptumAttrTask(build, batch_size=8)(dset, linear)
+@pytest.fixture
+def batch_size():
+    return 8
+
+
+def test_attr_on_module(
+    linear: nn.Module,
+    dset: du.Dataset,
+    build: BuildAttr,
+    batch_size: int,
+):
+    attribution = CaptumAttrTask(build, batch_size=batch_size)(dset, linear)
     assert attribution.shape == (4,)
