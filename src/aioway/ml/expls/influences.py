@@ -75,6 +75,7 @@ class CaptumInfluenceTask(Task):
             self, method: influence.DataInfluence, loader: du.DataLoader
         ) -> torch.Tensor:
             "Each corpus example's influence, summed over the loader: one corpus pass per batch."
+
             inf = [method.influence((x, y)).sum(0) for x, y in loader]
             result = sum(inf)
             assert isinstance(result, torch.Tensor)
