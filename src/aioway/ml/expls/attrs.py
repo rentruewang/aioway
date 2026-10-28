@@ -11,9 +11,10 @@ from captum import attr
 from torch import nn
 from torch.utils import data as du
 
+from aioway._utils import is_tuple_of
 from aioway.ml.tasks import Task
 
-from ._utils import AttrAdaptor
+from ._utils import AttrAdaptor, AttrRemains
 
 __all__ = [
     "CaptumAttrTask",
@@ -81,16 +82,14 @@ class CaptumAttrTask(Task):
         total = 0.0
 
         n = 0
-        for x, y in du.DataLoader(dset, batch_size=self.batch_size):
-            tensors, non_tensors = adaptor.split(x)
-            result: tuple[torch.Tensor, ...] = attr.attribute(
-                tensors,
-                additional_forward_args=(non_tensors,),
-                target=y,
-                **self.kwargs,
-            )
+        for *tensors, remains, y in du.DataLoader(
+            dset, batch_size=self.batch_size, collate_fn=AttrRemains.collate_fn_xy
+        ):
+            assert isinstance(remains, AttrRemains)
+            result = remains.invoke(attr.attribute, tensors, y, **self.kwargs)
             n += len(y)
 
+            assert is_tuple_of(torch.Tensor)(result)
             for tensor in result:
                 total += tensor.abs().sum(0).flatten()
 

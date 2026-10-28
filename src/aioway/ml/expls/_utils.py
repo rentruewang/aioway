@@ -6,11 +6,18 @@ from collections import abc as cabc
 
 import torch
 from torch import nn
+from torch.utils import data as du
 
 from aioway._utils import is_list_of
 from aioway.t import TreeSpec, tree_flatten, tree_unflatten
 
 __all__ = ["AttrAdaptor", "AttrRemains"]
+
+
+class AttributeFunc(typing.Protocol):
+    def __call__(
+        self, x, additional_forward_args: tuple, target: torch.Tensor, **kwargs
+    ) -> typing.Any: ...
 
 
 class AttrAdaptor(nn.Module):
@@ -34,14 +41,6 @@ class AttrAdaptor(nn.Module):
         assert is_list_of(torch.Tensor)(tensors)
         return self.module(remains.reconstruct(tensors))
 
-    def split(self, x):
-        """
-        A convenient adaptor to split the input,
-        s.t. the helper class does not need to be imported separately.
-        """
-
-        return AttrRemains.split(x)
-
 
 @dcls.dataclass(frozen=True)
 class AttrRemains:
@@ -54,8 +53,28 @@ class AttrRemains:
     rest: list[typing.Any]
     "The rest of the non tensors."
 
+    def invoke(
+        self,
+        func: AttributeFunc,
+        tensors: list[torch.Tensor],
+        y: torch.Tensor,
+        **kwargs,
+    ):
+        if not is_list_of(torch.Tensor)(tensors):
+            raise TypeError("`x` should be a list of tensors.")
+        if not isinstance(y, torch.Tensor):
+            raise TypeError("`y` should be a tensor.")
+
+        return func(
+            tuple(tensors),
+            additional_forward_args=(self,),
+            target=y,
+            **kwargs,
+        )
+
     def reconstruct(self, tensors: cabc.Sequence[torch.Tensor]) -> typing.Any:
         "Reconstruct from a sequence of tensors."
+
         if len(tensors) != len(self.tensors):
             raise ValueError("Reconstructing the wrong list of arguments.")
 
@@ -71,6 +90,39 @@ class AttrRemains:
                 leaves.append(next(non_tensor_iter))
 
         return tree_unflatten(leaves, self.spec)
+
+    @classmethod
+    def collate_fn_xy(cls, items: list[typing.Any]) -> tuple[typing.Any, ...]:
+        """
+        The collate function where `y` is involved.
+        Be careful `AttrRemain` should only parse `x` or else `forward` would be messed up.
+
+        Usage:
+            >>> for *ts, r, y in du.DataLoader(dset, collate_fn=AttrRemains.collate_fn_xy):
+            >>>     assert is_list_of(torch.Tensor)(ts)
+            >>>     assert isinstance(r, AttrRemains)
+        )
+        """
+
+        x, y = du.default_collate(items)
+        tensors, remains = cls.split(x)
+        return *tensors, remains, y
+
+    @classmethod
+    def collate_fn(cls, items: list[typing.Any]) -> tuple[typing.Any, ...]:
+        """
+        Collates the list of batchs into a tuple of `(batched_tensors, remaining)`.
+        With this you don't need to call `.split` directly.
+
+        Usage:
+            >>> for *ts, r in du.DataLoader(dset, collate_fn=AttrRemains.collate_fn):
+            >>>     assert is_list_of(torch.Tensor)(ts)
+            >>>     assert isinstance(r, AttrRemains)
+        )
+        """
+
+        tensors, remains = cls.split(du.default_collate(items))
+        return *tensors, remains
 
     @classmethod
     def split(cls, item) -> tuple[tuple[torch.Tensor, ...], typing.Self]:
