@@ -35,6 +35,8 @@ def build_influence_dcls(cls):
 class CaptumInfluenceTask(Task):
     """
     The explainer based on `captum.influence.DataInfluence`.
+
+    Output: tensor of `[len(corpus)]`, corpus's rankings.
     """
 
     @build_influence_dcls

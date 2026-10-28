@@ -34,6 +34,8 @@ def build_concept_dcls(cls):
 class CaptumConceptTask(Task):
     """
     The explainer based on `captum.concept.ConceptInterpreter`.
+
+    Output: shape `[concepts, layers]`, concept's relative attention.
     """
 
     @build_concept_dcls

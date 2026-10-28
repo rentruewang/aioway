@@ -36,6 +36,8 @@ def build_attr_dcls(cls):
 class CaptumAttrTask(Task):
     """
     The explainer based on `captum.attr.Attribution`.
+
+    Output is of shape `input.shape[1:]` (features).
     """
 
     @build_attr_dcls
