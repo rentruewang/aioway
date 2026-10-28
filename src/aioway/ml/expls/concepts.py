@@ -108,8 +108,8 @@ class CaptumConceptTask(Task):
         n = 0
 
         # A new folder per current weights.
-        with tempfile.TemporaryDirectory() as save_path:
-            method = self.cfg(module, save_path)
+        with tempfile.TemporaryDirectory() as file:
+            method = self.cfg(module, file)
 
             for x, y in du.DataLoader(dset, batch_size=self.batch_size):
                 total += self.cfg.score(method, x, y, sets) * len(x)
