@@ -26,7 +26,7 @@ __all__ = [
 
 
 @dcls.dataclass
-class CaptumAttrTask(Task, abc.ABC):
+class CaptumAttrTask(Task):
     """
     The explainer based on `captum.attr.Attribution`.
     """
@@ -51,8 +51,8 @@ class CaptumAttrTask(Task, abc.ABC):
 
         n = 0
         for x, y in du.DataLoader(dset, batch_size=self.batch_size):
-            attr = attr.attribute(x, target=y, **self.kwargs).detach()
-            total += attr.abs().sum(0)
+            result = attr.attribute(x, target=y, **self.kwargs).detach()
+            total += result.abs().sum(0)
             n += len(x)
 
         assert isinstance(total, torch.Tensor)

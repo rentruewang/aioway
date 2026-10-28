@@ -3,6 +3,17 @@
 import pytest
 import torch
 from torch import nn
+from torch.utils import data as du
+
+from aioway.ml import (
+    BuildAttr,
+    BuildDeepLift,
+    BuildFeatureAblation,
+    BuildIntegratedGradients,
+    BuildKernelShap,
+    BuildSaliency,
+    CaptumAttrTask,
+)
 
 
 @pytest.fixture
@@ -11,5 +22,23 @@ def linear():
 
 
 @pytest.fixture
-def input():
-    return torch.randn(32, 4)
+def dset():
+    return du.TensorDataset(torch.randn(32, 4), torch.zeros(32, dtype=torch.long))
+
+
+def _builds():
+    yield BuildSaliency()
+    yield BuildIntegratedGradients()
+    yield BuildDeepLift()
+    yield BuildFeatureAblation()
+    yield BuildKernelShap()
+
+
+@pytest.fixture(params=_builds())
+def build(request):
+    return request.param
+
+
+def test_attr_on_module(linear: nn.Module, dset: du.Dataset, build: BuildAttr):
+    attribution = CaptumAttrTask(build, batch_size=8)(dset, linear)
+    assert attribution.shape == (4,)
