@@ -20,8 +20,7 @@ class AttrAdaptor(nn.Module):
 
     Usage:
         >>> tensors, remains = adaptor.split(x)
-        >>> method.attribute(tensors, ..., additional_forward_args=remains)
-
+        >>> method.attribute(tensors, ..., additional_forward_args=(remains,))
     """
 
     def __init__(self, module: nn.Module) -> None:

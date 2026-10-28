@@ -85,7 +85,7 @@ class CaptumAttrTask(Task):
             tensors, non_tensors = adaptor.split(x)
             result: tuple[torch.Tensor, ...] = attr.attribute(
                 tensors,
-                additional_forward_args=non_tensors,
+                additional_forward_args=(non_tensors,),
                 target=y,
                 **self.kwargs,
             )
