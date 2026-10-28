@@ -29,6 +29,9 @@ def build_attr_dcls(cls):
     return dcls.dataclass(frozen=True)(cls)
 
 
+# The base class ====
+
+
 @dcls.dataclass
 class CaptumAttrTask(Task):
     """
@@ -84,6 +87,9 @@ class CaptumAttrTask(Task):
     @property
     def kwargs(self) -> dict[str, typing.Any]:
         return self.cfg.as_kwargs()
+
+
+# The strategy implementations ====
 
 
 @build_attr_dcls

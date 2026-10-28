@@ -9,7 +9,6 @@ from aioway.ml import (
     BuildNaiveInfluenceFunction,
     BuildTracInCP,
     BuildTracInCPFast,
-    CaptumInfluenceStrategy,
     CaptumInfluenceTask,
 )
 
@@ -44,7 +43,7 @@ def test_influence_on_module(
     linear: nn.Module,
     corpus: du.Dataset,
     dset: du.Dataset,
-    build: CaptumInfluenceStrategy,
+    build: CaptumInfluenceTask.Strategy,
 ):
     influence = CaptumInfluenceTask(build, corpus, batch_size=8)(dset, linear)
     assert influence.shape == (16,)
