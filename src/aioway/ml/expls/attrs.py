@@ -15,7 +15,6 @@ from aioway.ml.tasks import Task
 
 __all__ = [
     "CaptumAttrTask",
-    "CaptumAttrStrategy",
     "build_attr_dcls",
     "BuildSaliency",
     "BuildIntegratedGradients",
@@ -25,13 +24,37 @@ __all__ = [
 ]
 
 
+@typing.dataclass_transform(frozen_default=True)
+def build_attr_dcls(cls):
+    return dcls.dataclass(frozen=True)(cls)
+
+
 @dcls.dataclass
 class CaptumAttrTask(Task):
     """
     The explainer based on `captum.attr.Attribution`.
     """
 
-    cfg: CaptumAttrStrategy
+    @build_attr_dcls
+    class Strategy(abc.ABC):
+        """
+        Builds a `captum.attr.Attribution` for a module.
+
+        Subclasses set `_CAPTUM_CLASS`
+        `self` must decompose to kwargs of its `.attribute`.
+        """
+
+        _CAPTUM_CLASS: typing.ClassVar[type[attr.Attribution]]
+        "The `captum` class to build."
+
+        def __call__(self, module: nn.Module) -> attr.Attribution:
+            return self._CAPTUM_CLASS(module)
+
+        def as_kwargs(self) -> dict[str, typing.Any]:
+            "The fields, as keyword arguments to `.attribute`."
+            return {f.name: getattr(self, f.name) for f in dcls.fields(self)}
+
+    cfg: Strategy
     "The attr build function."
 
     batch_size: int = 256
@@ -63,59 +86,34 @@ class CaptumAttrTask(Task):
         return self.cfg.as_kwargs()
 
 
-@typing.dataclass_transform(frozen_default=True)
-def build_attr_dcls(cls):
-    return dcls.dataclass(frozen=True)(cls)
-
-
 @build_attr_dcls
-class CaptumAttrStrategy(abc.ABC):
-    """
-    Builds a `captum.attr.Attribution` for a module.
-
-    Subclasses set `_CAPTUM_CLASS`
-    `self` must decompose to kwargs of its `.attribute`.
-    """
-
-    _CAPTUM_CLASS: typing.ClassVar[type[attr.Attribution]]
-    "The `captum` class to build."
-
-    def __call__(self, module: nn.Module) -> attr.Attribution:
-        return self._CAPTUM_CLASS(module)
-
-    def as_kwargs(self) -> dict[str, typing.Any]:
-        "The fields, as keyword arguments to `.attribute`."
-        return {f.name: getattr(self, f.name) for f in dcls.fields(self)}
-
-
-@build_attr_dcls
-class BuildSaliency(CaptumAttrStrategy):
+class BuildSaliency(CaptumAttrTask.Strategy):
     _CAPTUM_CLASS = attr.Saliency
 
     abs: bool = False
 
 
 @build_attr_dcls
-class BuildIntegratedGradients(CaptumAttrStrategy):
+class BuildIntegratedGradients(CaptumAttrTask.Strategy):
     _CAPTUM_CLASS = attr.IntegratedGradients
 
     n_steps: int = 32
 
 
 @build_attr_dcls
-class BuildDeepLift(CaptumAttrStrategy):
+class BuildDeepLift(CaptumAttrTask.Strategy):
     _CAPTUM_CLASS = attr.DeepLift
 
 
 @build_attr_dcls
-class BuildFeatureAblation(CaptumAttrStrategy):
+class BuildFeatureAblation(CaptumAttrTask.Strategy):
     _CAPTUM_CLASS = attr.FeatureAblation
 
     perturbations_per_eval: int = 8
 
 
 @build_attr_dcls
-class BuildKernelShap(CaptumAttrStrategy):
+class BuildKernelShap(CaptumAttrTask.Strategy):
     _CAPTUM_CLASS = attr.KernelShap
 
     n_samples: int = 128
