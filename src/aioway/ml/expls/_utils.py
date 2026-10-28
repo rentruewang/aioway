@@ -56,17 +56,17 @@ class AttrRemains:
     def invoke(
         self,
         func: AttributeFunc,
-        tensors: list[torch.Tensor],
+        x: list[torch.Tensor],
         y: torch.Tensor,
         **kwargs,
     ):
-        if not is_list_of(torch.Tensor)(tensors):
+        if not is_list_of(torch.Tensor)(x):
             raise TypeError("`x` should be a list of tensors.")
         if not isinstance(y, torch.Tensor):
             raise TypeError("`y` should be a tensor.")
 
         return func(
-            tuple(tensors),
+            tuple(x),
             additional_forward_args=(self,),
             target=y,
             **kwargs,
