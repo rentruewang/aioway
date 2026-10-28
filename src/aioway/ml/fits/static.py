@@ -10,7 +10,7 @@ import tensordict as td
 import torch
 from rich import progress
 from torch import nn, optim
-from torch.utils import data as dutils
+from torch.utils import data as du
 from torchrl.data import tensor_specs as tspecs
 
 from aioway._utils import FloatArray
@@ -68,14 +68,14 @@ class TrainCfg:
         if self.max_grad_norm < 0:
             raise ValueError(f"{self.max_grad_norm=} should be positive.")
 
-    def make_data_loader(self, dataset: Dset) -> dutils.DataLoader:
-        loader = dutils.DataLoader(
+    def make_data_loader(self, dataset: Dset) -> du.DataLoader:
+        loader = du.DataLoader(
             dataset.to_dataset(),
             batch_size=self.batch_size,
             shuffle=self.shuffle,
             collate_fn=dataset.collate_fn,
         )
-        return typing.cast(dutils.DataLoader, self.fabric.setup_dataloaders(loader))
+        return typing.cast(du.DataLoader, self.fabric.setup_dataloaders(loader))
 
 
 class TerminateTraining(StopIteration):

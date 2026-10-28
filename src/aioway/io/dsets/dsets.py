@@ -5,7 +5,7 @@ import typing
 from collections import abc as cabc
 
 import numpy as np
-from torch.utils import data as dutils
+from torch.utils import data as du
 
 from aioway._utils import IntArray
 from aioway.cc import TSpecLike
@@ -15,7 +15,7 @@ __all__ = ["Dset", "IdxDset", "IterDset", "DatasetIdxDset"]
 
 class Dset[T](abc.ABC):
     """
-    A `Dset` supports conversion to `dutils.Dataset`.
+    A `Dset` supports conversion to `du.Dataset`.
 
     It does not provide any additional functionality, but improves the API usage.
     """
@@ -36,7 +36,7 @@ class Dset[T](abc.ABC):
         return None
 
     @abc.abstractmethod
-    def to_dataset(self) -> dutils.Dataset[T]:
+    def to_dataset(self) -> du.Dataset[T]:
         """
         The dataset that this `Dset` converts to.
         """
@@ -62,17 +62,17 @@ class IdxDset[T](Dset[T], abc.ABC):
         raise NotImplementedError
 
     @typing.override
-    def to_dataset(self) -> dutils.Dataset[T]:
+    def to_dataset(self) -> du.Dataset[T]:
         return _IdxDataset(self)
 
 
 class DatasetIdxDset[T](IdxDset[T]):
     """
-    Adaptor from `dutils.Dataset` to `IdxDset`.
+    Adaptor from `du.Dataset` to `IdxDset`.
     """
 
     def __init__(
-        self, dataset: dutils.Dataset[T], spec: TSpecLike, collate_fn=None
+        self, dataset: du.Dataset[T], spec: TSpecLike, collate_fn=None
     ) -> None:
         self._dataset = dataset
         self._spec = spec
@@ -103,11 +103,11 @@ class DatasetIdxDset[T](IdxDset[T]):
         return self._colalte_fn
 
     @property
-    def dataset(self) -> dutils.Dataset[T]:
+    def dataset(self) -> du.Dataset[T]:
         return self._dataset
 
 
-class _IdxDataset(dutils.Dataset):
+class _IdxDataset(du.Dataset):
     def __init__(self, dset: IdxDset) -> None:
         super().__init__()
 
@@ -154,7 +154,7 @@ class IterDset[T](Dset[T], abc.ABC):
         return _IterDataset(self)
 
 
-class _IterDataset(dutils.IterableDataset):
+class _IterDataset(du.IterableDataset):
     def __init__(self, dset: IterDset) -> None:
         super().__init__()
 
