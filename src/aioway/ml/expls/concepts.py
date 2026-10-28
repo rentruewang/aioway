@@ -2,14 +2,13 @@
 
 "The explainer based on `captum.concepts`."
 
-import typing
-
+import torch
 from torch import nn
+from torch.utils import data as du
 
-from aioway.io import Dset
 from aioway.ml.tasks import Task
 
 
 class CaptumConceptTask(Task):
-    def __call__(self, dataset: Dset, module: nn.Module) -> typing.Any:
+    def __call__(self, dset: du.Dataset, module: nn.Module) -> torch.Tensor:
         raise NotImplementedError

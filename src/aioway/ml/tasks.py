@@ -3,8 +3,7 @@
 import typing
 
 from torch import nn
-
-from aioway.io import Dset
+from torch.utils import data as du
 
 __all__ = ["Task"]
 
@@ -16,7 +15,7 @@ class Task[T](typing.Protocol):
     The API is designed to be as flexible as possible.
     """
 
-    def __call__(self, dataset: Dset, module: nn.Module) -> T: ...
+    def __call__(self, dset: du.Dataset, module: nn.Module) -> T: ...
 
 
 class Step[B, T](typing.Protocol):
