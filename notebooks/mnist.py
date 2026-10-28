@@ -22,7 +22,7 @@ import torch
 # %%
 from rich import pretty
 from torch import nn, optim
-from torch.utils import data as dutils
+from torch.utils import data as du
 from torchrl.data import tensor_specs as tspecs
 
 from aioway.cc import ClfLogitHead, as_tspec, linear_regression
@@ -57,7 +57,7 @@ def train_test_split[D: Dset](dataset: D, test_ratio: float) -> tuple[D, D]:
 
     train_dset, test_dset = map(
         wrap_dset,
-        dutils.random_split(dataset, [train_samples, test_samples]),
+        du.random_split(dataset, [train_samples, test_samples]),
     )
 
     return train_dset, test_dset

@@ -5,7 +5,7 @@ import typing
 import pytest
 import torch
 from torch import nn
-from torch.utils import data as dutils
+from torch.utils import data as du
 from torchrl.data import tensor_specs as tspecs
 
 from aioway.cc import (
@@ -31,7 +31,7 @@ def output_tspec():
 
 @pytest.fixture
 def input_dataset(input_attr_tspec: tspecs.Unbounded):
-    class FakeInputDset(dutils.IterableDataset):
+    class FakeInputDset(du.IterableDataset):
         @typing.override
         def __iter__(self):
             # Not really using this, so we can afford to make a fake one.
@@ -41,12 +41,12 @@ def input_dataset(input_attr_tspec: tspecs.Unbounded):
 
 
 @pytest.fixture
-def input_loader(input_dataset: dutils.Dataset):
-    return dutils.DataLoader(input_dataset)
+def input_loader(input_dataset: du.Dataset):
+    return du.DataLoader(input_dataset)
 
 
 @pytest.fixture
-def target_loader(input_loader: dutils.DataLoader):
+def target_loader(input_loader: du.DataLoader):
     return input_loader
 
 

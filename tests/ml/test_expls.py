@@ -3,14 +3,16 @@
 import pytest
 import torch
 from torch import nn
+from torch.utils import data as du
 
 from aioway.ml import (
-    DeepLiftExpl,
-    Expl,
-    FeatureAblationExpl,
-    IntegratedGradientsExpl,
-    KernelShapExpl,
-    SaliencyExpl,
+    BuildAttr,
+    BuildDeepLift,
+    BuildFeatureAblation,
+    BuildIntegratedGradients,
+    BuildKernelShap,
+    BuildSaliency,
+    CaptumAttrTask,
 )
 
 
@@ -20,23 +22,33 @@ def linear():
 
 
 @pytest.fixture
-def input():
-    return torch.randn(32, 4)
+def dset():
+    return du.TensorDataset(torch.randn(32, 4), torch.zeros(32, dtype=torch.long))
 
 
-def _expls():
-    yield SaliencyExpl()
-    yield IntegratedGradientsExpl()
-    yield DeepLiftExpl()
-    yield FeatureAblationExpl()
-    yield KernelShapExpl()
+def _builds():
+    yield BuildSaliency()
+    yield BuildIntegratedGradients()
+    yield BuildDeepLift()
+    yield BuildFeatureAblation()
+    yield BuildKernelShap()
 
 
-@pytest.fixture(params=_expls())
-def expl(request):
+@pytest.fixture(params=_builds())
+def build(request):
     return request.param
 
 
-def test_expl_on_module(linear: nn.Module, input: torch.Tensor, expl: Expl):
-    attribution = expl(linear, input)
-    assert all(isinstance(t, torch.Tensor) for t in attribution)
+@pytest.fixture
+def batch_size():
+    return 8
+
+
+def test_attr_on_module(
+    linear: nn.Module,
+    dset: du.Dataset,
+    build: BuildAttr,
+    batch_size: int,
+):
+    attribution = CaptumAttrTask(build, batch_size=batch_size)(dset, linear)
+    assert attribution.shape == (4,)
