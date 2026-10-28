@@ -13,6 +13,8 @@ from torch.utils import data as du
 
 from aioway.ml.tasks import Task
 
+from ._utils import AttrAdaptor
+
 __all__ = [
     "CaptumAttrTask",
     "build_attr_dcls",
@@ -74,14 +76,23 @@ class CaptumAttrTask(Task):
             module: An `nn.Module`, must output a scalar tenosr.
         """
 
-        attr = self.cfg(module)
+        adaptor = AttrAdaptor(module)
+        attr = self.cfg(adaptor)
         total = 0.0
 
         n = 0
         for x, y in du.DataLoader(dset, batch_size=self.batch_size):
-            result = attr.attribute(x, target=y, **self.kwargs).detach()
-            total += result.abs().sum(0)
-            n += len(x)
+            tensors, non_tensors = adaptor.split(x)
+            result: tuple[torch.Tensor, ...] = attr.attribute(
+                tensors,
+                additional_forward_args=non_tensors,
+                target=y,
+                **self.kwargs,
+            )
+            n += len(y)
+
+            for tensor in result:
+                total += tensor.abs().sum(0).flatten()
 
         assert isinstance(total, torch.Tensor)
         return total / n
