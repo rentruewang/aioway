@@ -98,16 +98,17 @@ class CaptumConceptTask(Task):
                 collate_fn=collate_fn,
             )
 
-        loaders = [adaptor_dataloader(cd) for cd in self.concepts.values()]
-
-        concepts = [
-            concept.Concept(i, name, dl)
-            for i, (name, dl) in enumerate(zip(self.concepts, loaders))
-        ]
+        # Set up the concepts.
         random = concept.Concept(
-            len(concepts), "random", adaptor_dataloader(self.random)
+            len(self.concepts), "random", adaptor_dataloader(self.random)
         )
-        sets = [[c, random] for c in concepts]
+        concepts: list[concept.Concept] = []
+        sets: list[list[concept.Concept]] = []
+        for idx, [name, dset_per] in enumerate(self.concepts.items()):
+            concepts.append(
+                con := concept.Concept(idx, name, adaptor_dataloader(dset_per))
+            )
+            sets.append([con, random])
 
         total: torch.Tensor | float = 0.0
         n = 0
@@ -116,6 +117,7 @@ class CaptumConceptTask(Task):
         with tempfile.TemporaryDirectory() as file:
             method = self.cfg(adaptor, file)
             loader = adaptor_dataloader(dset, y=True)
+
             for *x, remains, y in loader:
                 assert isinstance(remains, AttrRemains)
                 result = remains.invoke(method.interpret, x, y, experimental_sets=sets)
