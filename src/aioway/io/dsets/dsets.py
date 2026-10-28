@@ -43,6 +43,9 @@ class Dset[T](abc.ABC):
 
         raise NotImplementedError
 
+    def to_dataloader(self, **kwargs) -> du.DataLoader[T]:
+        return du.DataLoader(self.to_dataset(), **kwargs)
+
 
 class IdxDset[T](Dset[T], abc.ABC):
     """
