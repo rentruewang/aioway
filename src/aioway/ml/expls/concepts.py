@@ -107,7 +107,7 @@ class CaptumConceptTask(Task):
         total: torch.Tensor | float = 0.0
         n = 0
 
-        # A new folder per call: the directions are fitted to this module's current weights.
+        # A new folder per current weights.
         with tempfile.TemporaryDirectory() as save_path:
             method = self.cfg(module, save_path)
 
