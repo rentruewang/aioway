@@ -15,7 +15,7 @@ from aioway.ml.tasks import Task
 
 __all__ = [
     "CaptumAttrTask",
-    "BuildAttr",
+    "CaptumAttrStrategy",
     "build_attr_dcls",
     "BuildSaliency",
     "BuildIntegratedGradients",
@@ -31,7 +31,7 @@ class CaptumAttrTask(Task):
     The explainer based on `captum.attr.Attribution`.
     """
 
-    build_attr: BuildAttr
+    cfg: CaptumAttrStrategy
     "The attr build function."
 
     batch_size: int = 256
@@ -46,7 +46,7 @@ class CaptumAttrTask(Task):
             module: An `nn.Module`, must output a scalar tenosr.
         """
 
-        attr = self.build_attr(module)
+        attr = self.cfg(module)
         total = 0.0
 
         n = 0
@@ -60,7 +60,7 @@ class CaptumAttrTask(Task):
 
     @property
     def kwargs(self) -> dict[str, typing.Any]:
-        return self.build_attr.as_kwargs()
+        return self.cfg.as_kwargs()
 
 
 @typing.dataclass_transform(frozen_default=True)
@@ -69,7 +69,7 @@ def build_attr_dcls(cls):
 
 
 @build_attr_dcls
-class BuildAttr(abc.ABC):
+class CaptumAttrStrategy(abc.ABC):
     """
     Builds a `captum.attr.Attribution` for a module.
 
@@ -89,33 +89,33 @@ class BuildAttr(abc.ABC):
 
 
 @build_attr_dcls
-class BuildSaliency(BuildAttr):
+class BuildSaliency(CaptumAttrStrategy):
     _CAPTUM_CLASS = attr.Saliency
 
     abs: bool = False
 
 
 @build_attr_dcls
-class BuildIntegratedGradients(BuildAttr):
+class BuildIntegratedGradients(CaptumAttrStrategy):
     _CAPTUM_CLASS = attr.IntegratedGradients
 
     n_steps: int = 32
 
 
 @build_attr_dcls
-class BuildDeepLift(BuildAttr):
+class BuildDeepLift(CaptumAttrStrategy):
     _CAPTUM_CLASS = attr.DeepLift
 
 
 @build_attr_dcls
-class BuildFeatureAblation(BuildAttr):
+class BuildFeatureAblation(CaptumAttrStrategy):
     _CAPTUM_CLASS = attr.FeatureAblation
 
     perturbations_per_eval: int = 8
 
 
 @build_attr_dcls
-class BuildKernelShap(BuildAttr):
+class BuildKernelShap(CaptumAttrStrategy):
     _CAPTUM_CLASS = attr.KernelShap
 
     n_samples: int = 128

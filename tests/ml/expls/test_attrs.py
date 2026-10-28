@@ -6,7 +6,7 @@ from torch import nn
 from torch.utils import data as du
 
 from aioway.ml import (
-    BuildAttr,
+    AttrStrategy,
     BuildDeepLift,
     BuildFeatureAblation,
     BuildIntegratedGradients,
@@ -47,7 +47,7 @@ def batch_size():
 def test_attr_on_module(
     linear: nn.Module,
     dset: du.Dataset,
-    build: BuildAttr,
+    build: AttrStrategy,
     batch_size: int,
 ):
     attribution = CaptumAttrTask(build, batch_size=batch_size)(dset, linear)
