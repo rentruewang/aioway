@@ -68,6 +68,12 @@ class InstrList[I: Instr = typing.Any]:
 
         self._seq = iterable
 
+    def __str__(self):
+        return str(self._code)
+
+    def __rich__(self):
+        return self._code
+
     def __len__(self) -> int:
         return len(self._seq)
 
@@ -94,6 +100,12 @@ class InstrList[I: Instr = typing.Any]:
 
     def index(self, instr: I, /) -> int:
         return self._instr_to_step[instr]
+
+    @property
+    def _code(self):
+        from aioway.ir import render_stmts
+
+        return render_stmts(self)
 
     @functools.cached_property
     def _instr_to_step(self) -> AnyDict[I, int]:

@@ -77,3 +77,7 @@ rich.print(render_func_proc(another, "another"))
 # %%
 another.__name__ = "new_name"
 rich.print(another)
+
+# %%
+rich.print("Printing only the body:")
+rich.print(another.instrs)
