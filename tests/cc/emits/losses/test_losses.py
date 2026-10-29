@@ -3,8 +3,7 @@
 import pytest
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.cc.emits import ArgsTSpec, emit_loss, emit_one, route_loss
-from aioway.io import LossTSpec
+from aioway.io import ArgsTSpec, LossTSpec, emit_loss, emit_one, route_loss
 
 
 @pytest.fixture

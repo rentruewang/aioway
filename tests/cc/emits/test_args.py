@@ -4,7 +4,7 @@ import pytest
 import torch
 from torch import nn
 
-from aioway.cc.emits import NnArgs
+from aioway.io import NnArgs
 
 
 @pytest.fixture

@@ -8,12 +8,11 @@ from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
 from aioway._utils import is_list_of
-from aioway.cc.emits._utils import chain_sequential_proc, module_tspec_to_proc
-from aioway.io import TSpec, sample_from_tspec, unbounded_box_tspec
+from aioway.io.tspecs import TSpec, sample_from_tspec, unbounded_box_tspec
 from aioway.ir import NnProc
 from aioway.t import Shape
 
-from ._utils import Activation
+from ._utils import Activation, chain_sequential_proc, module_tspec_to_proc
 from .emitters import Emitter, emitter_dcls
 from .linear import linear_regression
 

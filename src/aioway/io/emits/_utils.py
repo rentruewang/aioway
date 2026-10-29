@@ -5,7 +5,7 @@ import enum
 import torch
 from torch import nn
 
-from aioway.io import TSpecLike, as_tspec, sample_from_tspec, set_batch_size
+from aioway.io.tspecs import TSpecLike, as_tspec, sample_from_tspec, set_batch_size
 from aioway.ir import NnProc, track_module_thunks
 from aioway.t import TList, clone_in_fake_mode, fake_mode, route_aten_mode
 
