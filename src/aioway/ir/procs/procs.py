@@ -2,10 +2,12 @@
 
 "The `Proc` that supports analysis."
 
+import contextlib as ctxl
 import copy
 import dataclasses as dcls
 import functools
 import operator
+import textwrap
 import typing
 from collections import abc as cabc
 
@@ -30,6 +32,8 @@ from aioway.t import (
 __all__ = ["Proc", "TensorRef", "TensorIndex", "TensorLifetime"]
 
 # The Proc class ====
+
+_LAMBDA = "<lambda>"
 
 
 class Proc[I: Instr = typing.Any]:
@@ -67,6 +71,9 @@ class Proc[I: Instr = typing.Any]:
         self._inputs = inputs
         self._outputs = outputs
 
+        # Set the deafult name to "<lambda>".
+        self.__name__ = _LAMBDA
+
         # Link producers / consumers, and validate inputs and outputs.
         self.reset_tindex()
 
@@ -76,7 +83,17 @@ class Proc[I: Instr = typing.Any]:
             )
 
     def __repr__(self) -> str:
-        return repr(self.instrs)
+        return textwrap.dedent(f"""
+        inputs: {self.inputs!r}
+        outputs: {self.outputs!r}
+        instrs: {self.instrs!r}
+        """).strip()
+
+    def __str__(self) -> str:
+        return str(self._code)
+
+    def __rich__(self):
+        return self._code
 
     def __len__(self) -> int:
         return len(self.instrs)
@@ -130,6 +147,24 @@ class Proc[I: Instr = typing.Any]:
         self.__init__(
             instrs=mutated.ilist, inputs=mutated.inputs, outputs=mutated.outputs
         )
+
+    @ctxl.contextmanager
+    def rename(self, name: str) -> cabc.Generator[None]:
+        """
+        Temporarily rename the program to something else.
+        """
+
+        orig, self.__name__ = self.__name__, name
+        try:
+            yield
+        finally:
+            self.__name__ = orig
+
+    @property
+    def _code(self):
+        from aioway.ir import render_func_proc
+
+        return render_func_proc(self)
 
     @property
     def instrs(self) -> InstrList[I]:

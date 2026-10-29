@@ -1,8 +1,10 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import contextlib as ctxl
 import dataclasses as dcls
 import functools
 import itertools
+import textwrap
 import typing
 from collections import abc as cabc
 
@@ -13,7 +15,8 @@ from rich import syntax
 
 from aioway._utils import AnyDict, any_dict, render_fcall
 from aioway.ir.instrs import FuncCall
-from aioway.ir.procs import FuncProc
+from aioway.ir.instrs.instrs import InstrList
+from aioway.ir.procs import Proc
 from aioway.t import (
     Sign,
     keystr,
@@ -21,8 +24,9 @@ from aioway.t import (
     tree_flatten_with_path,
     tree_map_only,
 )
+from aioway.t.signs import BoundArgs
 
-__all__ = ["CodeRender", "render_func_proc"]
+__all__ = ["CodeRender", "render_func_proc", "render_stmts", "VarName"]
 
 
 class CodeRender(typing.Protocol):
@@ -31,14 +35,133 @@ class CodeRender(typing.Protocol):
     def __rich__(self) -> typing.Any: ...
 
 
-def render_func_proc(proc: FuncProc, name: str) -> CodeRender:
-    return StatelessCodePrint(proc=proc, name=name)()
+def render_func_proc(proc: Proc, name: str = "") -> CodeRender:
+    ctx = proc.rename(name) if name else ctxl.nullcontext()
+
+    with ctx:
+        return FuncCodePrint(proc=proc, vars=VarName())()
+
+
+def render_stmts(stmts: InstrList) -> CodeRender:
+    return _StmtsRender(list(StmtCodePrint(VarName(), allow_undef_rhs=True)(stmts)))
 
 
 # The renderer itself ====
 
 
-class StatelessCodePrint:
+class VarName:
+    """
+    The convenient variable name manager.
+    """
+
+    def __init__(
+        self,
+        vars: AnyDict[typing.Any, str] | None = None,
+        count: cabc.Iterator | None = None,
+    ) -> None:
+        self._vars: AnyDict[typing.Any, str] = vars or any_dict()
+        self._count: cabc.Iterator[int] = itertools.count(1) if count is None else count
+
+    def __contains__(self, obj) -> bool:
+        return obj in self._vars
+
+    def __repr__(self) -> str:
+        return repr(self._vars)
+
+    def __len__(self) -> int:
+        return len(self._vars)
+
+    def __getitem__(self, var: typing.Any) -> str:
+        return self._vars[var]
+
+    def __setitem__(self, var: typing.Any, name: str) -> None:
+        if not isinstance(name, str):
+            raise TypeError(f"Expected a string, but {name=} is  not a string.")
+
+        self._vars[var] = name
+        self.index_sub_attr(var)
+
+    def index_sub_attr(self, tree: typing.Any) -> None:
+        "Name the tensors inside `var` by their path from it, e.g. `tdict['a']`."
+
+        if tree not in self:
+            raise KeyError(f"{tree=} is not named yet.")
+
+        for path, leaf in tree_flatten_with_path(tree)[0]:
+            # A tensor that already has a name keeps it.
+            if isinstance(leaf, torch.Tensor) and leaf not in self:
+                self._vars[leaf] = self[tree] + keystr(path)
+
+    def get_or_name(self, var: typing.Any) -> str:
+        """
+        Get the name if found. Or else create a new name (with the `new` function).
+        """
+
+        if var not in self:
+            # Using `__setitem__` s.t. sub tensors are also named.
+            self[var] = self.new(var)
+
+        return self[var]
+
+    def new(self, var) -> str:
+        """
+        Create a new name for the variable.
+
+        `tensor_<n>` for tensors, the lowercase type name for others.
+        """
+        typ = torch.Tensor if isinstance(var, torch.Tensor) else type(var)
+        prefix = typ.__name__.lower()
+        next_int = next(self._count)
+        return f"{prefix}_{next_int}"
+
+
+class StmtCodePrint:
+    """
+    Render multiple statements.
+    """
+
+    def __init__(self, vars: VarName, allow_undef_rhs: bool = False) -> None:
+        """
+        Args:
+            vars: The variable manager.
+            allow_undef_rhs: Allow RHS variables to not be defined.
+        """
+
+        self._vars = vars
+        self._allow_undef_rhs = allow_undef_rhs
+
+    def __repr__(self):
+        return repr(self._vars)
+
+    def __call__(self, instrs: InstrList) -> cabc.Generator[str]:
+        # Execute the steps one by one in topo sorted order.
+        for instr in instrs:
+            stmt = self.print_line(instr)
+            yield stmt
+
+    def print_line(self, instr: FuncCall) -> str:
+        "Convert an instr to a statement."
+        args = tree_map_only(torch.Tensor, self.name_rhs_var, instr.args)
+        kwargs = tree_map_only(torch.Tensor, self.name_rhs_var, instr.kwargs)
+
+        lhs = self._vars.get_or_name(instr.result)
+
+        func_name = render_torch_func_name(instr.func)
+        return lhs + " = " + render_fcall(func_name, *args, **kwargs)
+
+    @property
+    def allow_undef_rhs(self):
+        return self._allow_undef_rhs
+
+    @property
+    def name_rhs_var(self):
+        if self.allow_undef_rhs:
+            return self._vars.get_or_name
+        else:
+            return self._vars.__getitem__
+
+
+class FuncCodePrint:
     """
     Render the function as a python function.
 
@@ -48,66 +171,57 @@ class StatelessCodePrint:
 
     TYPE = str
 
-    def __init__(self, proc: FuncProc, name: str) -> None:
+    def __init__(self, proc: Proc, vars: VarName) -> None:
         self._proc = proc
-        self._func_name = name
-        self._vars: AnyDict[typing.Any, str] = any_dict()
-        self._steps: list[str] = []
-        self._counter = itertools.count(start=1)
+        self._vars = vars
 
     @typing.final
     def __call__(self):
         # Assign bound argument's arguments to its name in signature.
-        for name, val in self.proc.inputs.items():
+        for name, val in self.inputs.items():
             self._vars[val] = name
-            self._index_sub_attr(val)
 
-        L.logger.debug("Prepare walking the {} instructions.", len(self.proc.instrs))
+        L.logger.debug("Prepare walking the {} instructions.", len(self.instrs))
 
-        # Execute the steps one by one in topo sorted order.
-        for idx, instr in enumerate(self.proc.instrs):
-            self.step(idx, instr)
+        body_render = StmtCodePrint(vars=self._vars)
+        body_lines = list(body_render(self.instrs))
 
         L.logger.debug("Preparing the output.")
 
         return _FuncRender(
-            name=self._func_name,
+            name=self.proc.__name__,
             params=self._renamed_signature(),
-            lines=self._steps,
+            lines=body_lines,
             returns=self._render_return_obj_init(),
         )
 
-    def step(self, idx: int, instr: FuncCall) -> None:
-        # Rerun is not permitted.
-        assert len(self._steps) == idx, "Length is not equal"
-
-        args = tree_map_only(torch.Tensor, self.name, instr.args)
-        kwargs = tree_map_only(torch.Tensor, self.name, instr.kwargs)
-
-        self._vars[instr.result] = self._new_var_name(instr.result)
-        self._index_sub_attr(instr.result)
-        var_name = self.name(instr.result)
-
-        func_name = render_torch_func_name(instr.func)
-        self._steps.append(var_name + " = " + render_fcall(func_name, *args, **kwargs))
+    @property
+    def proc(self) -> Proc:
+        return self._proc
 
     @property
-    def proc(self) -> FuncProc:
-        return self._proc
+    def instrs(self) -> InstrList:
+        return self.proc.instrs
+
+    @property
+    def inputs(self) -> BoundArgs:
+        return self.proc.inputs
+
+    @property
+    def outputs(self):
+        return self.proc.outputs
 
     def _render_return_obj_init(self) -> str:
         # No pytree decomposition because some values we want may be decomposed.
         # E.g. mapping will not show up if we use pytree.
         def render(obj) -> str:
             # If the object is named, stop decomposing.
-            try:
-                return self.name(obj)
-            except KeyError:
-                pass
+            if obj in self._vars:
+                return self._vars[obj]
 
             # Tensors must be input or indexed already.
             if isinstance(obj, torch.Tensor):
-                return self.name(obj)
+                return self._vars[obj]
 
             if isinstance(obj, cabc.Mapping):
                 builder = ["{"]
@@ -140,33 +254,12 @@ class StatelessCodePrint:
             # Default, I give up trying.
             return repr(obj)
 
-        return render(self.proc.outputs)
+        return render(self.outputs)
 
     def _renamed_signature(self) -> Sign:
         # Get the original inputs (with symbolic data), and find out their new names.
-        rename_map = {key: self.name(val) for key, val in self.proc.inputs.items()}
-        return self.proc.inputs.sign.rename(**rename_map)
-
-    def name(self, var: typing.Any) -> str:
-        r = self._vars[var]
-        assert isinstance(r, str)
-        return r
-
-    def _new_var_name(self, var: typing.Any) -> str:
-        "`tensor_<n>` for tensors, the lowercase type name for others."
-
-        typ = torch.Tensor if isinstance(var, torch.Tensor) else type(var)
-        prefix = typ.__name__.lower()
-        next_int = next(self._counter)
-        return f"{prefix}_{next_int}"
-
-    def _index_sub_attr(self, var: typing.Any) -> None:
-        "Name the tensors inside `var` by their path from it, e.g. `tdict['a']`."
-
-        for path, leaf in tree_flatten_with_path(var)[0]:
-            # A tensor that already has a name keeps it.
-            if isinstance(leaf, torch.Tensor) and leaf not in self._vars:
-                self._vars[leaf] = self.name(var) + keystr(path)
+        rename_map = {key: self._vars[val] for key, val in self.inputs.items()}
+        return self.inputs.sign.rename(**rename_map)
 
 
 # Convenient object that can be used in different contexts ====
@@ -191,14 +284,37 @@ class _FuncRender:
         return syntax.Syntax(str(self), lexer="py")
 
 
+@dcls.dataclass(frozen=True, slots=False)
+class _StmtsRender:
+    body: list[str]
+
+    def __str__(self) -> str:
+        return _stmts_renderer()(body=self.body)
+
+    def __rich__(self):
+        return syntax.Syntax(str(self), lexer="py")
+
+
+def _dedent(string: str):
+    return textwrap.dedent(string.strip("\n"))
+
+
 def _function_template():
-    return """\
-def {{ name }}{{ params }}:
-{% for line in body %}
-    {{ line }}
-{% endfor %}
-    return {{ returns }}
-"""
+    return _dedent("""
+        def {{ name }}{{ params }}:
+            {% for line in body %}
+            {{ line }}
+            {% endfor %}
+            return {{ returns }}
+""")
+
+
+def _statements_template():
+    return _dedent("""
+        {% for line in body %}
+        {{ line }}
+        {% endfor %}
+    """)
 
 
 def _py_env():
@@ -209,6 +325,11 @@ def _py_env():
         lstrip_blocks=True,
         keep_trailing_newline=True,
     )
+
+
+@functools.cache
+def _stmts_renderer():
+    return _py_env().from_string(_statements_template()).render
 
 
 @functools.cache

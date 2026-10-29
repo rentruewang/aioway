@@ -16,6 +16,11 @@ __all__ = [
 ]
 
 
+# Type definitions. To prevent initialization directly ====
+
+type AnyDict[K, V] = _AnyDict[K, V]
+type AnySet[K] = _AnySet[K]
+
 # The convenient constructors, public ====
 
 
@@ -32,7 +37,7 @@ def any_set(*default) -> AnySet: ...
 
 
 def any_set(*default) -> AnySet:
-    aset = AnySet(data={})
+    aset = _AnySet(data={})
 
     # Add all the default values.
     for key in default:
@@ -50,7 +55,7 @@ def any_dict[K, V](*default: tuple[K, V]) -> AnyDict[K, V]: ...
 
 
 def any_dict[K, V](*default: tuple[K, V]):
-    adict = AnyDict(data={})
+    adict = _AnyDict(data={})
 
     # Add all default values.
     for key, val in default:
@@ -62,7 +67,7 @@ def any_dict[K, V](*default: tuple[K, V]):
 # Class definitions. ====
 
 
-class AnySet[K: object = typing.Any]:
+class _AnySet[K: object = typing.Any]:
     """
     `AnySet` allows to store a set of any items.
     Hashable items are compared with `hash` and `==`, unhashable ones with `is`.
@@ -90,7 +95,7 @@ class AnySet[K: object = typing.Any]:
         return (key.obj for key in self._data)
 
     def __eq__(self, other) -> bool:
-        if isinstance(other, AnySet):
+        if isinstance(other, _AnySet):
             return self._data.keys() == other._data.keys()
 
         if not isinstance(other, cabc.Iterable):
@@ -125,7 +130,7 @@ class AnySet[K: object = typing.Any]:
         return type(self)(data=self._data.copy())
 
 
-class AnyDict[K, V]:
+class _AnyDict[K, V]:
     """
     `AnyDict` allows you to treat `K` as if it's `Hashable` (it may not be).
     Hashable keys are compared with `hash` and `==`, unhashable ones with `is`.
@@ -155,7 +160,7 @@ class AnyDict[K, V]:
     def __eq__(self, other) -> bool:
         # Both sides keyed by `wrap_any(key)`: `dict.__eq__` does the rest,
         # comparing values with `is`, then `==`.
-        if isinstance(other, AnyDict):
+        if isinstance(other, _AnyDict):
             return self._data == other._data
 
         if isinstance(other, cabc.Mapping):
@@ -190,7 +195,7 @@ class AnyDict[K, V]:
 
     def keys(self) -> AnySet[K]:
         data: dict[AnyKey[K], None] = dict.fromkeys(self._data)
-        return AnySet(data=data)
+        return _AnySet(data=data)
 
     def values(self) -> cabc.Iterable[V]:
         return list(self._data.values())
