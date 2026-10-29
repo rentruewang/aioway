@@ -10,7 +10,7 @@ from aioway.cc.emits import (
     emit_one,
     linear_regression,
 )
-from aioway.cc.tspecs import unbounded_box_tspec
+from aioway.io import unbounded_box_tspec
 from aioway.t import Shape
 
 

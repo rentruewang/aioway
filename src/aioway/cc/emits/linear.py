@@ -6,7 +6,7 @@ from torchrl import modules as rlmods
 from torchrl.data import tensor_specs as tspecs
 
 from aioway.cc.emits._utils import chain_sequential_proc, module_tspec_to_proc
-from aioway.cc.tspecs import TSpec
+from aioway.io import TSpec
 from aioway.ir import NnProc
 
 from ._utils import Activation

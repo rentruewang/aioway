@@ -10,7 +10,7 @@ from torch.nn import functional as F
 
 from aioway.cc.emits._utils import module_tspec_to_proc
 from aioway.cc.emits.emitters import Emitter, emitter_dcls
-from aioway.cc.tspecs import TSpec
+from aioway.io import TSpec
 from aioway.ir import NnProc
 
 __all__ = ["ContrastiveLoss", "ContrastiveLossEmitter"]

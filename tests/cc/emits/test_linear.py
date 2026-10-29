@@ -9,7 +9,7 @@ from torch.utils import data as du
 from torchrl.data import tensor_specs as tspecs
 
 from aioway.cc.emits import MlpEmitter, emit, emit_one, linear_regression
-from aioway.cc.tspecs import TSpec, unbounded_box_tspec
+from aioway.io import TSpec, unbounded_box_tspec
 from aioway.t import Shape
 
 

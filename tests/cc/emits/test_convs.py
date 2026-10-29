@@ -3,7 +3,7 @@
 import pytest
 
 from aioway.cc.emits import ImageRegressorEmitter, emit_one
-from aioway.cc.tspecs import (
+from aioway.io import (
     TSpec,
     float_image_tspec,
     sample_from_tspec,

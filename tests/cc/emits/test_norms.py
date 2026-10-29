@@ -6,7 +6,7 @@ import pytest
 import torch
 
 from aioway.cc.emits import NormEmitter, NormType, emit_one, layer_norm_emitter
-from aioway.cc.tspecs import unbounded_box_tspec
+from aioway.io import unbounded_box_tspec
 
 
 @pytest.fixture(params=typing.get_args(NormType.__value__))

@@ -7,7 +7,7 @@ import typing
 import torch
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.cc.tspecs import TSpec
+from aioway.io import TSpec
 
 
 class FitType(enum.StrEnum):

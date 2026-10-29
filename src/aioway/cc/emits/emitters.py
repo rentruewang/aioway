@@ -7,7 +7,7 @@ import typing
 from collections import abc as cabc
 
 from aioway._utils import AnySet, any_set
-from aioway.cc.tspecs import TSpec
+from aioway.io import TSpec
 from aioway.ir import NnProc
 
 __all__ = [
