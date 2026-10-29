@@ -2,5 +2,4 @@
 
 from .discovery import *
 from .emits import *
-from .rewrites import *
 from .tspecs import *

@@ -4,8 +4,8 @@ import pytest
 import torch
 from torch import nn
 
-from aioway.cc import NetMorphLinearSeqDeeper
 from aioway.ir import ExactSequential, NnProc, TypeSequential, track_module_thunks
+from aioway.ml import NetMorphLinearSeqDeeper
 from aioway.t import fake_mode
 
 
