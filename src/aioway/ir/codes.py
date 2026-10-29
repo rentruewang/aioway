@@ -38,7 +38,7 @@ def render_func_proc(proc: Proc, name: str = "") -> CodeRender:
     ctx = proc.rename(name) if name else ctxl.nullcontext()
 
     with ctx:
-        return FuncCodePrint(proc=proc, vars=any_dict())()
+        return FuncCodePrint(proc=proc, var_names=VarName())()
 
 
 # The renderer itself ====
@@ -51,6 +51,10 @@ def _human_counter() -> itertools.count[int]:
 
 @dcls.dataclass(frozen=True)
 class VarName:
+    """
+    The convenient variable name manager.
+    """
+
     vars: AnyDict[typing.Any, str] = dcls.field(default_factory=any_dict)
 
     _counter: itertools.count[int] = dcls.field(default_factory=_human_counter)
@@ -105,29 +109,15 @@ class VarName:
         return f"{prefix}_{next_int}"
 
 
-# class StmtCodePrint:
-#     """
-#     Render multiple statements.
-#     """
+class StmtCodePrint:
+    """
+    Render multiple statements.
+    """
 
-#     def __init__(self, instrs: InstrList, vars: AnyDict[typing.Any, str]) -> None:
-#         self._instrs = instrs
-#         self._vars = vars
-#         self._steps: list[str] = []
-#         self._counter = itertools.count(start=1)
-
-#     def name(self, var: typing.Any) -> str:
-#         r = self._vars[var]
-#         assert isinstance(r, str)
-#         return r
-
-#     def index_sub_attr(self, var: typing.Any) -> None:
-#         "Name the tensors inside `var` by their path from it, e.g. `tdict['a']`."
-
-#         for path, leaf in tree_flatten_with_path(var)[0]:
-#             # A tensor that already has a name keeps it.
-#             if isinstance(leaf, torch.Tensor) and leaf not in self._vars:
-#                 self._vars[leaf] = self.name(var) + keystr(path)
+    def __init__(self, instrs: InstrList, vars: VarName) -> None:
+        self._instrs = instrs
+        self._steps: list[str] = []
+        self._vars = vars
 
 
 class FuncCodePrint:
@@ -140,21 +130,16 @@ class FuncCodePrint:
 
     TYPE = str
 
-    def __init__(self, proc: Proc, vars: AnyDict[typing.Any, str]) -> None:
+    def __init__(self, proc: Proc, vars: VarName) -> None:
         self._proc = proc
-        # self._vars: AnyDict[typing.Any, str] = vars
         self._steps: list[str] = []
-        # self._counter = itertools.count(start=1)
-        self._var_names = VarName(vars=vars)
+        self._vars = vars
 
     @typing.final
     def __call__(self):
         # Assign bound argument's arguments to its name in signature.
         for name, val in self.inputs.items():
-            self._var_names[val] = name
-
-            # self._vars[val] = name
-            # self._index_sub_attr(val)
+            self._vars[val] = name
 
         L.logger.debug("Prepare walking the {} instructions.", len(self.instrs))
 
@@ -175,13 +160,13 @@ class FuncCodePrint:
         # Rerun is not permitted.
         assert len(self._steps) == idx, "Length is not equal"
 
-        args = tree_map_only(torch.Tensor, self._var_names.__getitem__, instr.args)
-        kwargs = tree_map_only(torch.Tensor, self._var_names.__getitem__, instr.kwargs)
+        args = tree_map_only(torch.Tensor, self._vars.__getitem__, instr.args)
+        kwargs = tree_map_only(torch.Tensor, self._vars.__getitem__, instr.kwargs)
 
-        var_name = self._var_names.get_or_name(instr.result)
+        lhs = self._vars.get_or_name(instr.result)
 
         func_name = render_torch_func_name(instr.func)
-        self._steps.append(var_name + " = " + render_fcall(func_name, *args, **kwargs))
+        self._steps.append(lhs + " = " + render_fcall(func_name, *args, **kwargs))
 
     @property
     def proc(self) -> Proc:
@@ -204,12 +189,12 @@ class FuncCodePrint:
         # E.g. mapping will not show up if we use pytree.
         def render(obj) -> str:
             # If the object is named, stop decomposing.
-            if obj in self._var_names:
-                return self._var_names[obj]
+            if obj in self._vars:
+                return self._vars[obj]
 
             # Tensors must be input or indexed already.
             if isinstance(obj, torch.Tensor):
-                return self._var_names[obj]
+                return self._vars[obj]
 
             if isinstance(obj, cabc.Mapping):
                 builder = ["{"]
@@ -246,29 +231,8 @@ class FuncCodePrint:
 
     def _renamed_signature(self) -> Sign:
         # Get the original inputs (with symbolic data), and find out their new names.
-        rename_map = {key: self._var_names[val] for key, val in self.inputs.items()}
+        rename_map = {key: self._vars[val] for key, val in self.inputs.items()}
         return self.inputs.sign.rename(**rename_map)
-
-    # def name(self, var: typing.Any) -> str:
-    #     r = self._vars[var]
-    #     assert isinstance(r, str)
-    #     return r
-
-    # def _new_var_name(self, var: typing.Any) -> str:
-    #     "`tensor_<n>` for tensors, the lowercase type name for others."
-
-    #     typ = torch.Tensor if isinstance(var, torch.Tensor) else type(var)
-    #     prefix = typ.__name__.lower()
-    #     next_int = next(self._counter)
-    #     return f"{prefix}_{next_int}"
-
-    # def _index_sub_attr(self, var: typing.Any) -> None:
-    #     "Name the tensors inside `var` by their path from it, e.g. `tdict['a']`."
-
-    #     for path, leaf in tree_flatten_with_path(var)[0]:
-    #         # A tensor that already has a name keeps it.
-    #         if isinstance(leaf, torch.Tensor) and leaf not in self._vars:
-    #             self._vars[leaf] = self.name(var) + keystr(path)
 
 
 # Convenient object that can be used in different contexts ====
