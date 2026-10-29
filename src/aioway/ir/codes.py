@@ -8,7 +8,6 @@ import typing
 from collections import abc as cabc
 
 import jinja2 as j2
-
 import loguru as L
 import torch
 from rich import syntax
@@ -53,7 +52,6 @@ def _human_counter() -> itertools.count[int]:
 @dcls.dataclass(frozen=True)
 class VarName:
     vars: AnyDict[typing.Any, str] = dcls.field(default_factory=any_dict)
-    steps: list[str] = dcls.field(default_factory=list)
 
     _counter: itertools.count[int] = dcls.field(default_factory=_human_counter)
 
@@ -66,11 +64,12 @@ class VarName:
     def __getitem__(self, var: typing.Any) -> str:
         return self.vars[var]
 
-    def __setitem__(self, var: typing.Any, name: str) -> str:
+    def __setitem__(self, var: typing.Any, name: str) -> None:
         if not isinstance(name, str):
             raise TypeError(f"Expected a string, but {name=} is  not a string.")
 
         self.vars[var] = name
+        self.index_sub_attr(var)
 
     def index_sub_attr(self, tree: typing.Any) -> None:
         "Name the tensors inside `var` by their path from it, e.g. `tdict['a']`."
@@ -83,19 +82,23 @@ class VarName:
             if isinstance(leaf, torch.Tensor) and leaf not in self:
                 self.vars[leaf] = self[tree] + keystr(path)
 
-    def get(self, var: typing.Any) -> str:
+    def get_or_name(self, var: typing.Any) -> str:
         """
-        Get the name if found. Or else create a new name.
-
-        `tensor_<n>` for tensors, the lowercase type name for others.
+        Get the name if found. Or else create a new name (with the `new` function).
         """
 
         if var not in self:
-            self[var] = self._new_name(var)
+            # Using `__setitem__` s.t. sub tensors are also named.
+            self[var] = self.new(var)
 
         return self[var]
 
-    def _new_name(self, var) -> str:
+    def new(self, var) -> str:
+        """
+        Create a new name for the variable.
+
+        `tensor_<n>` for tensors, the lowercase type name for others.
+        """
         typ = torch.Tensor if isinstance(var, torch.Tensor) else type(var)
         prefix = typ.__name__.lower()
         next_int = next(self._counter)
@@ -139,16 +142,19 @@ class FuncCodePrint:
 
     def __init__(self, proc: Proc, vars: AnyDict[typing.Any, str]) -> None:
         self._proc = proc
-        self._vars: AnyDict[typing.Any, str] = vars
+        # self._vars: AnyDict[typing.Any, str] = vars
         self._steps: list[str] = []
-        self._counter = itertools.count(start=1)
+        # self._counter = itertools.count(start=1)
+        self._var_names = VarName(vars=vars)
 
     @typing.final
     def __call__(self):
         # Assign bound argument's arguments to its name in signature.
         for name, val in self.inputs.items():
-            self._vars[val] = name
-            self._index_sub_attr(val)
+            self._var_names[val] = name
+
+            # self._vars[val] = name
+            # self._index_sub_attr(val)
 
         L.logger.debug("Prepare walking the {} instructions.", len(self.instrs))
 
@@ -169,12 +175,10 @@ class FuncCodePrint:
         # Rerun is not permitted.
         assert len(self._steps) == idx, "Length is not equal"
 
-        args = tree_map_only(torch.Tensor, self.name, instr.args)
-        kwargs = tree_map_only(torch.Tensor, self.name, instr.kwargs)
+        args = tree_map_only(torch.Tensor, self._var_names.__getitem__, instr.args)
+        kwargs = tree_map_only(torch.Tensor, self._var_names.__getitem__, instr.kwargs)
 
-        self._vars[instr.result] = self._new_var_name(instr.result)
-        self._index_sub_attr(instr.result)
-        var_name = self.name(instr.result)
+        var_name = self._var_names.get_or_name(instr.result)
 
         func_name = render_torch_func_name(instr.func)
         self._steps.append(var_name + " = " + render_fcall(func_name, *args, **kwargs))
@@ -200,14 +204,12 @@ class FuncCodePrint:
         # E.g. mapping will not show up if we use pytree.
         def render(obj) -> str:
             # If the object is named, stop decomposing.
-            try:
-                return self.name(obj)
-            except KeyError:
-                pass
+            if obj in self._var_names:
+                return self._var_names[obj]
 
             # Tensors must be input or indexed already.
             if isinstance(obj, torch.Tensor):
-                return self.name(obj)
+                return self._var_names[obj]
 
             if isinstance(obj, cabc.Mapping):
                 builder = ["{"]
@@ -244,29 +246,29 @@ class FuncCodePrint:
 
     def _renamed_signature(self) -> Sign:
         # Get the original inputs (with symbolic data), and find out their new names.
-        rename_map = {key: self.name(val) for key, val in self.inputs.items()}
+        rename_map = {key: self._var_names[val] for key, val in self.inputs.items()}
         return self.inputs.sign.rename(**rename_map)
 
-    def name(self, var: typing.Any) -> str:
-        r = self._vars[var]
-        assert isinstance(r, str)
-        return r
+    # def name(self, var: typing.Any) -> str:
+    #     r = self._vars[var]
+    #     assert isinstance(r, str)
+    #     return r
 
-    def _new_var_name(self, var: typing.Any) -> str:
-        "`tensor_<n>` for tensors, the lowercase type name for others."
+    # def _new_var_name(self, var: typing.Any) -> str:
+    #     "`tensor_<n>` for tensors, the lowercase type name for others."
 
-        typ = torch.Tensor if isinstance(var, torch.Tensor) else type(var)
-        prefix = typ.__name__.lower()
-        next_int = next(self._counter)
-        return f"{prefix}_{next_int}"
+    #     typ = torch.Tensor if isinstance(var, torch.Tensor) else type(var)
+    #     prefix = typ.__name__.lower()
+    #     next_int = next(self._counter)
+    #     return f"{prefix}_{next_int}"
 
-    def _index_sub_attr(self, var: typing.Any) -> None:
-        "Name the tensors inside `var` by their path from it, e.g. `tdict['a']`."
+    # def _index_sub_attr(self, var: typing.Any) -> None:
+    #     "Name the tensors inside `var` by their path from it, e.g. `tdict['a']`."
 
-        for path, leaf in tree_flatten_with_path(var)[0]:
-            # A tensor that already has a name keeps it.
-            if isinstance(leaf, torch.Tensor) and leaf not in self._vars:
-                self._vars[leaf] = self.name(var) + keystr(path)
+    #     for path, leaf in tree_flatten_with_path(var)[0]:
+    #         # A tensor that already has a name keeps it.
+    #         if isinstance(leaf, torch.Tensor) and leaf not in self._vars:
+    #             self._vars[leaf] = self.name(var) + keystr(path)
 
 
 # Convenient object that can be used in different contexts ====

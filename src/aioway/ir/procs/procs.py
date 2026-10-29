@@ -83,13 +83,11 @@ class Proc[I: Instr = typing.Any]:
             )
 
     def __repr__(self) -> str:
-        return textwrap.dedent(
-            f"""
+        return textwrap.dedent(f"""
         inputs: {self.inputs!r}
         outputs: {self.outputs!r}
         instrs: {self.instrs!r}
-        """
-        ).strip()
+        """).strip()
 
     def __str__(self) -> str:
         return str(self._code)
