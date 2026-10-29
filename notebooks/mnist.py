@@ -25,7 +25,8 @@ from torch import nn, optim
 from torch.utils import data as du
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.cc import ClfLogitHead, as_tspec, linear_regression
+from aioway.cc.emits import ClfLogitHead, linear_regression
+from aioway.cc.tspecs import as_tspec
 from aioway.contrib.mnist import MnistDataset
 from aioway.io import DatasetIdxDset, Dset, InputTarget
 from aioway.ml import StaticTrainer, TrainCfg

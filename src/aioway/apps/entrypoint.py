@@ -5,7 +5,8 @@ from collections import abc as cabc
 
 from torch import optim
 
-from aioway.cc import TSpec, as_tspec, emit, route_loss
+from aioway.cc.emits import emit, route_loss
+from aioway.cc.tspecs import TSpec, as_tspec
 from aioway.contrib.dsets import route_dset
 from aioway.io import Dset
 from aioway.ir import NnProc

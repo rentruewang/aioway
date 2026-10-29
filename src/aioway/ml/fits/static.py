@@ -14,7 +14,7 @@ from torch.utils import data as du
 from torchrl.data import tensor_specs as tspecs
 
 from aioway._utils import FloatArray
-from aioway.cc import TSpecLike
+from aioway.cc.tspecs import TSpecLike
 from aioway.io import Dset, InputTarget, InputTargetLikeDset
 
 if typing.TYPE_CHECKING:
