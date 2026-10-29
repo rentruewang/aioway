@@ -7,10 +7,10 @@ import typing
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.cc.emits._utils import module_tspec_to_proc
-from aioway.cc.tspecs import TSpec
+from aioway.io.tspecs import TSpec
 from aioway.ir import NnProc
 
+from ._utils import module_tspec_to_proc
 from .emitters import Emitter, emitter_dcls, emitter_function
 
 __all__ = ["NormEmitter", "NormType", "layer_norm_emitter"]

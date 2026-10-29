@@ -5,7 +5,7 @@ import typing
 import pytest
 import torch
 
-from aioway.cc import (
+from aioway.io import (
     NormEmitter,
     NormType,
     emit_one,

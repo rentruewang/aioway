@@ -8,7 +8,7 @@ import numpy as np
 from torch.utils import data as du
 
 from aioway._utils import IntArray
-from aioway.cc import TSpecLike
+from aioway.io.tspecs import TSpecLike
 
 __all__ = ["Dset", "IdxDset", "IterDset", "DatasetIdxDset"]
 

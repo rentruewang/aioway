@@ -8,7 +8,7 @@ from torch import nn
 from torch.utils import data as du
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.cc import (
+from aioway.io import (
     MlpEmitter,
     TSpec,
     emit,

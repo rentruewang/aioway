@@ -5,9 +5,8 @@ from collections import abc as cabc
 
 from torch import optim
 
-from aioway.cc import TSpec, as_tspec, emit, route_loss
 from aioway.contrib.dsets import route_dset
-from aioway.io import Dset
+from aioway.io import Dset, TSpec, as_tspec, emit, route_loss
 from aioway.ir import NnProc
 from aioway.ml import StaticTrainer, TrainCfg
 

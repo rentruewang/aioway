@@ -2,6 +2,7 @@
 
 from .boxes import *
 from .coercions import *
+from .discovery import *
 from .losses import *
 from .media import *
 from .sampling import *

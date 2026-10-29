@@ -2,7 +2,7 @@
 
 import pytest
 
-from aioway.cc import (
+from aioway.io import (
     ImageRegressorEmitter,
     TSpec,
     emit_one,
