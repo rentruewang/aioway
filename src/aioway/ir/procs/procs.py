@@ -7,6 +7,7 @@ import copy
 import dataclasses as dcls
 import functools
 import operator
+import textwrap
 import typing
 from collections import abc as cabc
 
@@ -81,7 +82,17 @@ class Proc[I: Instr = typing.Any]:
             )
 
     def __repr__(self) -> str:
-        return repr(self.instrs)
+        return textwrap.dedent(f"""
+        inputs: {self.inputs!r}
+        outputs: {self.outputs!r}
+        instrs: {self.instrs!r}
+        """).strip()
+
+    def __str__(self) -> str:
+        return str(self._code)
+
+    def __rich__(self):
+        return self._code
 
     def __len__(self) -> int:
         return len(self.instrs)
@@ -147,6 +158,12 @@ class Proc[I: Instr = typing.Any]:
             yield
         finally:
             self.__name__ = orig
+
+    @property
+    def _code(self):
+        from aioway.ir import render_func_proc
+
+        return render_func_proc(self)
 
     @property
     def instrs(self) -> InstrList[I]:
