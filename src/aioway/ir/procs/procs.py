@@ -2,6 +2,7 @@
 
 "The `Proc` that supports analysis."
 
+import contextlib as ctxl
 import copy
 import dataclasses as dcls
 import functools
@@ -30,6 +31,8 @@ from aioway.t import (
 __all__ = ["Proc", "TensorRef", "TensorIndex", "TensorLifetime"]
 
 # The Proc class ====
+
+_LAMBDA = "<lambda>"
 
 
 class Proc[I: Instr = typing.Any]:
@@ -66,6 +69,8 @@ class Proc[I: Instr = typing.Any]:
 
         self._inputs = inputs
         self._outputs = outputs
+
+        self.__name__ = _LAMBDA
 
         # Link producers / consumers, and validate inputs and outputs.
         self.reset_tindex()
@@ -130,6 +135,18 @@ class Proc[I: Instr = typing.Any]:
         self.__init__(
             instrs=mutated.ilist, inputs=mutated.inputs, outputs=mutated.outputs
         )
+
+    @ctxl.contextmanager
+    def rename(self, name: str) -> cabc.Generator[None]:
+        """
+        Temporarily rename the program to something else.
+        """
+
+        orig, self.__name__ = self.__name__, name
+        try:
+            yield
+        finally:
+            self.__name__ = orig
 
     @property
     def instrs(self) -> InstrList[I]:

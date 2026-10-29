@@ -1,5 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import contextlib as ctxl
 import dataclasses as dcls
 import functools
 import itertools
@@ -33,8 +34,11 @@ class CodeRender(typing.Protocol):
     def __rich__(self) -> typing.Any: ...
 
 
-def render_func_proc(proc: Proc, name: str = "<lambda>") -> CodeRender:
-    return StatelessCodePrint(proc=proc, name=name)()
+def render_func_proc(proc: Proc, name: str = "") -> CodeRender:
+    ctx = proc.rename(name) if name else ctxl.nullcontext()
+
+    with ctx:
+        return StatelessCodePrint(proc=proc)()
 
 
 # The renderer itself ====
@@ -50,9 +54,8 @@ class StatelessCodePrint:
 
     TYPE = str
 
-    def __init__(self, proc: Proc, name: str) -> None:
+    def __init__(self, proc: Proc) -> None:
         self._proc = proc
-        self._func_name = name
         self._vars: AnyDict[typing.Any, str] = any_dict()
         self._steps: list[str] = []
         self._counter = itertools.count(start=1)
@@ -73,7 +76,7 @@ class StatelessCodePrint:
         L.logger.debug("Preparing the output.")
 
         return _FuncRender(
-            name=self._func_name,
+            name=self.proc.__name__,
             params=self._renamed_signature(),
             lines=self._steps,
             returns=self._render_return_obj_init(),
