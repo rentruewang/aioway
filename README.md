@@ -10,6 +10,8 @@
 
 # 🛣️ AioWay
 
+> Developer support: [![](https://dcbadge.limes.pink/api/server/CEsuw3TRN)](https://discord.gg/CEsuw3TRN)
+
 > Aioway is an optimizing compiler for deep learning algorithms.
 > It treats the machine learning models / algorithms as instructions and build the pipeline that way.
 
