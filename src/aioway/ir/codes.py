@@ -13,7 +13,7 @@ from rich import syntax
 
 from aioway._utils import AnyDict, any_dict, render_fcall
 from aioway.ir.instrs import FuncCall
-from aioway.ir.procs import FuncProc
+from aioway.ir.procs import Proc
 from aioway.t import (
     Sign,
     keystr,
@@ -31,7 +31,7 @@ class CodeRender(typing.Protocol):
     def __rich__(self) -> typing.Any: ...
 
 
-def render_func_proc(proc: FuncProc, name: str) -> CodeRender:
+def render_func_proc(proc: Proc, name: str = "<lambda>") -> CodeRender:
     return StatelessCodePrint(proc=proc, name=name)()
 
 
@@ -48,7 +48,7 @@ class StatelessCodePrint:
 
     TYPE = str
 
-    def __init__(self, proc: FuncProc, name: str) -> None:
+    def __init__(self, proc: Proc, name: str) -> None:
         self._proc = proc
         self._func_name = name
         self._vars: AnyDict[typing.Any, str] = any_dict()
@@ -92,7 +92,7 @@ class StatelessCodePrint:
         self._steps.append(var_name + " = " + render_fcall(func_name, *args, **kwargs))
 
     @property
-    def proc(self) -> FuncProc:
+    def proc(self) -> Proc:
         return self._proc
 
     def _render_return_obj_init(self) -> str:
