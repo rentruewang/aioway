@@ -44,35 +44,36 @@ def render_func_proc(proc: Proc, name: str = "") -> CodeRender:
 # The renderer itself ====
 
 
-def _human_counter() -> itertools.count[int]:
-    "A more human counter (starts from 1)."
-    return itertools.count(start=1)
-
-
-@dcls.dataclass(frozen=True)
 class VarName:
     """
     The convenient variable name manager.
     """
 
-    vars: AnyDict[typing.Any, str] = dcls.field(default_factory=any_dict)
-
-    _counter: itertools.count[int] = dcls.field(default_factory=_human_counter)
+    def __init__(
+        self,
+        vars: AnyDict[typing.Any, str] | None = None,
+        count: cabc.Iterator | None = None,
+    ) -> None:
+        self._vars: AnyDict[typing.Any, str] = vars or any_dict()
+        self._count: cabc.Iterator[int] = itertools.count(1) if count is None else count
 
     def __contains__(self, obj) -> bool:
-        return obj in self.vars
+        return obj in self._vars
+
+    def __repr__(self) -> str:
+        return repr(self._vars)
 
     def __len__(self) -> int:
-        return len(self.vars)
+        return len(self._vars)
 
     def __getitem__(self, var: typing.Any) -> str:
-        return self.vars[var]
+        return self._vars[var]
 
     def __setitem__(self, var: typing.Any, name: str) -> None:
         if not isinstance(name, str):
             raise TypeError(f"Expected a string, but {name=} is  not a string.")
 
-        self.vars[var] = name
+        self._vars[var] = name
         self.index_sub_attr(var)
 
     def index_sub_attr(self, tree: typing.Any) -> None:
@@ -84,7 +85,7 @@ class VarName:
         for path, leaf in tree_flatten_with_path(tree)[0]:
             # A tensor that already has a name keeps it.
             if isinstance(leaf, torch.Tensor) and leaf not in self:
-                self.vars[leaf] = self[tree] + keystr(path)
+                self._vars[leaf] = self[tree] + keystr(path)
 
     def get_or_name(self, var: typing.Any) -> str:
         """
@@ -105,7 +106,7 @@ class VarName:
         """
         typ = torch.Tensor if isinstance(var, torch.Tensor) else type(var)
         prefix = typ.__name__.lower()
-        next_int = next(self._counter)
+        next_int = next(self._count)
         return f"{prefix}_{next_int}"
 
 
