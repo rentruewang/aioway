@@ -38,7 +38,7 @@ def render_func_proc(proc: Proc, name: str = "") -> CodeRender:
     ctx = proc.rename(name) if name else ctxl.nullcontext()
 
     with ctx:
-        return FuncCodePrint(proc=proc, var_names=VarName())()
+        return FuncCodePrint(proc=proc, vars=VarName())()
 
 
 # The renderer itself ====
