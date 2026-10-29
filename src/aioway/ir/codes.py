@@ -13,6 +13,7 @@ from rich import syntax
 
 from aioway._utils import AnyDict, any_dict, render_fcall
 from aioway.ir.instrs import FuncCall
+from aioway.ir.instrs.instrs import InstrList
 from aioway.ir.procs import Proc
 from aioway.t import (
     Sign,
@@ -21,6 +22,7 @@ from aioway.t import (
     tree_flatten_with_path,
     tree_map_only,
 )
+from aioway.t.signs import BoundArgs
 
 __all__ = ["CodeRender", "render_func_proc"]
 
@@ -58,14 +60,14 @@ class StatelessCodePrint:
     @typing.final
     def __call__(self):
         # Assign bound argument's arguments to its name in signature.
-        for name, val in self.proc.inputs.items():
+        for name, val in self.inputs.items():
             self._vars[val] = name
             self._index_sub_attr(val)
 
-        L.logger.debug("Prepare walking the {} instructions.", len(self.proc.instrs))
+        L.logger.debug("Prepare walking the {} instructions.", len(self.instrs))
 
         # Execute the steps one by one in topo sorted order.
-        for idx, instr in enumerate(self.proc.instrs):
+        for idx, instr in enumerate(self.instrs):
             self.step(idx, instr)
 
         L.logger.debug("Preparing the output.")
@@ -94,6 +96,18 @@ class StatelessCodePrint:
     @property
     def proc(self) -> Proc:
         return self._proc
+
+    @property
+    def instrs(self) -> InstrList:
+        return self.proc.instrs
+
+    @property
+    def inputs(self) -> BoundArgs:
+        return self.proc.inputs
+
+    @property
+    def outputs(self):
+        return self.proc.outputs
 
     def _render_return_obj_init(self) -> str:
         # No pytree decomposition because some values we want may be decomposed.
@@ -140,12 +154,12 @@ class StatelessCodePrint:
             # Default, I give up trying.
             return repr(obj)
 
-        return render(self.proc.outputs)
+        return render(self.outputs)
 
     def _renamed_signature(self) -> Sign:
         # Get the original inputs (with symbolic data), and find out their new names.
-        rename_map = {key: self.name(val) for key, val in self.proc.inputs.items()}
-        return self.proc.inputs.sign.rename(**rename_map)
+        rename_map = {key: self.name(val) for key, val in self.inputs.items()}
+        return self.inputs.sign.rename(**rename_map)
 
     def name(self, var: typing.Any) -> str:
         r = self._vars[var]
