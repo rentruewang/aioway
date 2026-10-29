@@ -71,6 +71,7 @@ class Proc[I: Instr = typing.Any]:
         self._inputs = inputs
         self._outputs = outputs
 
+        # Set the deafult name to "<lambda>".
         self.__name__ = _LAMBDA
 
         # Link producers / consumers, and validate inputs and outputs.
@@ -82,11 +83,13 @@ class Proc[I: Instr = typing.Any]:
             )
 
     def __repr__(self) -> str:
-        return textwrap.dedent(f"""
+        return textwrap.dedent(
+            f"""
         inputs: {self.inputs!r}
         outputs: {self.outputs!r}
         instrs: {self.instrs!r}
-        """).strip()
+        """
+        ).strip()
 
     def __str__(self) -> str:
         return str(self._code)

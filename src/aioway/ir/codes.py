@@ -8,6 +8,7 @@ import typing
 from collections import abc as cabc
 
 import jinja2 as j2
+
 import loguru as L
 import torch
 from rich import syntax
@@ -38,13 +39,95 @@ def render_func_proc(proc: Proc, name: str = "") -> CodeRender:
     ctx = proc.rename(name) if name else ctxl.nullcontext()
 
     with ctx:
-        return StatelessCodePrint(proc=proc)()
+        return FuncCodePrint(proc=proc, vars=any_dict())()
 
 
 # The renderer itself ====
 
 
-class StatelessCodePrint:
+def _human_counter() -> itertools.count[int]:
+    "A more human counter (starts from 1)."
+    return itertools.count(start=1)
+
+
+@dcls.dataclass(frozen=True)
+class VarName:
+    vars: AnyDict[typing.Any, str] = dcls.field(default_factory=any_dict)
+    steps: list[str] = dcls.field(default_factory=list)
+
+    _counter: itertools.count[int] = dcls.field(default_factory=_human_counter)
+
+    def __contains__(self, obj) -> bool:
+        return obj in self.vars
+
+    def __len__(self) -> int:
+        return len(self.vars)
+
+    def __getitem__(self, var: typing.Any) -> str:
+        return self.vars[var]
+
+    def __setitem__(self, var: typing.Any, name: str) -> str:
+        if not isinstance(name, str):
+            raise TypeError(f"Expected a string, but {name=} is  not a string.")
+
+        self.vars[var] = name
+
+    def index_sub_attr(self, tree: typing.Any) -> None:
+        "Name the tensors inside `var` by their path from it, e.g. `tdict['a']`."
+
+        if tree not in self:
+            raise KeyError(f"{tree=} is not named yet.")
+
+        for path, leaf in tree_flatten_with_path(tree)[0]:
+            # A tensor that already has a name keeps it.
+            if isinstance(leaf, torch.Tensor) and leaf not in self:
+                self.vars[leaf] = self[tree] + keystr(path)
+
+    def get(self, var: typing.Any) -> str:
+        """
+        Get the name if found. Or else create a new name.
+
+        `tensor_<n>` for tensors, the lowercase type name for others.
+        """
+
+        if var not in self:
+            self[var] = self._new_name(var)
+
+        return self[var]
+
+    def _new_name(self, var) -> str:
+        typ = torch.Tensor if isinstance(var, torch.Tensor) else type(var)
+        prefix = typ.__name__.lower()
+        next_int = next(self._counter)
+        return f"{prefix}_{next_int}"
+
+
+# class StmtCodePrint:
+#     """
+#     Render multiple statements.
+#     """
+
+#     def __init__(self, instrs: InstrList, vars: AnyDict[typing.Any, str]) -> None:
+#         self._instrs = instrs
+#         self._vars = vars
+#         self._steps: list[str] = []
+#         self._counter = itertools.count(start=1)
+
+#     def name(self, var: typing.Any) -> str:
+#         r = self._vars[var]
+#         assert isinstance(r, str)
+#         return r
+
+#     def index_sub_attr(self, var: typing.Any) -> None:
+#         "Name the tensors inside `var` by their path from it, e.g. `tdict['a']`."
+
+#         for path, leaf in tree_flatten_with_path(var)[0]:
+#             # A tensor that already has a name keeps it.
+#             if isinstance(leaf, torch.Tensor) and leaf not in self._vars:
+#                 self._vars[leaf] = self.name(var) + keystr(path)
+
+
+class FuncCodePrint:
     """
     Render the function as a python function.
 
@@ -54,9 +137,9 @@ class StatelessCodePrint:
 
     TYPE = str
 
-    def __init__(self, proc: Proc) -> None:
+    def __init__(self, proc: Proc, vars: AnyDict[typing.Any, str]) -> None:
         self._proc = proc
-        self._vars: AnyDict[typing.Any, str] = any_dict()
+        self._vars: AnyDict[typing.Any, str] = vars
         self._steps: list[str] = []
         self._counter = itertools.count(start=1)
 
