@@ -37,7 +37,6 @@
 3. Pretrained models / LLM: Usually expensive, non explainable, less flexible.
 4. Traditional methods: They can't handle new data (multimodal).
 
-
 ### 🤔 Why aioway yada yada
 
 In the recent years, machine learning's entry barrier higher, rather than lower. People with expert training are expensive, as they need years of experience to be good.
@@ -45,7 +44,6 @@ In the recent years, machine learning's entry barrier higher, rather than lower.
 However, current AutoML solutions are subpar. Each one of them have clear limitations: slow, inflexible, unreliable, or unable to handle modern data.
 
 Drawing inspriation from opitmizing compilers (especially SQLs), `aioway` aims to solve that.
-
 
 ## [🌟 Give us a star][star]!
 
@@ -72,14 +70,11 @@ Contributing is of course welcome. Please see the [contributing guide](./CONTRIB
   <img src="https://contrib.rocks/image?repo=rentruewang/aioway" />
 </a>
 
-
-
 ## 🐨 Relation to koila
 
 Aioway builds on top of the original [`koila` (moved to a branch)][koila]. The `torch` team built `FakeTensor` which overlaps a lot with `koila`'s functionality, so it's no longer maintained. See the rationale in the [koila][koila] branch.
 
 Conceptually, `aioway` works in a similar way, but instead of `Tensor` ops, `aioway` focuses on a higher level, on **algorithm building**.
-
 
 [koila]: https://github.com/rentruewang/aioway/tree/koila
 [star]: https://github.com/rentruewang/aioway/stargazers
