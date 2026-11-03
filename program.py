@@ -332,8 +332,8 @@ def let(name: Input, value: Any) -> Let:
 
 
 def update(name: Input, op: Any, *args: Any) -> Update:
-    """op(args) with name put where op takes what it changes (Train: first; Transfer: the target). op is an update's
-    config, or a call that makes one."""
+    """op(name, *args): an update changes its first argument, name, in place. op is an update's config, or a call
+    that makes one."""
     i = changes(op.op if isinstance(op, Call) else op)
     if i is None:
         raise TypeError(f"{_name(op)} changes nothing; an update needs a statement that does (Fit, Assign, Alter, Store)")
@@ -837,7 +837,7 @@ def pretrain_finetune(steps: int = 150) -> Script:
             lm: Predictor = Network()(ex.input.known, ex.target)
             Train(steps=steps)(lm, next_token_loss, corpus)
             clf: Predictor = Network()(texts, labels)
-            Transfer()(lm, clf)
+            Transfer()(clf, lm)
             Freeze()(clf, head)
             Train(steps=steps)(clf, supervised_loss, Batches(size=32)(texts, labels))
             return clf
