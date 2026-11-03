@@ -1,12 +1,14 @@
 """
-catalog.py: every method in the original list, as a class. A method is a frozen dataclass: its fields are its
-settings, its __call__ takes the data, its docstring says what it does, and the group it subclasses says what kind
-of thing it is, with the group's type parameters filled in:
+catalog.py: every method in the original list, as a class. A method is a frozen dataclass, and says so: its fields
+are its settings, its __call__ takes the data, its docstring says what it does, and the group it subclasses says
+what kind of thing it is, with the group's type parameters filled in:
 
+    @dataclass(frozen=True)
     class Best(Fold[Path, Path, [Value]]):  # an expression: best-of-N is a fold, a Path in (and Values), a Path out
         n: int                              # a setting
         def __call__(self, paths: Path, scores: Value, /) -> Path: ...
 
+    @dataclass(frozen=True)
     class Train(Fit[nn.Module, [Callable[..., Tensor], Dataset[Any] | None]]):   # a statement: it changes a module (!)
         steps: int
         def __call__(self, model: nn.Module, objective: Callable[..., Tensor], data: Dataset[Any] | None, /) -> None: ...
@@ -90,8 +92,8 @@ import inspect
 import re
 import textwrap
 from collections.abc import Callable
-from dataclasses import MISSING, dataclass, fields
-from typing import Any, ClassVar, NoDefault, ParamSpec, TypeVarTuple, dataclass_transform, get_args, get_origin
+from dataclasses import MISSING, dataclass, fields, is_dataclass
+from typing import Any, ClassVar, NoDefault, ParamSpec, TypeVarTuple, get_args, get_origin
 
 import torch
 from torch import Tensor, nn
@@ -104,10 +106,9 @@ from data import (
 # ═══ Methods and groups ═══════════════════════════════════════════════════════════════════════════
 
 
-@dataclass_transform(kw_only_default=True, frozen_default=True)
 class Method:
-    """The root of the catalog. Subclassing a group makes a method: a frozen dataclass (keyword-only fields, its
-    settings) whose __call__ takes the data. A class with a title is a method; one with a group is a group."""
+    """The root of the catalog. A class with a group is a group; a class with a title is a method, registered as it
+    is defined: a @dataclass(frozen=True) whose fields are its settings and whose __call__ takes the data."""
 
     title: ClassVar[str] = ""             # how the catalog prints a method
     state: ClassVar[str] = ""             # what it keeps, when its type carries a state
@@ -116,8 +117,6 @@ class Method:
     function: ClassVar[str] = ""          # a method torch already has: its name there (nothing to call here)
     signature: ClassVar[str] = ""         # such a method's signature, when not its group's form
 
-    __dataclass_fields__: ClassVar[dict[str, Any]]   # every subclass is made a dataclass, below
-
     group: ClassVar[str] = ""             # a group: its name, its family, its form; about says what it does
     family: ClassVar[str] = ""
     form: ClassVar[str] = ""
@@ -125,17 +124,12 @@ class Method:
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
-        dataclass(frozen=True, kw_only=True, repr=False)(cls)
         if "group" in cls.__dict__:
             _register_group(cls)
         if "title" in cls.__dict__:
             _register_method(cls)
         elif "__call__" in cls.__dict__ and any("group" in k.__dict__ for k in cls.__mro__):
             _check_use(cls)
-
-    def __repr__(self) -> str:
-        """The class and the settings that differ from their defaults: Beam(k=4), Greedy()."""
-        return f"{type(self).__name__}({', '.join(f'{k}={v!r}' for k, v in settings_of(self).items())})"
 
 
 class Expr(Method):
@@ -149,7 +143,14 @@ class Stmt(Method):
 
 def settings_of(config: Method) -> dict[str, Any]:
     """A config's settings that differ from their defaults (all of the required ones)."""
+    if not is_dataclass(config):
+        return {}
     return {f.name: getattr(config, f.name) for f in fields(config) if _differs(getattr(config, f.name), f.default)}
+
+
+def short(config: Method) -> str:
+    """A config with only the settings that differ from their defaults: Beam(k=4), Greedy()."""
+    return f"{type(config).__name__}({', '.join(f'{k}={v!r}' for k, v in settings_of(config).items())})"
 
 
 def _differs(value: Any, default: Any) -> bool:
@@ -181,7 +182,6 @@ class Entry:
     signature: str              # its type; for "meta", the groups it is about
     state: str                  # what it carries, and what it keeps there ("" when it carries none)
     side: str                   # "agnostic" | "model" | "" (phenomena, meta)
-    settings: tuple[str, ...]   # its fields
     function: str               # its class here, or torch's name for it
     explanation: str
     cls: type[Method] | None = None
@@ -228,8 +228,7 @@ def _register_method(cls: type[Method]) -> None:
     doc = inspect.getdoc(cls)
     if not doc or doc == inspect.getdoc(g) and cls is not g:
         raise TypeError(f"{cls.__name__}: write what it does in its docstring")
-    entry = Entry(g.group, cls.title, signature, state, cls.side or g.side, tuple(f.name for f in fields(cls)),
-                  cls.function or cls.__name__, " ".join(doc.split("\n\n")[0].split()), cls, cls.changes)
+    entry = Entry(g.group, cls.title, signature, state, cls.side or g.side, cls.function or cls.__name__, " ".join(doc.split("\n\n")[0].split()), cls, cls.changes)
     ENTRIES.append(entry)
     _BY_CLASS[cls] = entry
 
@@ -331,11 +330,11 @@ def is_statement(f: Any) -> bool:
 
 
 def phenomenon(name: str, explanation: str) -> None:
-    ENTRIES.append(Entry("phenomenon", name, "", "", "", (), "", explanation))
+    ENTRIES.append(Entry("phenomenon", name, "", "", "", "", explanation))
 
 
 def meta(name: str, groups: tuple[type[Method], ...], explanation: str) -> None:
-    ENTRIES.append(Entry("meta", name, ", ".join(g.group for g in groups), "", "", (), "", explanation))
+    ENTRIES.append(Entry("meta", name, ", ".join(g.group for g in groups), "", "", "", explanation))
 
 
 # ═══ Expression groups ════════════════════════════════════════════════════════════════════════════
@@ -444,6 +443,7 @@ class Start[P, **R = []](Expr):
     def __call__(self, *args: R.args, **named: R.kwargs) -> P: ...
 
 
+@dataclass(frozen=True)
 class Fill(Expr):
     """Repeatedly predict the holes and lower their levels as the order decides (generation, inpainting,
     denoising), until every level is 0. With levels in (0, 1), what the model predicts is the flow back to the data.
@@ -464,6 +464,7 @@ class Order(Expr):
     def __call__(self, holes: Holes[Any], pred: Prediction, /) -> Holes[Any]: ...
 
 
+@dataclass(frozen=True)
 class Walk(Expr):
     """Grow the known part of a tree from its roots, steps times, a chooser deciding which edges to follow and
     which leaves to keep; then the path to a kept leaf. Sampling, greedy decoding, beam search, best-of-N and RL
@@ -484,6 +485,7 @@ class Choose(Expr):
     def __call__(self, tree: PartialTree[Any, Any], /) -> PartialTree[Any, Any]: ...
 
 
+@dataclass(frozen=True)
 class Unroll(Expr):
     """The list a PartialSeq stands for: start, step(start), step(step(start)), … steps of them."""
     group, family, form, side = "unroll", "partial", "PartialSeq[S] → S", "agnostic"
@@ -588,6 +590,7 @@ class Reduce[C, A, **R = []](Stmt):
 # ═══ Encode[A, B, **R = []]: A ⇄ C[classes] ═══════════════════════════════════════════════════════
 
 
+@dataclass(frozen=True)
 class Tokenizer(Encode[list[str], Seq]):
     """Text ⇄ a sequence of ids, built empty: BPE merges, fitted to a corpus by FitCodec (bytes alone: a fixed
     vocabulary of 256, nothing to fit). The tokenizer decides the content type: Seq of classes(vocab)."""
@@ -598,6 +601,7 @@ class Tokenizer(Encode[list[str], Seq]):
     def __call__(self) -> Codec[list[str], Seq]: ...
 
 
+@dataclass(frozen=True)
 class ImageTokenizer(Encode[Grid, Grid, [Grid]]):
     """An image ⇄ a coarser grid of codebook ids: an encoder, vector quantization, a decoder, trained to reconstruct."""
     title = "Image tokenizer (VQ-VAE, VQGAN)"
@@ -606,6 +610,7 @@ class ImageTokenizer(Encode[Grid, Grid, [Grid]]):
     def __call__(self, images: Grid, /) -> Codec[Grid, Grid]: ...
 
 
+@dataclass(frozen=True)
 class AudioCodec(Encode[Seq, Product, [Seq]]):
     """A waveform ⇄ frames × codebooks of ids: each codebook quantizes what the previous ones left (residual VQ)."""
     title = "Audio codec (EnCodec, residual quantization)"
@@ -618,6 +623,7 @@ class AudioCodec(Encode[Seq, Product, [Seq]]):
 # ═══ Convert[A, B, **R = []]: C[a] → C′[a] ════════════════════════════════════════════════════════
 
 
+@dataclass(frozen=True)
 class Patchify(Convert[Grid, Grid]):
     """An image → a coarser grid of p×p patches, each one element (a reshape); a linear map after it is a patch
     embedding."""
@@ -627,6 +633,7 @@ class Patchify(Convert[Grid, Grid]):
     def __call__(self, x: Grid, /) -> Grid: ...
 
 
+@dataclass(frozen=True)
 class Flatten(Convert[Grid, Seq]):
     """A grid → a sequence in raster order: the lattice is forgotten, learned positions say where each element was."""
     title = "Flattening"
@@ -634,6 +641,7 @@ class Flatten(Convert[Grid, Seq]):
     def __call__(self, x: Grid, /) -> Seq: ...
 
 
+@dataclass(frozen=True)
 class Concat(Convert[Seq, Seq]):
     """Several sequences of the same width as one (image patches, then caption tokens): one network reads them all."""
     title = "Multimodal sequence"
@@ -641,6 +649,7 @@ class Concat(Convert[Seq, Seq]):
     def __call__(self, *parts: Seq) -> Seq: ...
 
 
+@dataclass(frozen=True)
 class RandomFlip(Convert[Grid, Grid]):
     """Mirror each image with probability p: its elements move, none changes."""
     title = "Data augmentation: random flip"
@@ -649,6 +658,7 @@ class RandomFlip(Convert[Grid, Grid]):
     def __call__(self, x: Grid, /) -> Grid: ...
 
 
+@dataclass(frozen=True)
 class RandomCrop(Convert[Grid, Grid]):
     """Pad, and cut back at a random offset: a random translation."""
     title = "Data augmentation: random crop"
@@ -657,6 +667,7 @@ class RandomCrop(Convert[Grid, Grid]):
     def __call__(self, x: Grid, /) -> Grid: ...
 
 
+@dataclass(frozen=True)
 class Transitions(Convert[Path, Value]):
     """The steps of walked paths as a set of transitions (state, action, reward, next state, done, and the action's
     log-probability), their order dropped: what a replay buffer holds and RL losses read."""
@@ -665,6 +676,7 @@ class Transitions(Convert[Path, Value]):
     def __call__(self, path: Path, returns: Seq | None = None, /) -> Value: ...
 
 
+@dataclass(frozen=True)
 class PathTo(Convert[PartialTree[Any, Any], Path, [Tensor]]):
     """The steps from the root to a leaf of a tree's known part: the result of a walk."""
     title = "A path from a tree"
@@ -672,6 +684,7 @@ class PathTo(Convert[PartialTree[Any, Any], Path, [Tensor]]):
     def __call__(self, tree: PartialTree[Any, Any], leaf: Tensor, /) -> Path: ...
 
 
+@dataclass(frozen=True)
 class InContextLearning(Convert[Seq, Seq]):
     """Solved examples, then the query, as one prompt: the model adapts by reading them."""
     title = "In-context learning (few-shot prompts)"
@@ -681,6 +694,7 @@ class InContextLearning(Convert[Seq, Seq]):
 # ═══ Map[A, B, **R = []]: C[a] → C[b] ═════════════════════════════════════════════════════════════
 
 
+@dataclass(frozen=True)
 class RoPE(Map[Tensor, Tensor, [Tensor]]):
     """Rotate pairs of query and key features by angles proportional to the position, so that attention depends only
     on relative offsets."""
@@ -689,6 +703,7 @@ class RoPE(Map[Tensor, Tensor, [Tensor]]):
     def __call__(self, x: Tensor, positions: Tensor, /) -> Tensor: ...
 
 
+@dataclass(frozen=True)
 class VectorQuantize(Map[Container, Container, [Tensor]]):
     """Each element → the id of its nearest codebook entry (real → classes), with a straight-through gradient."""
     title = "Vector quantization"
@@ -696,6 +711,7 @@ class VectorQuantize(Map[Container, Container, [Tensor]]):
     def __call__(self, x: Container, codebook: Tensor, /) -> Container: ...
 
 
+@dataclass(frozen=True)
 class StraightThrough(Map[Tensor, Tensor, [Tensor]]):
     """Forward the hard value, backpropagate through the soft one: a gradient for a choice that has none."""
     title = "Straight-through estimator"
@@ -704,6 +720,7 @@ class StraightThrough(Map[Tensor, Tensor, [Tensor]]):
     def __call__(self, hard: Tensor, soft: Tensor, /) -> Tensor: ...
 
 
+@dataclass(frozen=True)
 class Condition(Map[Container, Container, [Value]]):
     """Attach a label to every element (its one-hot vector next to each element's values; a none label for guidance)."""
     title = "Conditioning"
@@ -712,6 +729,7 @@ class Condition(Map[Container, Container, [Value]]):
     def __call__(self, x: Container, label: Value, /) -> Container: ...
 
 
+@dataclass(frozen=True)
 class ColorJitter(Map[Grid, Grid]):
     """Scale each image's brightness and contrast by random factors."""
     title = "Data augmentation: color jitter"
@@ -721,6 +739,7 @@ class ColorJitter(Map[Grid, Grid]):
     def __call__(self, x: Grid, /) -> Grid: ...
 
 
+@dataclass(frozen=True)
 class GaussianNoise(Map[Container, Container]):
     """x + σ·ε at every element."""
     title = "Data augmentation: additive noise"
@@ -730,6 +749,7 @@ class GaussianNoise(Map[Container, Container]):
     def __call__(self, x: Container, /) -> Container: ...
 
 
+@dataclass(frozen=True)
 class LabelSmoothing(Map[Value, Value]):
     """A class → a distribution over classes, (1 − ε)·one_hot + ε / n: never pushed to infinite confidence."""
     title = "Label smoothing"
@@ -739,6 +759,7 @@ class LabelSmoothing(Map[Value, Value]):
     def __call__(self, y: Value, /) -> Value: ...
 
 
+@dataclass(frozen=True)
 class Attribution(Map[Container, Container, [Predictor]]):
     """How much each input element pushed the output: the input times the output's gradient, on any differentiable
     model."""
@@ -748,6 +769,7 @@ class Attribution(Map[Container, Container, [Predictor]]):
     def __call__(self, x: Container, model: Predictor, /) -> Container: ...
 
 
+@dataclass(frozen=True)
 class Chinchilla(Map[float, tuple[float, float]]):
     """A compute budget → (parameters, tokens): C ≈ 6·N·D with D ≈ 20 tokens per parameter."""
     title = "Compute-optimal allocation (Chinchilla)"
@@ -759,6 +781,7 @@ class Chinchilla(Map[float, tuple[float, float]]):
 # ═══ MapLayer[A, B, **R = []]: C[a] → C[b] ════════════════════════════════════════════════════════
 
 
+@dataclass(frozen=True)
 class Network(MapLayer[Container, Prediction, [Container, Container]]):
     """embed → position → [aggregate, MLP] × depth → pool → readout, each slot chosen from the input and target types
     (EmbedFor, AggregateFor, PoolFor, ReadoutFor); mixer and mlp replace a slot's choice with a config (a scan,
@@ -772,6 +795,7 @@ class Network(MapLayer[Container, Prediction, [Container, Container]]):
     def __call__(self, x: Container, y: Container, /) -> Predictor: ...
 
 
+@dataclass(frozen=True)
 class Encoder(MapLayer[Container, Value, [Container]]):
     """A network from any container to one vector per example: the towers of CLIP, a reward model, a critic."""
     title = "Embedding models (a container to one vector)"
@@ -780,6 +804,7 @@ class Encoder(MapLayer[Container, Value, [Container]]):
     def __call__(self, x: Container, /) -> Model[Container, Value]: ...
 
 
+@dataclass(frozen=True)
 class EmbedFor(MapLayer[Container, Container, [Container]]):
     """By what the elements hold: classes → a row of a lookup table (one more for [MASK]); real values → a linear map."""
     title = "Embeddings"
@@ -788,6 +813,7 @@ class EmbedFor(MapLayer[Container, Container, [Container]]):
     def __call__(self, x: Container, /) -> Model[Container, Container]: ...
 
 
+@dataclass(frozen=True)
 class ReadoutFor(MapLayer[Container, Container, [Container]]):
     """By what the target holds: a logit per class, a value per real number, one readout per field of a record."""
     title = "Readout"
@@ -796,6 +822,7 @@ class ReadoutFor(MapLayer[Container, Container, [Container]]):
     def __call__(self, y: Container, /) -> Model[Container, Container]: ...
 
 
+@dataclass(frozen=True)
 class LearnedPositions(MapLayer[Container, Container, [Container]]):
     """A learned vector added at each position of a Seq, a Grid or a Product; a Set, a Graph or a Tree gets none."""
     title = "Positional encoding: learned"
@@ -804,6 +831,7 @@ class LearnedPositions(MapLayer[Container, Container, [Container]]):
     def __call__(self, x: Container, /) -> Model[Container, Container]: ...
 
 
+@dataclass(frozen=True)
 class SinusoidalPositions(MapLayer[Container, Container, [Container]]):
     """Fixed sin/cos features of each position at geometrically spaced frequencies, added."""
     title = "Positional encoding: sinusoidal"
@@ -812,6 +840,7 @@ class SinusoidalPositions(MapLayer[Container, Container, [Container]]):
     def __call__(self, x: Container, /) -> Model[Container, Container]: ...
 
 
+@dataclass(frozen=True)
 class MoE(MapLayer[Container, Container]):
     """A router sends each element to its top-k experts (MLPs) and sums their gate-weighted outputs."""
     title = "Mixture of experts"
@@ -822,6 +851,7 @@ class MoE(MapLayer[Container, Container]):
     def __call__(self) -> Model[Container, Container]: ...
 
 
+@dataclass(frozen=True)
 class Autoencoder(MapLayer[Container, Container, [Container]]):
     """encode to a smaller container (fewer positions, few channels), decode back: the latent must keep what matters,
     and generation can happen there (latent diffusion). Its .encode and .decode are the two halves."""
@@ -831,6 +861,7 @@ class Autoencoder(MapLayer[Container, Container, [Container]]):
     def __call__(self, x: Container, /) -> Model[Container, Container]: ...
 
 
+@dataclass(frozen=True)
 class SparseAutoencoder(MapLayer[Container, Container]):
     """Activations → a wide, sparse code → activations, trained by reconstruction plus an L1 penalty: each code unit
     tends to be one feature."""
@@ -841,6 +872,7 @@ class SparseAutoencoder(MapLayer[Container, Container]):
     def __call__(self) -> Model[Container, Container]: ...
 
 
+@dataclass(frozen=True)
 class LinearProbe(MapLayer[Value, Value, [Value, Value]]):
     """A linear readout for frozen activations, sized by examples of them and their labels; fitted by a statement
     (LeastSquares, Train). Is a feature readable along one direction?"""
@@ -849,30 +881,35 @@ class LinearProbe(MapLayer[Value, Value, [Value, Value]]):
     def __call__(self, acts: Value, labels: Value, /) -> Model[Value, Value]: ...
 
 
+@dataclass(frozen=True)
 class MLP(MapLayer[Container, Container]):
     """The same small network on every element."""
     title = "Linear layer + nonlinearity (MLP)"
     function, signature = "nn.Linear, nn.GELU, nn.Sequential", "C[h] → C[h]"
 
 
+@dataclass(frozen=True)
 class SwiGLU(MapLayer[Container, Container]):
     """silu(gate(h)) · up(h), then down: one branch decides how much of the other passes."""
     title = "Gating (SwiGLU)"
     function, signature = "nn.SiLU", "C[h] → C[h]"
 
 
+@dataclass(frozen=True)
 class Normalization(MapLayer[Container, Container]):
     """Rescale each element's features (BatchNorm aggregates over the batch instead)."""
     title = "Normalization"
     function, signature = "nn.RMSNorm, nn.LayerNorm", "C[h] → C[h]"
 
 
+@dataclass(frozen=True)
 class Dropout(MapLayer[Container, Container]):
     """Zero random features while training."""
     title = "Dropout"
     function, signature = "nn.Dropout", "C[h] → C[h]"
 
 
+@dataclass(frozen=True)
 class Linear(MapLayer[Value, Prediction, [Value, Container]]):
     """A linear model Wx + b on feature vectors, sized by examples of its inputs and targets: linear regression when
     the target is real values (Loss picks squared error), logistic or softmax regression when it is classes
@@ -883,6 +920,7 @@ class Linear(MapLayer[Value, Prediction, [Value, Container]]):
     def __call__(self, x: Value, y: Container, /) -> Model[Value, Prediction]: ...
 
 
+@dataclass(frozen=True)
 class KernelFeatures(MapLayer[Value, Value, [Value]]):
     """Random Fourier features of a shift-invariant kernel (RBF by default): a Linear on them is a kernel machine, so
     kernel ridge regression is LeastSquares on it and a kernel SVM is Hinge on it."""
@@ -893,6 +931,7 @@ class KernelFeatures(MapLayer[Value, Value, [Value]]):
     def __call__(self, x: Value, /) -> Model[Value, Value]: ...
 
 
+@dataclass(frozen=True)
 class Trees(MapLayer[Value, Prediction, [Value, Container]]):
     """An ensemble of decision trees on feature vectors, empty until GrowTrees grows it: one tree (CART), a random
     forest (bagged, their predictions averaged) or gradient boosting (each tree fitted to the errors of the ones
@@ -905,6 +944,7 @@ class Trees(MapLayer[Value, Prediction, [Value, Container]]):
     def __call__(self, x: Value, y: Container, /) -> Model[Value, Prediction]: ...
 
 
+@dataclass(frozen=True)
 class Centroids(MapLayer[Value, Value, [Value]]):
     """k centroids in the inputs' space, each input mapped to the nearest (its cluster); fitted by KMeans."""
     title = "Clustering (k centroids)"
@@ -913,6 +953,7 @@ class Centroids(MapLayer[Value, Value, [Value]]):
     def __call__(self, x: Value, /) -> Model[Value, Value]: ...
 
 
+@dataclass(frozen=True)
 class Projection(MapLayer[Value, Value, [Value]]):
     """A linear map onto dim directions: the principal components once PCA has fitted it, a random projection before."""
     title = "Dimensionality reduction (a linear projection)"
@@ -921,6 +962,7 @@ class Projection(MapLayer[Value, Value, [Value]]):
     def __call__(self, x: Value, /) -> Model[Value, Value]: ...
 
 
+@dataclass(frozen=True)
 class Mixture(MapLayer[Value, Dist, [Value]]):
     """k weighted components (Gaussians by default) in the inputs' space: a density, and soft clusters by
     responsibility; fitted by EM. One component per class, fitted to that class's examples, is a generative
@@ -934,6 +976,7 @@ class Mixture(MapLayer[Value, Dist, [Value]]):
 # ═══ Aggregate[C, **R = []]: C[h] → C[h] ══════════════════════════════════════════════════════════
 
 
+@dataclass(frozen=True)
 class Mixup(Aggregate[tuple[Container, Value]]):
     """Each example blended with a random partner of the batch, labels by the same λ: the batch as a Set, paired at
     random."""
@@ -944,6 +987,7 @@ class Mixup(Aggregate[tuple[Container, Value]]):
     def __call__(self, pair: tuple[Container, Value], /) -> tuple[Container, Value]: ...
 
 
+@dataclass(frozen=True)
 class Cutmix(Aggregate[tuple[Grid, Value]]):
     """A random box pasted from a partner image; the labels mix by its area."""
     title = "Data augmentation: cutmix"
@@ -952,6 +996,7 @@ class Cutmix(Aggregate[tuple[Grid, Value]]):
     def __call__(self, pair: tuple[Grid, Value], /) -> tuple[Grid, Value]: ...
 
 
+@dataclass(frozen=True)
 class BatchBaseline(Aggregate[Value]):
     """Each return minus the batch's mean: an advantage with less variance and no bias."""
     title = "Baseline: the batch mean"
@@ -960,6 +1005,7 @@ class BatchBaseline(Aggregate[Value]):
     def __call__(self, returns: Value, /) -> Value: ...
 
 
+@dataclass(frozen=True)
 class GroupRelative(Aggregate[Value]):
     """Each reward standardized within its group of n samples from one prompt: an advantage without a critic."""
     title = "GRPO (group-relative advantages)"
@@ -972,6 +1018,7 @@ class GroupRelative(Aggregate[Value]):
 # ═══ AggregateLayer[C, In = C, **R = []]: C[h] → C[h] ═════════════════════════════════════════════
 
 
+@dataclass(frozen=True)
 class AggregateFor(AggregateLayer[Container, Container, [Container]]):
     """What each element reads, from the container: Graph, Tree → message passing · Product → axial · causal Seq →
     causal attention (a selective scan when long) · large Grid → convolution · else attention over all."""
@@ -981,6 +1028,7 @@ class AggregateFor(AggregateLayer[Container, Container, [Container]]):
     def __call__(self, x: Container, /) -> Model[Container, Container]: ...
 
 
+@dataclass(frozen=True)
 class Attention(AggregateLayer[Container]):
     """Each element reads every other (or every earlier one), weighted by query·key similarity."""
     title = "Attention (self, causal)"
@@ -990,6 +1038,7 @@ class Attention(AggregateLayer[Container]):
     def __call__(self) -> Model[Container, Container]: ...
 
 
+@dataclass(frozen=True)
 class CrossAttention(AggregateLayer[Container, tuple[Container, Container]]):
     """Queries from one container, keys and values from another (text reading an image)."""
     title = "Cross-attention"
@@ -998,6 +1047,7 @@ class CrossAttention(AggregateLayer[Container, tuple[Container, Container]]):
     def __call__(self) -> Model[tuple[Container, Container], Container]: ...
 
 
+@dataclass(frozen=True)
 class Conv(AggregateLayer[Grid]):
     """Each element reads its neighbours on the lattice, with the same weights at every offset."""
     title = "Convolution"
@@ -1007,6 +1057,7 @@ class Conv(AggregateLayer[Grid]):
     def __call__(self) -> Model[Grid, Grid]: ...
 
 
+@dataclass(frozen=True)
 class Recurrence(AggregateLayer[Seq]):
     """Each element reads a state carried from the earlier ones, updated by a gated nonlinear function."""
     title = "Recurrence (RNN / LSTM / GRU)"
@@ -1016,6 +1067,7 @@ class Recurrence(AggregateLayer[Seq]):
     def __call__(self) -> Model[Seq, Seq]: ...
 
 
+@dataclass(frozen=True)
 class SelectiveScan(AggregateLayer[Seq]):
     """A linear recurrence whose coefficients come from the input (S4, Mamba, linear attention): every earlier element
     read, in linear time."""
@@ -1026,6 +1078,7 @@ class SelectiveScan(AggregateLayer[Seq]):
     def __call__(self) -> Model[Seq, Seq]: ...
 
 
+@dataclass(frozen=True)
 class MessagePassing(AggregateLayer[Graph]):
     """Each node reads its own features and the mean along its incoming edges; in a tree, children pass up to parents."""
     title = "Message passing (GNN)"
@@ -1034,6 +1087,7 @@ class MessagePassing(AggregateLayer[Graph]):
     def __call__(self) -> Model[Graph, Graph]: ...
 
 
+@dataclass(frozen=True)
 class Axial(AggregateLayer[Product]):
     """One aggregation per factor of a product (frames, then pixels), the other factors as batch; summed."""
     title = "Axial (products of structures)"
@@ -1043,6 +1097,7 @@ class Axial(AggregateLayer[Product]):
     def __call__(self) -> Model[Product, Product]: ...
 
 
+@dataclass(frozen=True)
 class UNet(AggregateLayer[Grid]):
     """Down to a coarse grid and back up, with skip connections: each element reads a wide neighbourhood."""
     title = "Encoder–decoder hierarchy (U-Net)"
@@ -1052,6 +1107,7 @@ class UNet(AggregateLayer[Grid]):
     def __call__(self) -> Model[Grid, Grid]: ...
 
 
+@dataclass(frozen=True)
 class Retrieval(AggregateLayer[Container, tuple[Container, Index]]):
     """Each element reads the k nearest entries of an external memory (an Index), softmax-weighted."""
     title = "Retrieval (attention over a memory)"
@@ -1063,6 +1119,7 @@ class Retrieval(AggregateLayer[Container, tuple[Container, Index]]):
 # ═══ Select[C, **R = []]: C[a] → C[a] ═════════════════════════════════════════════════════════════
 
 
+@dataclass(frozen=True)
 class QualityFilter(Select[Container, [Value]]):
     """Keep the examples of a batch scoring above a threshold (a classifier's, a verifier's, a perplexity). Keeping
     the best fraction needs every batch: KeepBest."""
@@ -1072,6 +1129,7 @@ class QualityFilter(Select[Container, [Value]]):
     def __call__[C: Container](self, x: C, scores: Value, /) -> C: ...
 
 
+@dataclass(frozen=True)
 class TokenDropout(Select[Seq]):
     """Drop a random fraction of the positions; the rest keep their order."""
     title = "Data augmentation: token dropout"
@@ -1083,6 +1141,7 @@ class TokenDropout(Select[Seq]):
 # ═══ Fold[C, A, **R = []]: C[a] → a ═══════════════════════════════════════════════════════════════
 
 
+@dataclass(frozen=True)
 class DecayGroups(Fold[nn.Module, list[dict[str, Any]]]):
     """The parameters to decay (the weight matrices) apart from the rest (norms, biases, embeddings)."""
     title = "Weight decay (parameter groups)"
@@ -1091,6 +1150,7 @@ class DecayGroups(Fold[nn.Module, list[dict[str, Any]]]):
     def __call__(self, model: nn.Module, /) -> list[dict[str, Any]]: ...
 
 
+@dataclass(frozen=True)
 class MuPGroups(Fold[nn.Module, list[dict[str, Any]]]):
     """Hidden matrices reweighted by base_width / width, so a learning rate tuned narrow carries over wide."""
     title = "Parameterization (μP)"
@@ -1100,6 +1160,7 @@ class MuPGroups(Fold[nn.Module, list[dict[str, Any]]]):
     def __call__(self, model: nn.Module, /) -> list[dict[str, Any]]: ...
 
 
+@dataclass(frozen=True)
 class DiscountedReturn(Fold[Path, Value]):
     """Σ γ^t·r_t along each path: what RL maximizes. A walk can't be differentiated through, so its gradient comes
     from scoring the path (reinforce)."""
@@ -1109,6 +1170,7 @@ class DiscountedReturn(Fold[Path, Value]):
     def __call__(self, path: Path, /) -> Value: ...
 
 
+@dataclass(frozen=True)
 class Best(Fold[Path, Path, [Value]]):
     """The best-scoring of each group of n paths (scored by a verifier or a reward model)."""
     title = "Best-of-N with a verifier"
@@ -1117,6 +1179,7 @@ class Best(Fold[Path, Path, [Value]]):
     def __call__(self, paths: Path, scores: Value, /) -> Path: ...
 
 
+@dataclass(frozen=True)
 class Majority(Fold[Value, Value]):
     """The most frequent answer of each group of n samples."""
     title = "Self-consistency (majority vote)"
@@ -1125,6 +1188,7 @@ class Majority(Fold[Value, Value]):
     def __call__(self, answers: Value, /) -> Value: ...
 
 
+@dataclass(frozen=True)
 class EarlyStop(Fold[Seq, bool]):
     """Whether the validation loss has stopped improving for `patience` evaluations."""
     title = "Early stopping"
@@ -1133,6 +1197,7 @@ class EarlyStop(Fold[Seq, bool]):
     def __call__(self, curve: Seq, /) -> bool: ...
 
 
+@dataclass(frozen=True)
 class FitPowerLaw(Fold[Seq, tuple[float, float], [Seq]]):
     """loss ≈ a·size^(−b), fitted on the logs."""
     title = "Scaling laws (power-law fit)"
@@ -1143,6 +1208,7 @@ class FitPowerLaw(Fold[Seq, tuple[float, float], [Seq]]):
 # ═══ FoldLayer[C, A, **R = []]: C[a] → a ══════════════════════════════════════════════════════════
 
 
+@dataclass(frozen=True)
 class PoolFor(FoldLayer[Container, Value, [Container]]):
     """A container's features → one vector per example: a causal Seq keeps its last position, the one that read
     everything; anything else, the mean."""
@@ -1154,6 +1220,7 @@ class PoolFor(FoldLayer[Container, Value, [Container]]):
 # ═══ Scan[X, S, Y]: Seq[X] → Seq[Y] ═══════════════════════════════════════════════════════════════
 
 
+@dataclass(frozen=True)
 class Optimizer(Scan[Tensor, Tensor, Tensor]):
     """Gradients in, updates out: SGD carries nothing, momentum a velocity, Adam two moments, Muon orthogonalizes.
     A setting of Train, which carries its state from step to step."""
@@ -1167,6 +1234,7 @@ class Optimizer(Scan[Tensor, Tensor, Tensor]):
     def step(self, state: Tensor, grad: Tensor, /) -> tuple[Tensor, Tensor]: ...
 
 
+@dataclass(frozen=True)
 class WarmupCosine(Scan[int, int, float]):
     """A learning rate for each step: linear warmup, then cosine decay. A setting of Train."""
     title = "Learning-rate schedules"
@@ -1179,6 +1247,7 @@ class WarmupCosine(Scan[int, int, float]):
     def step(self, state: int, t: int, /) -> tuple[int, float]: ...
 
 
+@dataclass(frozen=True)
 class Lagrangian(Scan[tuple[Tensor, Tensor], float, Tensor]):
     """(loss f, constraint g) in, f + λ·(g − c) out; λ rises while the constraint is violated (dual ascent)."""
     title = "Constrained objectives (Lagrangian)"
@@ -1190,6 +1259,7 @@ class Lagrangian(Scan[tuple[Tensor, Tensor], float, Tensor]):
     def step(self, state: float, losses: tuple[Tensor, Tensor], /) -> tuple[float, Tensor]: ...
 
 
+@dataclass(frozen=True)
 class ReturnsToGo(Scan[Tensor, Tensor, Tensor]):
     """G_t = r_t + γ·G_{t+1}: what each step led to, scanned from the end."""
     title = "Returns-to-go"
@@ -1202,6 +1272,7 @@ class ReturnsToGo(Scan[Tensor, Tensor, Tensor]):
     def step(self, state: Tensor, reward: Tensor, /) -> tuple[Tensor, Tensor]: ...
 
 
+@dataclass(frozen=True)
 class Negamax(Scan[Tensor, Tensor, Tensor]):
     """One policy plays both sides; each move's return is the outcome for whoever made it: G_t = r_t − G_{t+1}."""
     title = "Self-play"
@@ -1213,6 +1284,7 @@ class Negamax(Scan[Tensor, Tensor, Tensor]):
     def step(self, state: Tensor, reward: Tensor, /) -> tuple[Tensor, Tensor]: ...
 
 
+@dataclass(frozen=True)
 class GAE(Scan[tuple[Tensor, Tensor], Tensor, Tensor]):
     """A critic's TD errors r + γV(s′) − V(s), averaged backward with weights (γλ)^k; each element a (reward, value)."""
     title = "Value functions, Bellman, GAE"
@@ -1226,6 +1298,7 @@ class GAE(Scan[tuple[Tensor, Tensor], Tensor, Tensor]):
     def step(self, state: Tensor, reward_value: tuple[Tensor, Tensor], /) -> tuple[Tensor, Tensor]: ...
 
 
+@dataclass(frozen=True)
 class ParallelScan(Scan[Tensor, Tensor, Tensor]):
     """s_t = a_t·s_{t−1} + b_t for every t at once, in logarithmic depth: how a recurrence trains in parallel."""
     title = "Parallel scan"
@@ -1235,6 +1308,7 @@ class ParallelScan(Scan[Tensor, Tensor, Tensor]):
 # ═══ Split[C, **R = []]: C → Example ══════════════════════════════════════════════════════════════
 
 
+@dataclass(frozen=True)
 class SplitFor(Split[Container]):
     """The split a container's type picks: classes in order → Shift · other classes → Mask · real values → Noise."""
     title = "Choosing the split from the data"
@@ -1242,6 +1316,7 @@ class SplitFor(Split[Container]):
     def __call__(self, x: Container, /) -> Example: ...
 
 
+@dataclass(frozen=True)
 class Labelled(Split[Container, [Container]]):
     """The data comes split: the input with nothing hidden, the label as the target."""
     title = "Supervised"
@@ -1249,6 +1324,7 @@ class Labelled(Split[Container, [Container]]):
     def __call__(self, x: Container, y: Container, /) -> Example: ...
 
 
+@dataclass(frozen=True)
 class Classification(Split[Container, [Container]]):
     """Supervised learning with classes as the target: Labelled, then Loss picks cross-entropy (a categorical's
     negative log-likelihood); Accuracy measures it. Any model that predicts the classes does it: Linear (logistic
@@ -1257,6 +1333,7 @@ class Classification(Split[Container, [Container]]):
     function = "Labelled, Loss"
 
 
+@dataclass(frozen=True)
 class Regression(Split[Container, [Container]]):
     """Supervised learning with real values as the target: Labelled, then Loss picks squared error (a Gaussian's
     negative log-likelihood). Linear with LeastSquares is linear regression; Trees, Network and KNN do it too."""
@@ -1264,6 +1341,7 @@ class Regression(Split[Container, [Container]]):
     function = "Labelled, Loss"
 
 
+@dataclass(frozen=True)
 class Shift(Split[Seq]):
     """Each element is predicted from the ones before it (a causal Seq): the target at i is the element at i + 1."""
     title = "Self-supervised: next-token prediction"
@@ -1271,6 +1349,7 @@ class Shift(Split[Seq]):
     def __call__(self, x: Seq, /) -> Example: ...
 
 
+@dataclass(frozen=True)
 class Mask(Split[Container]):
     """Random elements at level 1 ([MASK] for classes, 0 for real values): 15% is BERT, 75% MAE, a random ratio per
     example MaskGIT and masked diffusion."""
@@ -1280,6 +1359,7 @@ class Mask(Split[Container]):
     def __call__(self, x: Container, /) -> Example: ...
 
 
+@dataclass(frozen=True)
 class Noise(Split[Container]):
     """Every element at one random level t (x_t = (1 − t)·x + t·ε): the target is the velocity, the noise or the
     clean data, rescalings of one another."""
@@ -1288,6 +1368,7 @@ class Noise(Split[Container]):
     def __call__(self, x: Container, /) -> Example: ...
 
 
+@dataclass(frozen=True)
 class NoiseEach(Split[Seq]):
     """A random level for each element: next-token prediction and diffusion are its two extremes."""
     title = "Diffusion forcing"
@@ -1295,6 +1376,7 @@ class NoiseEach(Split[Seq]):
     def __call__(self, x: Seq, /) -> Example: ...
 
 
+@dataclass(frozen=True)
 class NextFrame(Split[Product]):
     """The frames up to t as the input, the frames from t + 1 as the target: shift, on the frames of a video."""
     title = "Self-supervised: future-frame prediction"
@@ -1302,6 +1384,7 @@ class NextFrame(Split[Product]):
     def __call__(self, x: Product, /) -> Example: ...
 
 
+@dataclass(frozen=True)
 class Reconstruction(Split[Container]):
     """Nothing hidden; the target is the input itself, so the model's bottleneck is what makes it hard."""
     title = "Reconstruction (autoencoder)"
@@ -1309,6 +1392,7 @@ class Reconstruction(Split[Container]):
     def __call__(self, x: Container, /) -> Example: ...
 
 
+@dataclass(frozen=True)
 class TwoViews(Split[Container, [Callable[[Container], Container]]]):
     """Two random augmentations of the same examples, each the other's target (CLIP pairs an image with its caption)."""
     title = "Contrastive views"
@@ -1316,6 +1400,7 @@ class TwoViews(Split[Container, [Callable[[Container], Container]]]):
     def __call__(self, x: Container, augment: Callable[[Container], Container], /) -> Example: ...
 
 
+@dataclass(frozen=True)
 class Distillation(Split[Container, [Predictor]]):
     """The target is a teacher's (softened) prediction on the same input."""
     title = "Knowledge distillation"
@@ -1323,6 +1408,7 @@ class Distillation(Split[Container, [Predictor]]):
     def __call__(self, x: Container, teacher: Predictor, /) -> Example: ...
 
 
+@dataclass(frozen=True)
 class SelfDistillation(Split[Container, [Predictor, Callable[[Container], Container]]]):
     """One view as the input; the target is a slow (EMA) copy's embedding of another view: agree with an older self."""
     title = "Self-distillation (BYOL / DINO / JEPA)"
@@ -1330,6 +1416,7 @@ class SelfDistillation(Split[Container, [Predictor, Callable[[Container], Contai
     def __call__(self, x: Container, teacher: Predictor, augment: Callable[[Container], Container], /) -> Example: ...
 
 
+@dataclass(frozen=True)
 class SFT(Split[Seq]):
     """shift, with only the response as targets: the prompt is read, never predicted."""
     title = "Instruction tuning / SFT"
@@ -1338,6 +1425,7 @@ class SFT(Split[Seq]):
     def __call__(self, x: Seq, /) -> Example: ...
 
 
+@dataclass(frozen=True)
 class TDTarget(Split[Value, [Predictor]]):
     """V(s) learns toward r + γ·V(s′): a target bootstrapped from the critic's own estimate."""
     title = "TD learning (value regression)"
@@ -1346,6 +1434,7 @@ class TDTarget(Split[Value, [Predictor]]):
     def __call__(self, batch: Value, critic: Predictor, /) -> Example: ...
 
 
+@dataclass(frozen=True)
 class QTarget(Split[Value, [Predictor]]):
     """Q(s, a) learns toward r + γ·max Q(s′, ·) at the action taken (the weight picks it out)."""
     title = "Q-learning (DQN)"
@@ -1354,6 +1443,7 @@ class QTarget(Split[Value, [Predictor]]):
     def __call__(self, batch: Value, q: Predictor, /) -> Example: ...
 
 
+@dataclass(frozen=True)
 class Dynamics(Split[Value]):
     """From each transition, the input is the state and the action; the target what followed (next state, reward,
     done). A model of it is a learned follow (imagined)."""
@@ -1362,6 +1452,7 @@ class Dynamics(Split[Value]):
     def __call__(self, batch: Value, /) -> Example: ...
 
 
+@dataclass(frozen=True)
 class SearchTargets(Split[Path, [PartialTree[Any, Any]]]):
     """For each state a walk visited: what search made of it (its visit distribution) and what followed (the return)."""
     title = "Amortized search (AlphaZero targets)"
@@ -1372,6 +1463,7 @@ class SearchTargets(Split[Path, [PartialTree[Any, Any]]]):
 # ═══ Score[P, O = Tensor, **R = []]: Prediction × C → ℝ ═══════════════════════════════════════════
 
 
+@dataclass(frozen=True)
 class Objective(Score[nn.Module, Tensor, ...]):
     """The loss of a model on a batch: split it into an Example, predict from the input, score with the loss the
     target picks (labelled data: split = Labelled())."""
@@ -1381,6 +1473,7 @@ class Objective(Score[nn.Module, Tensor, ...]):
     def __call__(self, model: nn.Module, /, *batch: Any) -> Tensor: ...
 
 
+@dataclass(frozen=True)
 class Loss(Score[Prediction, Tensor, [Container]]):
     """−log p(target), chosen by what the target holds: classes → cross-entropy · bits → BCE · real → squared error ·
     distribution → KL · record → the sum of its fields' losses."""
@@ -1389,6 +1482,7 @@ class Loss(Score[Prediction, Tensor, [Container]]):
     def __call__(self, pred: Prediction, target: Container, weight: Tensor | None = None, /) -> Tensor: ...
 
 
+@dataclass(frozen=True)
 class CrossEntropy(Score[Tensor, Tensor, [Container]]):
     """Classes, or a distribution over them (soft labels)."""
     title = "Cross-entropy"
@@ -1396,6 +1490,7 @@ class CrossEntropy(Score[Tensor, Tensor, [Container]]):
     def __call__(self, logits: Tensor, target: Container, weight: Tensor | None = None, /) -> Tensor: ...
 
 
+@dataclass(frozen=True)
 class BinaryCrossEntropy(Score[Tensor, Tensor, [Container]]):
     """Bits."""
     title = "Binary cross-entropy"
@@ -1403,6 +1498,7 @@ class BinaryCrossEntropy(Score[Tensor, Tensor, [Container]]):
     def __call__(self, logits: Tensor, target: Container, weight: Tensor | None = None, /) -> Tensor: ...
 
 
+@dataclass(frozen=True)
 class Hinge(Score[Tensor, Tensor, [Value]]):
     """max(0, margin − y·f(x)) for labels ±1 (for classes: the margin over the best wrong class): a support vector
     machine is a Linear trained with it (on KernelFeatures for a kernel SVM)."""
@@ -1412,6 +1508,7 @@ class Hinge(Score[Tensor, Tensor, [Value]]):
     def __call__(self, scores: Tensor, target: Value, weight: Tensor | None = None, /) -> Tensor: ...
 
 
+@dataclass(frozen=True)
 class SquaredError(Score[Tensor, Tensor, [Container]]):
     """Real values: a unit Gaussian's negative log-likelihood, up to a constant."""
     title = "Squared error"
@@ -1419,6 +1516,7 @@ class SquaredError(Score[Tensor, Tensor, [Container]]):
     def __call__(self, pred: Tensor, target: Container, weight: Tensor | None = None, /) -> Tensor: ...
 
 
+@dataclass(frozen=True)
 class KL(Score[Dist, Tensor, [Dist]]):
     """A distribution against a reference (a prior, a reference policy)."""
     title = "KL divergence"
@@ -1426,6 +1524,7 @@ class KL(Score[Dist, Tensor, [Dist]]):
     def __call__(self, pred: Dist, target: Dist, weight: Tensor | None = None, /) -> Tensor: ...
 
 
+@dataclass(frozen=True)
 class PerField(Score[Prediction, Tensor, [Container]]):
     """A record: one loss per field, each chosen by what the field holds, summed."""
     title = "Multi-task training"
@@ -1433,6 +1532,7 @@ class PerField(Score[Prediction, Tensor, [Container]]):
     def __call__(self, pred: Prediction, target: Container, weight: Tensor | None = None, /) -> Tensor: ...
 
 
+@dataclass(frozen=True)
 class LogProb(Score[Prediction, Value, [Container]]):
     """log p(x) for each element under a prediction, unreduced: what losses and estimators are built from."""
     title = "Log-probability"
@@ -1440,6 +1540,7 @@ class LogProb(Score[Prediction, Value, [Container]]):
     def __call__(self, pred: Prediction, x: Container, /) -> Value: ...
 
 
+@dataclass(frozen=True)
 class PathLogProb(Score[PartialTree[Any, Any], Value, [Path]]):
     """Σ log options(node)(edge) along a path; on the data's own path, −1/length of it is the next-token loss."""
     title = "Teacher forcing (the log-probability of a path)"
@@ -1447,6 +1548,7 @@ class PathLogProb(Score[PartialTree[Any, Any], Value, [Path]]):
     def __call__(self, tree: PartialTree[Any, Any], path: Path, /) -> Value: ...
 
 
+@dataclass(frozen=True)
 class SequenceLogProb(Score[Predictor, Value, [Seq]]):
     """log p(x[start:] | the rest before it), per sequence: teacher forcing on whole sequences, in one pass."""
     title = "Sequence log-probability"
@@ -1455,6 +1557,7 @@ class SequenceLogProb(Score[Predictor, Value, [Seq]]):
     def __call__(self, model: Predictor, x: Seq, /) -> Value: ...
 
 
+@dataclass(frozen=True)
 class InfoNCE(Score[Value, Tensor, [Value]]):
     """Which b goes with each a, among the batch: cross-entropy over similarities, the matching pair as the class."""
     title = "Contrastive (InfoNCE / CLIP)"
@@ -1463,6 +1566,7 @@ class InfoNCE(Score[Value, Tensor, [Value]]):
     def __call__(self, a: Value, b: Value, /) -> Tensor: ...
 
 
+@dataclass(frozen=True)
 class BradleyTerry(Score[Value, Tensor, [Value]]):
     """−log σ(r(chosen) − r(rejected)): the likelihood that the preferred answer wins."""
     title = "Reward models (Bradley–Terry)"
@@ -1470,6 +1574,7 @@ class BradleyTerry(Score[Value, Tensor, [Value]]):
     def __call__(self, chosen: Value, rejected: Value, /) -> Tensor: ...
 
 
+@dataclass(frozen=True)
 class DPOLoss(Score[nn.Module, Tensor, ...]):
     """The loss of (policy, chosen, rejected): Bradley–Terry on β·(the policy's log-ratio to the reference, chosen
     minus rejected). Preferences as classification: no reward model, no walk."""
@@ -1480,6 +1585,7 @@ class DPOLoss(Score[nn.Module, Tensor, ...]):
     def __call__(self, model: nn.Module, /, *batch: Any) -> Tensor: ...
 
 
+@dataclass(frozen=True)
 class KLRegularizedReward(Score[Value, Value, [Value, Value]]):
     """The reward, minus how far the policy has moved from a reference: use it as the return."""
     title = "KL-regularized reward (RLHF)"
@@ -1488,6 +1594,7 @@ class KLRegularizedReward(Score[Value, Value, [Value, Value]]):
     def __call__(self, reward: Value, LogProb: Value, ref_log_prob: Value, /) -> Value: ...
 
 
+@dataclass(frozen=True)
 class ELBO(Score[Model[Container, Dist], Tensor, [Model[Tensor, Prediction], Container]]):
     """The reconstruction from a latent drawn from the posterior (rsample: reparameterization), plus KL(posterior ‖ prior)."""
     title = "VAE (evidence lower bound)"
@@ -1495,6 +1602,7 @@ class ELBO(Score[Model[Container, Dist], Tensor, [Model[Tensor, Prediction], Con
     def __call__(self, encoder: Model[Container, Dist], decoder: Model[Tensor, Prediction], x: Container, /) -> Tensor: ...
 
 
+@dataclass(frozen=True)
 class GAN(Score[Model[Tensor, Container], tuple[Tensor, Tensor], [Predictor, Container, Tensor]]):
     """The discriminator tells real from generated; the generator wants its samples called real. Two scores, for two
     players (alternate their steps)."""
@@ -1503,6 +1611,7 @@ class GAN(Score[Model[Tensor, Container], tuple[Tensor, Tensor], [Predictor, Con
     def __call__(self, generator: Model[Tensor, Container], discriminator: Predictor, real: Container, z: Tensor, /) -> tuple[Tensor, Tensor]: ...
 
 
+@dataclass(frozen=True)
 class FlowLogProb(Score[Container, Value, [list[Any]]]):
     """The exact log-likelihood through invertible maps (change of variables)."""
     title = "Normalizing flows"
@@ -1511,6 +1620,7 @@ class FlowLogProb(Score[Container, Value, [list[Any]]]):
     def __call__(self, x: Container, transforms: list[Any], /) -> Value: ...
 
 
+@dataclass(frozen=True)
 class Reinforce(Score[Path, Tensor, [Value]]):
     """−E[log p(path)·A]: a walked path's log-probability, weighted by how much better than usual it went."""
     title = "Policy gradients (REINFORCE)"
@@ -1518,6 +1628,7 @@ class Reinforce(Score[Path, Tensor, [Value]]):
     def __call__(self, path: Path, advantage: Value, /) -> Tensor: ...
 
 
+@dataclass(frozen=True)
 class PPOClip(Score[Value, Tensor, [Value, Value]]):
     """The policy gradient with the ratio π / π_old clipped: it stops pushing once the policy has moved far."""
     title = "PPO clipped surrogate"
@@ -1526,6 +1637,7 @@ class PPOClip(Score[Value, Tensor, [Value, Value]]):
     def __call__(self, LogProb: Value, old_log_prob: Value, advantage: Value, /) -> Tensor: ...
 
 
+@dataclass(frozen=True)
 class Pathwise(Score[Dist, Tensor, [Model[Tensor, Tensor]]]):
     """−E[Q(a)] with a = rsample(): differentiated through the sample into a learned critic (DDPG, SAC)."""
     title = "Pathwise estimator (through a critic)"
@@ -1533,6 +1645,7 @@ class Pathwise(Score[Dist, Tensor, [Model[Tensor, Tensor]]]):
     def __call__(self, policy: Dist, critic: Model[Tensor, Tensor], /) -> Tensor: ...
 
 
+@dataclass(frozen=True)
 class EntropyBonus(Score[Dist]):
     """−α·H(options): keeps the policy exploring."""
     title = "Maximum-entropy RL (entropy bonus)"
@@ -1541,6 +1654,7 @@ class EntropyBonus(Score[Dist]):
     def __call__(self, options: Dist, /) -> Tensor: ...
 
 
+@dataclass(frozen=True)
 class MAMLLoss(Score[nn.Module, Tensor, [Callable[..., Tensor], Container, Container]]):
     """Bilevel: the query loss of the weights after an inner step (an unroll) on the support set, differentiated through."""
     title = "Meta-learning (MAML)"
@@ -1548,6 +1662,7 @@ class MAMLLoss(Score[nn.Module, Tensor, [Callable[..., Tensor], Container, Conta
     def __call__(self, model: nn.Module, objective: Callable[..., Tensor], support: Container, query: Container, /) -> Tensor: ...
 
 
+@dataclass(frozen=True)
 class Accuracy(Score[Tensor, Tensor, [Container]]):
     """Reported and selected on, never differentiated: a loss stands in for it in training."""
     title = "Metrics (accuracy)"
@@ -1555,6 +1670,7 @@ class Accuracy(Score[Tensor, Tensor, [Container]]):
     def __call__(self, pred: Tensor, target: Container, /) -> Tensor: ...
 
 
+@dataclass(frozen=True)
 class RetrievalAccuracy(Score[Value, Tensor, [Value]]):
     """How often each a is closest to its own b among the batch (matching images to captions)."""
     title = "Retrieval accuracy"
@@ -1562,6 +1678,7 @@ class RetrievalAccuracy(Score[Value, Tensor, [Value]]):
     def __call__(self, a: Value, b: Value, /) -> Tensor: ...
 
 
+@dataclass(frozen=True)
 class Autodiff(Score[Tensor, Tensor]):
     """The gradient of any score."""
     title = "Backpropagation / autodiff"
@@ -1571,6 +1688,7 @@ class Autodiff(Score[Tensor, Tensor]):
 # ═══ Start[P, **R = []]: … → Partial ══════════════════════════════════════════════════════════════
 
 
+@dataclass(frozen=True)
 class Blank(Start[Holes[Container], [Container]]):
     """Every element unknown: all [MASK] for classes, pure noise for real values."""
     title = "Blank (where generation starts)"
@@ -1578,6 +1696,7 @@ class Blank(Start[Holes[Container], [Container]]):
     def __call__[C: Container](self, like: C, /) -> Holes[C]: ...
 
 
+@dataclass(frozen=True)
 class LMTree(Start[PartialTree[Seq, Tensor], [Predictor, Seq]]):
     """A node is a sequence (Holes: known up to its end), its options the next-token distribution, an edge appends."""
     title = "An LM as a tree"
@@ -1585,6 +1704,7 @@ class LMTree(Start[PartialTree[Seq, Tensor], [Predictor, Seq]]):
     def __call__(self, model: Predictor, prompt: Seq, /) -> PartialTree[Seq, Tensor]: ...
 
 
+@dataclass(frozen=True)
 class EnvTree(Start[PartialTree[Any, Tensor], [Environment]]):
     """A node is a state, its options the policy's actions (uniform with none), an edge leads where the environment
     steps to, with a reward and whether it ended."""
@@ -1593,6 +1713,7 @@ class EnvTree(Start[PartialTree[Any, Tensor], [Environment]]):
     def __call__(self, env: Environment, policy: Predictor | None = None, /) -> PartialTree[Any, Tensor]: ...
 
 
+@dataclass(frozen=True)
 class EmptyIndex(Start[Index, [Value]]):
     """An empty index for vectors like these (their size): flat (exact), IVF (clusters), HNSW (a neighbour graph), PQ
     (compressed codes), LSH (hash buckets), inverted (BM25), sum tree (by priority). Statements train and fill it."""
@@ -1605,6 +1726,7 @@ class EmptyIndex(Start[Index, [Value]]):
 # ═══ Order: Holes × Prediction → Holes ════════════════════════════════════════════════════════════
 
 
+@dataclass(frozen=True)
 class InOrder(Order):
     """Fill the first hole: one element at a time, in order (the holes view of decoding; walk gives the tree view)."""
     title = "Autoregressive order"
@@ -1613,6 +1735,7 @@ class InOrder(Order):
     def __call__(self, holes: Holes[Any], pred: Prediction, /) -> Holes[Any]: ...
 
 
+@dataclass(frozen=True)
 class MostConfident(Order):
     """Fill the holes the model is surest of, more each step (a cosine schedule), until none is left."""
     title = "Unmasking (MaskGIT, masked diffusion)"
@@ -1621,6 +1744,7 @@ class MostConfident(Order):
     def __call__(self, holes: Holes[Any], pred: Prediction, /) -> Holes[Any]: ...
 
 
+@dataclass(frozen=True)
 class Together(Order):
     """Lower every level by one step along the predicted velocity (Euler): noise, undone."""
     title = "Sampling a flow (diffusion)"
@@ -1629,6 +1753,7 @@ class Together(Order):
     def __call__(self, holes: Holes[Any], pred: Prediction, /) -> Holes[Any]: ...
 
 
+@dataclass(frozen=True)
 class PerElement(Order):
     """Each element follows its own schedule (the near future clean, the far future noisy): between InOrder and together."""
     title = "Diffusion forcing sampling"
@@ -1640,6 +1765,7 @@ class PerElement(Order):
 # ═══ Walk: PartialTree → Path ═════════════════════════════════════════════════════════════════════
 
 
+@dataclass(frozen=True)
 class ChainOfThought(Walk):
     """A longer walk before the answer; the gains come from training the walk (R1)."""
     title = "Chain-of-thought / longer reasoning"
@@ -1649,6 +1775,7 @@ class ChainOfThought(Walk):
 # ═══ Choose: PartialTree → PartialTree ════════════════════════════════════════════════════════════
 
 
+@dataclass(frozen=True)
 class Sample(Choose):
     """Expand each kept leaf by one edge drawn from its options."""
     title = "Sampling"
@@ -1657,6 +1784,7 @@ class Sample(Choose):
     def __call__(self, tree: PartialTree[Any, Any], /) -> PartialTree[Any, Any]: ...
 
 
+@dataclass(frozen=True)
 class Greedy(Choose):
     """Expand each kept leaf by its likeliest edge."""
     title = "Greedy decoding"
@@ -1665,6 +1793,7 @@ class Greedy(Choose):
     def __call__(self, tree: PartialTree[Any, Any], /) -> PartialTree[Any, Any]: ...
 
 
+@dataclass(frozen=True)
 class Beam(Choose):
     """Expand every kept leaf; keep the k likeliest children of each root."""
     title = "Beam search"
@@ -1674,6 +1803,7 @@ class Beam(Choose):
     def __call__(self, tree: PartialTree[Any, Any], /) -> PartialTree[Any, Any]: ...
 
 
+@dataclass(frozen=True)
 class Independent(Choose):
     """n paths from each root side by side, each grown by its own chooser: n samples per prompt (best-of-N, GRPO)."""
     title = "Several paths per root (best-of-N, groups)"
@@ -1684,6 +1814,7 @@ class Independent(Choose):
     def __call__(self, tree: PartialTree[Any, Any], /) -> PartialTree[Any, Any]: ...
 
 
+@dataclass(frozen=True)
 class Forced(Choose):
     """Expand each leaf by the next given edge: scoring the path walked is teacher forcing."""
     title = "Teacher forcing (walking the data's path)"
@@ -1693,6 +1824,7 @@ class Forced(Choose):
     def __call__(self, tree: PartialTree[Any, Any], /) -> PartialTree[Any, Any]: ...
 
 
+@dataclass(frozen=True)
 class Speculative(Choose):
     """The draft walks k edges ahead greedily, the tree's model checks them in one pass, the agreeing prefix is kept:
     greedy decoding, in fewer of the big model's passes."""
@@ -1707,6 +1839,7 @@ class Speculative(Choose):
 # ═══ Unroll: PartialSeq[S] → S ════════════════════════════════════════════════════════════════════
 
 
+@dataclass(frozen=True)
 class Iteration(Unroll):
     """Rounds of collecting and learning (policy iteration, self-play, expert iteration): a script's repeat
     (program.py), since each round's fit is a statement."""
@@ -1717,6 +1850,7 @@ class Iteration(Unroll):
 # ═══ Evolve[S]: S → S ═════════════════════════════════════════════════════════════════════════════
 
 
+@dataclass(frozen=True)
 class Langevin(Evolve[Container]):
     """x ← x − η·∇E(x) + √(2η)·ε: samples of exp(−energy), with the gradient from autograd."""
     title = "Energy-based models (Langevin)"
@@ -1727,6 +1861,7 @@ class Langevin(Evolve[Container]):
     def __call__(self, state: Container, /) -> Container: ...
 
 
+@dataclass(frozen=True)
 class EvolutionStrategy(Evolve[Dist]):
     """Draw a population (a Set of parameters) from the search distribution, score them, move it toward the better
     ones: it works when nothing is differentiable (CMA-ES keeps a covariance too)."""
@@ -1741,6 +1876,7 @@ class EvolutionStrategy(Evolve[Dist]):
 # ═══ Reshape[P, **R = []]: Partial → Partial ══════════════════════════════════════════════════════
 
 
+@dataclass(frozen=True)
 class Temperature(Reshape[PartialTree[Any, Any]]):
     """The options' logits divided by t: below 1 sharper (toward greedy), above 1 flatter."""
     title = "Sampling temperature"
@@ -1749,6 +1885,7 @@ class Temperature(Reshape[PartialTree[Any, Any]]):
     def __call__(self, tree: PartialTree[Any, Any], /) -> PartialTree[Any, Any]: ...
 
 
+@dataclass(frozen=True)
 class TopK(Reshape[PartialTree[Any, Any]]):
     """Only the k likeliest edges stay possible."""
     title = "Top-k sampling"
@@ -1757,6 +1894,7 @@ class TopK(Reshape[PartialTree[Any, Any]]):
     def __call__(self, tree: PartialTree[Any, Any], /) -> PartialTree[Any, Any]: ...
 
 
+@dataclass(frozen=True)
 class TopP(Reshape[PartialTree[Any, Any]]):
     """Only the likeliest edges whose probabilities add up to p stay possible."""
     title = "Top-p (nucleus) sampling"
@@ -1765,6 +1903,7 @@ class TopP(Reshape[PartialTree[Any, Any]]):
     def __call__(self, tree: PartialTree[Any, Any], /) -> PartialTree[Any, Any]: ...
 
 
+@dataclass(frozen=True)
 class Given(Reshape[Predictor, [Value | None]]):
     """A conditional model with its condition fixed (None: no condition): the two models guidance mixes."""
     title = "A condition, fixed"
@@ -1772,6 +1911,7 @@ class Given(Reshape[Predictor, [Value | None]]):
     def __call__(self, model: Predictor, condition: Value | None, /) -> Predictor: ...
 
 
+@dataclass(frozen=True)
 class Guided(Reshape[Predictor, [Predictor]]):
     """u + w·(c − u): extrapolate from the unconditional prediction toward the conditional one, for a tree's options or
     a fill's model."""
@@ -1781,6 +1921,7 @@ class Guided(Reshape[Predictor, [Predictor]]):
     def __call__(self, cond: Predictor, uncond: Predictor, /) -> Predictor: ...
 
 
+@dataclass(frozen=True)
 class EpsilonGreedy(Reshape[PartialTree[Any, Any]]):
     """With probability ε a uniform edge, else the likeliest."""
     title = "Exploration vs exploitation (ε-greedy)"
@@ -1789,6 +1930,7 @@ class EpsilonGreedy(Reshape[PartialTree[Any, Any]]):
     def __call__(self, tree: PartialTree[Any, Any], /) -> PartialTree[Any, Any]: ...
 
 
+@dataclass(frozen=True)
 class WithTool(Reshape[PartialTree[Any, Any], [Callable[[Any], Tensor]]]):
     """When a walk emits the call token, follow writes the tool's answer (a calculator, a search, an interpreter)."""
     title = "Tool use"
@@ -1797,6 +1939,7 @@ class WithTool(Reshape[PartialTree[Any, Any], [Callable[[Any], Tensor]]]):
     def __call__(self, tree: PartialTree[Any, Any], tool: Callable[[Any], Tensor], /) -> PartialTree[Any, Any]: ...
 
 
+@dataclass(frozen=True)
 class Cached(Reshape[PartialTree[Any, Any]]):
     """The tree's known nodes keep what the model computed for them, so expanding a node costs one position."""
     title = "KV caching"
@@ -1805,6 +1948,7 @@ class Cached(Reshape[PartialTree[Any, Any]]):
     def __call__(self, tree: PartialTree[Any, Any], /) -> PartialTree[Any, Any]: ...
 
 
+@dataclass(frozen=True)
 class Imagined(Reshape[PartialTree[Any, Any], [Model[Container, Container]]]):
     """The environment's follow (and reward, done) replaced by a learned model of them: walks, searches and plans in
     imagination (Dreamer, MuZero)."""
@@ -1813,6 +1957,7 @@ class Imagined(Reshape[PartialTree[Any, Any], [Model[Container, Container]]]):
     def __call__(self, tree: PartialTree[Any, Any], world: Model[Container, Container], /) -> PartialTree[Any, Any]: ...
 
 
+@dataclass(frozen=True)
 class Planned(Reshape[PartialTree[Any, Any]]):
     """Options that look ahead: random action sequences simulated in a world, all the probability on the first action
     of the best."""
@@ -1824,6 +1969,7 @@ class Planned(Reshape[PartialTree[Any, Any]]):
     def __call__(self, tree: PartialTree[Any, Any], world: PartialTree[Any, Any] | None = None, /) -> PartialTree[Any, Any]: ...
 
 
+@dataclass(frozen=True)
 class MCTS(Reshape[PartialTree[Any, Any]]):
     """Options improved by search: grow a tree by PUCT (the options as priors), back up rewards and values, return the
     visit counts. Walk it to search; train toward it to amortize the search (AlphaZero)."""
@@ -1835,6 +1981,7 @@ class MCTS(Reshape[PartialTree[Any, Any]]):
     def __call__(self, tree: PartialTree[Any, Any], /) -> PartialTree[Any, Any]: ...
 
 
+@dataclass(frozen=True)
 class Droppable(Reshape[Predictor]):
     """The condition dropped with probability p while training, so one model is both conditional and unconditional."""
     title = "Classifier-free guidance training"
@@ -1843,6 +1990,7 @@ class Droppable(Reshape[Predictor]):
     def __call__(self, model: Predictor, /) -> Predictor: ...
 
 
+@dataclass(frozen=True)
 class kNNOptions(Reshape[PartialTree[Any, Any], [Index, Predictor]]):
     """Options mixed with the next tokens of the k nearest stored contexts: an LM that can look things up."""
     title = "kNN-LM (a memory of contexts)"
@@ -1854,6 +2002,7 @@ class kNNOptions(Reshape[PartialTree[Any, Any], [Index, Predictor]]):
 # ═══ Search[O, **R = []]: Index × Value → Set ═════════════════════════════════════════════════════
 
 
+@dataclass(frozen=True)
 class Retrieve(Search[Seq, [Set, Seq, Predictor]]):
     """The k documents nearest the query's embedding, put in front of it as one prompt (then walk the LM's tree)."""
     title = "Retrieval-augmented generation (retrieve)"
@@ -1862,6 +2011,7 @@ class Retrieve(Search[Seq, [Set, Seq, Predictor]]):
     def __call__(self, index: Index, documents: Set, query: Seq, embed: Predictor, /) -> Seq: ...
 
 
+@dataclass(frozen=True)
 class HardNegatives(Search[Set, [Value, Value]]):
     """The nearest elements that are not the match: harder negatives for a contrastive loss."""
     title = "Hard-negative mining"
@@ -1870,6 +2020,7 @@ class HardNegatives(Search[Set, [Value, Value]]):
     def __call__(self, index: Index, queries: Value, positives: Value, /) -> Set: ...
 
 
+@dataclass(frozen=True)
 class KNN(Search[Prediction, [Value, Value]]):
     """k-nearest-neighbour prediction: each query's k nearest stored examples (index.search), their labels voted
     (classes) or averaged (real values), weighted by distance. Nothing to fit: Insert the examples, then ask."""
@@ -1882,6 +2033,7 @@ class KNN(Search[Prediction, [Value, Value]]):
 # ═══ Wrap[M, **R = []]: Module → Module′ ══════════════════════════════════════════════════════════
 
 
+@dataclass(frozen=True)
 class Residual(Wrap[nn.Module]):
     """h + f(norm h): the layer edits the stream instead of replacing it."""
     title = "Residual connections"
@@ -1890,6 +2042,7 @@ class Residual(Wrap[nn.Module]):
     def __call__(self, f: nn.Module, /) -> nn.Module: ...
 
 
+@dataclass(frozen=True)
 class FrozenCopy(Wrap[nn.Module]):
     """A copy that no longer trains: DPO's and RLHF's reference, DQN's target network."""
     title = "Frozen copy (reference / target network)"
@@ -1897,6 +2050,7 @@ class FrozenCopy(Wrap[nn.Module]):
     def __call__[M: nn.Module](self, model: M, /) -> M: ...
 
 
+@dataclass(frozen=True)
 class Observe(Wrap[nn.Module, [nn.Module]]):
     """A model that returns what one of its modules computed: the activations probes, SAEs and circuits study."""
     title = "Reading activations"
@@ -1904,6 +2058,7 @@ class Observe(Wrap[nn.Module, [nn.Module]]):
     def __call__(self, model: nn.Module, at: nn.Module, /) -> nn.Module: ...
 
 
+@dataclass(frozen=True)
 class Patch(Wrap[nn.Module, [nn.Module, Callable[[Tensor], Tensor]]]):
     """A model with one module's output replaced (by another input's activations): which components carry a behaviour?"""
     title = "Activation patching (circuits)"
@@ -1911,6 +2066,7 @@ class Patch(Wrap[nn.Module, [nn.Module, Callable[[Tensor], Tensor]]]):
     def __call__(self, model: nn.Module, at: nn.Module, replace: Callable[[Tensor], Tensor], /) -> nn.Module: ...
 
 
+@dataclass(frozen=True)
 class Steer(Wrap[nn.Module, [nn.Module, Tensor]]):
     """α·direction added to one module's output: features are directions, and moving along one changes the behaviour."""
     title = "Steering along a direction"
@@ -1919,12 +2075,14 @@ class Steer(Wrap[nn.Module, [nn.Module, Tensor]]):
     def __call__(self, model: nn.Module, at: nn.Module, direction: Tensor, /) -> nn.Module: ...
 
 
+@dataclass(frozen=True)
 class Autocast(Wrap[nn.Module]):
     """bf16 (or fp8) compute, float32 master weights."""
     title = "Low precision: training"
     function = "torch.autocast"
 
 
+@dataclass(frozen=True)
 class Compile(Wrap[nn.Module]):
     """torch.compile(module) fuses its ops; attention picks flash kernels by itself."""
     title = "Hardware-aware kernels"
@@ -1939,6 +2097,7 @@ class Compile(Wrap[nn.Module]):
 # ═══ Fit[X, **R = []]: X! × Dataset ═══════════════════════════════════════════════════════════════
 
 
+@dataclass(frozen=True)
 class Train(Fit[nn.Module, [Callable[..., Tensor], Dataset[Any] | None]]):
     """Descend the objective over the dataset's batches: each step, objective(model, *batch) (under autocast to
     precision), its gradient (clipped to max_grad_norm), the optimizer's update of the parameters, in place, at the
@@ -1954,6 +2113,7 @@ class Train(Fit[nn.Module, [Callable[..., Tensor], Dataset[Any] | None]]):
     def __call__(self, model: nn.Module, objective: Callable[..., Tensor], data: Dataset[Any] | None, /) -> None: ...
 
 
+@dataclass(frozen=True)
 class FitCodec(Fit[Codec[Any, Any], [Dataset[Any]]]):
     """Fit a codec to a corpus by its own rule, in place: BPE merges the most frequent pairs until the vocabulary is
     full, a unigram model prunes. (A learned codec, VQ-VAE or EnCodec, is a model: train.)"""
@@ -1962,6 +2122,7 @@ class FitCodec(Fit[Codec[Any, Any], [Dataset[Any]]]):
     def __call__(self, codec: Codec[Any, Any], data: Dataset[Any], /) -> None: ...
 
 
+@dataclass(frozen=True)
 class LeastSquares(Fit[nn.Module, [Dataset[Any]]]):
     """Solve for a Linear model's weights in closed form, in place: (XᵀX + λI)⁻¹Xᵀy, XᵀX and Xᵀy accumulated over
     the dataset's batches; ridge regression when ridge is above 0."""
@@ -1972,6 +2133,7 @@ class LeastSquares(Fit[nn.Module, [Dataset[Any]]]):
     def __call__(self, model: nn.Module, data: Dataset[Any], /) -> None: ...
 
 
+@dataclass(frozen=True)
 class GrowTrees(Fit[nn.Module, [Dataset[Any]]]):
     """Grow a Trees model, in place: each tree by greedy splits that most reduce the loss (CART); a forest grows each
     on a bootstrap sample, boosting each on the gradient of the loss of the trees so far."""
@@ -1982,6 +2144,7 @@ class GrowTrees(Fit[nn.Module, [Dataset[Any]]]):
     def __call__(self, model: nn.Module, data: Dataset[Any], /) -> None: ...
 
 
+@dataclass(frozen=True)
 class KMeans(Fit[nn.Module, [Dataset[Value]]]):
     """Lloyd's iterations on a Centroids model, in place: each example to its nearest centroid, each centroid to the
     mean of its examples, until nothing moves (or iterations runs out)."""
@@ -1992,6 +2155,7 @@ class KMeans(Fit[nn.Module, [Dataset[Value]]]):
     def __call__(self, model: nn.Module, data: Dataset[Value], /) -> None: ...
 
 
+@dataclass(frozen=True)
 class PCA(Fit[nn.Module, [Dataset[Value]]]):
     """Fit a Projection to the top principal components, in place: the leading eigenvectors of the data's covariance,
     accumulated over the batches (or an SVD of them)."""
@@ -2001,6 +2165,7 @@ class PCA(Fit[nn.Module, [Dataset[Value]]]):
     def __call__(self, model: nn.Module, data: Dataset[Value], /) -> None: ...
 
 
+@dataclass(frozen=True)
 class EM(Fit[nn.Module, [Dataset[Value]]]):
     """Expectation–maximization on a Mixture, in place: each component's responsibility for each example, then each
     component refitted to its share, until the likelihood stops rising (or iterations runs out)."""
@@ -2011,12 +2176,14 @@ class EM(Fit[nn.Module, [Dataset[Value]]]):
     def __call__(self, model: nn.Module, data: Dataset[Value], /) -> None: ...
 
 
+@dataclass(frozen=True)
 class TrainingStep(Fit[nn.Module]):
     """Train's settings: autocast the objective, clip the gradient norm."""
     title = "Training step (clipping, mixed precision)"
     function = "Train"
 
 
+@dataclass(frozen=True)
 class TwoPlayerGames(Fit[nn.Module]):
     """No single quantity goes down: each player's Train on its own loss, in turn, inside a repeat (GANs,
     adversarial training)."""
@@ -2027,6 +2194,7 @@ class TwoPlayerGames(Fit[nn.Module]):
 # ═══ Assign[X, **R = []]: Weights! ════════════════════════════════════════════════════════════════
 
 
+@dataclass(frozen=True)
 class Transfer(Assign[Weights, [Weights]]):
     """Start a model from a trained one: copy into the target the source's weights whose names and shapes match (the
     body), keep the target's head."""
@@ -2035,6 +2203,7 @@ class Transfer(Assign[Weights, [Weights]]):
     def __call__(self, target: Weights, source: Weights, /) -> None: ...
 
 
+@dataclass(frozen=True)
 class Init(Assign[Weights]):
     """Fan-in normal for matrices, zeros for output projections: each residual block starts as the identity."""
     title = "Initialization"
@@ -2042,6 +2211,7 @@ class Init(Assign[Weights]):
     def __call__(self, model: Weights, /) -> None: ...
 
 
+@dataclass(frozen=True)
 class EMA(Assign[Weights, [Weights]]):
     """average ← decay·average + (1 − decay)·model, in place: after each round or step, a smoother copy, and the slow
     target of self-distillation and DQN."""
@@ -2054,6 +2224,7 @@ class EMA(Assign[Weights, [Weights]]):
 # ═══ Alter[X, **R = []]: Module! ══════════════════════════════════════════════════════════════════
 
 
+@dataclass(frozen=True)
 class Freeze(Alter[nn.Module, [Callable[[str], bool]]]):
     """Train only the parameters whose name passes a test."""
     title = "Freezing"
@@ -2062,6 +2233,7 @@ class Freeze(Alter[nn.Module, [Callable[[str], bool]]]):
     def __call__(self, model: nn.Module, trainable: Callable[[str], bool], /) -> None: ...
 
 
+@dataclass(frozen=True)
 class LoRA(Alter[nn.Module]):
     """W + B·A on chosen linear layers, the base frozen: the finetuning update, kept low-rank."""
     title = "LoRA"
@@ -2070,6 +2242,7 @@ class LoRA(Alter[nn.Module]):
     def __call__(self, model: nn.Module, /) -> None: ...
 
 
+@dataclass(frozen=True)
 class Adapter(Alter[nn.Module]):
     """After chosen frozen layers, a small bottleneck MLP that trains alone, starting at zero."""
     title = "Adapters"
@@ -2078,6 +2251,7 @@ class Adapter(Alter[nn.Module]):
     def __call__(self, model: nn.Module, /) -> None: ...
 
 
+@dataclass(frozen=True)
 class PromptTuning(Alter[nn.Module]):
     """Learned vectors in front of a frozen model's input; only they train."""
     title = "Prompt tuning"
@@ -2086,6 +2260,7 @@ class PromptTuning(Alter[nn.Module]):
     def __call__(self, model: nn.Module, /) -> None: ...
 
 
+@dataclass(frozen=True)
 class Quantize(Alter[Weights]):
     """Weights rounded to 2^(bits−1) − 1 levels a side per row: computing as the low-precision model would."""
     title = "Quantization (int8 / int4)"
@@ -2094,12 +2269,14 @@ class Quantize(Alter[Weights]):
     def __call__(self, model: Weights, /) -> None: ...
 
 
+@dataclass(frozen=True)
 class LowPrecisionInference(Alter[Weights]):
     """int8 / int4 weights."""
     title = "Low precision: inference"
     function = "Quantize"
 
 
+@dataclass(frozen=True)
 class Parallelism(Alter[nn.Module]):
     """Data, sharded, tensor, pipeline, expert, sequence: fully_shard shards a module in place; DTensor places its
     weights."""
@@ -2111,6 +2288,7 @@ class Parallelism(Alter[nn.Module]):
 # ═══ Store[X, **R = []]: Index! / Buffer! ═════════════════════════════════════════════════════════
 
 
+@dataclass(frozen=True)
 class TrainIndex(Store[Index, [Value]]):
     """Learn the index's structure from a sample of the vectors, in place: k-means centroids for IVF, codebooks for
     PQ (flat and HNSW have nothing to learn). CREATE INDEX, before any rows."""
@@ -2119,6 +2297,7 @@ class TrainIndex(Store[Index, [Value]]):
     def __call__(self, index: Index, sample: Value, /) -> None: ...
 
 
+@dataclass(frozen=True)
 class Insert(Store[Index, [Dataset[Set]]]):
     """Add every batch of the dataset to the index, in place (FAISS add, INSERT). An index over an expression's output
     (embed(x)) goes stale when that expression's model is trained again: build it again."""
@@ -2127,6 +2306,7 @@ class Insert(Store[Index, [Dataset[Set]]]):
     def __call__(self, index: Index, data: Dataset[Set], /) -> None: ...
 
 
+@dataclass(frozen=True)
 class Delete(Store[Index, [Tensor]]):
     """Remove elements from the index by id, in place (FAISS remove_ids, DELETE)."""
     title = "Index deletion"
@@ -2134,6 +2314,7 @@ class Delete(Store[Index, [Tensor]]):
     def __call__(self, index: Index, ids: Tensor, /) -> None: ...
 
 
+@dataclass(frozen=True)
 class Extend(Store[Buffer[Container], [Container]]):
     """Add a batch to a bounded buffer, in place, dropping the oldest (or the lowest priority): past experience to train
     on again (continual learning, off-policy RL, prioritized replay)."""
@@ -2145,6 +2326,7 @@ class Extend(Store[Buffer[Container], [Container]]):
 # ═══ Source[D, **R = []]: … → Dataset ═════════════════════════════════════════════════════════════
 
 
+@dataclass(frozen=True)
 class Batches(Source[Dataset[Any], ...]):
     """Containers in memory as a dataset: random minibatches of size examples, the containers sliced together (a
     tuple per batch when there are several)."""
@@ -2155,6 +2337,7 @@ class Batches(Source[Dataset[Any], ...]):
     def __call__(self, *data: Container) -> Dataset[Any]: ...
 
 
+@dataclass(frozen=True)
 class Collector(Source[Dataset[Path], [Environment, Predictor]]):
     """Walks of the environment with the policy as it is when each batch is drawn: on-policy data, read inside the
     fit that changes the policy (torchrl's collectors)."""
@@ -2165,6 +2348,7 @@ class Collector(Source[Dataset[Path], [Environment, Predictor]]):
     def __call__(self, env: Environment, policy: Predictor, /) -> Dataset[Path]: ...
 
 
+@dataclass(frozen=True)
 class ReplayBuffer(Source[Buffer[Any]]):
     """An empty buffer of at most size examples, read by sampling (uniformly, or by priority); Extend fills it."""
     title = "Replay buffer (empty)"
@@ -2174,6 +2358,7 @@ class ReplayBuffer(Source[Buffer[Any]]):
     def __call__(self) -> Buffer[Any]: ...
 
 
+@dataclass(frozen=True)
 class Mix(Source[Dataset[Any], ...]):
     """Batches drawn from several datasets in proportion to their weights (web, code, books): the mixture as a dataset."""
     title = "Data mixture weights"
@@ -2182,6 +2367,7 @@ class Mix(Source[Dataset[Any], ...]):
     def __call__(self, *datasets: Dataset[Any]) -> Dataset[Any]: ...
 
 
+@dataclass(frozen=True)
 class Each(Source[Dataset[Any], [Callable[..., Any], Dataset[Any]]]):
     """f applied to every batch, once per batch as the dataset batches it (never re-batched, since f may depend on
     what a batch holds): how a statement reads an expression's output, embeddings to index, features to probe."""
@@ -2193,6 +2379,7 @@ class Each(Source[Dataset[Any], [Callable[..., Any], Dataset[Any]]]):
 # ═══ Curate[C, **R = []]: Dataset → Dataset ═══════════════════════════════════════════════════════
 
 
+@dataclass(frozen=True)
 class Dedup(Curate[Container]):
     """Drop exact copies across the whole dataset (by hash): the first of each kept."""
     title = "Data deduplication"
@@ -2200,6 +2387,7 @@ class Dedup(Curate[Container]):
     def __call__[C: Container](self, data: Dataset[C], /) -> Dataset[C]: ...
 
 
+@dataclass(frozen=True)
 class DropNearDuplicates(Curate[Container]):
     """Drop examples whose MinHash signatures collide with an earlier one's above a similarity threshold: dedup beyond
     exact copies."""
@@ -2209,6 +2397,7 @@ class DropNearDuplicates(Curate[Container]):
     def __call__[C: Container](self, data: Dataset[C], /) -> Dataset[C]: ...
 
 
+@dataclass(frozen=True)
 class KeepBest(Curate[Container, [Callable[[Container], Value]]]):
     """The best-scoring fraction of the whole dataset: a quantile of every score first, then a threshold per batch."""
     title = "Data filtering by fraction"
@@ -2217,6 +2406,7 @@ class KeepBest(Curate[Container, [Callable[[Container], Value]]]):
     def __call__[C: Container](self, data: Dataset[C], score: Callable[[C], Value], /) -> Dataset[C]: ...
 
 
+@dataclass(frozen=True)
 class Curriculum(Curate[Container, [Callable[[Container], Value]]]):
     """The dataset sorted by difficulty, easy first: a global sort, so it reads every batch before the first comes out."""
     title = "Curriculum learning"
@@ -2227,6 +2417,7 @@ class Curriculum(Curate[Container, [Callable[[Container], Value]]]):
 # ═══ Reduce[C, A, **R = []]: Dataset → a ══════════════════════════════════════════════════════════
 
 
+@dataclass(frozen=True)
 class Evaluate(Reduce[Any, Tensor, [Callable[..., Tensor]]]):
     """A per-batch metric (accuracy, a loss, perplexity), averaged over every batch, weighted by their sizes."""
     title = "Evaluation (a metric over a dataset)"
@@ -2234,6 +2425,7 @@ class Evaluate(Reduce[Any, Tensor, [Callable[..., Tensor]]]):
     def __call__(self, data: Dataset[Any], metric: Callable[..., Tensor], /) -> Tensor: ...
 
 
+@dataclass(frozen=True)
 class Accumulate(Reduce[Any, Any, [Scan[Any, Any, Any]]]):
     """A Scan's state carried across a dataset's batches, its final state returned: normalization statistics, a
     histogram, any metric that is not a mean."""
@@ -2242,6 +2434,7 @@ class Accumulate(Reduce[Any, Any, [Scan[Any, Any, Any]]]):
     def __call__(self, data: Dataset[Any], s: Scan[Any, Any, Any], /) -> Any: ...
 
 
+@dataclass(frozen=True)
 class Peek(Reduce[Any, Any]):
     """The first batch of a dataset: what an expression can see of it, its type, to build a network or an index for."""
     title = "First batch"
@@ -2367,7 +2560,7 @@ def _header(cls: type) -> str:
 def _settings_text(cls: type) -> str:
     """Its settings, as written: n: int, kind: str = "bpe"."""
     out = []
-    for f in fields(cls):
+    for f in fields(cls) if is_dataclass(cls) else ():
         default = (_value(f.default) if f.default is not MISSING else
                    _value(f.default_factory()) if f.default_factory is not MISSING else None)
         out.append(f"{f.name}: {f.type}" + (f" = {default}" if default is not None else ""))
@@ -2409,7 +2602,7 @@ def print_catalog(explain: bool = False, short: bool = False) -> None:
                             print(f"    {dim('→ ' + cls.function)}")
                         for mname, fn in _methods(cls):
                             print(f"    {yellow(_signature_text(mname, fn))}")
-                        if fields(cls):
+                        if is_dataclass(cls) and fields(cls):
                             print(magenta(textwrap.fill(_settings_text(cls), 110, initial_indent="    ", subsequent_indent="      ")))
                         if cls.state:
                             print(f"    {dim('state: ' + cls.state)}")

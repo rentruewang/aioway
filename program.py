@@ -45,7 +45,7 @@ from __future__ import annotations
 
 import operator
 from collections.abc import Callable, Iterator
-from dataclasses import dataclass, field, fields, replace
+from dataclasses import dataclass, field, fields, is_dataclass, replace
 from typing import Any, Self
 
 from torch import nn
@@ -56,7 +56,7 @@ from catalog import (
     Imagined, Independent, InfoNCE, Insert, KeepBest, Labelled, LMTree, LogProb, LoRA, Loss, Mask, MCTS, Method, Mix, MoE, MostConfident,
     Network, Noise, Patchify, Peek, Planned, PPOClip, QTarget, QualityFilter, Reconstruction, Reinforce, ReplayBuffer, RetrievalAccuracy,
     Retrieve, ReturnsToGo, Sample, SearchTargets, SelectiveScan, Shift, Split, Temperature, Together, Train, TrainIndex, Transfer,
-    Transitions, Walk, changes, entry_of, is_statement, settings_of,
+    Transitions, Walk, changes, entry_of, is_statement, settings_of, short,
 )
 from data import Container, Predictor, Seq
 
@@ -126,7 +126,7 @@ class Call(Node):
 
     def with_settings(self, **settings: Any) -> Call:
         """The same call with some settings changed: in its config, or in the keywords it is called with."""
-        if isinstance(self.fn, Method):
+        if isinstance(self.fn, Method) and is_dataclass(self.fn):
             return replace(self, fn=replace(self.fn, **settings))
         return replace(self, kwargs={**self.kwargs, **settings})
 
@@ -201,7 +201,7 @@ def _nodes(roots: list[Any]) -> list[Node]:
 
 def _constants(e: Call) -> list[Any]:
     """What a call holds that is not a node: its function, its constant arguments, its config's settings."""
-    config = [getattr(e.fn, f.name) for f in fields(e.fn)] if isinstance(e.fn, Method) else []
+    config = [getattr(e.fn, f.name) for f in fields(e.fn)] if isinstance(e.fn, Method) and is_dataclass(e.fn) else []
     return [e.fn, *e.args, *e.kwargs.values(), *config]
 
 
@@ -456,7 +456,7 @@ def _short(v: Any) -> str:
     if isinstance(v, (Program, Script)):
         return v.name
     if isinstance(v, Method):
-        return repr(v)
+        return short(v)
     return getattr(v, "__name__", None) or repr(v)
 
 
