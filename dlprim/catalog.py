@@ -14,6 +14,7 @@ signature. The interface only: bodies are left to the implementation (torch, tor
               walk       PartialTree → Path    grow the known part of a tree, then read a path; state PartialTree
               unroll     PartialSeq[S] → S     step any state: search distributions, rounds of a method
               reshape    Partial → Partial     change how a partial container goes on: its options, its model
+  lookup      search     Index × Value → Set   the k nearest elements of an indexed set to each query
   models      adapt      Module → Module       change a model
 
 A method that carries a state says so in its type: Step[S] is one step of a PartialSeq over S (a chooser is a
@@ -43,7 +44,7 @@ import torch
 from torch import Tensor, nn
 
 from data import (
-    Chooser, Container, Dist, Environment, Example, Graph, Grid, Holes, Model, Predictor, PartialSeq, PartialTree, Path, Prediction, Product, Scan, Schedule, Seq,
+    Chooser, Container, Dist, Environment, Example, Graph, Grid, Holes, Index, Model, Predictor, PartialSeq, PartialTree, Path, Prediction, Product, Scan, Schedule, Seq,
     Set, Split, Step, Value,
 )
 
@@ -72,10 +73,12 @@ GROUPS: dict[str, Group] = {g.name: g for g in (
     Group("walk", "partial", "PartialTree → Path", "grow the known part of a tree, a chooser deciding which leaves to keep", "agnostic"),
     Group("unroll", "partial", "PartialSeq[S] → S", "step a state until done", "agnostic"),
     Group("reshape", "partial", "Partial → Partial", "change how a partial container goes on: its options, its model", "agnostic"),
+    Group("search", "lookup", "Index × Value → Set", "the k elements of an indexed set nearest each query", "agnostic"),
     Group("adapt", "models", "Module → Module", "change a model", "model"),
 )}
 FAMILIES = {"structure": "STRUCTURE · data → data", "learning": "LEARNING · data → a training signal",
-            "partial": "PARTIAL CONTAINERS · known in part, and how to get the rest", "models": "MODELS · model → model"}
+            "partial": "PARTIAL CONTAINERS · known in part, and how to get the rest",
+            "lookup": "LOOKUP · a set known by how to search it", "models": "MODELS · model → model"}
 
 
 @dataclass(frozen=True)
@@ -443,8 +446,8 @@ def unet(d: int, *, levels: int = 2) -> Model[Grid, Grid]:
 
 
 @method("aggregate", "Retrieval (attention over a memory)")
-def retrieval(k: int) -> Model[tuple[Container, Set], Container]:
-    """Each element reads the k most similar entries of an external memory, softmax-weighted."""
+def retrieval(k: int) -> Model[tuple[Container, Index], Container]:
+    """Each element reads the k nearest entries of an external memory (an Index), softmax-weighted."""
     ...
 
 
@@ -1100,6 +1103,46 @@ def droppable(model: Predictor, *, p: float = 0.1) -> Predictor:
     ...
 
 
+# ═══ search: Index × Value → Set ══════════════════════════════════════════════════════════════════
+
+
+@method("search", "Index (build)")
+def index(items: Set, *, kind: str = "flat") -> Index:
+    """Organize a set of vectors (or token sequences) for lookup: flat (exact), IVF (clusters), HNSW (a neighbour
+    graph), PQ (compressed codes), LSH (hash buckets), inverted (BM25), sum tree (by priority)."""
+    ...
+
+
+@method("search", "Nearest-neighbour search")
+def search(index: Index, queries: Value, *, k: int = 10) -> Set:
+    """The k nearest elements to each query, with their scores: exact for flat, approximate for the rest."""
+    ...
+
+
+@method("search", "Retrieval-augmented generation (retrieve)")
+def retrieve(index: Index, documents: Set, query: Seq, embed: Predictor, *, k: int = 4) -> Seq:
+    """The k documents nearest the query's embedding, put in front of it as one prompt (then walk the LM's tree)."""
+    ...
+
+
+@method("search", "kNN-LM (a memory of contexts)")
+def knn_options(tree: PartialTree[Any, Any], memory: Index, embed: Predictor, *, weight: float = 0.25) -> PartialTree[Any, Any]:
+    """Options mixed with the next tokens of the k nearest stored contexts: an LM that can look things up."""
+    ...
+
+
+@method("search", "Near-duplicate detection (MinHash / LSH)")
+def near_duplicates(items: Set, *, threshold: float = 0.8) -> Set:
+    """Examples whose LSH buckets collide above a similarity threshold: dedup beyond exact copies."""
+    ...
+
+
+@method("search", "Hard-negative mining")
+def hard_negatives(index: Index, queries: Value, positives: Value, *, k: int = 8) -> Set:
+    """The nearest elements that are not the match: harder negatives for a contrastive loss."""
+    ...
+
+
 # ═══ adapt: Module → Module ═══════════════════════════════════════════════════════════════════════
 
 
@@ -1198,14 +1241,15 @@ meta("Predict the hidden part from the visible part", "split, fill", "every self
 meta("Turn one hard step into many easy ones", "fill, walk, unroll", "a token, a denoising step, an update at a time: a state, stepped")
 meta("Learning is compression", "map, split", "bottlenecks, codebooks and students: the target, from a smaller description")
 meta("Bootstrap from yourself", "split", "targets made by your own (older) model: TD, self-distillation, self-play, AlphaZero")
-meta("Amortize, or search", "map, walk, reshape", "one forward pass that answers at once, or a tree grown by search")
+meta("Amortize, or search", "map, walk, reshape, search", "one forward pass that answers at once, or a tree grown by search")
 meta("Every loss is a likelihood", "score", "loss(pred, target): what the target holds picks which")
 meta("Not every objective is a loss", "fold, score", "a return is a fold of a path; its gradient comes from scoring the path, or there is none")
 meta("Structure decides the computation", "aggregate", "the container picks what each element reads")
 
 # ═══ Printing ═════════════════════════════════════════════════════════════════════════════════════
 
-NEW = {"Fill", "Autoregressive order", "Unmasking (MaskGIT, masked diffusion)", "Sampling a flow (diffusion)", "Diffusion forcing",
+NEW = {"Index (build)", "Nearest-neighbour search", "Retrieval-augmented generation (retrieve)", "kNN-LM (a memory of contexts)",
+       "Near-duplicate detection (MinHash / LSH)", "Hard-negative mining", "Fill", "Autoregressive order", "Unmasking (MaskGIT, masked diffusion)", "Sampling a flow (diffusion)", "Diffusion forcing",
        "Diffusion forcing sampling", "Training (a scan over batches)", "Optimizers (SGD, momentum, Adam, Muon)", "KV caching", "A path from a tree",
        "Sampling", "Several paths per root (best-of-N, groups)", "Teacher forcing (walking the data's path)", "Supervised", "Scan", "Log-probability", "Retrieval accuracy", "Blank (where generation starts)", "A condition, fixed", "Objective (a split, then its loss)", "Minibatches",
        "Classifier-free guidance training", "Recurrence (RNN / LSTM / GRU)", "State-space models / linear recurrences", "Walk"}
