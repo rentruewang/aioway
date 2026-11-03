@@ -25,6 +25,7 @@ Results
 
 Signatures
   Model[A, B]        a learned function A → B (an nn.Module); a Predictor returns a Prediction
+  Weights            a module whose architecture stays: an op on it changes only parameter values (a subtype)
   Codec[A, B]        encode A → B and decode back, B usually classes from a vocabulary: a tokenizer
   Step[S]            S → S, the step of a PartialSeq: a chooser of a walk, a schedule of a fill, an update
   Scan[X, S, Y]      a state carried along a stream: (S, X) → (S, Y): an optimizer, a running average, a buffer
@@ -40,7 +41,7 @@ from typing import Any, ClassVar, NamedTuple, Protocol, Self
 import torch
 import torch.distributions as dist
 from tensordict import TensorDictBase
-from torch import Tensor
+from torch import Tensor, nn
 from torchrl.data import Binary, Categorical, Composite, OneHot, TensorSpec
 
 # ═══ Containers ═══════════════════════════════════════════════════════════════════════════════════
@@ -248,6 +249,11 @@ class Model[A, B](Protocol):
     """A learned function from A to B: an nn.Module, called on containers (or on their tensors)."""
 
     def __call__(self, x: A, /) -> B: ...
+
+
+type Weights = nn.Module
+"""A module an operation changes only the parameter values of (quantize, init, transfer, EMA): its architecture
+stays. In torch the parameters live in the module, so this is a subtype of Module rather than a separate world."""
 
 
 class Codec[A, B](Protocol):
