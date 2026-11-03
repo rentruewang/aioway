@@ -300,25 +300,21 @@ def _dedent(string: str):
 
 
 def _function_template():
-    return _dedent(
-        """
+    return _dedent("""
         def {{ name }}{{ params }}:
             {% for line in body %}
             {{ line }}
             {% endfor %}
             return {{ returns }}
-"""
-    )
+""")
 
 
 def _statements_template():
-    return _dedent(
-        """
+    return _dedent("""
         {% for line in body %}
         {{ line }}
         {% endfor %}
-    """
-    )
+    """)
 
 
 def _py_env():
