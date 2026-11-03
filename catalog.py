@@ -2,7 +2,8 @@
 catalog.py: every method in the original list, as a typed signature over the types of data.py, grouped by
 signature. The interface only: bodies are left to the implementation (torch, torchrl, your own).
 
-  structure   convert    C[a] → C′[a]          change the container, keep what the elements are
+  structure   encode     A ⇄ C[classes]        write raw data in a vocabulary and read it back (a codec)
+              convert    C[a] → C′[a]          change the container, keep what the elements are
               map        C[a] → C[b]           change each element on its own, keep the container
               aggregate  C[h] → C[h]           each element reads the elements it is related to
               select     C[a] → C[a]           keep, drop, reorder or reweight elements
@@ -44,7 +45,7 @@ import torch
 from torch import Tensor, nn
 
 from data import (
-    Chooser, Container, Dist, Environment, Example, Graph, Grid, Holes, Index, Model, Predictor, PartialSeq, PartialTree, Path, Prediction, Product, Scan, Schedule, Seq,
+    Chooser, Codec, Container, Dist, Environment, Example, Graph, Grid, Holes, Index, Model, Predictor, PartialSeq, PartialTree, Path, Prediction, Product, Scan, Schedule, Seq,
     Set, Split, Step, Value,
 )
 
@@ -61,6 +62,7 @@ class Group:
 
 
 GROUPS: dict[str, Group] = {g.name: g for g in (
+    Group("encode", "structure", "A ⇄ C[classes]", "write raw data in a vocabulary and read it back: a codec, fitted or fixed", "model"),
     Group("convert", "structure", "C[a] → C′[a]", "change the container, keep what the elements are", "agnostic"),
     Group("map", "structure", "C[a] → C[b]", "change each element on its own, keep the container", "model"),
     Group("aggregate", "structure", "C[h] → C[h]", "each element reads the elements it is related to", "model"),
@@ -108,7 +110,7 @@ def _top_level(args: str) -> list[str]:
 
 
 COLLAPSE = {"Model": "Model", "Callable": "fn", "Scan": "Scan", "PartialTree": "PartialTree", "PartialSeq": "PartialSeq", "Step": "Step",
-            "dict": "dict", "Schedule": "Schedule"}
+            "dict": "dict", "Schedule": "Schedule", "Codec": "Codec"}
 
 
 def _short(annotation: str) -> str:
@@ -142,9 +144,11 @@ def _signature(obj: Any) -> tuple[str, str]:
     params = [p for p in sig.parameters.values()
               if p.kind == p.VAR_POSITIONAL or (p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD) and p.default is inspect.Parameter.empty)]
     settings_only = all(str(p.annotation) in ("int", "float", "bool", "str") for p in params)
-    for wrapper in ("Step", "Scan", "Model"):
-        if ret.startswith(wrapper + "[") and (wrapper != "Model" or settings_only):
+    for wrapper in ("Step", "Scan", "Model", "Codec"):
+        if ret.startswith(wrapper + "[") and (wrapper not in ("Model", "Codec") or settings_only or wrapper == "Codec"):
             args = _top_level(ret[len(wrapper) + 1 : -1])
+            if wrapper == "Codec":
+                return f"{_short(args[0])} ⇄ {_short(args[1])}", ""
             if wrapper == "Step":
                 return f"{_short(args[0])} → {_short(args[0])}", _short(args[0])
             if wrapper == "Scan":
@@ -194,13 +198,41 @@ def entry_of(f: Any) -> Entry | None:
     return next((e for e in ENTRIES if e.group in GROUPS and (e.obj is f or (e.obj is None and by_name in [p.strip() for p in e.function.split(",")]))), None)
 
 
-# ═══ convert: C[a] → C′[a] ════════════════════════════════════════════════════════════════════════
+# ═══ encode: A ⇄ C[classes] ═══════════════════════════════════════════════════════════════════════
 
 
-@method("convert", "Tokenization")
-def tokenize(texts: list[str], *, length: int) -> Seq:
-    """Text → a sequence of class ids (UTF-8 bytes, or BPE merges of them), padded to one length."""
+@method("encode", "Tokenization (BPE, SentencePiece, bytes)")
+def tokenizer(corpus: list[str], *, vocab: int = 32_000) -> Codec[list[str], Seq]:
+    """Text ⇄ a sequence of ids: merges of frequent byte pairs, fitted to a corpus (bytes alone: a fixed vocabulary of
+    256). The tokenizer decides the content type: Seq of classes(vocab)."""
     ...
+
+
+@method("encode", "Image tokenizer (VQ-VAE, VQGAN)")
+def image_tokenizer(images: Grid, *, codes: int = 1024) -> Codec[Grid, Grid]:
+    """An image ⇄ a coarser grid of codebook ids: an encoder, vector quantization, a decoder, trained to reconstruct."""
+    ...
+
+
+@method("encode", "Audio codec (EnCodec, residual quantization)")
+def audio_codec(audio: Seq, *, codebooks: int = 8, codes: int = 1024) -> Codec[Seq, Product]:
+    """A waveform ⇄ frames × codebooks of ids: each codebook quantizes what the previous ones left (residual VQ)."""
+    ...
+
+
+@method("encode", "Encode")
+def encode(codec: Codec[Any, Any], x: Any) -> Container:
+    """Raw data → its codes (tokenize)."""
+    ...
+
+
+@method("encode", "Decode")
+def decode(codec: Codec[Any, Any], codes: Container) -> Any:
+    """Codes → raw data (detokenize)."""
+    ...
+
+
+# ═══ convert: C[a] → C′[a] ════════════════════════════════════════════════════════════════════════
 
 
 @method("convert", "Patching")
@@ -1248,7 +1280,7 @@ meta("Structure decides the computation", "aggregate", "the container picks what
 
 # ═══ Printing ═════════════════════════════════════════════════════════════════════════════════════
 
-NEW = {"Index (build)", "Nearest-neighbour search", "Retrieval-augmented generation (retrieve)", "kNN-LM (a memory of contexts)",
+NEW = {"Tokenization (BPE, SentencePiece, bytes)", "Image tokenizer (VQ-VAE, VQGAN)", "Audio codec (EnCodec, residual quantization)", "Encode", "Decode", "Index (build)", "Nearest-neighbour search", "Retrieval-augmented generation (retrieve)", "kNN-LM (a memory of contexts)",
        "Near-duplicate detection (MinHash / LSH)", "Hard-negative mining", "Fill", "Autoregressive order", "Unmasking (MaskGIT, masked diffusion)", "Sampling a flow (diffusion)", "Diffusion forcing",
        "Diffusion forcing sampling", "Training (a scan over batches)", "Optimizers (SGD, momentum, Adam, Muon)", "KV caching", "A path from a tree",
        "Sampling", "Several paths per root (best-of-N, groups)", "Teacher forcing (walking the data's path)", "Supervised", "Scan", "Log-probability", "Retrieval accuracy", "Blank (where generation starts)", "A condition, fixed", "Objective (a split, then its loss)", "Minibatches",
