@@ -26,7 +26,8 @@ Results
   Example            a split's output: the model's input (Holes) and its target
 
 Signatures
-  Model[A, B]        a learned function A → B (an nn.Module); a Predictor returns a Prediction
+  Expr               what an expression can call on a batch, changing nothing: a method, or a model
+  Model[A, B]        a learned function A → B: an nn.Module, and an Expr; a Predictor returns a Prediction
   Weights            a module whose architecture stays: an op on it changes only parameter values (a subtype)
   Codec[A, B]        encode A → B and decode back, B usually classes from a vocabulary: a tokenizer
   Step[S]            S → S, the step of a PartialSeq: a chooser of a walk, a schedule of a fill, an update
@@ -251,9 +252,16 @@ type Step[S] = Callable[[S], S]
 """S → S: the step of a PartialSeq. A chooser is a Step[PartialTree], a schedule a Step[Holes], an update a Step[θ]."""
 
 
-class Model[A, B](nn.Module):
-    """A learned function from A to B: an nn.Module, called on containers (or on their tensors). Training changes
-    its parameters in place; everything else reads it."""
+class Expr:
+    """What an expression can call on a batch, changing nothing and making nothing new: the catalog's expression
+    methods, and a model between the statements that change it. A statement that creates a model returns an Expr,
+    bound to its name: CREATE FUNCTION, after which queries call it."""
+
+
+class Model[A, B](nn.Module, Expr):
+    """A learned function from A to B: an nn.Module, called on containers (or on their tensors), and an Expr:
+    calling it reads its parameters and changes nothing. A statement makes it (Network, Linear, …) and statements
+    change it in place (Train, LoRA, …); expressions read it."""
 
     def forward(self, x: A, /) -> B: ...
 
