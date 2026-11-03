@@ -35,9 +35,6 @@ networkx = [
 gym = [
     "gymnasium>=1",
 ]
-faiss = [
-    "faiss-cpu>=1",
-]
 sklearn = [
     "scikit-learn>=1",
 ]
@@ -75,7 +72,6 @@ debugging = [
     "jupyter>=1",
     "jupyterlab>=4",
     "jupytext>=1.19",
-    "pyinstrument>=5",
     "matplotlib>=3",
 ]
 build = [
