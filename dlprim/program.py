@@ -24,7 +24,7 @@ from typing import Any
 from torch import nn
 
 from catalog import (
-    accuracy, autoencoder, blank, discounted_return, dpo, droppable, dynamics, encoder, entry_of, env_tree, epsilon_greedy, fill, flatten,
+    accuracy, autoencoder, blank, index, retrieve, discounted_return, dpo, droppable, dynamics, encoder, entry_of, env_tree, epsilon_greedy, fill, flatten,
     freeze, frozen_copy, given, greedy, group_relative, guided, imagined, independent, info_nce, labelled, lm_tree, log_prob, loop, lora,
     loss, mask, mcts, moe, most_confident, network, noise, patchify, planned, ppo_clip, q_target, quality_filter, reconstruction, reinforce,
     retrieval_accuracy, returns_to_go, sample, search_targets, selective_scan, shift, temperature, together, train, transfer, transitions,
@@ -407,9 +407,19 @@ def synthetic_data(n: int = 8, length: int = 4, keep: float = 0.25) -> Program:
     ), "kept", "sample a model's tree widely, keep what a verifier scores best", {"sample": sample})
 
 
+def rag(k: int = 4) -> Program:
+    return Program("Retrieval-augmented generation", "lm embed documents question", (
+        ("vectors", "embed", "documents"),
+        ("memory", partial(index, kind="hnsw"), "vectors"),
+        ("prompt", partial(retrieve, k=k), "memory documents question embed"),
+        ("tree", lm_tree, "lm prompt"),
+        ("path", partial(walk, choose=greedy, steps=64), "tree"),
+    ), "path.end", "index the documents' embeddings, put the nearest ones in front of the question, decode")
+
+
 PROGRAMS: list[Program] = [
     language_model(), vit(), clip(), stable_diffusion(), mamba(), mixtral(), lora_finetune(), dpo_program(), alphazero(), r1(), diffusion_lm(),
-    pretrain_finetune(), ppo(), dqn(), world_model_planning(), synthetic_data(),
+    pretrain_finetune(), ppo(), dqn(), world_model_planning(), synthetic_data(), rag(),
 ]
 
 if __name__ == "__main__":

@@ -17,6 +17,7 @@ Partial containers: what is known so far, and how to get the rest
   PartialSeq[S]      a list known by where it is and the step to the next: the state of any loop
   PartialTree[N, E]  a tree known by the part expanded so far (a Tree) and how it branches (options, follow)
   Dist               a set known by how to draw from it: a prediction, a policy, a generator, a search distribution
+  Index              a set known by how to look things up in it: the k nearest to a query (FAISS, BM25, LSH)
 
 Results
   Path[N, E]         one walk down a PartialTree: a Seq of steps
@@ -264,6 +265,16 @@ class Environment(Protocol):
     def reset(self, n: int, /) -> Any: ...
 
     def step(self, state: Any, action: Tensor, /) -> Any: ...
+
+
+class Index(Protocol):
+    """A Set organized for lookup: the k nearest elements to each query, with their scores. How it is organized is the
+    implementation: flat (exact), IVF (clusters), HNSW (a graph), PQ (compressed codes), LSH (hash buckets), an
+    inverted index (BM25 over tokens), a sum tree (lookup by priority). It grows with add."""
+
+    def add(self, items: Set, /) -> Index: ...
+
+    def search(self, queries: Value, k: int, /) -> tuple[Set, Tensor]: ...
 
 
 type Predictor = Model[Any, Prediction]
