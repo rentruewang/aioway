@@ -1211,27 +1211,37 @@ NEW = {"Fill", "Autoregressive order", "Unmasking (MaskGIT, masked diffusion)", 
        "Classifier-free guidance training", "Recurrence (RNN / LSTM / GRU)", "State-space models / linear recurrences", "Walk"}
 
 
+def _paint(code: str) -> Callable[[str], str]:
+    """An ANSI colour, or nothing when the output isn't a terminal (or NO_COLOR is set)."""
+    import os
+    import sys
+
+    on = (sys.stdout.isatty() or os.environ.get("FORCE_COLOR")) and not os.environ.get("NO_COLOR")
+    return (lambda t: f"\033[{code}m{t}\033[0m") if on else (lambda t: t)
+
+
 def print_catalog(explain: bool = False) -> None:
     """Grouped by family and group, one line per method: name: signature · state. explain adds what each one does."""
+    bold, group, sig, state_c, dim, star = _paint("1"), _paint("1;36"), _paint("33"), _paint("35"), _paint("2"), _paint("32")
     for family, title in FAMILIES.items():
-        print(f"\n══ {title} ══")
+        print(bold(f"\n══ {title} ══"))
         for g in (g for g in GROUPS.values() if g.family == family):
-            print(f"\n{g.name}  {g.signature}\n  {g.explanation}")
+            print(f"\n{group(g.name)}  {sig(g.signature)}\n  {dim(g.explanation)}")
             for e in (e for e in ENTRIES if e.group == g.name):
-                mark = "★ " if e.name in NEW else ""
-                state = f"  · state: {e.state}" if e.state else ""
-                print(f"  - {mark}{e.name}: {e.signature}{state}")
+                mark = star("★ ") if e.name in NEW else ""
+                state = f"  {dim('·')} {state_c('state: ' + e.state)}" if e.state else ""
+                print(f"  - {mark}{bold(e.name)}: {sig(e.signature)}{state}")
                 if explain:
-                    print(f"      {e.explanation}")
-    print("\n══ META-PRIMITIVES · properties of the groups ══\n")
+                    print(dim(f"      {e.explanation}"))
+    print(bold("\n══ META-PRIMITIVES · properties of the groups ══\n"))
     for e in (e for e in ENTRIES if e.group == "meta"):
-        print(f"  - {e.name}: {e.signature}" + (f"\n      {e.explanation}" if explain else ""))
-    print("\n══ PHENOMENA · observed, not computed ══\n")
+        print(f"  - {bold(e.name)}: {group(e.signature)}" + (dim(f"\n      {e.explanation}") if explain else ""))
+    print(bold("\n══ PHENOMENA · observed, not computed ══\n"))
     for e in (e for e in ENTRIES if e.group == "phenomenon"):
-        print(f"  - {e.name}" + (f"\n      {e.explanation}" if explain else ""))
+        print(f"  - {bold(e.name)}" + (dim(f"\n      {e.explanation}") if explain else ""))
     rows = [e for e in ENTRIES if e.group in GROUPS]
-    print(f"\n{len(rows)} methods in {len(GROUPS)} groups, {sum(bool(e.state) for e in rows)} carrying a state · "
-          f"{sum(e.side == 'agnostic' for e in rows)} model-agnostic, {sum(e.side == 'model' for e in rows)} model-dependent")
+    print(dim(f"\n{len(rows)} methods in {len(GROUPS)} groups, {sum(bool(e.state) for e in rows)} carrying a state · "
+              f"{sum(e.side == 'agnostic' for e in rows)} model-agnostic, {sum(e.side == 'model' for e in rows)} model-dependent"))
 
 
 if __name__ == "__main__":
