@@ -25,6 +25,7 @@ Results
 
 Signatures
   Model[A, B]        a learned function A → B (an nn.Module); a Predictor returns a Prediction
+  Codec[A, B]        encode A → B and decode back, B usually classes from a vocabulary: a tokenizer
   Step[S]            S → S, the step of a PartialSeq: a chooser of a walk, a schedule of a fill, an update
   Scan[X, S, Y]      a state carried along a stream: (S, X) → (S, Y): an optimizer, a running average, a buffer
   Environment        reset, and step a state by an action: a simulator, a game
@@ -247,6 +248,15 @@ class Model[A, B](Protocol):
     """A learned function from A to B: an nn.Module, called on containers (or on their tensors)."""
 
     def __call__(self, x: A, /) -> B: ...
+
+
+class Codec[A, B](Protocol):
+    """A way to write raw data in a vocabulary and read it back: encode A → B, decode B → A. The codec decides the
+    content of B (classes of its vocabulary), and is fitted to data (BPE merges, a VQ codebook) or fixed (bytes)."""
+
+    def encode(self, x: A, /) -> B: ...
+
+    def decode(self, codes: B, /) -> A: ...
 
 
 class Scan[X, S, Y](Protocol):
