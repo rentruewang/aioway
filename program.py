@@ -1,25 +1,27 @@
 """
-program.py: functional and imperative, split as a database splits them.
+program.py: expressions and statements, split as a database splits queries and writes.
 
-A Program is a query: a pure expression tree over the entries of the catalog. It builds values (data, new models,
-losses) and changes nothing.
+A Program is an expression: a pure tree over the catalog's expressions, on batches in memory. It builds values
+(data, new models, losses) and changes nothing.
 
     corpus, prompt = inputs("corpus prompt")
     ex = call(shift, corpus).named("ex")                       # a call: an entry applied to other nodes
     net = call(network, ex.input.known, ex.target)             # .attr reaches into a node's value
     out = net(prompt)                                          # calling a node calls the value it stands for
 
-A Script is the imperative part: an ordered list of statements over named values.
+A Script is statements in order, over named values, then an expression of what they end up as.
 
-    let(net, expr)                      net = expr                    pure: a name for a value
+    let(net, expr)                      net = expr                    a name for a value (or a dataset)
     update(net, train, loss, data)      train(net!, loss, data)       changes net in place, returns None
     repeat(n, *statements)              the statements, n times
 
-An update is one of the catalog's statements (its imperative part: fit, assign, alter). It changes its model (!)
-in place and returns None, so it is a line of its own, never a value inside an expression, as a write in SQL sits at the top of a statement and never inside
-a query. The name still names the same model, now changed. A statement evaluates its arguments first, then runs:
-data read from the model before is a snapshot for free; a model built on it (lm_tree, given, a reference) is the
-same model and sees the change, so one that must stay as it was (DPO's reference) is a frozen_copy, let first.
+The catalog's statements (fit, assign, alter, index, buffer: they change their argument marked !; source,
+curate, reduce: they read a whole dataset) are lines of their own, never inside an expression, as a SQL write or
+CREATE INDEX sits at the top of a statement. A statement's arguments are expressions (on batches) or dataset
+statements, nested as a FROM nests: train(net!, loss, batches(x, y; size=64)). An update returns None and the name
+still names the same model, now changed. A statement evaluates its arguments first, then runs: data read from the
+model before is a snapshot for free; a model built on it (lm_tree, given, a reference) is the same model and sees
+the change, so one that must stay as it was (DPO's reference) is a frozen_copy, let first.
 
 Both are trees, and modifying one is rewriting it, which returns a new one (the old one is unchanged):
 
@@ -27,7 +29,8 @@ Both are trees, and modifying one is rewriting it, which returns a new one (the 
     GPT.rewrite(calls(network), lambda n: call(network, *n.args, mixer=selective_scan))   # swap a subtree
     GPT.find(calls(train))                                                   # find nodes
 
-check() lists what breaks the split: an update inside an expression, a name read before it is bound.
+check() lists what breaks the split: a statement inside an expression, a change outside an update, a name read
+before it is bound.
 
 Printing shows each statement's tree from its root down, each call with its catalog group. The entries are
 interfaces: programs and scripts print and rewrite now, and run once the entries are implemented.
@@ -46,11 +49,12 @@ from typing import Any, Self
 from torch import nn
 
 from catalog import (
-    accuracy, autoencoder, blank, changes, discounted_return, dpo, droppable, dynamics, encoder, entry_of, env_tree, epsilon_greedy, fill, flatten,
-    freeze, frozen_copy, given, greedy, group_relative, guided, imagined, independent, index, info_nce, labelled, lm_tree, log_prob, lora,
-    loss, mask, mcts, moe, most_confident, network, noise, patchify, planned, ppo_clip, q_target, quality_filter, reconstruction, reinforce,
-    retrieval_accuracy, retrieve, returns_to_go, sample, search_targets, selective_scan, shift, temperature, together, train, transfer,
-    transitions, walk,
+    accuracy, autoencoder, batches, blank, changes, curriculum, dedup, discounted_return, dpo, droppable, drop_near_duplicates, dynamics,
+    encoder, entry_of, env_tree, epsilon_greedy, extend, fill, flatten, freeze, frozen_copy, given, greedy, group_relative, guided, imagined,
+    independent, index, info_nce, insert, is_statement, keep_best, labelled, lm_tree, log_prob, lora, loss, mask, mcts, mix, moe,
+    most_confident, network, noise, patchify, peek, planned, ppo_clip, q_target, quality_filter, reconstruction, reinforce, replay_buffer,
+    retrieval_accuracy, retrieve, returns_to_go, sample, search_targets, selective_scan, shift, temperature, together, train, train_index,
+    transfer, transitions, walk,
 )
 from data import Container, Seq
 
@@ -195,10 +199,28 @@ def _rewriter(match: Callable[[Any], bool], change: Callable[[Any], Any]) -> Cal
     return go
 
 
-def _updates_inside(where: str, roots: list[Any], allowed: Any = None) -> list[str]:
-    """An update called inside an expression (other than the statement's own): the split, broken."""
-    return [f"{where}: {_name(e.fn)} changes a model inside an expression; make it a statement (update)"
-            for e in _nodes(roots) if isinstance(e, Call) and e is not allowed and changes(e.op) is not None]
+def _misplaced(where: str, root: Any, top: bool, update: Any = None) -> list[str]:
+    """Statements where they don't belong. With top, root is a statement's own expression: if it calls a statement,
+    that call and the dataset statements its arguments nest are at the top; every other statement call is inside
+    an expression. A call that changes its argument belongs only at the top of an update (update)."""
+    at_top: set[int] = set()
+
+    def mark(e: Any) -> None:
+        if isinstance(e, Call) and is_statement(e.op) and id(e) not in at_top:
+            at_top.add(id(e))
+            for a in e.args:
+                mark(a)
+
+    if top:
+        mark(root)
+    out = []
+    for e in _nodes([root]):
+        if isinstance(e, Call) and is_statement(e.op):
+            if id(e) not in at_top:
+                out.append(f"{where}: {_name(e.fn)} is a statement inside an expression; make it a line of its own (let, update)")
+            elif changes(e.op) is not None and e is not update:
+                out.append(f"{where}: {_name(e.fn)} changes its argument; make it an update")
+    return out
 
 
 def _sub_checks(roots: list[Any]) -> list[str]:
@@ -206,7 +228,7 @@ def _sub_checks(roots: list[Any]) -> list[str]:
     return [c for sub in subs.values() for c in sub.check()]
 
 
-# ═══ Program: a query ═════════════════════════════════════════════════════════════════════════════
+# ═══ Program: an expression ═══════════════════════════════════════════════════════════════════════
 
 
 @dataclass(frozen=True, eq=False)
@@ -233,15 +255,15 @@ class Program:
         return replace(self, output=_rewriter(match, change)(self.output))
 
     def check(self) -> list[str]:
-        """A query changes nothing: no update anywhere in it, nor in the programs it uses."""
-        return _updates_inside(self.name, [self.output]) + _sub_checks([self.output])
+        """An expression has no statements anywhere in it, nor in the programs it uses."""
+        return _misplaced(self.name, self.output, top=False) + _sub_checks([self.output])
 
     def __str__(self) -> str:
         lines = [f"{self.name}({', '.join(i.name for i in self.inputs)}) → {_text(self.output)}"] + ([f"  {self.about}"] if self.about else [])
         return "\n".join(lines + _columns(_tree(self.output, "")) + _where([self.output]))
 
 
-# ═══ Script: the imperative part ══════════════════════════════════════════════════════════════════
+# ═══ Script: statements ═══════════════════════════════════════════════════════════════════════════
 
 
 @dataclass(frozen=True)
@@ -279,7 +301,7 @@ def update(name: Input, op: Any, *args: Any, **settings: Any) -> Update:
     """op(args) with name put where op takes the model it changes (train: first; transfer: the target)."""
     i = changes(op)
     if i is None:
-        raise TypeError(f"{_name(op)} is functional; an update needs a statement of the catalog (fit, assign, alter)")
+        raise TypeError(f"{_name(op)} changes nothing; an update needs a statement that does (fit, assign, alter, index, buffer)")
     return Update(name, call(op, *args[:i], name, *args[i:], **settings))
 
 
@@ -343,7 +365,8 @@ class Script:
         return replace(self, body=statements(self.body), output=go(self.output))
 
     def check(self) -> list[str]:
-        """Updates only as statements, each of an update entry on its own name; every name bound before it is read."""
+        """Statements only at the top of a line, a change only as an update of its own name; every name bound before
+        it is read."""
         out: list[str] = []
         bound = {i.name for i in self.inputs}
         for s in _flat(self.body):
@@ -352,10 +375,10 @@ class Script:
                 i = changes(s.call.op)
                 if i is None or i >= len(s.call.args) or s.call.args[i] is not s.name:
                     out.append(f"{where}: {_name(s.call.fn)} is not an update of {s.name.name}")
-            out += _updates_inside(where, [_expr(s)], s.call if isinstance(s, Update) else None)
+            out += _misplaced(where, _expr(s), top=True, update=s.call if isinstance(s, Update) else None)
             out += [f"{where}: reads {e.name} before it is bound" for e in _nodes([_expr(s)]) if isinstance(e, Input) and e.name not in bound]
             bound.add(s.name.name)
-        out += _updates_inside(self.name, [self.output])
+        out += _misplaced(self.name, self.output, top=False)
         out += [f"{self.name}: reads {e.name}, never bound" for e in _nodes([self.output]) if isinstance(e, Input) and e.name not in bound]
         return out + _sub_checks(self._roots())
 
@@ -435,7 +458,8 @@ def _tree(root: Any, pad: str, lhs: str = "", changes: Input | None = None) -> l
         printed.add(id(e))
         name = _text(e.fn) if isinstance(e.fn, Expr) else _name(e.fn)
         args = ", ".join(_text(a) + ("!" if depth == 0 and a is changes else "") for a in e.args)
-        rows.append((f"    {pad}{'  ' * depth}{lhs}{name}({args}{_settings(e.fn)})", group_of(e.fn)))
+        settings = _settings(e.fn).removeprefix("; ") if not args else _settings(e.fn)
+        rows.append((f"    {pad}{'  ' * depth}{lhs}{name}({args}{settings})", group_of(e.fn)))
         for c in calls_below(e):
             show(c, depth + 1, f"{c.label} = " if c.label else "")
 
@@ -563,15 +587,17 @@ def grpo(verify: Callable[..., Any], n: int = 8, length: int = 1) -> Program:
 BUILDERS.add(grpo)
 
 # ═══ Well-known work ══════════════════════════════════════════════════════════════════════════════
-# Training is an update, so anything that trains is a script; the losses above, and what only reads a model, are
-# programs.
+# Training is a statement, so anything that trains is a script; the losses above, and what only reads a model, are
+# programs. A corpus is a dataset (peek gives an expression its first batch); what fits in memory is made one by
+# batches.
 
 
 def language_model(name: str = "GPT", about: str = "a causal Transformer: shift, the loss, train; then walk the LM's tree",
                    build: Callable[..., Any] = network, steps: int = 200) -> Script:
-    corpus, prompt, net = inputs("corpus prompt network")
-    ex = call(shift, corpus).named("ex")
+    corpus, prompt, net, first = inputs("corpus prompt network first")
+    ex = call(shift, first).named("ex")
     return Script(name, (corpus, prompt), (
+        let(first, call(peek, corpus)),
         let(net, call(build, ex.input.known, ex.target)),
         update(net, train, next_token, corpus, steps=steps),
     ), call(walk, call(lm_tree, net, prompt), choose=greedy, steps=8).end, about)
@@ -590,7 +616,7 @@ def vit(steps: int = 100) -> Script:
     return Script("ViT", (images, labels), (
         let(tokens, call(flatten, call(patchify, images, size=4))),
         let(net, call(network, tokens, labels)),
-        update(net, train, supervised, tokens, labels, steps=steps),
+        update(net, train, supervised, call(batches, tokens, labels, size=64), steps=steps),
     ), call(accuracy, net(tokens), labels), "an image as a sequence of patches, read by a Transformer")
 
 
@@ -599,9 +625,9 @@ def clip(dim: int = 16, steps: int = 150) -> Script:
     return Script("CLIP", (images, texts), (
         let(patches, call(patchify, images, size=4)),
         let(pair, call(towers, call(encoder, patches, dim=dim), call(encoder, texts, dim=dim))),
-        update(pair, train, contrastive, patches, texts, steps=steps),
+        update(pair, train, contrastive, call(batches, patches, texts, size=256), steps=steps),
     ), call(retrieval_accuracy, pair.image(patches), pair.text(texts)),
-        "an image encoder and a text encoder, trained so that each image picks out its caption")
+        "an image encoder and a text encoder, trained so that each image picks out its caption among its batch")
 
 
 def stable_diffusion(latent: int = 4, steps: int = 150, w: float = 3.0) -> Script:
@@ -610,10 +636,10 @@ def stable_diffusion(latent: int = 4, steps: int = 150, w: float = 3.0) -> Scrip
     sampler = call(guided, call(given, velocity, labels), call(given, velocity, None), w=w)
     return Script("Stable Diffusion", (images, labels), (
         let(ae, call(autoencoder, images, latent=latent)),
-        update(ae, train, autoencoding, images, steps=steps),
+        update(ae, train, autoencoding, call(batches, images, size=64), steps=steps),
         let(z, ae.encode(images)),
         let(velocity, call(droppable, call(network, ex.input.known, ex.target), p=0.1)),
-        update(velocity, train, flow_matching, z, labels, steps=steps),
+        update(velocity, train, flow_matching, call(batches, z, labels, size=64), steps=steps),
     ), ae.decode(call(fill, call(blank, z), sampler, schedule=together, steps=10)),
         "flow matching in an autoencoder's latent space, with a label, sampled with classifier-free guidance")
 
@@ -630,7 +656,7 @@ def dpo_script(beta: float = 0.1, steps: int = 60) -> Script:
     policy, chosen, rejected, reference = inputs("policy chosen rejected reference")
     return Script("DPO", (policy, chosen, rejected), (
         let(reference, call(frozen_copy, policy)),
-        update(policy, train, call(dpo, reference, beta=beta), chosen, rejected, steps=steps),
+        update(policy, train, call(dpo, reference, beta=beta), call(batches, chosen, rejected, size=8), steps=steps),
     ), policy, "preference pairs as a classification of log-ratios against a frozen reference")
 
 
@@ -640,7 +666,7 @@ def alphazero(rounds: int = 8, simulations: int = 32, steps: int = 30, length: i
     return Script("AlphaZero", (net, game), (
         repeat(rounds,
                let(ex, call(search_targets, call(walk, search, choose=sample, steps=length), search)),
-               update(net, train, supervised, ex.input.known, ex.target, steps=steps)),
+               update(net, train, supervised, call(batches, ex.input.known, ex.target, size=64), steps=steps)),
     ), call(walk, game(net), choose=greedy, steps=length),
         "a policy-value network that amortizes MCTS: each round plays itself with search, then learns the search's choices")
 
@@ -648,18 +674,19 @@ def alphazero(rounds: int = 8, simulations: int = 32, steps: int = 30, length: i
 def r1(n: int = 8, length: int = 1, steps: int = 100) -> Script:
     policy, prompts, verify = inputs("policy prompts verify")
     return Script("DeepSeek-R1 (GRPO)", (policy, prompts, verify), (
-        update(policy, train, call(grpo, verify, n=n, length=length), prompts, steps=steps),
+        update(policy, train, call(grpo, verify, n=n, length=length), call(batches, prompts, size=8), steps=steps),
     ), verify(call(walk, call(lm_tree, policy, prompts), choose=greedy, steps=length).end),
-        "RL on checkable answers: walk, verify, group-relative advantages, REINFORCE")
+        "RL on checkable answers: walk, verify, group-relative advantages (each group in one batch), REINFORCE")
 
 
 def diffusion_lm(steps: int = 600) -> Script:
-    corpus, net = inputs("corpus network")
-    ex = call(mask, corpus).named("ex")
+    corpus, net, first = inputs("corpus network first")
+    ex = call(mask, first).named("ex")
     return Script("Diffusion LLM", (corpus,), (
+        let(first, call(peek, corpus)),
         let(net, call(network, ex.input.known, ex.target)),
         update(net, train, masked_loss, corpus, steps=steps),
-    ), call(fill, call(blank, corpus), net, schedule=most_confident, steps=8),
+    ), call(fill, call(blank, first), net, schedule=most_confident, steps=8),
         "masked prediction at every ratio; generation unmasks the surest holes first")
 
 
@@ -667,15 +694,16 @@ def diffusion_lm(steps: int = 600) -> Script:
 
 
 def pretrain_finetune(steps: int = 150) -> Script:
-    corpus, texts, labels, lm, clf = inputs("corpus texts labels lm classifier")
-    ex = call(shift, corpus).named("ex")
+    corpus, texts, labels, first, lm, clf = inputs("corpus texts labels first lm classifier")
+    ex = call(shift, first).named("ex")
     return Script("Pretrain → finetune", (corpus, texts, labels), (
+        let(first, call(peek, corpus)),
         let(lm, call(network, ex.input.known, ex.target)),
         update(lm, train, next_token, corpus, steps=steps),
         let(clf, call(network, texts, labels)),
         update(clf, transfer, lm),
         update(clf, freeze, trainable=head),
-        update(clf, train, supervised, texts, labels, steps=steps),
+        update(clf, train, supervised, call(batches, texts, labels, size=32), steps=steps),
     ), clf, "learn from raw text, then reuse the body under a new head")
 
 
@@ -685,19 +713,21 @@ def ppo(rounds: int = 30, horizon: int = 20, epochs: int = 4) -> Script:
     return Script("PPO (actor-critic)", (agent, env), (
         repeat(rounds,
                let(batch, call(transitions, path, call(returns_to_go, path.rewards, gamma=0.9))),
-               update(agent, train, ppo_loss, batch, steps=epochs)),
+               update(agent, train, ppo_loss, call(batches, batch, size=64), steps=epochs)),
     ), call(discounted_return, call(walk, call(env_tree, env, agent.policy), choose=greedy, steps=horizon)),
         "a policy and a critic; each round walks the environment, then takes a few clipped steps on what was seen")
 
 
 def dqn(rounds: int = 30, horizon: int = 20, steps: int = 10, eps: float = 0.3) -> Script:
-    q, env, batch = inputs("q env batch")
+    q, env, buffer = inputs("q env buffer")
+    walked = call(walk, call(epsilon_greedy, call(env_tree, env, q), eps=eps), choose=sample, steps=horizon)
     return Script("DQN", (q, env), (
+        let(buffer, call(replay_buffer, size=10_000)),
         repeat(rounds,
-               let(batch, call(transitions, call(walk, call(epsilon_greedy, call(env_tree, env, q), eps=eps), choose=sample, steps=horizon))),
-               update(q, train, q_learning, batch, steps=steps)),
+               update(buffer, extend, call(transitions, walked)),
+               update(q, train, q_learning, buffer, steps=steps)),
     ), call(discounted_return, call(walk, call(env_tree, env, q), choose=greedy, steps=horizon)),
-        "values learned by bootstrapping: each round walks ε-greedily, then regresses the Q-values toward their targets")
+        "values learned by bootstrapping: each round walks ε-greedily into a replay buffer, then regresses Q on samples of it")
 
 
 def world_model_planning(horizon: int = 20, steps: int = 300) -> Script:
@@ -708,30 +738,41 @@ def world_model_planning(horizon: int = 20, steps: int = 300) -> Script:
     return Script("Planning in a learned world model", (env,), (
         let(batch, call(transitions, call(walk, tree, choose=sample, steps=horizon))),
         let(world, call(network, ex.input.known, ex.target)),
-        update(world, train, dynamics_loss, batch, steps=steps),
+        update(world, train, dynamics_loss, call(batches, batch, size=64), steps=steps),
     ), call(discounted_return, call(walk, plan, choose=greedy, steps=horizon)),
         "explore at random, learn what follows each action, act by planning inside that model (Dreamer, MuZero)")
 
 
-def synthetic_data(n: int = 8, length: int = 4, keep: float = 0.25) -> Program:
+def synthetic_data(n: int = 8, length: int = 4, threshold: float = 0.5) -> Program:
     generator, prompts, verify = inputs("generator prompts verify")
     path = call(walk, call(temperature, call(lm_tree, generator, prompts), t=1.5), call(independent, n, sample), steps=length).named("path")
-    return Program("Synthetic data", (generator, prompts, verify), call(quality_filter, call(Seq, path.end), verify(path.end), keep=keep),
-                   "sample a model's tree widely, keep what a verifier scores best")
+    return Program("Synthetic data", (generator, prompts, verify),
+                   call(quality_filter, call(Seq, path.end), verify(path.end), threshold=threshold),
+                   "sample a model's tree widely, keep what a verifier scores above a threshold")
 
 
-def rag(k: int = 4) -> Program:
-    lm, embed, documents, question = inputs("lm embed documents question")
-    memory = call(index, embed(documents), kind="hnsw").named("memory")
-    prompt = call(retrieve, memory, documents, question, embed, k=k).named("prompt")
-    return Program("Retrieval-augmented generation", (lm, embed, documents, question),
-                   call(walk, call(lm_tree, lm, prompt), choose=greedy, steps=64).end,
-                   "index the documents' embeddings, put the nearest ones in front of the question, decode")
+def curation(keep: float = 0.5) -> Script:
+    web, books, code, quality, difficulty, data = inputs("web books code quality difficulty data")
+    mixed = call(mix, web, books, code, weights=[0.7, 0.2, 0.1])
+    return Script("Data curation", (web, books, code, quality, difficulty), (
+        let(data, call(curriculum, call(keep_best, call(drop_near_duplicates, call(dedup, mixed)), quality, keep=keep), difficulty)),
+    ), data, "mix the sources, drop copies and near-copies, keep the better half, easy first: every step reads every batch")
+
+
+def rag(k: int = 4) -> Script:
+    lm, embed, documents, question, vectors, memory = inputs("lm embed documents question vectors memory")
+    return Script("Retrieval-augmented generation", (lm, embed, documents, question), (
+        let(vectors, embed(documents)),
+        let(memory, call(index, vectors, kind="ivf")),
+        update(memory, train_index, vectors),
+        update(memory, insert, call(batches, vectors, size=1024, shuffle=False)),
+    ), call(walk, call(lm_tree, lm, call(retrieve, memory, documents, question, embed, k=k)), choose=greedy, steps=64).end,
+        "CREATE INDEX on the documents' embeddings, then put the nearest ones in front of the question and decode")
 
 
 PROGRAMS: list[Program | Script] = [
     language_model(), vit(), clip(), stable_diffusion(), mamba(), mixtral(), lora_finetune(), dpo_script(), alphazero(), r1(), diffusion_lm(),
-    pretrain_finetune(), ppo(), dqn(), world_model_planning(), synthetic_data(), rag(),
+    pretrain_finetune(), ppo(), dqn(), world_model_planning(), synthetic_data(), curation(), rag(),
 ]
 
 if __name__ == "__main__":

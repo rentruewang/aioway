@@ -1,7 +1,7 @@
 """
 examples.py: high-level use cases, one function each, written against the interface (catalog.py). They show how
-the entries fit together; they run once the entries are implemented. Plain Python is the imperative part here:
-an update (train, lora, …) changes its model in place and returns None, a statement as in a script (program.py).
+the entries fit together; they run once the entries are implemented. Plain Python plays the script here: a
+statement (train, lora, insert, curriculum, …) is a line of its own, taking datasets; expressions take batches.
 """
 
 from __future__ import annotations
@@ -12,13 +12,13 @@ from typing import Any
 from torch import Tensor, nn
 
 import catalog as C
-from data import Container, Environment, Grid, Holes, Path, Predictor, Seq, Value
+from data import Container, Dataset, Environment, Grid, Holes, Path, Predictor, Seq, Set, Value
 
 
 def classify(x: Container, labels: Value) -> Predictor:
     """Any container → a label: the types pick the layers, the label picks the loss."""
     model = C.network(x, labels)
-    C.train(model, C.objective(C.labelled), x, labels, steps=1000)
+    C.train(model, C.objective(C.labelled), C.batches(x, labels, size=64), steps=1000)
     return model
 
 
@@ -28,7 +28,7 @@ def generate(data: Container) -> Container:
     split = C.split_for(data)
     ex = split(data)
     model = C.network(ex.input.known, ex.target)
-    C.train(model, C.objective(split), data, steps=1000)
+    C.train(model, C.objective(split), C.batches(data, size=64), steps=1000)
     return C.fill(C.blank(data[:8]), model, C.together, steps=16)
 
 
@@ -37,9 +37,9 @@ def inpaint(model: Any, image: Grid, missing: Tensor) -> Grid:
     return C.fill(Holes(image, missing.float()), model, C.together, steps=16)
 
 
-def language_model(corpus: Seq, prompt: Seq) -> Path:
-    """Next-token prediction, then generation as walking the LM's tree with a beam."""
-    ex = C.shift(corpus)
+def language_model(corpus: Dataset[Seq], prompt: Seq) -> Path:
+    """Next-token prediction over a dataset, then generation as walking the LM's tree with a beam."""
+    ex = C.shift(C.peek(corpus))
     lm = C.network(ex.input.known, ex.target)
     C.train(lm, C.objective(C.shift), corpus, steps=1000)
     return C.walk(C.lm_tree(lm, prompt), C.beam(4), steps=32)
@@ -63,7 +63,7 @@ def reinforcement_learning(env: Environment, policy: Predictor, rounds: int = 10
         return C.reinforce(path, C.batch_baseline(C.discounted_return(path, gamma=0.99)))
 
     for _ in range(rounds):
-        C.train(policy, objective, steps=10)
+        C.train(policy, objective, None, steps=10)
     return policy
 
 
@@ -72,7 +72,7 @@ def plan(env: Environment, experience: Path) -> Path:
     batch = C.transitions(experience)
     ex = C.dynamics(batch)
     world = C.network(ex.input.known, ex.target)
-    C.train(world, C.objective(C.dynamics), batch, steps=1000)
+    C.train(world, C.objective(C.dynamics), C.batches(batch, size=64), steps=1000)
     tree = C.env_tree(env)
     return C.walk(C.planned(tree, C.imagined(tree, world)), C.greedy, steps=50)
 
@@ -80,22 +80,30 @@ def plan(env: Environment, experience: Path) -> Path:
 def align(policy: Predictor, chosen: Seq, rejected: Seq) -> Predictor:
     """Preferences, without a reward model: DPO against a frozen copy."""
     reference = C.frozen_copy(policy)
-    C.train(policy, C.dpo(reference), chosen, rejected, steps=500)
+    C.train(policy, C.dpo(reference), C.batches(chosen, rejected, size=8), steps=500)
     return policy
 
 
-def finetune(base: nn.Module, data: Seq) -> nn.Module:
+def finetune(base: nn.Module, data: Dataset[Seq]) -> nn.Module:
     """A pretrained model, frozen, with a low-rank update trained on new data."""
     C.lora(base, rank=8)
     C.train(base, C.objective(C.shift), data, steps=500)
     return base
 
 
-def curate(sources: list[Container], weights: list[float], quality: Callable[[Container], Value]) -> Container:
-    """Mix the sources, drop the copies, keep the better half, easy first."""
-    data = C.dedup(C.mix_sources(sources, weights, n=100_000))
-    kept = C.quality_filter(data, quality(data), keep=0.5)
-    return C.curriculum(kept, quality(kept))
+def curate(sources: list[Dataset[Seq]], weights: list[float], quality: Callable[[Seq], Value]) -> Dataset[Seq]:
+    """Mix the sources, drop the copies, keep the better half, easy first: each a statement reading every batch."""
+    data = C.drop_near_duplicates(C.dedup(C.mix(*sources, weights=weights)))
+    return C.curriculum(C.keep_best(data, quality, keep=0.5), quality)
+
+
+def search_documents(embed: Predictor, documents: Set, queries: Value) -> Set:
+    """CREATE INDEX, then look up: training and filling the index are statements, searching it an expression."""
+    vectors = Value(embed(documents))
+    memory = C.index(vectors, kind="ivf")
+    C.train_index(memory, vectors)
+    C.insert(memory, C.batches(vectors, size=1024, shuffle=False))
+    return C.search(memory, queries, k=10)
 
 
 def interpret(model: Predictor, layer: nn.Module, x: Container, labels: Value, direction: Tensor) -> dict[str, Any]:
