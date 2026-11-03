@@ -1,6 +1,7 @@
 """
 examples.py: high-level use cases, one function each, written against the interface (catalog.py). They show how
-the entries fit together; they run once the entries are implemented.
+the entries fit together; they run once the entries are implemented. Plain Python is the imperative part here:
+an update (train, lora, …) changes its model in place and returns None, a statement as in a script (program.py).
 """
 
 from __future__ import annotations
@@ -17,7 +18,8 @@ from data import Container, Environment, Grid, Holes, Path, Predictor, Seq, Valu
 def classify(x: Container, labels: Value) -> Predictor:
     """Any container → a label: the types pick the layers, the label picks the loss."""
     model = C.network(x, labels)
-    return C.train(model, C.objective(C.labelled), x, labels, steps=1000)
+    C.train(model, C.objective(C.labelled), x, labels, steps=1000)
+    return model
 
 
 def generate(data: Container) -> Container:
@@ -25,7 +27,8 @@ def generate(data: Container) -> Container:
     split (shift, mask or noise); the matching schedule fills (in order, most confident first, or all together)."""
     split = C.split_for(data)
     ex = split(data)
-    model = C.train(C.network(ex.input.known, ex.target), C.objective(split), data, steps=1000)
+    model = C.network(ex.input.known, ex.target)
+    C.train(model, C.objective(split), data, steps=1000)
     return C.fill(C.blank(data[:8]), model, C.together, steps=16)
 
 
@@ -37,7 +40,8 @@ def inpaint(model: Any, image: Grid, missing: Tensor) -> Grid:
 def language_model(corpus: Seq, prompt: Seq) -> Path:
     """Next-token prediction, then generation as walking the LM's tree with a beam."""
     ex = C.shift(corpus)
-    lm = C.train(C.network(ex.input.known, ex.target), C.objective(C.shift), corpus, steps=1000)
+    lm = C.network(ex.input.known, ex.target)
+    C.train(lm, C.objective(C.shift), corpus, steps=1000)
     return C.walk(C.lm_tree(lm, prompt), C.beam(4), steps=32)
 
 
@@ -54,33 +58,37 @@ def reinforcement_learning(env: Environment, agent: nn.ModuleDict, rounds: int =
     """Rounds of walking the environment's tree with the policy and learning from the paths (REINFORCE with a
     batch-mean baseline)."""
 
-    def round_(agent: nn.ModuleDict) -> nn.ModuleDict:
-        def objective(agent: nn.ModuleDict) -> Tensor:
-            path = C.walk(C.env_tree(env, agent["policy"]), C.sample, steps=50)
-            return C.reinforce(path, C.batch_baseline(C.discounted_return(path, gamma=0.99)))
+    def objective(agent: nn.ModuleDict) -> Tensor:
+        path = C.walk(C.env_tree(env, agent["policy"]), C.sample, steps=50)
+        return C.reinforce(path, C.batch_baseline(C.discounted_return(path, gamma=0.99)))
 
-        return C.train(agent, objective, steps=10)
-
-    return C.loop(round_, agent, times=rounds)
+    for _ in range(rounds):
+        C.train(agent, objective, steps=10)
+    return agent
 
 
 def plan(env: Environment, experience: Path) -> Path:
     """Learn what follows each action, then act by planning inside that model."""
     batch = C.transitions(experience)
     ex = C.dynamics(batch)
-    world = C.train(C.network(ex.input.known, ex.target), C.objective(C.dynamics), batch, steps=1000)
+    world = C.network(ex.input.known, ex.target)
+    C.train(world, C.objective(C.dynamics), batch, steps=1000)
     tree = C.env_tree(env)
     return C.walk(C.planned(tree, C.imagined(tree, world)), C.greedy, steps=50)
 
 
 def align(policy: nn.Module, chosen: Seq, rejected: Seq) -> nn.Module:
     """Preferences, without a reward model: DPO against a frozen copy."""
-    return C.train(policy, C.dpo(C.frozen_copy(policy)), chosen, rejected, steps=500)
+    reference = C.frozen_copy(policy)
+    C.train(policy, C.dpo(reference), chosen, rejected, steps=500)
+    return policy
 
 
 def finetune(base: nn.Module, data: Seq) -> nn.Module:
     """A pretrained model, frozen, with a low-rank update trained on new data."""
-    return C.train(C.lora(base, rank=8), C.objective(C.shift), data, steps=500)
+    C.lora(base, rank=8)
+    C.train(base, C.objective(C.shift), data, steps=500)
+    return base
 
 
 def curate(sources: list[Container], weights: list[float], quality: Callable[[Container], Value]) -> Container:

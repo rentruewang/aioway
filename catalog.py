@@ -16,7 +16,14 @@ signature. The interface only: bodies are left to the implementation (torch, tor
               unroll     PartialSeq[S] → S     step any state: search distributions, rounds of a method
               reshape    Partial → Partial     change how a partial container goes on: its options, its model
   lookup      search     Index × Value → Set   the k nearest elements of an indexed set to each query
-  models      adapt      Module → Module       change a model
+  models      adapt      Module! → None        change a model in place: an update
+              wrap       Module → Module′      a new model around an old one, which stays as it was
+
+Imperative and functional are split, as in a database. An update (marked !: train and the adapt group) changes
+that argument in place and returns None, as list.sort and torch's in-place ops do: it is a statement of a script
+(program.py), never a value inside an expression. Everything else is pure: it builds new values (network and wrap build new models) and leaves
+its arguments as they were. Weights is the subtype of Module whose architecture an op leaves alone (quantize, init,
+transfer, EMA).
 
 A method that carries a state says so in its type: Step[S] is one step of a PartialSeq over S (a chooser is a
 Step[PartialTree], a schedule a Step[Holes]); Scan[X, S, Y] carries S along a stream (an optimizer carries the
@@ -46,7 +53,7 @@ from torch import Tensor, nn
 
 from data import (
     Chooser, Codec, Container, Dist, Environment, Example, Graph, Grid, Holes, Index, Model, Predictor, PartialSeq, PartialTree, Path, Prediction, Product, Scan, Schedule, Seq,
-    Set, Split, Step, Value,
+    Set, Split, Step, Value, Weights,
 )
 
 # ═══ Registry ═════════════════════════════════════════════════════════════════════════════════════
@@ -76,11 +83,12 @@ GROUPS: dict[str, Group] = {g.name: g for g in (
     Group("unroll", "partial", "PartialSeq[S] → S", "step a state until done", "agnostic"),
     Group("reshape", "partial", "Partial → Partial", "change how a partial container goes on: its options, its model", "agnostic"),
     Group("search", "lookup", "Index × Value → Set", "the k elements of an indexed set nearest each query", "agnostic"),
-    Group("adapt", "models", "Module → Module", "change a model", "model"),
+    Group("adapt", "models", "Module! → None", "change a model in place: an update, a statement of a script", "model"),
+    Group("wrap", "models", "Module → Module′", "a new model around an old one, which stays as it was", "agnostic"),
 )}
 FAMILIES = {"structure": "STRUCTURE · data → data", "learning": "LEARNING · data → a training signal",
             "partial": "PARTIAL CONTAINERS · known in part, and how to get the rest",
-            "lookup": "LOOKUP · a set known by how to search it", "models": "MODELS · model → model"}
+            "lookup": "LOOKUP · a set known by how to search it", "models": "MODELS · model → model: changed (adapt), or wrapped"}
 
 
 @dataclass(frozen=True)
@@ -93,6 +101,7 @@ class Entry:
     function: str       # a name defined here, or a dotted path (comma-separated)
     explanation: str
     obj: Any = None     # the stub, when defined here
+    updates: int | None = None  # which argument it changes in place (it returns None): an update
 
 
 ENTRIES: list[Entry] = []
@@ -135,7 +144,7 @@ def _short(annotation: str) -> str:
 ALIASES = {"Chooser": "Step[PartialTree]"}
 
 
-def _signature(obj: Any) -> tuple[str, str]:
+def _signature(obj: Any, updates: int | None = None) -> tuple[str, str]:
     """(signature, state type) from a stub's annotations. A step or a scan is shown as what it does, whatever its
     settings: Step[S] is S → S with state S, Scan[X, S, Y] is Seq[X] → Seq[Y] with state S. A layer (Model[A, B] built
     from settings) is A → B. Anything else: its required positional parameters → what it returns."""
@@ -154,7 +163,8 @@ def _signature(obj: Any) -> tuple[str, str]:
             if wrapper == "Scan":
                 return f"Seq[{_short(args[0])}] → Seq[{_short(args[2])}]", _short(args[1])
             return f"{_short(args[0])} → {_short(args[1])}", ""
-    ins = " × ".join(_short(str(p.annotation)) + ("…" if p.kind == p.VAR_POSITIONAL else "") for p in params) or "()"
+    ins = " × ".join(_short(str(p.annotation)) + ("…" if p.kind == p.VAR_POSITIONAL else "") + ("!" if i == updates else "")
+                     for i, p in enumerate(params)) or "()"
     return f"{ins} → {_short(ret)}", ""
 
 
@@ -165,13 +175,17 @@ def _explanation(obj: Any) -> str:
     return " ".join(doc.split("\n\n")[0].split())
 
 
-def method[T](group: str, name: str, *, state: str = "", side: str = "") -> Callable[[T], T]:
-    """Register a stub defined here. state says what the state keeps, when the type carries one."""
+def method[T](group: str, name: str, *, state: str = "", side: str = "", updates: int | None = None) -> Callable[[T], T]:
+    """Register a stub defined here. state says what the state keeps, when the type carries one; updates, which
+    argument (a model) it changes in place, when it is an update (and then it returns None)."""
 
     def register(obj: T) -> T:
-        signature, state_type = _signature(obj)
+        signature, state_type = _signature(obj, updates)
+        if updates is not None and not signature.endswith("→ None"):
+            raise TypeError(f"{name}: an update changes its argument in place and returns None")
         keeps = f"{state_type} — {state}" if state_type and state else state_type or state
-        ENTRIES.append(Entry(group, name, signature, keeps, side or GROUPS[group].side, getattr(obj, "__name__", repr(obj)), _explanation(obj), obj))
+        ENTRIES.append(Entry(group, name, signature, keeps, side or GROUPS[group].side, getattr(obj, "__name__", repr(obj)), _explanation(obj), obj,
+                             updates))
         return obj
 
     return register
@@ -181,6 +195,12 @@ def alias(group: str, name: str, function: str, explanation: str, signature: str
     """A method torch (or this file) already names; there is no stub to read."""
     g = GROUPS[group]
     ENTRIES.append(Entry(group, name, signature or g.signature, state, side or g.side, function, explanation))
+
+
+def updates(f: Any) -> int | None:
+    """Which argument of f it changes in place, when f is an update (None when it is pure)."""
+    e = entry_of(f)
+    return e.updates if e is not None else None
 
 
 def phenomenon(name: str, explanation: str) -> None:
@@ -603,10 +623,10 @@ def fit_power_law(sizes: Seq, losses: Seq) -> tuple[float, float]:
 # ═══ scan: Seq[X] → Seq[Y] ════════════════════════════════════════════════════════════════════════
 
 
-@method("scan", "Training (a scan over batches)", state="Module — the parameters and the optimizer's moments")
-def train[M](model: M, objective: Callable[..., Tensor], *data: Container, steps: int, optimizer: str = "adamw") -> M:
-    """Carry the parameters along a stream of minibatches of the data: each one, the objective, its gradient, the
-    optimizer's update. When the objective walks for its own data (RL, self-play), the scan closes into an unroll."""
+@method("scan", "Training (a scan over batches)", state="Module — the parameters and the optimizer's moments", updates=0)
+def train[M](model: M, objective: Callable[..., Tensor], *data: Container, steps: int, optimizer: str = "adamw") -> None:  # pyright: ignore[reportInvalidTypeVarUse]
+    """Carry the parameters along a stream of minibatches of the data, in place: each one, the objective, its
+    gradient, the optimizer's update. When the objective walks for its own data (RL, self-play), the scan closes into an unroll."""
     ...
 
 
@@ -635,7 +655,7 @@ def train_step(*, max_grad_norm: float = 1.0, precision: torch.dtype | None = No
 
 
 @method("scan", "EMA of weights", state="the averaged weights")
-def ema(*, decay: float = 0.999) -> Scan[nn.Module, nn.Module, nn.Module]:
+def ema(*, decay: float = 0.999) -> Scan[Weights, Weights, Weights]:
     """A running average of the weights training produces: smoother, and the slow target of self-distillation and DQN."""
     ...
 
@@ -1037,10 +1057,8 @@ def unroll(seq: PartialSeq[Any], *, steps: int) -> list[Any]:
     ...
 
 
-@method("unroll", "Iteration (rounds of a program)", state="whatever the rounds pass on: models, data, a buffer")
-def loop(round: Callable[..., Any], x: Any, *, times: int) -> Any:
-    """Rounds of collecting and learning (policy iteration, self-play, expert iteration): an unroll over their result."""
-    ...
+alias("unroll", "Iteration (rounds of a program)", "repeat",
+      "rounds of collecting and learning (policy iteration, self-play, expert iteration): a script's repeat (program.py)")
 
 
 @method("unroll", "Evolution strategies (no gradient)", state="a search distribution over the parameters")
@@ -1175,83 +1193,87 @@ def hard_negatives(index: Index, queries: Value, positives: Value, *, k: int = 8
     ...
 
 
-# ═══ adapt: Module → Module ═══════════════════════════════════════════════════════════════════════
+# ═══ adapt: Module! → Module (updates) ════════════════════════════════════════════════════════════
 
 
-@method("adapt", "Residual connections")
-def residual(f: nn.Module) -> nn.Module:
-    """h + f(norm h): the layer edits the stream instead of replacing it."""
+@method("adapt", "Pretrain → finetune (transfer)", side="agnostic", updates=1)
+def transfer(source: Weights, target: Weights) -> None:
+    """Start a new model from a trained one: copy into it the weights whose names and shapes match (the body), keep its head."""
     ...
 
 
-@method("adapt", "Pretrain → finetune (transfer)", side="agnostic")
-def transfer(source: nn.Module, target: nn.Module) -> nn.Module:
-    """Start a new model from a trained one: copy the weights whose names and shapes match (the body), keep the new head."""
-    ...
-
-
-@method("adapt", "Freezing", side="agnostic")
-def freeze(model: nn.Module, trainable: Callable[[str], bool]) -> nn.Module:
+@method("adapt", "Freezing", side="agnostic", updates=0)
+def freeze(model: nn.Module, trainable: Callable[[str], bool]) -> None:
     """Train only the parameters whose name passes a test."""
     ...
 
 
-@method("adapt", "Frozen copy (reference / target network)", side="agnostic")
-def frozen_copy(model: nn.Module) -> nn.Module:
-    """A copy that no longer trains: DPO's and RLHF's reference, DQN's target network."""
-    ...
-
-
-@method("adapt", "LoRA")
-def lora(model: nn.Module, *, rank: int = 8) -> nn.Module:
+@method("adapt", "LoRA", updates=0)
+def lora(model: nn.Module, *, rank: int = 8) -> None:
     """W + B·A on chosen linear layers, the base frozen: the finetuning update, kept low-rank."""
     ...
 
 
-@method("adapt", "Adapters")
-def adapter(layer: nn.Module, *, bottleneck: int = 8) -> nn.Module:
-    """A frozen layer followed by a small bottleneck MLP that trains alone, starting at zero."""
+@method("adapt", "Adapters", updates=0)
+def adapter(model: nn.Module, *, bottleneck: int = 8) -> None:
+    """After chosen frozen layers, a small bottleneck MLP that trains alone, starting at zero."""
     ...
 
 
-@method("adapt", "Prompt tuning")
-def prompt_tuning(model: nn.Module, *, n: int) -> nn.Module:
+@method("adapt", "Prompt tuning", updates=0)
+def prompt_tuning(model: nn.Module, *, n: int) -> None:
     """Learned vectors in front of a frozen model's input; only they train."""
     ...
 
 
-@method("adapt", "Initialization", side="agnostic")
-def init(model: nn.Module) -> nn.Module:
+@method("adapt", "Initialization", side="agnostic", updates=0)
+def init(model: Weights) -> None:
     """Fan-in normal for matrices, zeros for output projections: each residual block starts as the identity."""
     ...
 
 
-@method("adapt", "Quantization (int8 / int4)")
-def quantize(model: nn.Module, *, bits: int = 8) -> nn.Module:
+@method("adapt", "Quantization (int8 / int4)", updates=0)
+def quantize(model: Weights, *, bits: int = 8) -> None:
     """Weights rounded to 2^(bits−1) − 1 levels a side per row: computing as the low-precision model would."""
     ...
 
 
 alias("adapt", "Low precision: inference", "quantize", "int8 / int4 weights")
-alias("adapt", "Low precision: training", "torch.autocast", "bf16 (or fp8) compute, float32 master weights", side="agnostic")
 alias("adapt", "Parallelism", "torch.distributed",
-      "data, sharded, tensor, pipeline, expert, sequence: DDP and FSDP wrap a module (fully_shard); DTensor places its weights", side="agnostic")
-alias("adapt", "Hardware-aware kernels", "torch.compile", "torch.compile(module) fuses its ops; attention picks flash kernels by itself")
+      "data, sharded, tensor, pipeline, expert, sequence: fully_shard shards a module in place; DTensor places its weights", side="agnostic")
+
+# ═══ wrap: Module → Module′ (pure) ════════════════════════════════════════════════════════════════
 
 
-@method("adapt", "Reading activations", side="agnostic")
+@method("wrap", "Residual connections", side="model")
+def residual(f: nn.Module) -> nn.Module:
+    """h + f(norm h): the layer edits the stream instead of replacing it."""
+    ...
+
+
+@method("wrap", "Frozen copy (reference / target network)")
+def frozen_copy(model: nn.Module) -> nn.Module:
+    """A copy that no longer trains: DPO's and RLHF's reference, DQN's target network."""
+    ...
+
+
+alias("wrap", "Low precision: training", "torch.autocast", "bf16 (or fp8) compute, float32 master weights")
+alias("wrap", "Hardware-aware kernels", "torch.compile", "torch.compile(module) fuses its ops; attention picks flash kernels by itself", side="model")
+
+
+@method("wrap", "Reading activations")
 def observe(model: nn.Module, at: nn.Module) -> nn.Module:
     """A model that returns what one of its modules computed: the activations probes, SAEs and circuits study."""
     ...
 
 
-@method("adapt", "Activation patching (circuits)", side="agnostic")
+@method("wrap", "Activation patching (circuits)")
 def patch(model: nn.Module, at: nn.Module, replace: Callable[[Tensor], Tensor]) -> nn.Module:
     """A model with one module's output replaced (by another input's activations): which components carry a behaviour?"""
     ...
 
 
-@method("adapt", "Steering along a direction", side="agnostic")
+@method("wrap", "Steering along a direction")
 def steer(model: nn.Module, at: nn.Module, direction: Tensor, *, alpha: float = 1.0) -> nn.Module:
     """α·direction added to one module's output: features are directions, and moving along one changes the behaviour."""
     ...
@@ -1317,6 +1339,7 @@ def print_catalog(explain: bool = False) -> None:
         print(f"  - {bold(e.name)}" + (dim(f"\n      {e.explanation}") if explain else ""))
     rows = [e for e in ENTRIES if e.group in GROUPS]
     print(dim(f"\n{len(rows)} methods in {len(GROUPS)} groups, {sum(bool(e.state) for e in rows)} carrying a state · "
+              f"{sum(e.updates is not None for e in rows)} updates (!), the rest pure · "
               f"{sum(e.side == 'agnostic' for e in rows)} model-agnostic, {sum(e.side == 'model' for e in rows)} model-dependent"))
 
 
