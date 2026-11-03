@@ -1,6 +1,6 @@
 """
-examples.py: use cases written against the interface (catalog.py), each a config like the catalog's methods: its
-settings are fields, its __call__ takes the data. They show how the methods fit together; they run once the methods
+examples.py: use cases written against the interface (catalog.py), each a config like the catalog's methods: a
+@dataclass(frozen=True) whose fields are its settings and whose __call__ takes the data. They show how the methods fit together; they run once the methods
 are implemented.
 
 The catalog's rule decides what kind each one is. A use case that trains or reads a whole dataset is a statement
@@ -11,6 +11,7 @@ an expression (Expr). The examples are not registered in the catalog: they have 
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Any
 
 from torch import Tensor, nn
@@ -22,6 +23,7 @@ from data import Container, Dataset, Environment, Grid, Holes, Path, Predictor, 
 # ═══ Statements that build a model, train it, and return it ═══════════════════════════════════════
 
 
+@dataclass(frozen=True)
 class Classify(Stmt):
     """Any container → a label: the types pick the layers, the label picks the loss. A statement (it trains), though
     it changes nothing it is given: the model is new."""
@@ -35,6 +37,7 @@ class Classify(Stmt):
         return model
 
 
+@dataclass(frozen=True)
 class Generate(Stmt):
     """Learn any container by hiding parts of it, then generate n by filling the holes back in. The type picks the
     split (Shift, Mask or Noise); Together fills every hole at once."""
@@ -51,6 +54,7 @@ class Generate(Stmt):
         return C.Fill(steps=self.fill_steps)(C.Blank()(data[: self.n]), model, C.Together())
 
 
+@dataclass(frozen=True)
 class LanguageModel(Stmt):
     """Next-token prediction over a dataset, then generation as walking the LM's tree with a beam."""
 
@@ -65,6 +69,7 @@ class LanguageModel(Stmt):
         return C.Walk(steps=self.length)(C.LMTree()(lm, prompt), C.Beam(k=self.beam))
 
 
+@dataclass(frozen=True)
 class Plan(Stmt):
     """Learn what follows each action from experience, then act by planning inside that model."""
 
@@ -80,6 +85,7 @@ class Plan(Stmt):
         return C.Walk(steps=self.horizon)(C.Planned()(tree, C.Imagined()(tree, world)), C.Greedy())
 
 
+@dataclass(frozen=True)
 class SearchDocuments(Stmt):
     """CREATE INDEX, then look up: training and filling the index are statements, searching it an expression."""
 
@@ -94,6 +100,7 @@ class SearchDocuments(Stmt):
         return memory.search(queries, self.k)[0]
 
 
+@dataclass(frozen=True)
 class Curation(Stmt):
     """Mix the sources, drop the copies, keep the better fraction, easy first: each step reads every batch."""
 
@@ -108,6 +115,7 @@ class Curation(Stmt):
 # ═══ Updates: they change the model they are given, and return None ═══════════════════════════════
 
 
+@dataclass(frozen=True)
 class ReinforcementLearning(Fit[Predictor, [Environment]]):
     """Rounds of walking the environment's tree with the policy and learning from the paths (REINFORCE with a
     batch-mean baseline). The policy changes in place."""
@@ -126,6 +134,7 @@ class ReinforcementLearning(Fit[Predictor, [Environment]]):
             C.Train(steps=self.steps)(policy, objective, None)
 
 
+@dataclass(frozen=True)
 class Align(Fit[Predictor, [Seq, Seq]]):
     """Preferences, without a reward model: DPO against a frozen copy of the policy as it was. The policy changes in
     place."""
@@ -139,6 +148,7 @@ class Align(Fit[Predictor, [Seq, Seq]]):
         C.Train(steps=self.steps)(policy, C.DPOLoss(reference=reference, beta=self.beta), C.Batches(size=self.batch)(chosen, rejected))
 
 
+@dataclass(frozen=True)
 class Finetune(Fit[nn.Module, [Dataset[Seq]]]):
     """A pretrained model, frozen, with a low-rank update trained on new data. The model changes in place: LoRA adds
     the update, Train fits it."""
@@ -154,6 +164,7 @@ class Finetune(Fit[nn.Module, [Dataset[Seq]]]):
 # ═══ Expressions: they only read ══════════════════════════════════════════════════════════════════
 
 
+@dataclass(frozen=True)
 class Inpaint(Expr):
     """Fill only some holes: the known pixels stay at level 0."""
 
@@ -163,6 +174,7 @@ class Inpaint(Expr):
         return C.Fill(steps=self.steps)(Holes(image, missing.float()), model, C.Together())
 
 
+@dataclass(frozen=True)
 class DecodeWithSearch(Expr):
     """The same tree, walked four ways: one state type (PartialTree), different choosers and reshapes."""
 
@@ -177,6 +189,7 @@ class DecodeWithSearch(Expr):
                 "searched": walk(C.MCTS(simulations=64)(tree), C.Greedy())}
 
 
+@dataclass(frozen=True)
 class Interpret(Expr):
     """Read a layer's activations, steer along a direction, and attribute the output to the input: all reads."""
 
@@ -190,6 +203,7 @@ class Interpret(Expr):
 # ═══ Statements that fit a new model to what a model computes ════════════════════════════════════
 
 
+@dataclass(frozen=True)
 class Probe(Stmt):
     """Is a feature readable along one direction? Fit a linear probe to a layer's activations (closed form), and a
     sparse autoencoder to decompose them. A statement: both are fitted, though the model is only read."""
@@ -209,6 +223,7 @@ class Probe(Stmt):
 # ═══ Classical machine learning: the same split, a model and the statement that fits it ═════════
 
 
+@dataclass(frozen=True)
 class Tabular(Stmt):
     """Feature vectors and a target: gradient-boosted trees, logistic (or linear) regression and k nearest neighbours,
     each scored on held-out data. The target's type picks classification or regression for all three."""
@@ -228,6 +243,7 @@ class Tabular(Stmt):
                 "kNN": C.Accuracy()(C.KNN(k=self.k)(memory, test_x, y), test_y)}
 
 
+@dataclass(frozen=True)
 class Cluster(Stmt):
     """No labels: project onto the principal components, then find k clusters there."""
 
