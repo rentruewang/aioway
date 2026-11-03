@@ -9,7 +9,9 @@ A Program is an expression: a pure tree over the catalog's expressions, on batch
     net = call(Network(d=64), ex.input.known, ex.target)       # .attr reaches into a node's value
     out = net(prompt)                                          # calling a node calls the value it stands for
 
-A Script is statements in order, over named values, then an expression of what they end up as.
+A Script is statements in order, over named values, then an expression of what they end up as. Making a model is
+a statement (it allocates parameters: each call makes a different one), and what it returns, a model, is an
+expression bound to its name, that later expressions call: net = Network()(x, y), then net(prompt).
 
     let(net, expr)                          net = expr                       a name for a value (or a dataset)
     update(net, Train(steps=200), loss, ds) Train(steps=200)(net!, loss, ds) changes net in place, returns None
@@ -697,14 +699,18 @@ def clip(dim: int = 16, steps: int = 150) -> Script:
 
         def clip(images: Grid, texts: Seq, *, dim: int = 16, steps: int = 150) -> Tensor:
             patches: Grid = Patchify(size=4)(images)
-            pair: nn.ModuleDict = towers(Encoder(dim=dim)(patches), Encoder(dim=dim)(texts))
+            image: Model[Container, Value] = Encoder(dim=dim)(patches)
+            text: Model[Container, Value] = Encoder(dim=dim)(texts)
+            pair: nn.ModuleDict = towers(image, text)
             Train(steps=steps)(pair, contrastive_loss, Batches(size=256)(patches, texts))
             return RetrievalAccuracy()(pair.image(patches), pair.text(texts))
     """
-    images, texts, patches, pair = inputs("images texts patches towers")
+    images, texts, patches, image, text, pair = inputs("images texts patches image text towers")
     return Script("CLIP", (images, texts), (
         let(patches, call(Patchify(size=4), images)),
-        let(pair, call(towers, call(Encoder(dim=dim), patches), call(Encoder(dim=dim), texts))),
+        let(image, call(Encoder(dim=dim), patches)),
+        let(text, call(Encoder(dim=dim), texts)),
+        let(pair, call(towers, image, text)),
         update(pair, Train(steps=steps), contrastive_loss, call(Batches(size=256), patches, texts)),
     ), call(RetrievalAccuracy(), pair.image(patches), pair.text(texts)),
         "an image encoder and a text encoder, trained so that each image picks out its caption among its batch")
@@ -719,19 +725,21 @@ def stable_diffusion(latent: int = 4, steps: int = 150, w: float = 3.0) -> Scrip
             Train(steps=steps)(ae, autoencoding_loss, Batches(size=64)(images))
             z: Container = ae.encode(images)
             ex: Example = Noise()(z)
-            velocity: Predictor = Droppable(p=0.1)(Network()(ex.input.known, ex.target))
+            net: Predictor = Network()(ex.input.known, ex.target)
+            velocity: Predictor = Droppable(p=0.1)(net)
             Train(steps=steps)(velocity, flow_matching_loss, Batches(size=64)(z, labels))
             sampler: Predictor = Guided(w=w)(Given()(velocity, labels), Given()(velocity, None))
             return ae.decode(Fill(steps=10)(Blank()(z), sampler, Together()))
     """
-    images, labels, ae, z, velocity = inputs("images labels ae z velocity")
+    images, labels, ae, z, net, velocity = inputs("images labels ae z network velocity")
     ex = call(Noise(), z).named("ex")
     sampler = call(Guided(w=w), call(Given(), velocity, labels), call(Given(), velocity, None))
     return Script("Stable Diffusion", (images, labels), (
         let(ae, call(Autoencoder(latent=latent), images)),
         update(ae, Train(steps=steps), autoencoding_loss, call(Batches(size=64), images)),
         let(z, ae.encode(images)),
-        let(velocity, call(Droppable(p=0.1), call(Network(), ex.input.known, ex.target))),
+        let(net, call(Network(), ex.input.known, ex.target)),
+        let(velocity, call(Droppable(p=0.1), net)),
         update(velocity, Train(steps=steps), flow_matching_loss, call(Batches(size=64), z, labels)),
     ), ae.decode(call(Fill(steps=10), call(Blank(), z), sampler, Together())),
         "flow matching in an autoencoder's latent space, with a label, sampled with classifier-free guidance")

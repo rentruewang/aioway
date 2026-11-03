@@ -21,19 +21,14 @@ datasets, or change something in place: writes, and the blocking work that needs
 bodies are left to the implementation (torch, torchrl, your own).
 
 Each group is a base class, and its __call__ says what its methods do, in its type parameters. R is what else a
-method takes (nothing by default); pyright checks every method's own __call__ against its group's. A layer builds a
-model, so a group with layers has a second base: an AggregateLayer[C] builds a Model[C, C].
+method takes (nothing by default); pyright checks every method's own __call__ against its group's.
 
-EXPRESSIONS · on a batch, nothing changes
-  structure   Encode[A, B, **R]          (*R) -> Codec[A, B]            a codec: raw data in a vocabulary and back
-              Convert[A, B, **R]         (x: A, *R) -> B                change the container, keep the elements
+EXPRESSIONS · on a batch: nothing changes, nothing new is made
+  structure   Convert[A, B, **R]         (x: A, *R) -> B                change the container, keep the elements
               Map[A, B, **R]             (x: A, *R) -> B                change each element on its own
-              MapLayer[A, B, **R]        (*R) -> Model[A, B]              a model that does
               Aggregate[C, **R]          (x: C, *R) -> C                each element reads the ones related to it
-              AggregateLayer[C, In, **R] (*R) -> Model[In, C]             a model that does
               Select[C, **R]             (x: C, *R) -> C                keep, drop, reorder or reweight elements
               Fold[C, A, **R]            (x: C, *R) -> A                reduce a container to one value
-              FoldLayer[C, A, **R]       (*R) -> Model[C, A]              a model that does
               Scan[X, S, Y]              init, step; (xs: Seq) -> Seq   carry a state S along a sequence
   learning    Split[C, **R]              (x: C, *R) -> Example          hide part of a container: the target
               Score[P, O, **R]           (pred: P, *R) -> O             how bad a prediction is
@@ -46,9 +41,15 @@ EXPRESSIONS · on a batch, nothing changes
               Evolve[S]                  (state: S) -> S                an unroll's step, without a gradient
               Reshape[P, **R]            (p: P, *R) -> P                how a partial container goes on
   lookup      Search[O, **R]             (index: Index, *R) -> O        what is built on index.search
-  models      Wrap[M, **R]               (model: M, *R) -> Module       a new model around an old one
+  models      Wrap[M, **R]               (model: M, *R) -> Module       a view of a model: no weights of its own
 
-STATEMENTS · on a dataset, or changing something in place (!)
+STATEMENTS · making new state, changing it in place (!), or reading a whole dataset
+  create      MapLayer[A, B, **R]        (*R) -> Model[A, B]            a new model: parameters of its own
+              AggregateLayer[C, In, **R] (*R) -> Model[In, C]           …whose elements read the related ones
+              FoldLayer[C, A, **R]       (*R) -> Model[C, A]            …that reduces a container
+              Encode[A, B, **R]          (*R) -> Codec[A, B]            a new codec: raw data in a vocabulary
+              Empty[S, **R]              (*R) -> S                      a new, empty index or buffer
+              Copy[M]                    (x: M) -> M                    a copy with weights of its own
   update      Fit[X, **R]                (x: X!, *R) -> None            fit to data: a loss, a closed form, a rule
               Assign[X, **R]             (x: X!, *R) -> None            set parameter values directly
               Alter[X, **R]              (x: X!, *R) -> None            change what the parameters are
@@ -57,14 +58,19 @@ STATEMENTS · on a dataset, or changing something in place (!)
               Curate[C, **R]             (data: Dataset[C], *R) -> Dataset[C]   look at every example (blocking)
               Reduce[C, A, **R]          (data: Dataset[C], *R) -> A    one value from a whole dataset
 
+A model is an Expr once made (data.Model is an nn.Module and an Expr): calling it reads its parameters and changes
+nothing. Making one is a statement whose result is that expression, bound to its name, like CREATE FUNCTION; it is
+a statement because each call makes a different one (new parameters), not because it returns a function: Given,
+Guided and the views of Wrap return functions too, but make nothing new, so they stay expressions.
+
 A statement is never a value inside an expression: in a script (program.py) it is a line of its own, as a SQL
 write or CREATE INDEX sits at the top of a statement. Update statements change the argument marked ! and return
 None; dataset statements change nothing but read every batch. Weights is the subtype of Module whose architecture an
 op leaves alone.
 
 So Best is a Fold[Path, Path, [Value]] (a Path in and a Path out, given the Values that score it), Network a
-MapLayer[Container, Prediction, [Container, Container]] (it builds a model from examples of its inputs and
-targets), Train a Fit[nn.Module, [Callable[..., Tensor], Dataset[Any] | None]] (it changes a module, reading an
+MapLayer[Container, Prediction, [Container, Container]] (a statement: it makes a new model from examples of its
+inputs and targets), Train a Fit[nn.Module, [Callable[..., Tensor], Dataset[Any] | None]] (it changes a module, reading an
 objective and a dataset). Fill, Walk and Unroll are each one method, and the group is that method.
 
 Supervised learning is a Labelled split and the Loss its target picks: classes make it classification, real values
@@ -72,9 +78,8 @@ regression, for any model that predicts the target (Network, Linear, Trees, KNN)
 the same split as the rest: a layer builds the model (Linear, Trees, Centroids, Projection, Mixture), a Fit
 statement fits it (Train, LeastSquares, GrowTrees, KMeans, PCA, EM).
 
-What a statement changes is never a config: a method that makes a model, a codec, an index or a buffer is a config
-whose __call__ returns a new one (Network(d=64)(x, y), Tokenizer(vocab=32_000)()). Everything a config holds is a
-setting.
+What a statement changes is never a config: a config is a setting, and calling a create statement's config makes
+the new thing (Network(d=64)(x, y), Tokenizer(vocab=32_000)()), which statements then change and expressions read.
 
 Each method is model-agnostic (any model is an opaque function to it, or it uses none) or model-dependent (it is
 a layer, or it opens a model up). Phenomena are observed rather than computed; the meta-primitives are
@@ -98,6 +103,7 @@ from typing import Any, ClassVar, NoDefault, ParamSpec, TypeVarTuple, get_args, 
 import torch
 from torch import Tensor, nn
 
+import data
 from data import (
     Buffer, Chooser, Codec, Container, Dataset, Dist, Environment, Example, Graph, Grid, Holes, Index, Model, PartialSeq, PartialTree, Path,
     Prediction, Predictor, Product, Schedule, Seq, Set, Value, Weights,
@@ -132,13 +138,15 @@ class Method:
             _check_use(cls)
 
 
-class Expr(Method):
-    """An expression: on batches in memory; it changes nothing."""
+class Expr(Method, data.Expr):
+    """An expression method: on batches in memory, it changes nothing and makes nothing new. A model is an
+    expression too (data.Expr), once a statement has made it."""
 
 
 class Stmt(Method):
-    """A statement: on a dataset, or changing its argument (!) in place and returning None. A line of its own in a
-    script, never inside an expression."""
+    """A statement: it makes new state (and returns it, a model being an expression bound to its name), changes its
+    argument (!) in place and returns None, or reads a whole dataset. A line of its own in a script, never inside an
+    expression."""
 
 
 def settings_of(config: Method) -> dict[str, Any]:
@@ -167,10 +175,11 @@ def _differs(value: Any, default: Any) -> bool:
 FAMILIES = {"structure": "STRUCTURE · data → data", "learning": "LEARNING · data → a training signal",
             "partial": "PARTIAL CONTAINERS · known in part, and how to get the rest",
             "lookup": "LOOKUP · a set known by how to search it", "models": "MODELS · model → a new model",
+            "create": "CREATE · new state from a config: a model, a codec, an empty index or buffer, a copy",
             "update": "UPDATE · a model, a codec, an index or a buffer, changed in place",
             "dataset": "DATASET · read every batch, change nothing"}
 FRAMEWORKS = {"expr": ("EXPRESSIONS · on a batch, nothing changes", ["structure", "learning", "partial", "lookup", "models"]),
-              "stmt": ("STATEMENTS · on a dataset, or changing something in place (!)", ["update", "dataset"])}
+              "stmt": ("STATEMENTS · making new state, changing it in place (!), or reading a whole dataset", ["create", "update", "dataset"])}
 
 GROUPS: dict[str, list[type[Method]]] = {}   # name → its base classes (its ops, its layers), in the order defined
 
@@ -340,15 +349,8 @@ def meta(name: str, groups: tuple[type[Method], ...], explanation: str) -> None:
 # ═══ Expression groups ════════════════════════════════════════════════════════════════════════════
 # Each group's __call__ is what its methods do, in the group's own type parameters: Fold[C, A] takes a C and gives
 # an A. R is what else a method takes (none by default), so Best, a Fold[Path, Path, [Value]], takes a Path and a
-# Value. A method's own __call__ names its inputs; pyright checks it against its group's. A group of layers builds a
-# model whose __call__ is the group's: an AggregateLayer[C] builds a Model[C, C].
-
-
-class Encode[A, B, **R = []](Expr):
-    """Build a codec: raw data A written in a vocabulary B, and read back. One that learns is fitted by FitCodec."""
-    group, family, form, side = "encode", "structure", "A ⇄ C[classes]", "model"
-
-    def __call__(self, *like: R.args, **named: R.kwargs) -> Codec[A, B]: ...
+# Value. A method's own __call__ names its inputs; pyright checks it against its group's. An expression makes no new
+# state: building a model (or a codec, an index, a buffer) is a statement, CREATE.
 
 
 class Convert[A, B, **R = []](Expr):
@@ -365,26 +367,11 @@ class Map[A, B, **R = []](Expr):
     def __call__(self, x: A, /, *rest: R.args, **named: R.kwargs) -> B: ...
 
 
-class MapLayer[A, B, **R = []](Expr):
-    """Build a map: a model A → B, its sizes read from examples like the data it will see."""
-    group, family, form, side = "map", "structure", "C[a] → C[b]", "model"
-
-    def __call__(self, *like: R.args, **named: R.kwargs) -> Model[A, B]: ...
-
-
 class Aggregate[C, **R = []](Expr):
     """Each element reads the elements it is related to: a C in, a C out."""
     group, family, form, side = "aggregate", "structure", "C[h] → C[h]", "agnostic"
 
     def __call__(self, x: C, /, *rest: R.args, **named: R.kwargs) -> C: ...
-
-
-class AggregateLayer[C, In = C, **R = []](Expr):
-    """Build an aggregate: a model whose elements read the ones they are related to, a C out (reading a C, unless In
-    says what else it reads: a memory, a second container)."""
-    group, family, form, side = "aggregate", "structure", "C[h] → C[h]", "model"
-
-    def __call__(self, *like: R.args, **named: R.kwargs) -> Model[In, C]: ...
 
 
 class Select[C, **R = []](Expr):
@@ -399,13 +386,6 @@ class Fold[C, A, **R = []](Expr):
     group, family, form, side = "fold", "structure", "C[a] → a", "agnostic"
 
     def __call__(self, x: C, /, *rest: R.args, **named: R.kwargs) -> A: ...
-
-
-class FoldLayer[C, A, **R = []](Expr):
-    """Build a fold: a model that reduces a C to an A."""
-    group, family, form, side = "fold", "structure", "C[a] → a", "model"
-
-    def __call__(self, *like: R.args, **named: R.kwargs) -> Model[C, A]: ...
 
 
 class Scan[X, S, Y](Expr):
@@ -437,7 +417,8 @@ class Score[P, O = Tensor, **R = []](Expr):
 
 
 class Start[P, **R = []](Expr):
-    """A partial container P to grow, from R: a tree for a walk, holes for a fill, an empty index to insert into."""
+    """A partial container P to grow, from R: a tree for a walk, holes for a fill. (An empty index or buffer is new
+    state: Empty, a statement.)"""
     group, family, form, side = "start", "partial", "… → Partial", "agnostic"
 
     def __call__(self, *args: R.args, **named: R.kwargs) -> P: ...
@@ -519,13 +500,62 @@ class Search[O, **R = []](Expr):
 
 
 class Wrap[M, **R = []](Expr):
-    """A new model around an old one M, which stays as it was."""
+    """A view of a model M: a module around it that reads its parameters (and adds none), M staying as it was. A copy
+    with weights of its own is new state: Copy, a statement."""
     group, family, form, side = "wrap", "models", "Module → Module′", "agnostic"
 
     def __call__(self, model: M, /, *rest: R.args, **named: R.kwargs) -> nn.Module: ...
 
 
 # ═══ Statement groups ═════════════════════════════════════════════════════════════════════════════
+# A statement that makes new state from a config and returns it: a model with parameters of its own, a codec, an
+# empty index or buffer, a copy. CREATE TABLE, in a database: each call makes a different one, so it is a line of
+# its own and the name it is bound to is the one thing that refers to it.
+
+
+class MapLayer[A, B, **R = []](Stmt):
+    """Create a map: a model A → B with parameters of its own, its sizes read from examples like the data it will see."""
+    group, family, form, side = "layer", "create", "builds C[a] → C[b]", "model"
+
+    def __call__(self, *like: R.args, **named: R.kwargs) -> Model[A, B]: ...
+
+
+class AggregateLayer[C, In = C, **R = []](Stmt):
+    """Create an aggregate: a model whose elements read the ones they are related to, a C out (reading a C, unless In
+    says what else it reads: a memory, a second container)."""
+    group, family, form, side = "layer", "create", "builds C[h] → C[h]", "model"
+
+    def __call__(self, *like: R.args, **named: R.kwargs) -> Model[In, C]: ...
+
+
+class FoldLayer[C, A, **R = []](Stmt):
+    """Create a fold: a model that reduces a C to an A."""
+    group, family, form, side = "layer", "create", "builds C[a] → a", "model"
+
+    def __call__(self, *like: R.args, **named: R.kwargs) -> Model[C, A]: ...
+
+
+class Encode[A, B, **R = []](Stmt):
+    """Create a codec: raw data A written in a vocabulary B, and read back. One that learns is fitted by FitCodec."""
+    group, family, form, side = "encode", "create", "builds A ⇄ C[classes]", "model"
+
+    def __call__(self, *like: R.args, **named: R.kwargs) -> Codec[A, B]: ...
+
+
+class Empty[S, **R = []](Stmt):
+    """Create an empty store S, to fill with statements: an index (its sizes from R), a buffer."""
+    group, family, form, side = "empty", "create", "… → Index | Buffer", "agnostic"
+
+    def __call__(self, *args: R.args, **named: R.kwargs) -> S: ...
+
+
+class Copy[M](Stmt):
+    """Create a copy of M with weights of its own, as M is now: a snapshot that later changes to M do not reach."""
+    group, family, form, side = "copy", "create", "Module → Module", "agnostic"
+
+    def __call__(self, x: M, /) -> M: ...
+
+
 # An update changes its first argument, an X, in place and returns None; R is what else it reads.
 
 
@@ -584,41 +614,8 @@ class Reduce[C, A, **R = []](Stmt):
 
 
 # ══════════════════════════════════════════════════════════════════════════════════════════════════
-# EXPRESSIONS · on a batch, nothing changes
+# EXPRESSIONS · on a batch, nothing changes, nothing new is made
 # ══════════════════════════════════════════════════════════════════════════════════════════════════
-
-# ═══ Encode[A, B, **R = []]: A ⇄ C[classes] ═══════════════════════════════════════════════════════
-
-
-@dataclass(frozen=True)
-class Tokenizer(Encode[list[str], Seq]):
-    """Text ⇄ a sequence of ids, built empty: BPE merges, fitted to a corpus by FitCodec (bytes alone: a fixed
-    vocabulary of 256, nothing to fit). The tokenizer decides the content type: Seq of classes(vocab)."""
-    title = "Tokenization (BPE, SentencePiece, bytes)"
-    kind: str = "bpe"
-    vocab: int = 32000
-
-    def __call__(self) -> Codec[list[str], Seq]: ...
-
-
-@dataclass(frozen=True)
-class ImageTokenizer(Encode[Grid, Grid, [Grid]]):
-    """An image ⇄ a coarser grid of codebook ids: an encoder, vector quantization, a decoder, trained to reconstruct."""
-    title = "Image tokenizer (VQ-VAE, VQGAN)"
-    codes: int = 1024
-
-    def __call__(self, images: Grid, /) -> Codec[Grid, Grid]: ...
-
-
-@dataclass(frozen=True)
-class AudioCodec(Encode[Seq, Product, [Seq]]):
-    """A waveform ⇄ frames × codebooks of ids: each codebook quantizes what the previous ones left (residual VQ)."""
-    title = "Audio codec (EnCodec, residual quantization)"
-    codebooks: int = 8
-    codes: int = 1024
-
-    def __call__(self, audio: Seq, /) -> Codec[Seq, Product]: ...
-
 
 # ═══ Convert[A, B, **R = []]: C[a] → C′[a] ════════════════════════════════════════════════════════
 
@@ -778,201 +775,6 @@ class Chinchilla(Map[float, tuple[float, float]]):
     def __call__(self, compute: float, /) -> tuple[float, float]: ...
 
 
-# ═══ MapLayer[A, B, **R = []]: C[a] → C[b] ════════════════════════════════════════════════════════
-
-
-@dataclass(frozen=True)
-class Network(MapLayer[Container, Prediction, [Container, Container]]):
-    """embed → position → [aggregate, MLP] × depth → pool → readout, each slot chosen from the input and target types
-    (EmbedFor, AggregateFor, PoolFor, ReadoutFor); mixer and mlp replace a slot's choice with a config (a scan,
-    experts). Calling it builds the network for inputs like x and targets like y."""
-    title = "Network (each layer chosen by the types)"
-    d: int = 64
-    depth: int = 2
-    mixer: AggregateLayer[Any] | None = None
-    mlp: MapLayer[Any, Any] | None = None
-
-    def __call__(self, x: Container, y: Container, /) -> Predictor: ...
-
-
-@dataclass(frozen=True)
-class Encoder(MapLayer[Container, Value, [Container]]):
-    """A network from any container to one vector per example: the towers of CLIP, a reward model, a critic."""
-    title = "Embedding models (a container to one vector)"
-    dim: int
-
-    def __call__(self, x: Container, /) -> Model[Container, Value]: ...
-
-
-@dataclass(frozen=True)
-class EmbedFor(MapLayer[Container, Container, [Container]]):
-    """By what the elements hold: classes → a row of a lookup table (one more for [MASK]); real values → a linear map."""
-    title = "Embeddings"
-    d: int
-
-    def __call__(self, x: Container, /) -> Model[Container, Container]: ...
-
-
-@dataclass(frozen=True)
-class ReadoutFor(MapLayer[Container, Container, [Container]]):
-    """By what the target holds: a logit per class, a value per real number, one readout per field of a record."""
-    title = "Readout"
-    d: int
-
-    def __call__(self, y: Container, /) -> Model[Container, Container]: ...
-
-
-@dataclass(frozen=True)
-class LearnedPositions(MapLayer[Container, Container, [Container]]):
-    """A learned vector added at each position of a Seq, a Grid or a Product; a Set, a Graph or a Tree gets none."""
-    title = "Positional encoding: learned"
-    d: int
-
-    def __call__(self, x: Container, /) -> Model[Container, Container]: ...
-
-
-@dataclass(frozen=True)
-class SinusoidalPositions(MapLayer[Container, Container, [Container]]):
-    """Fixed sin/cos features of each position at geometrically spaced frequencies, added."""
-    title = "Positional encoding: sinusoidal"
-    d: int
-
-    def __call__(self, x: Container, /) -> Model[Container, Container]: ...
-
-
-@dataclass(frozen=True)
-class MoE(MapLayer[Container, Container]):
-    """A router sends each element to its top-k experts (MLPs) and sums their gate-weighted outputs."""
-    title = "Mixture of experts"
-    d: int
-    experts: int = 8
-    k: int = 2
-
-    def __call__(self) -> Model[Container, Container]: ...
-
-
-@dataclass(frozen=True)
-class Autoencoder(MapLayer[Container, Container, [Container]]):
-    """encode to a smaller container (fewer positions, few channels), decode back: the latent must keep what matters,
-    and generation can happen there (latent diffusion). Its .encode and .decode are the two halves."""
-    title = "Latent space / bottleneck"
-    latent: int
-
-    def __call__(self, x: Container, /) -> Model[Container, Container]: ...
-
-
-@dataclass(frozen=True)
-class SparseAutoencoder(MapLayer[Container, Container]):
-    """Activations → a wide, sparse code → activations, trained by reconstruction plus an L1 penalty: each code unit
-    tends to be one feature."""
-    title = "Sparse autoencoders (superposition)"
-    d: int
-    features: int
-
-    def __call__(self) -> Model[Container, Container]: ...
-
-
-@dataclass(frozen=True)
-class LinearProbe(MapLayer[Value, Value, [Value, Value]]):
-    """A linear readout for frozen activations, sized by examples of them and their labels; fitted by a statement
-    (LeastSquares, Train). Is a feature readable along one direction?"""
-    title = "Linear probes (features as directions)"
-
-    def __call__(self, acts: Value, labels: Value, /) -> Model[Value, Value]: ...
-
-
-@dataclass(frozen=True)
-class MLP(MapLayer[Container, Container]):
-    """The same small network on every element."""
-    title = "Linear layer + nonlinearity (MLP)"
-    function, signature = "nn.Linear, nn.GELU, nn.Sequential", "C[h] → C[h]"
-
-
-@dataclass(frozen=True)
-class SwiGLU(MapLayer[Container, Container]):
-    """silu(gate(h)) · up(h), then down: one branch decides how much of the other passes."""
-    title = "Gating (SwiGLU)"
-    function, signature = "nn.SiLU", "C[h] → C[h]"
-
-
-@dataclass(frozen=True)
-class Normalization(MapLayer[Container, Container]):
-    """Rescale each element's features (BatchNorm aggregates over the batch instead)."""
-    title = "Normalization"
-    function, signature = "nn.RMSNorm, nn.LayerNorm", "C[h] → C[h]"
-
-
-@dataclass(frozen=True)
-class Dropout(MapLayer[Container, Container]):
-    """Zero random features while training."""
-    title = "Dropout"
-    function, signature = "nn.Dropout", "C[h] → C[h]"
-
-
-@dataclass(frozen=True)
-class Linear(MapLayer[Value, Prediction, [Value, Container]]):
-    """A linear model Wx + b on feature vectors, sized by examples of its inputs and targets: linear regression when
-    the target is real values (Loss picks squared error), logistic or softmax regression when it is classes
-    (cross-entropy), a linear SVM with Hinge. Fitted by Train (a gradient), or LeastSquares (closed form)."""
-    title = "Linear models (linear and logistic regression)"
-    bias: bool = True
-
-    def __call__(self, x: Value, y: Container, /) -> Model[Value, Prediction]: ...
-
-
-@dataclass(frozen=True)
-class KernelFeatures(MapLayer[Value, Value, [Value]]):
-    """Random Fourier features of a shift-invariant kernel (RBF by default): a Linear on them is a kernel machine, so
-    kernel ridge regression is LeastSquares on it and a kernel SVM is Hinge on it."""
-    title = "Kernel methods (random features)"
-    features: int = 1024
-    bandwidth: float = 1.0
-
-    def __call__(self, x: Value, /) -> Model[Value, Value]: ...
-
-
-@dataclass(frozen=True)
-class Trees(MapLayer[Value, Prediction, [Value, Container]]):
-    """An ensemble of decision trees on feature vectors, empty until GrowTrees grows it: one tree (CART), a random
-    forest (bagged, their predictions averaged) or gradient boosting (each tree fitted to the errors of the ones
-    before it). What the target holds picks classification or regression, as for every model."""
-    title = "Decision trees, random forests, gradient boosting"
-    kind: str = "boosting"
-    n: int = 100
-    depth: int = 6
-
-    def __call__(self, x: Value, y: Container, /) -> Model[Value, Prediction]: ...
-
-
-@dataclass(frozen=True)
-class Centroids(MapLayer[Value, Value, [Value]]):
-    """k centroids in the inputs' space, each input mapped to the nearest (its cluster); fitted by KMeans."""
-    title = "Clustering (k centroids)"
-    k: int
-
-    def __call__(self, x: Value, /) -> Model[Value, Value]: ...
-
-
-@dataclass(frozen=True)
-class Projection(MapLayer[Value, Value, [Value]]):
-    """A linear map onto dim directions: the principal components once PCA has fitted it, a random projection before."""
-    title = "Dimensionality reduction (a linear projection)"
-    dim: int
-
-    def __call__(self, x: Value, /) -> Model[Value, Value]: ...
-
-
-@dataclass(frozen=True)
-class Mixture(MapLayer[Value, Dist, [Value]]):
-    """k weighted components (Gaussians by default) in the inputs' space: a density, and soft clusters by
-    responsibility; fitted by EM. One component per class, fitted to that class's examples, is a generative
-    classifier (naive Bayes, LDA)."""
-    title = "Mixture models (GMM)"
-    k: int
-
-    def __call__(self, x: Value, /) -> Model[Value, Dist]: ...
-
-
 # ═══ Aggregate[C, **R = []]: C[h] → C[h] ══════════════════════════════════════════════════════════
 
 
@@ -1013,107 +815,6 @@ class GroupRelative(Aggregate[Value]):
     n: int
 
     def __call__(self, rewards: Value, /) -> Value: ...
-
-
-# ═══ AggregateLayer[C, In = C, **R = []]: C[h] → C[h] ═════════════════════════════════════════════
-
-
-@dataclass(frozen=True)
-class AggregateFor(AggregateLayer[Container, Container, [Container]]):
-    """What each element reads, from the container: Graph, Tree → message passing · Product → axial · causal Seq →
-    causal attention (a selective scan when long) · large Grid → convolution · else attention over all."""
-    title = "Choosing the aggregation from the container"
-    d: int
-
-    def __call__(self, x: Container, /) -> Model[Container, Container]: ...
-
-
-@dataclass(frozen=True)
-class Attention(AggregateLayer[Container]):
-    """Each element reads every other (or every earlier one), weighted by query·key similarity."""
-    title = "Attention (self, causal)"
-    d: int
-    causal: bool = False
-
-    def __call__(self) -> Model[Container, Container]: ...
-
-
-@dataclass(frozen=True)
-class CrossAttention(AggregateLayer[Container, tuple[Container, Container]]):
-    """Queries from one container, keys and values from another (text reading an image)."""
-    title = "Cross-attention"
-    d: int
-
-    def __call__(self) -> Model[tuple[Container, Container], Container]: ...
-
-
-@dataclass(frozen=True)
-class Conv(AggregateLayer[Grid]):
-    """Each element reads its neighbours on the lattice, with the same weights at every offset."""
-    title = "Convolution"
-    d: int
-    size: int = 3
-
-    def __call__(self) -> Model[Grid, Grid]: ...
-
-
-@dataclass(frozen=True)
-class Recurrence(AggregateLayer[Seq]):
-    """Each element reads a state carried from the earlier ones, updated by a gated nonlinear function."""
-    title = "Recurrence (RNN / LSTM / GRU)"
-    state = "a hidden vector, carried along the sequence"
-    d: int
-
-    def __call__(self) -> Model[Seq, Seq]: ...
-
-
-@dataclass(frozen=True)
-class SelectiveScan(AggregateLayer[Seq]):
-    """A linear recurrence whose coefficients come from the input (S4, Mamba, linear attention): every earlier element
-    read, in linear time."""
-    title = "State-space models / linear recurrences"
-    state = "s_t = a_t·s_{t−1} + b_t, run as a parallel scan"
-    d: int
-
-    def __call__(self) -> Model[Seq, Seq]: ...
-
-
-@dataclass(frozen=True)
-class MessagePassing(AggregateLayer[Graph]):
-    """Each node reads its own features and the mean along its incoming edges; in a tree, children pass up to parents."""
-    title = "Message passing (GNN)"
-    d: int
-
-    def __call__(self) -> Model[Graph, Graph]: ...
-
-
-@dataclass(frozen=True)
-class Axial(AggregateLayer[Product]):
-    """One aggregation per factor of a product (frames, then pixels), the other factors as batch; summed."""
-    title = "Axial (products of structures)"
-    d: int
-    parts: tuple[str, ...] = ('Seq', 'Grid')
-
-    def __call__(self) -> Model[Product, Product]: ...
-
-
-@dataclass(frozen=True)
-class UNet(AggregateLayer[Grid]):
-    """Down to a coarse grid and back up, with skip connections: each element reads a wide neighbourhood."""
-    title = "Encoder–decoder hierarchy (U-Net)"
-    d: int
-    levels: int = 2
-
-    def __call__(self) -> Model[Grid, Grid]: ...
-
-
-@dataclass(frozen=True)
-class Retrieval(AggregateLayer[Container, tuple[Container, Index]]):
-    """Each element reads the k nearest entries of an external memory (an Index), softmax-weighted."""
-    title = "Retrieval (attention over a memory)"
-    k: int
-
-    def __call__(self) -> Model[tuple[Container, Index], Container]: ...
 
 
 # ═══ Select[C, **R = []]: C[a] → C[a] ═════════════════════════════════════════════════════════════
@@ -1203,18 +904,6 @@ class FitPowerLaw(Fold[Seq, tuple[float, float], [Seq]]):
     title = "Scaling laws (power-law fit)"
 
     def __call__(self, sizes: Seq, losses: Seq, /) -> tuple[float, float]: ...
-
-
-# ═══ FoldLayer[C, A, **R = []]: C[a] → a ══════════════════════════════════════════════════════════
-
-
-@dataclass(frozen=True)
-class PoolFor(FoldLayer[Container, Value, [Container]]):
-    """A container's features → one vector per example: a causal Seq keeps its last position, the one that read
-    everything; anything else, the mean."""
-    title = "Pooling (mean / last position)"
-
-    def __call__(self, x: Container, /) -> Model[Container, Value]: ...
 
 
 # ═══ Scan[X, S, Y]: Seq[X] → Seq[Y] ═══════════════════════════════════════════════════════════════
@@ -1713,16 +1402,6 @@ class EnvTree(Start[PartialTree[Any, Tensor], [Environment]]):
     def __call__(self, env: Environment, policy: Predictor | None = None, /) -> PartialTree[Any, Tensor]: ...
 
 
-@dataclass(frozen=True)
-class EmptyIndex(Start[Index, [Value]]):
-    """An empty index for vectors like these (their size): flat (exact), IVF (clusters), HNSW (a neighbour graph), PQ
-    (compressed codes), LSH (hash buckets), inverted (BM25), sum tree (by priority). Statements train and fill it."""
-    title = "Index (an empty one)"
-    kind: str = "flat"
-
-    def __call__(self, like: Value, /) -> Index: ...
-
-
 # ═══ Order: Holes × Prediction → Holes ════════════════════════════════════════════════════════════
 
 
@@ -2034,23 +1713,6 @@ class KNN(Search[Prediction, [Value, Value]]):
 
 
 @dataclass(frozen=True)
-class Residual(Wrap[nn.Module]):
-    """h + f(norm h): the layer edits the stream instead of replacing it."""
-    title = "Residual connections"
-    side = "model"
-
-    def __call__(self, f: nn.Module, /) -> nn.Module: ...
-
-
-@dataclass(frozen=True)
-class FrozenCopy(Wrap[nn.Module]):
-    """A copy that no longer trains: DPO's and RLHF's reference, DQN's target network."""
-    title = "Frozen copy (reference / target network)"
-
-    def __call__[M: nn.Module](self, model: M, /) -> M: ...
-
-
-@dataclass(frozen=True)
 class Observe(Wrap[nn.Module, [nn.Module]]):
     """A model that returns what one of its modules computed: the activations probes, SAEs and circuits study."""
     title = "Reading activations"
@@ -2091,8 +1753,392 @@ class Compile(Wrap[nn.Module]):
 
 
 # ══════════════════════════════════════════════════════════════════════════════════════════════════
-# STATEMENTS · on a dataset, or changing something in place (!)
+# STATEMENTS · making new state, changing it in place (!), or reading a whole dataset
 # ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+# ═══ MapLayer[A, B, **R = []]: builds C[a] → C[b] ═════════════════════════════════════════════════
+
+
+@dataclass(frozen=True)
+class Network(MapLayer[Container, Prediction, [Container, Container]]):
+    """embed → position → [aggregate, MLP] × depth → pool → readout, each slot chosen from the input and target types
+    (EmbedFor, AggregateFor, PoolFor, ReadoutFor); mixer and mlp replace a slot's choice with a config (a scan,
+    experts). Calling it builds the network for inputs like x and targets like y."""
+    title = "Network (each layer chosen by the types)"
+    d: int = 64
+    depth: int = 2
+    mixer: AggregateLayer[Any] | None = None
+    mlp: MapLayer[Any, Any] | None = None
+
+    def __call__(self, x: Container, y: Container, /) -> Predictor: ...
+
+
+@dataclass(frozen=True)
+class Encoder(MapLayer[Container, Value, [Container]]):
+    """A network from any container to one vector per example: the towers of CLIP, a reward model, a critic."""
+    title = "Embedding models (a container to one vector)"
+    dim: int
+
+    def __call__(self, x: Container, /) -> Model[Container, Value]: ...
+
+
+@dataclass(frozen=True)
+class EmbedFor(MapLayer[Container, Container, [Container]]):
+    """By what the elements hold: classes → a row of a lookup table (one more for [MASK]); real values → a linear map."""
+    title = "Embeddings"
+    d: int
+
+    def __call__(self, x: Container, /) -> Model[Container, Container]: ...
+
+
+@dataclass(frozen=True)
+class ReadoutFor(MapLayer[Container, Container, [Container]]):
+    """By what the target holds: a logit per class, a value per real number, one readout per field of a record."""
+    title = "Readout"
+    d: int
+
+    def __call__(self, y: Container, /) -> Model[Container, Container]: ...
+
+
+@dataclass(frozen=True)
+class LearnedPositions(MapLayer[Container, Container, [Container]]):
+    """A learned vector added at each position of a Seq, a Grid or a Product; a Set, a Graph or a Tree gets none."""
+    title = "Positional encoding: learned"
+    d: int
+
+    def __call__(self, x: Container, /) -> Model[Container, Container]: ...
+
+
+@dataclass(frozen=True)
+class SinusoidalPositions(MapLayer[Container, Container, [Container]]):
+    """Fixed sin/cos features of each position at geometrically spaced frequencies, added."""
+    title = "Positional encoding: sinusoidal"
+    d: int
+
+    def __call__(self, x: Container, /) -> Model[Container, Container]: ...
+
+
+@dataclass(frozen=True)
+class MoE(MapLayer[Container, Container]):
+    """A router sends each element to its top-k experts (MLPs) and sums their gate-weighted outputs."""
+    title = "Mixture of experts"
+    d: int
+    experts: int = 8
+    k: int = 2
+
+    def __call__(self) -> Model[Container, Container]: ...
+
+
+@dataclass(frozen=True)
+class Autoencoder(MapLayer[Container, Container, [Container]]):
+    """encode to a smaller container (fewer positions, few channels), decode back: the latent must keep what matters,
+    and generation can happen there (latent diffusion). Its .encode and .decode are the two halves."""
+    title = "Latent space / bottleneck"
+    latent: int
+
+    def __call__(self, x: Container, /) -> Model[Container, Container]: ...
+
+
+@dataclass(frozen=True)
+class SparseAutoencoder(MapLayer[Container, Container]):
+    """Activations → a wide, sparse code → activations, trained by reconstruction plus an L1 penalty: each code unit
+    tends to be one feature."""
+    title = "Sparse autoencoders (superposition)"
+    d: int
+    features: int
+
+    def __call__(self) -> Model[Container, Container]: ...
+
+
+@dataclass(frozen=True)
+class LinearProbe(MapLayer[Value, Value, [Value, Value]]):
+    """A linear readout for frozen activations, sized by examples of them and their labels; fitted by a statement
+    (LeastSquares, Train). Is a feature readable along one direction?"""
+    title = "Linear probes (features as directions)"
+
+    def __call__(self, acts: Value, labels: Value, /) -> Model[Value, Value]: ...
+
+
+@dataclass(frozen=True)
+class MLP(MapLayer[Container, Container]):
+    """The same small network on every element."""
+    title = "Linear layer + nonlinearity (MLP)"
+    function, signature = "nn.Linear, nn.GELU, nn.Sequential", "C[h] → C[h]"
+
+
+@dataclass(frozen=True)
+class SwiGLU(MapLayer[Container, Container]):
+    """silu(gate(h)) · up(h), then down: one branch decides how much of the other passes."""
+    title = "Gating (SwiGLU)"
+    function, signature = "nn.SiLU", "C[h] → C[h]"
+
+
+@dataclass(frozen=True)
+class Normalization(MapLayer[Container, Container]):
+    """Rescale each element's features (BatchNorm aggregates over the batch instead)."""
+    title = "Normalization"
+    function, signature = "nn.RMSNorm, nn.LayerNorm", "C[h] → C[h]"
+
+
+@dataclass(frozen=True)
+class Dropout(MapLayer[Container, Container]):
+    """Zero random features while training."""
+    title = "Dropout"
+    function, signature = "nn.Dropout", "C[h] → C[h]"
+
+
+@dataclass(frozen=True)
+class Linear(MapLayer[Value, Prediction, [Value, Container]]):
+    """A linear model Wx + b on feature vectors, sized by examples of its inputs and targets: linear regression when
+    the target is real values (Loss picks squared error), logistic or softmax regression when it is classes
+    (cross-entropy), a linear SVM with Hinge. Fitted by Train (a gradient), or LeastSquares (closed form)."""
+    title = "Linear models (linear and logistic regression)"
+    bias: bool = True
+
+    def __call__(self, x: Value, y: Container, /) -> Model[Value, Prediction]: ...
+
+
+@dataclass(frozen=True)
+class KernelFeatures(MapLayer[Value, Value, [Value]]):
+    """Random Fourier features of a shift-invariant kernel (RBF by default): a Linear on them is a kernel machine, so
+    kernel ridge regression is LeastSquares on it and a kernel SVM is Hinge on it."""
+    title = "Kernel methods (random features)"
+    features: int = 1024
+    bandwidth: float = 1.0
+
+    def __call__(self, x: Value, /) -> Model[Value, Value]: ...
+
+
+@dataclass(frozen=True)
+class Trees(MapLayer[Value, Prediction, [Value, Container]]):
+    """An ensemble of decision trees on feature vectors, empty until GrowTrees grows it: one tree (CART), a random
+    forest (bagged, their predictions averaged) or gradient boosting (each tree fitted to the errors of the ones
+    before it). What the target holds picks classification or regression, as for every model."""
+    title = "Decision trees, random forests, gradient boosting"
+    kind: str = "boosting"
+    n: int = 100
+    depth: int = 6
+
+    def __call__(self, x: Value, y: Container, /) -> Model[Value, Prediction]: ...
+
+
+@dataclass(frozen=True)
+class Centroids(MapLayer[Value, Value, [Value]]):
+    """k centroids in the inputs' space, each input mapped to the nearest (its cluster); fitted by KMeans."""
+    title = "Clustering (k centroids)"
+    k: int
+
+    def __call__(self, x: Value, /) -> Model[Value, Value]: ...
+
+
+@dataclass(frozen=True)
+class Projection(MapLayer[Value, Value, [Value]]):
+    """A linear map onto dim directions: the principal components once PCA has fitted it, a random projection before."""
+    title = "Dimensionality reduction (a linear projection)"
+    dim: int
+
+    def __call__(self, x: Value, /) -> Model[Value, Value]: ...
+
+
+@dataclass(frozen=True)
+class Mixture(MapLayer[Value, Dist, [Value]]):
+    """k weighted components (Gaussians by default) in the inputs' space: a density, and soft clusters by
+    responsibility; fitted by EM. One component per class, fitted to that class's examples, is a generative
+    classifier (naive Bayes, LDA)."""
+    title = "Mixture models (GMM)"
+    k: int
+
+    def __call__(self, x: Value, /) -> Model[Value, Dist]: ...
+
+
+@dataclass(frozen=True)
+class Residual(MapLayer[Container, Container, [nn.Module]]):
+    """h + f(norm h): the layer edits the stream instead of replacing it."""
+    title = "Residual connections"
+    side = "model"
+
+    def __call__(self, f: nn.Module, /) -> Model[Container, Container]: ...
+
+
+# ═══ AggregateLayer[C, In = C, **R = []]: builds C[h] → C[h] ══════════════════════════════════════
+
+
+@dataclass(frozen=True)
+class AggregateFor(AggregateLayer[Container, Container, [Container]]):
+    """What each element reads, from the container: Graph, Tree → message passing · Product → axial · causal Seq →
+    causal attention (a selective scan when long) · large Grid → convolution · else attention over all."""
+    title = "Choosing the aggregation from the container"
+    d: int
+
+    def __call__(self, x: Container, /) -> Model[Container, Container]: ...
+
+
+@dataclass(frozen=True)
+class Attention(AggregateLayer[Container]):
+    """Each element reads every other (or every earlier one), weighted by query·key similarity."""
+    title = "Attention (self, causal)"
+    d: int
+    causal: bool = False
+
+    def __call__(self) -> Model[Container, Container]: ...
+
+
+@dataclass(frozen=True)
+class CrossAttention(AggregateLayer[Container, tuple[Container, Container]]):
+    """Queries from one container, keys and values from another (text reading an image)."""
+    title = "Cross-attention"
+    d: int
+
+    def __call__(self) -> Model[tuple[Container, Container], Container]: ...
+
+
+@dataclass(frozen=True)
+class Conv(AggregateLayer[Grid]):
+    """Each element reads its neighbours on the lattice, with the same weights at every offset."""
+    title = "Convolution"
+    d: int
+    size: int = 3
+
+    def __call__(self) -> Model[Grid, Grid]: ...
+
+
+@dataclass(frozen=True)
+class Recurrence(AggregateLayer[Seq]):
+    """Each element reads a state carried from the earlier ones, updated by a gated nonlinear function."""
+    title = "Recurrence (RNN / LSTM / GRU)"
+    state = "a hidden vector, carried along the sequence"
+    d: int
+
+    def __call__(self) -> Model[Seq, Seq]: ...
+
+
+@dataclass(frozen=True)
+class SelectiveScan(AggregateLayer[Seq]):
+    """A linear recurrence whose coefficients come from the input (S4, Mamba, linear attention): every earlier element
+    read, in linear time."""
+    title = "State-space models / linear recurrences"
+    state = "s_t = a_t·s_{t−1} + b_t, run as a parallel scan"
+    d: int
+
+    def __call__(self) -> Model[Seq, Seq]: ...
+
+
+@dataclass(frozen=True)
+class MessagePassing(AggregateLayer[Graph]):
+    """Each node reads its own features and the mean along its incoming edges; in a tree, children pass up to parents."""
+    title = "Message passing (GNN)"
+    d: int
+
+    def __call__(self) -> Model[Graph, Graph]: ...
+
+
+@dataclass(frozen=True)
+class Axial(AggregateLayer[Product]):
+    """One aggregation per factor of a product (frames, then pixels), the other factors as batch; summed."""
+    title = "Axial (products of structures)"
+    d: int
+    parts: tuple[str, ...] = ('Seq', 'Grid')
+
+    def __call__(self) -> Model[Product, Product]: ...
+
+
+@dataclass(frozen=True)
+class UNet(AggregateLayer[Grid]):
+    """Down to a coarse grid and back up, with skip connections: each element reads a wide neighbourhood."""
+    title = "Encoder–decoder hierarchy (U-Net)"
+    d: int
+    levels: int = 2
+
+    def __call__(self) -> Model[Grid, Grid]: ...
+
+
+@dataclass(frozen=True)
+class Retrieval(AggregateLayer[Container, tuple[Container, Index]]):
+    """Each element reads the k nearest entries of an external memory (an Index), softmax-weighted."""
+    title = "Retrieval (attention over a memory)"
+    k: int
+
+    def __call__(self) -> Model[tuple[Container, Index], Container]: ...
+
+
+# ═══ FoldLayer[C, A, **R = []]: builds C[a] → a ═══════════════════════════════════════════════════
+
+
+@dataclass(frozen=True)
+class PoolFor(FoldLayer[Container, Value, [Container]]):
+    """A container's features → one vector per example: a causal Seq keeps its last position, the one that read
+    everything; anything else, the mean."""
+    title = "Pooling (mean / last position)"
+
+    def __call__(self, x: Container, /) -> Model[Container, Value]: ...
+
+
+# ═══ Encode[A, B, **R = []]: builds A ⇄ C[classes] ════════════════════════════════════════════════
+
+
+@dataclass(frozen=True)
+class Tokenizer(Encode[list[str], Seq]):
+    """Text ⇄ a sequence of ids, built empty: BPE merges, fitted to a corpus by FitCodec (bytes alone: a fixed
+    vocabulary of 256, nothing to fit). The tokenizer decides the content type: Seq of classes(vocab)."""
+    title = "Tokenization (BPE, SentencePiece, bytes)"
+    kind: str = "bpe"
+    vocab: int = 32000
+
+    def __call__(self) -> Codec[list[str], Seq]: ...
+
+
+@dataclass(frozen=True)
+class ImageTokenizer(Encode[Grid, Grid, [Grid]]):
+    """An image ⇄ a coarser grid of codebook ids: an encoder, vector quantization, a decoder, trained to reconstruct."""
+    title = "Image tokenizer (VQ-VAE, VQGAN)"
+    codes: int = 1024
+
+    def __call__(self, images: Grid, /) -> Codec[Grid, Grid]: ...
+
+
+@dataclass(frozen=True)
+class AudioCodec(Encode[Seq, Product, [Seq]]):
+    """A waveform ⇄ frames × codebooks of ids: each codebook quantizes what the previous ones left (residual VQ)."""
+    title = "Audio codec (EnCodec, residual quantization)"
+    codebooks: int = 8
+    codes: int = 1024
+
+    def __call__(self, audio: Seq, /) -> Codec[Seq, Product]: ...
+
+
+# ═══ Empty[S, **R = []]: … → Index | Buffer ═══════════════════════════════════════════════════════
+
+
+@dataclass(frozen=True)
+class EmptyIndex(Empty[Index, [Value]]):
+    """An empty index for vectors like these (their size): flat (exact), IVF (clusters), HNSW (a neighbour graph), PQ
+    (compressed codes), LSH (hash buckets), inverted (BM25), sum tree (by priority). Statements train and fill it."""
+    title = "Index (an empty one)"
+    kind: str = "flat"
+
+    def __call__(self, like: Value, /) -> Index: ...
+
+
+@dataclass(frozen=True)
+class ReplayBuffer(Empty[Buffer[Any]]):
+    """An empty buffer of at most size examples, read by sampling (uniformly, or by priority); Extend fills it."""
+    title = "Replay buffer (empty)"
+    size: int
+    priority: bool = False
+
+    def __call__(self) -> Buffer[Any]: ...
+
+
+# ═══ Copy[M]: Module → Module ═════════════════════════════════════════════════════════════════════
+
+
+@dataclass(frozen=True)
+class FrozenCopy(Copy[nn.Module]):
+    """A copy that no longer trains: DPO's and RLHF's reference, DQN's target network."""
+    title = "Frozen copy (reference / target network)"
+
+    def __call__[M: nn.Module](self, model: M, /) -> M: ...
+
 
 # ═══ Fit[X, **R = []]: X! × Dataset ═══════════════════════════════════════════════════════════════
 
@@ -2346,16 +2392,6 @@ class Collector(Source[Dataset[Path], [Environment, Predictor]]):
     batch: int
 
     def __call__(self, env: Environment, policy: Predictor, /) -> Dataset[Path]: ...
-
-
-@dataclass(frozen=True)
-class ReplayBuffer(Source[Buffer[Any]]):
-    """An empty buffer of at most size examples, read by sampling (uniformly, or by priority); Extend fills it."""
-    title = "Replay buffer (empty)"
-    size: int
-    priority: bool = False
-
-    def __call__(self) -> Buffer[Any]: ...
 
 
 @dataclass(frozen=True)
