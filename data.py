@@ -1,8 +1,9 @@
 """
-data.py: the types. Data is a container of tensors. The state of a method is a partial container: the part
-known so far, and how to get the rest.
+data.py: the types. A batch is a container of tensors, in memory; a dataset is batches to read, one at a time.
+Expressions take batches, statements take datasets. The state of a method is a partial container: the part known
+so far, and how to get the rest.
 
-Containers: N examples side by side, data [N, *positions, *value]
+Containers: a batch in memory, N examples side by side, data [N, *positions, *value]
   Value          one element per example: a label, a score
   Seq(causal)    elements in order: text, frames, time steps (causal: each reads only the earlier ones)
   Set            elements in no order: objects, points, the examples of a batch
@@ -17,7 +18,8 @@ Partial containers: what is known so far, and how to get the rest
   PartialSeq[S]      a list known by where it is and the step to the next: the state of any loop
   PartialTree[N, E]  a tree known by the part expanded so far (a Tree) and how it branches (options, follow)
   Dist               a set known by how to draw from it: a prediction, a policy, a generator, a search distribution
-  Index              a set known by how to look things up in it: the k nearest to a query (FAISS, BM25, LSH)
+  Index              a set known by how to look things up in it: the k nearest to a query (FAISS, BM25, LSH);
+                     built and filled by statements (CREATE INDEX, INSERT), searched by expressions
 
 Results
   Path[N, E]         one walk down a PartialTree: a Seq of steps
@@ -28,13 +30,17 @@ Signatures
   Weights            a module whose architecture stays: an op on it changes only parameter values (a subtype)
   Codec[A, B]        encode A → B and decode back, B usually classes from a vocabulary: a tokenizer
   Step[S]            S → S, the step of a PartialSeq: a chooser of a walk, a schedule of a fill, an update
-  Scan[X, S, Y]      a state carried along a stream: (S, X) → (S, Y): an optimizer, a running average, a buffer
+  Scan[X, S, Y]      a state carried along a sequence: (S, X) → (S, Y): an optimizer, a running average, a buffer
+
+Datasets: read by statements, never by expressions
+  Dataset[C]         batches of type C, one pass per iter(): a DataLoader, a collector, files on disk
+  Buffer[C]          a dataset that statements write to as well (extend): a replay buffer
   Environment        reset, and step a state by an action: a simulator, a game
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field, replace
 from typing import Any, ClassVar, NamedTuple, Protocol, Self
 
@@ -270,8 +276,8 @@ class Codec[A, B](Protocol):
 
 
 class Scan[X, S, Y](Protocol):
-    """A state carried along a stream of inputs: init() → S, then step(S, x) → (S, y) for each x. Optimizers (the
-    moments), running averages, replay buffers, KV caches, recurrences and training itself are scans."""
+    """A state carried along a sequence of inputs: init() → S, then step(S, x) → (S, y) for each x. Optimizers (the
+    moments), running averages, replay buffers, KV caches and recurrences are scans."""
 
     def init(self) -> S: ...
 
@@ -290,11 +296,32 @@ class Environment(Protocol):
 class Index(Protocol):
     """A Set organized for lookup: the k nearest elements to each query, with their scores. How it is organized is the
     implementation: flat (exact), IVF (clusters), HNSW (a graph), PQ (compressed codes), LSH (hash buckets), an
-    inverted index (BM25 over tokens), a sum tree (lookup by priority). It grows with add."""
+    inverted index (BM25 over tokens), a sum tree (lookup by priority). Statements change it in place: train
+    learns its structure from a sample (IVF centroids, PQ codebooks), add and remove change what it holds; search
+    only reads it."""
 
-    def add(self, items: Set, /) -> Index: ...
+    def train(self, sample: Value, /) -> None: ...
+
+    def add(self, items: Set, /) -> None: ...
+
+    def remove(self, ids: Tensor, /) -> None: ...
 
     def search(self, queries: Value, k: int, /) -> tuple[Set, Tensor]: ...
+
+
+class Dataset[C](Protocol):
+    """Batches of type C to read, a fresh pass per iter() (a DataLoader, a collector, files on disk), never a
+    single-use iterator. Only statements read a dataset, as only a SQL statement's FROM scans a table; the
+    expressions inside see one batch (a Container) at a time."""
+
+    def __iter__(self) -> Iterator[C]: ...
+
+
+class Buffer[C](Dataset[C], Protocol):
+    """A dataset that statements write to as well: extend adds a batch, bounded by size (a replay buffer). Reading
+    it samples (uniformly, by priority, the latest)."""
+
+    def extend(self, batch: C, /) -> None: ...
 
 
 type Predictor = Model[Any, Prediction]

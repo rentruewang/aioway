@@ -1,10 +1,10 @@
 """
-catalog.py: every method in the original list, as a typed signature over the types of data.py. Two frameworks, as a
-database splits them: functional methods build values and change nothing (queries); imperative ones are statements
-that change a model in place and return None (writes). The interface only: bodies are left to the implementation
-(torch, torchrl, your own).
+catalog.py: every method in the original list, as a typed signature over the types of data.py. Two kinds, as a
+database splits them. Expressions take batches (a Container, in memory), build values and change nothing: queries.
+Statements take datasets, or change something in place: writes, and the blocking work that needs every batch. The
+interface only: bodies are left to the implementation (torch, torchrl, your own).
 
-FUNCTIONAL · values → values
+EXPRESSIONS · on a batch, nothing changes
   structure   encode     A ⇄ C[classes]        write raw data in a vocabulary and read it back (a codec)
               convert    C[a] → C′[a]          change the container, keep what the elements are
               map        C[a] → C[b]           change each element on its own, keep the container
@@ -16,31 +16,37 @@ FUNCTIONAL · values → values
               score      Prediction × C → ℝ    how bad a prediction is: every loss, every surrogate objective
   partial     fill       Holes[C] → C          fill the holes: generation is split undone; state Holes[C]
               walk       PartialTree → Path    grow the known part of a tree, then read a path; state PartialTree
-              unroll     PartialSeq[S] → S     step any state: search distributions, rounds of a method
+              unroll     PartialSeq[S] → S     step any state: search distributions
               reshape    Partial → Partial     change how a partial container goes on: its options, its model
   lookup      search     Index × Value → Set   the k nearest elements of an indexed set to each query
   models      wrap       Module → Module′      a new model around an old one, which stays as it was
 
-IMPERATIVE · statements: a model (marked !) changes in place, nothing is returned
-  update      fit        Module! × loss × C…   descend a loss: the parameters move along their gradients
-              assign     Weights!              set parameter values directly: copied in, or initialized
+STATEMENTS · on a dataset, or changing something in place (!)
+  update      fit        X! × Dataset          fit something to a dataset: a model by a loss, a codec by its rule
+              assign     Weights!              set parameter values directly: copied in, initialized, averaged
               alter      Module!               change what the parameters are: add, freeze, quantize, shard
+  store       index      Index! × …            learn an index's structure, insert into it, delete from it
+              buffer     Buffer! × C           add a batch to a buffer that is read as a dataset
+  dataset     source     … → Dataset           where batches come from: memory, an environment, an expr per batch
+              curate     Dataset → Dataset     keep, drop or reorder examples looking at all of them (blocking)
+              reduce     Dataset → a           one value from a whole dataset: a metric, a statistic, a batch
 
-A statement is never a value inside an expression: in a script (program.py) it is a line of its own, as a write
-in SQL sits at the top of a statement and never inside a query. Weights is the subtype of Module whose
-architecture an op leaves alone (assign, quantize, EMA).
+A statement is never a value inside an expression: in a script (program.py) it is a line of its own, and its
+arguments are expressions or other dataset statements, as a SQL write or CREATE INDEX sits at the top of a
+statement and a FROM may nest. Update and store statements change their argument marked ! and return None; dataset
+statements are pure but read every batch. Weights is the subtype of Module whose architecture an op leaves alone.
 
 A method that carries a state says so in its type: Step[S] is one step of a PartialSeq over S (a chooser is a
-Step[PartialTree], a schedule a Step[Holes]); Scan[X, S, Y] carries S along a stream (an optimizer carries the
-moments). The state column of the printed catalog names it, and what the method keeps there.
+Step[PartialTree], a schedule a Step[Holes]); Scan[X, S, Y] carries S along a sequence (an optimizer carries the
+moments: fit runs it across steps). The state column of the printed catalog names it, and what the method keeps there.
 
 Each entry is model-agnostic (any model is an opaque function to it, or it uses none) or model-dependent (it is
 a layer, or it opens a model up). Phenomena are observed rather than computed; the meta-primitives are
 properties of the groups; the well-known works are programs of entries (program.py).
 
-@method(group, name, state=...) registers a functional stub defined here, @statement(group, name, changes=i) an
-imperative one (i: the argument it changes): the signature comes from the annotations, the explanation from the
-docstring. alias(...) registers one that torch already has.
+@method(group, name, state=...) registers an expression stub defined here, @statement(group, name, changes=i) a
+statement (i: the argument it changes in place, None for a dataset statement): the signature comes from the
+annotations, the explanation from the docstring. alias(...) registers one that torch already has.
 
     python catalog.py             prints the catalog, one line per method
     python catalog.py --explain   with what each one does
@@ -58,8 +64,8 @@ import torch
 from torch import Tensor, nn
 
 from data import (
-    Chooser, Codec, Container, Dist, Environment, Example, Graph, Grid, Holes, Index, Model, Predictor, PartialSeq, PartialTree, Path, Prediction, Product, Scan, Schedule, Seq,
-    Set, Split, Step, Value, Weights,
+    Buffer, Chooser, Codec, Container, Dataset, Dist, Environment, Example, Graph, Grid, Holes, Index, Model, Predictor, PartialSeq, PartialTree, Path,
+    Prediction, Product, Scan, Schedule, Seq, Set, Split, Step, Value, Weights,
 )
 
 # ═══ Registry ═════════════════════════════════════════════════════════════════════════════════════
@@ -90,17 +96,23 @@ GROUPS: dict[str, Group] = {g.name: g for g in (
     Group("reshape", "partial", "Partial → Partial", "change how a partial container goes on: its options, its model", "agnostic"),
     Group("search", "lookup", "Index × Value → Set", "the k elements of an indexed set nearest each query", "agnostic"),
     Group("wrap", "models", "Module → Module′", "a new model around an old one, which stays as it was", "agnostic"),
-    Group("fit", "update", "Module! × loss × C…", "descend a loss: the parameters move along their gradients", "agnostic"),
-    Group("assign", "update", "Weights!", "set parameter values directly, without a gradient: copied in, or initialized", "agnostic"),
+    Group("fit", "update", "X! × Dataset", "fit something to a dataset: a model by a loss's gradient, a codec by its own rule", "agnostic"),
+    Group("assign", "update", "Weights!", "set parameter values directly, without a gradient: copied in, initialized, averaged", "agnostic"),
     Group("alter", "update", "Module!", "change what the parameters are: add some, freeze some, quantize, shard", "model"),
+    Group("index", "store", "Index! × …", "learn an index's structure from a sample, insert into it, delete from it", "agnostic"),
+    Group("buffer", "store", "Buffer! × C", "add a batch to a buffer, which statements read as a dataset", "agnostic"),
+    Group("source", "dataset", "… → Dataset", "where batches come from: memory, an environment, an expression applied to each batch", "agnostic"),
+    Group("curate", "dataset", "Dataset → Dataset", "keep, drop or reorder examples, looking at all of them (blocking)", "agnostic"),
+    Group("reduce", "dataset", "Dataset → a", "one value from a whole dataset: a metric over every batch, a statistic, one batch", "agnostic"),
 )}
 FAMILIES = {"structure": "STRUCTURE · data → data", "learning": "LEARNING · data → a training signal",
             "partial": "PARTIAL CONTAINERS · known in part, and how to get the rest",
             "lookup": "LOOKUP · a set known by how to search it", "models": "MODELS · model → a new model",
-            "update": "UPDATE · a model, changed in place"}
-FRAMEWORKS = {"functional": ("FUNCTIONAL · values → values, nothing changes", ["structure", "learning", "partial", "lookup", "models"]),
-              "imperative": ("IMPERATIVE · statements: a model (!) changes in place, nothing is returned", ["update"])}
-IMPERATIVE = {g.name for g in GROUPS.values() if g.family in FRAMEWORKS["imperative"][1]}
+            "update": "UPDATE · a model or a codec, changed in place", "store": "STORE · an index or a buffer, kept up to date",
+            "dataset": "DATASET · read every batch, change nothing"}
+FRAMEWORKS = {"expr": ("EXPRESSIONS · on a batch, nothing changes", ["structure", "learning", "partial", "lookup", "models"]),
+              "stmt": ("STATEMENTS · on a dataset, or changing something in place (!)", ["update", "store", "dataset"])}
+STATEMENTS = {g.name for g in GROUPS.values() if g.family in FRAMEWORKS["stmt"][1]}
 
 
 @dataclass(frozen=True)
@@ -113,7 +125,7 @@ class Entry:
     function: str       # a name defined here, or a dotted path (comma-separated)
     explanation: str
     obj: Any = None     # the stub, when defined here
-    changes: int | None = None  # a statement: which argument it changes in place
+    changes: int | None = None  # an update or store statement: which argument it changes in place
 
 
 ENTRIES: list[Entry] = []
@@ -150,7 +162,7 @@ def _short(annotation: str) -> str:
             out, i = out + COLLAPSE[m.group(1)], j
         else:
             out, i = out + s[i], i + 1
-    return re.sub(r"\bContainer\b", "C", out)
+    return re.sub(r"\bContainer\b", "C", out.replace("[Any]", ""))
 
 
 ALIASES = {"Chooser": "Step[PartialTree]"}
@@ -194,9 +206,11 @@ def _explanation(obj: Any) -> str:
 
 
 def method[T](group: str, name: str, *, state: str = "", side: str = "") -> Callable[[T], T]:
-    """Register a functional stub defined here. state says what the state keeps, when the type carries one."""
+    """Register an expression stub defined here. state says what the state keeps, when the type carries one."""
 
     def register(obj: T) -> T:
+        if group in STATEMENTS:
+            raise TypeError(f"{name}: {group} is a group of statements (@statement)")
         signature, state_type = _signature(obj)
         keeps = f"{state_type} — {state}" if state_type and state else state_type or state
         ENTRIES.append(Entry(group, name, signature, keeps, side or GROUPS[group].side, getattr(obj, "__name__", repr(obj)), _explanation(obj), obj))
@@ -205,12 +219,15 @@ def method[T](group: str, name: str, *, state: str = "", side: str = "") -> Call
     return register
 
 
-def statement[T](group: str, name: str, *, changes: int, side: str = "") -> Callable[[T], T]:
-    """Register an imperative stub defined here: it changes argument number changes in place and returns None."""
+def statement[T](group: str, name: str, *, changes: int | None = None, side: str = "") -> Callable[[T], T]:
+    """Register a statement stub defined here. An update or store statement changes argument number changes in
+    place and returns None; a dataset statement (changes=None) changes nothing and returns what it read."""
 
     def register(obj: T) -> T:
-        if _signature(obj)[0].rpartition(" → ")[2] != "None":
-            raise TypeError(f"{name}: a statement changes its argument in place and returns None")
+        if group not in STATEMENTS:
+            raise TypeError(f"{name}: {group} is a group of expressions (@method)")
+        if (changes is not None) != (_signature(obj)[0].rpartition(" → ")[2] == "None"):
+            raise TypeError(f"{name}: a statement that changes its argument returns None; one that changes nothing returns a value")
         ENTRIES.append(Entry(group, name, _signature(obj, changes)[0], "", side or GROUPS[group].side, getattr(obj, "__name__", repr(obj)),
                              _explanation(obj), obj, changes))
         return obj
@@ -225,9 +242,15 @@ def alias(group: str, name: str, function: str, explanation: str, signature: str
 
 
 def changes(f: Any) -> int | None:
-    """Which argument f changes in place, when f is a statement (None when it is functional)."""
+    """Which argument f changes in place, when it is an update or store statement (None otherwise)."""
     e = entry_of(f)
     return e.changes if e is not None else None
+
+
+def is_statement(f: Any) -> bool:
+    """Whether f is a statement: it reads a dataset, or changes something; either way, never inside an expression."""
+    e = entry_of(f)
+    return e is not None and e.group in STATEMENTS
 
 
 def phenomenon(name: str, explanation: str) -> None:
@@ -249,9 +272,9 @@ def entry_of(f: Any) -> Entry | None:
 
 
 @method("encode", "Tokenization (BPE, SentencePiece, bytes)")
-def tokenizer(corpus: list[str], *, vocab: int = 32_000) -> Codec[list[str], Seq]:
-    """Text ⇄ a sequence of ids: merges of frequent byte pairs, fitted to a corpus (bytes alone: a fixed vocabulary of
-    256). The tokenizer decides the content type: Seq of classes(vocab)."""
+def tokenizer(*, kind: str = "bpe", vocab: int = 32_000) -> Codec[list[str], Seq]:
+    """Text ⇄ a sequence of ids, built empty: BPE merges, fitted to a corpus by fit_codec (bytes alone: a fixed
+    vocabulary of 256, nothing to fit). The tokenizer decides the content type: Seq of classes(vocab)."""
     ...
 
 
@@ -321,12 +344,6 @@ def random_crop(x: Grid, *, padding: int = 2) -> Grid:
 def transitions(path: Path, returns: Seq | None = None) -> Value:
     """The steps of walked paths as a set of transitions (state, action, reward, next state, done, and the action's
     log-probability), their order dropped: what a replay buffer holds and RL losses read."""
-    ...
-
-
-@method("convert", "Minibatches")
-def batches(data: Container, *, size: int, steps: int) -> Seq:
-    """A dataset → a sequence of random minibatches: the stream training scans."""
     ...
 
 
@@ -559,38 +576,15 @@ def group_relative(rewards: Value, *, n: int) -> Value:
 
 
 @method("select", "Data filtering")
-def quality_filter(x: Container, scores: Value, *, keep: float = 0.5) -> Container:
-    """Keep the best-scoring fraction (a quality classifier, a perplexity, a verifier)."""
-    ...
-
-
-@method("select", "Data deduplication")
-def dedup(x: Container) -> Container:
-    """Keep one copy of each distinct example (exact, or near: MinHash)."""
-    ...
-
-
-@method("select", "Data mixture weights")
-def mix_sources(sources: list[Container], weights: list[float], *, n: int) -> Container:
-    """Draw from several sources in fixed proportions."""
-    ...
-
-
-@method("select", "Curriculum learning")
-def curriculum(x: Container, difficulty: Value) -> Container:
-    """Order the examples from easy to hard: training reads them in that order."""
+def quality_filter[C: Container](x: C, scores: Value, *, threshold: float) -> C:
+    """Keep the examples of a batch scoring above a threshold (a classifier's, a verifier's, a perplexity). Keeping
+    the best fraction needs every batch: keep_best."""
     ...
 
 
 @method("select", "Data augmentation: token dropout")
 def token_dropout(x: Seq, *, p: float = 0.1) -> Seq:
     """Drop a random fraction of the positions; the rest keep their order."""
-    ...
-
-
-@method("select", "Continual learning (replay)", state="a buffer: a Set of past examples, bounded")
-def replay(*, size: int, k: int) -> Scan[Container, Set, Container]:
-    """Each new batch, with k old examples from the buffer mixed in, so old tasks aren't forgotten."""
     ...
 
 
@@ -658,19 +652,14 @@ def scan(s: Scan[Any, Any, Any], xs: Seq) -> tuple[Any, Seq]:
 
 @method("scan", "Optimizers (SGD, momentum, Adam, Muon)", state="the moments of every parameter")
 def optimizer(kind: str = "adamw", *, lr: float = 3e-4) -> Scan[Tensor, Tensor, Tensor]:
-    """Gradients in, updates out: SGD carries nothing, momentum a velocity, Adam two moments, Muon orthogonalizes."""
+    """Gradients in, updates out: SGD carries nothing, momentum a velocity, Adam two moments, Muon orthogonalizes. A
+    value; fit carries its state from step to step."""
     ...
 
 
 @method("scan", "Learning-rate schedules", state="the step count")
 def warmup_cosine(*, warmup: int, total: int) -> Scan[int, int, float]:
     """A learning rate for each step: linear warmup, then cosine decay."""
-    ...
-
-
-@method("scan", "EMA of weights", state="the averaged weights")
-def ema(*, decay: float = 0.999) -> Scan[Weights, Weights, Weights]:
-    """A running average of the weights training produces: smoother, and the slow target of self-distillation and DQN."""
     ...
 
 
@@ -1072,19 +1061,14 @@ def unroll(seq: PartialSeq[Any], *, steps: int) -> list[Any]:
 
 
 alias("unroll", "Iteration (rounds of a program)", "repeat",
-      "rounds of collecting and learning (policy iteration, self-play, expert iteration): a script's repeat (program.py)")
+      "rounds of collecting and learning (policy iteration, self-play, expert iteration): a script's repeat (program.py), "
+      "since each round's fit is a statement")
 
 
 @method("unroll", "Evolution strategies (no gradient)", state="a search distribution over the parameters")
 def evolution_strategy(fitness: Callable[[Tensor], Tensor], *, population: int = 32) -> Step[Dist]:
     """Draw a population (a Set of parameters) from the search distribution, score them, move it toward the better
     ones: it works when nothing is differentiable (CMA-ES keeps a covariance too)."""
-    ...
-
-
-@method("unroll", "Two-player games (alternating steps)", state="both players' parameters")
-def alternate(*steps: Step[nn.Module]) -> Step[tuple[nn.Module, ...]]:
-    """No single quantity goes down: each player takes a step on its own loss in turn (GANs, adversarial training)."""
     ...
 
 
@@ -1170,10 +1154,10 @@ def droppable(model: Predictor, *, p: float = 0.1) -> Predictor:
 # ═══ search: Index × Value → Set ══════════════════════════════════════════════════════════════════
 
 
-@method("search", "Index (build)")
-def index(items: Set, *, kind: str = "flat") -> Index:
-    """Organize a set of vectors (or token sequences) for lookup: flat (exact), IVF (clusters), HNSW (a neighbour
-    graph), PQ (compressed codes), LSH (hash buckets), inverted (BM25), sum tree (by priority)."""
+@method("search", "Index (an empty one)")
+def index(like: Value, *, kind: str = "flat") -> Index:
+    """An empty index for vectors like these (their size): flat (exact), IVF (clusters), HNSW (a neighbour graph), PQ
+    (compressed codes), LSH (hash buckets), inverted (BM25), sum tree (by priority). Statements train and fill it."""
     ...
 
 
@@ -1192,12 +1176,6 @@ def retrieve(index: Index, documents: Set, query: Seq, embed: Predictor, *, k: i
 @method("search", "kNN-LM (a memory of contexts)")
 def knn_options(tree: PartialTree[Any, Any], memory: Index, embed: Predictor, *, weight: float = 0.25) -> PartialTree[Any, Any]:
     """Options mixed with the next tokens of the k nearest stored contexts: an LM that can look things up."""
-    ...
-
-
-@method("search", "Near-duplicate detection (MinHash / LSH)")
-def near_duplicates(items: Set, *, threshold: float = 0.8) -> Set:
-    """Examples whose LSH buckets collide above a similarity threshold: dedup beyond exact copies."""
     ...
 
 
@@ -1245,22 +1223,34 @@ def steer(model: nn.Module, at: nn.Module, direction: Tensor, *, alpha: float = 
 
 
 # ════════════════════════════════════════════════════════════════════════════════════════════════
-# IMPERATIVE · statements: a model (!) changes in place, nothing is returned
+# STATEMENTS · on a dataset, or changing something in place (!)
 # ════════════════════════════════════════════════════════════════════════════════════════════════
 
-# ═══ fit: Module! × loss × C… ═════════════════════════════════════════════════════════════════════
+# ═══ fit: X! × Dataset ════════════════════════════════════════════════════════════════════════════
 
 
 @statement("fit", "Training", changes=0)
-def train(model: nn.Module, objective: Callable[..., Tensor], *data: Container, steps: int, optimizer: str = "adamw",
+def train(model: nn.Module, objective: Callable[..., Tensor], data: Dataset[Any] | None, *, steps: int,
+          optimizer: str | Scan[Tensor, Any, Tensor] = "adamw", schedule: Scan[int, int, float] | None = None,
           max_grad_norm: float | None = 1.0, precision: torch.dtype | None = None) -> None:
-    """Descend the objective over minibatches of the data: each step, the objective (under autocast to precision),
-    its gradient (clipped to max_grad_norm), the optimizer's update of the parameters, in place. When the objective
-    walks for its own data (RL, self-play), each step collects as well."""
+    """Descend the objective over the dataset's batches: each step, objective(model, *batch) (under autocast to
+    precision), its gradient (clipped to max_grad_norm), the optimizer's update of the parameters, in place, at the
+    schedule's rate. In training mode only here, so a forward's own effects (BatchNorm statistics) are training's
+    too. With no data, the objective makes its own each step (it walks the model: RL, self-play)."""
     ...
 
 
 alias("fit", "Training step (clipping, mixed precision)", "train", "train's settings: autocast the objective, clip the gradient norm")
+alias("fit", "Two-player games (alternating fits)", "repeat, train",
+      "no single quantity goes down: each player's fit on its own loss, in turn, inside a repeat (GANs, adversarial training)")
+
+
+@statement("fit", "Codec fitting (BPE merges, a vocabulary)", changes=0)
+def fit_codec(codec: Codec[Any, Any], data: Dataset[Any]) -> None:
+    """Fit a codec to a corpus by its own rule, in place: BPE merges the most frequent pairs until the vocabulary is
+    full, a unigram model prunes. (A learned codec, VQ-VAE or EnCodec, is a model: train.)"""
+    ...
+
 
 # ═══ assign: Weights! ═════════════════════════════════════════════════════════════════════════════
 
@@ -1274,6 +1264,13 @@ def transfer(source: Weights, target: Weights) -> None:
 @statement("assign", "Initialization", changes=0)
 def init(model: Weights) -> None:
     """Fan-in normal for matrices, zeros for output projections: each residual block starts as the identity."""
+    ...
+
+
+@statement("assign", "EMA of weights", changes=0)
+def ema(average: Weights, model: Weights, *, decay: float = 0.999) -> None:
+    """average ← decay·average + (1 − decay)·model, in place: after each round or step, a smoother copy, and the slow
+    target of self-distillation and DQN."""
     ...
 
 
@@ -1314,6 +1311,124 @@ alias("alter", "Low precision: inference", "quantize", "int8 / int4 weights")
 alias("alter", "Parallelism", "torch.distributed",
       "data, sharded, tensor, pipeline, expert, sequence: fully_shard shards a module in place; DTensor places its weights", side="agnostic")
 
+# ═══ index: Index! × … ════════════════════════════════════════════════════════════════════════════
+
+
+@statement("index", "Index training (IVF centroids, PQ codebooks)", changes=0)
+def train_index(index: Index, sample: Value) -> None:
+    """Learn the index's structure from a sample of the vectors, in place: k-means centroids for IVF, codebooks for
+    PQ (flat and HNSW have nothing to learn). CREATE INDEX, before any rows."""
+    ...
+
+
+@statement("index", "Index insertion", changes=0)
+def insert(index: Index, data: Dataset[Set]) -> None:
+    """Add every batch of the dataset to the index, in place (FAISS add, INSERT). An index over an expression's output
+    (embed(x)) goes stale when that expression's model is trained again: build it again."""
+    ...
+
+
+@statement("index", "Index deletion", changes=0)
+def delete(index: Index, ids: Tensor) -> None:
+    """Remove elements from the index by id, in place (FAISS remove_ids, DELETE)."""
+    ...
+
+
+# ═══ buffer: Buffer! × C ══════════════════════════════════════════════════════════════════════════
+
+
+@statement("buffer", "Continual learning (replay)", changes=0)
+def extend[C: Container](buffer: Buffer[C], batch: C) -> None:
+    """Add a batch to a bounded buffer, in place, dropping the oldest (or the lowest priority): past experience to train
+    on again (continual learning, off-policy RL, prioritized replay)."""
+    ...
+
+
+# ═══ source: … → Dataset ══════════════════════════════════════════════════════════════════════════
+
+
+@statement("source", "Minibatches")
+def batches(*data: Container, size: int, shuffle: bool = True) -> Dataset[Any]:
+    """Containers in memory as a dataset: random minibatches of size examples, the containers sliced together (a
+    tuple per batch when there are several)."""
+    ...
+
+
+@statement("source", "Collector (walks of a live policy)")
+def collector(env: Environment, policy: Predictor, *, steps: int, batch: int) -> Dataset[Path]:
+    """Walks of the environment with the policy as it is when each batch is drawn: on-policy data, read inside the
+    fit that changes the policy (torchrl's collectors)."""
+    ...
+
+
+@statement("source", "Replay buffer (empty)")
+def replay_buffer(*, size: int, priority: bool = False) -> Buffer[Any]:
+    """An empty buffer of at most size examples, read by sampling (uniformly, or by priority); extend fills it."""
+    ...
+
+
+@statement("source", "Data mixture weights")
+def mix(*datasets: Dataset[Any], weights: list[float]) -> Dataset[Any]:
+    """Batches drawn from several datasets in proportion to their weights (web, code, books): the mixture as a dataset."""
+    ...
+
+
+@statement("source", "An expression on each batch")
+def each(f: Callable[..., Any], data: Dataset[Any]) -> Dataset[Any]:
+    """f applied to every batch, once per batch as the dataset batches it (never re-batched, since f may depend on
+    what a batch holds): how a statement reads an expression's output, embeddings to index, features to probe."""
+    ...
+
+
+# ═══ curate: Dataset → Dataset ════════════════════════════════════════════════════════════════════
+
+
+@statement("curate", "Data deduplication")
+def dedup[C: Container](data: Dataset[C]) -> Dataset[C]:
+    """Drop exact copies across the whole dataset (by hash): the first of each kept."""
+    ...
+
+
+@statement("curate", "Near-duplicate removal (MinHash / LSH)")
+def drop_near_duplicates[C: Container](data: Dataset[C], *, threshold: float = 0.8) -> Dataset[C]:
+    """Drop examples whose MinHash signatures collide with an earlier one's above a similarity threshold: dedup beyond
+    exact copies."""
+    ...
+
+
+@statement("curate", "Data filtering by fraction")
+def keep_best[C: Container](data: Dataset[C], score: Callable[[C], Value], *, keep: float = 0.5) -> Dataset[C]:
+    """The best-scoring fraction of the whole dataset: a quantile of every score first, then a threshold per batch."""
+    ...
+
+
+@statement("curate", "Curriculum learning")
+def curriculum[C: Container](data: Dataset[C], difficulty: Callable[[C], Value]) -> Dataset[C]:
+    """The dataset sorted by difficulty, easy first: a global sort, so it reads every batch before the first comes out."""
+    ...
+
+
+# ═══ reduce: Dataset → a ══════════════════════════════════════════════════════════════════════════
+
+
+@statement("reduce", "Evaluation (a metric over a dataset)")
+def evaluate(metric: Callable[..., Tensor], data: Dataset[Any]) -> Tensor:
+    """A per-batch metric (accuracy, a loss, perplexity), averaged over every batch, weighted by their sizes."""
+    ...
+
+
+@statement("reduce", "Accumulate (a scan across batches)")
+def accumulate(s: Scan[Any, Any, Any], data: Dataset[Any]) -> Any:
+    """A Scan's state carried across a dataset's batches, its final state returned: normalization statistics, a
+    histogram, any metric that is not a mean."""
+    ...
+
+
+@statement("reduce", "First batch")
+def peek[C](data: Dataset[C]) -> C:
+    """The first batch of a dataset: what an expression can see of it, its type, to build a network or an index for."""
+    ...
+
 
 # ═══ Phenomena: observed, not computed ════════════════════════════════════════════════════════════
 
@@ -1338,8 +1453,8 @@ meta("Structure decides the computation", "aggregate", "the container picks what
 
 # ═══ Printing ═════════════════════════════════════════════════════════════════════════════════════
 
-NEW = {"Tokenization (BPE, SentencePiece, bytes)", "Image tokenizer (VQ-VAE, VQGAN)", "Audio codec (EnCodec, residual quantization)", "Encode", "Decode", "Index (build)", "Nearest-neighbour search", "Retrieval-augmented generation (retrieve)", "kNN-LM (a memory of contexts)",
-       "Near-duplicate detection (MinHash / LSH)", "Hard-negative mining", "Fill", "Autoregressive order", "Unmasking (MaskGIT, masked diffusion)", "Sampling a flow (diffusion)", "Diffusion forcing",
+NEW = {"Tokenization (BPE, SentencePiece, bytes)", "Image tokenizer (VQ-VAE, VQGAN)", "Audio codec (EnCodec, residual quantization)", "Encode", "Decode", "Index (an empty one)", "Index training (IVF centroids, PQ codebooks)", "Index insertion", "Index deletion", "Codec fitting (BPE merges, a vocabulary)", "Collector (walks of a live policy)", "Replay buffer (empty)", "An expression on each batch", "Data filtering by fraction", "Evaluation (a metric over a dataset)", "Accumulate (a scan across batches)", "First batch", "Nearest-neighbour search", "Retrieval-augmented generation (retrieve)", "kNN-LM (a memory of contexts)",
+       "Near-duplicate removal (MinHash / LSH)", "Hard-negative mining", "Fill", "Autoregressive order", "Unmasking (MaskGIT, masked diffusion)", "Sampling a flow (diffusion)", "Diffusion forcing",
        "Diffusion forcing sampling", "Training", "Optimizers (SGD, momentum, Adam, Muon)", "KV caching", "A path from a tree",
        "Sampling", "Several paths per root (best-of-N, groups)", "Teacher forcing (walking the data's path)", "Supervised", "Scan", "Log-probability", "Retrieval accuracy", "Blank (where generation starts)", "A condition, fixed", "Objective (a split, then its loss)", "Minibatches",
        "Classifier-free guidance training", "Recurrence (RNN / LSTM / GRU)", "State-space models / linear recurrences", "Walk"}
@@ -1377,7 +1492,7 @@ def print_catalog(explain: bool = False) -> None:
         print(f"  - {bold(e.name)}" + (dim(f"\n      {e.explanation}") if explain else ""))
     rows = [e for e in ENTRIES if e.group in GROUPS]
     print(dim(f"\n{len(rows)} methods in {len(GROUPS)} groups, {sum(bool(e.state) for e in rows)} carrying a state · "
-              f"{sum(e.group in IMPERATIVE for e in rows)} of them statements · "
+              f"{sum(e.group in STATEMENTS for e in rows)} statements ({sum(e.changes is not None for e in rows)} changing their argument) · "
               f"{sum(e.side == 'agnostic' for e in rows)} model-agnostic, {sum(e.side == 'model' for e in rows)} model-dependent"))
 
 
