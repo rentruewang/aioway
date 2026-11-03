@@ -25,6 +25,9 @@ model, now changed. A statement evaluates its arguments first, then runs: data r
 snapshot for free; a model built on it (LMTree, Given, a reference) is the same model and sees the change, so one
 that must stay as it was (DPO's reference) is a FrozenCopy, let first.
 
+A program may leave a choice open with an intent (catalog.Intent): a config that stands for some method of a group,
+AugmentImage() where RandomFlip(p=0.5) could be. It prints with a ?, and resolve.py lowers it to a concrete method.
+
 A setting that is only known when the program runs (DPO's reference model) makes its config in the tree: calling a
 class makes one, call(DPOLoss, reference=reference, beta=0.1).
 
@@ -58,7 +61,7 @@ from catalog import (
     Imagined, Independent, InfoNCE, Insert, KeepBest, Labelled, LMTree, LogProb, LoRA, Loss, Mask, MCTS, Method, Mix, MoE, MostConfident,
     Network, Noise, Patchify, Peek, Planned, PPOClip, QTarget, QualityFilter, Reconstruction, Reinforce, ReplayBuffer, RetrievalAccuracy,
     Retrieve, ReturnsToGo, Sample, SearchTargets, SelectiveScan, Shift, Split, Temperature, Together, Train, TrainIndex, Transfer,
-    Transitions, Walk, changes, entry_of, is_statement, settings_of, short,
+    Transitions, Walk, changes, group_class, Intent, is_statement, settings_of, short,
 )
 from data import Container, Predictor, Seq
 
@@ -288,7 +291,10 @@ class Program:
         return [e for e in self.nodes() if match(e)]
 
     def rewrite(self, match: Callable[[Any], bool], change: Callable[[Any], Any]) -> Program:
-        return replace(self, output=_rewriter(match, change)(self.output))
+        """A new program with every matching node replaced by change(node); this one when nothing matched, so that
+        what holds it (a Train given it as its loss) is unchanged too."""
+        output = _rewriter(match, change)(self.output)
+        return self if output is self.output else replace(self, output=output)
 
     def check(self) -> list[str]:
         """An expression runs no statement anywhere in it, nor in the programs it uses."""
@@ -395,11 +401,22 @@ class Script:
     def rewrite(self, match: Callable[[Any], bool], change: Callable[[Any], Any]) -> Script:
         go = _rewriter(match, change)
 
-        def statements(body: tuple[Statement, ...]) -> tuple[Statement, ...]:
-            return tuple(Repeat(s.times, statements(s.body)) if isinstance(s, Repeat) else
-                         Let(s.name, go(s.value)) if isinstance(s, Let) else Update(s.name, go(s.call)) for s in body)
+        def statement(s: Statement) -> Statement:
+            if isinstance(s, Repeat):
+                body = statements(s.body)
+                return s if body is s.body else Repeat(s.times, body)
+            if isinstance(s, Let):
+                value = go(s.value)
+                return s if value is s.value else Let(s.name, value)
+            c = go(s.call)
+            return s if c is s.call else Update(s.name, c)
 
-        return replace(self, body=statements(self.body), output=go(self.output))
+        def statements(body: tuple[Statement, ...]) -> tuple[Statement, ...]:
+            new = tuple(map(statement, body))
+            return body if all(a is b for a, b in zip(new, body)) else new
+
+        body, output = statements(self.body), go(self.output)
+        return self if body is self.body and output is self.output else replace(self, body=body, output=output)
 
     def check(self) -> list[str]:
         """Statements only at the top of a line, a change only as an update of its own name; every name bound before
@@ -449,7 +466,9 @@ def _name(op: Any) -> str:
     if isinstance(op, Call):
         return _name(op.op)
     if isinstance(op, Method):
-        return type(op).__name__
+        return _name(type(op))
+    if isinstance(op, type) and issubclass(op, Intent):
+        return op.__name__ + "?"                     # an intent: some method of its group, not chosen yet
     return op.name if isinstance(op, (Program, Script)) else getattr(op, "__name__", repr(op))
 
 
@@ -457,6 +476,8 @@ def _short(v: Any) -> str:
     """A constant as an argument: a program by its name, a config as Beam(k=4), a function or a class by its name."""
     if isinstance(v, (Program, Script)):
         return v.name
+    if isinstance(v, Intent):
+        return _name(v)
     if isinstance(v, Method):
         return short(v)
     return getattr(v, "__name__", None) or repr(v)
@@ -533,8 +554,7 @@ def group_of(e: Call) -> str:
     op = e.op
     if isinstance(op, (Program, Script)) or op in BUILDERS:
         return "program"
-    entry = entry_of(op) if isinstance(op, type) and issubclass(op, Method) else None
-    return entry.group if entry is not None else "·"
+    return group_class(op).group if isinstance(op, type) and issubclass(op, Method) else "·"
 
 
 def groups(p: Program | Script) -> list[str]:
