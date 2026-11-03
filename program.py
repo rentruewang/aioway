@@ -15,8 +15,8 @@ A Script is the imperative part: an ordered list of statements over named values
     update(net, train, loss, data)      train(net!, loss, data)       changes net in place, returns None
     repeat(n, *statements)              the statements, n times
 
-An update (an entry marked !: train and the adapt group) changes its model in place and returns None, so it is a
-statement, never a value inside an expression, as a write in SQL sits at the top of a statement and never inside
+An update is one of the catalog's statements (its imperative part: fit, assign, alter). It changes its model (!)
+in place and returns None, so it is a line of its own, never a value inside an expression, as a write in SQL sits at the top of a statement and never inside
 a query. The name still names the same model, now changed. A statement evaluates its arguments first, then runs:
 data read from the model before is a snapshot for free; a model built on it (lm_tree, given, a reference) is the
 same model and sees the change, so one that must stay as it was (DPO's reference) is a frozen_copy, let first.
@@ -39,28 +39,29 @@ from __future__ import annotations
 
 import operator
 from collections.abc import Callable, Iterator
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from functools import partial
-from typing import Any
+from typing import Any, Self
 
 from torch import nn
 
 from catalog import (
-    accuracy, autoencoder, blank, discounted_return, dpo, droppable, dynamics, encoder, entry_of, env_tree, epsilon_greedy, fill, flatten,
+    accuracy, autoencoder, blank, changes, discounted_return, dpo, droppable, dynamics, encoder, entry_of, env_tree, epsilon_greedy, fill, flatten,
     freeze, frozen_copy, given, greedy, group_relative, guided, imagined, independent, index, info_nce, labelled, lm_tree, log_prob, lora,
     loss, mask, mcts, moe, most_confident, network, noise, patchify, planned, ppo_clip, q_target, quality_filter, reconstruction, reinforce,
     retrieval_accuracy, retrieve, returns_to_go, sample, search_targets, selective_scan, shift, temperature, together, train, transfer,
-    transitions, updates, walk,
+    transitions, walk,
 )
 from data import Container, Seq
 
 # ═══ Expressions ══════════════════════════════════════════════════════════════════════════════════
 
 
+@dataclass(frozen=True, eq=False)
 class Expr:
     """A node of an expression. .attr reaches into its value, calling it calls the value, .named gives it a label."""
 
-    label: str
+    label: str = field(default="", kw_only=True)
 
     def __getattr__(self, attr: str) -> Attr:
         if attr.startswith("__"):
@@ -70,8 +71,8 @@ class Expr:
     def __call__(self, *args: Any) -> Call:
         return Call(self, args)
 
-    def named(self, label: str) -> Any:
-        return replace(self, label=label)  # type: ignore[type-var]
+    def named(self, label: str) -> Self:
+        return replace(self, label=label)
 
 
 @dataclass(frozen=True, eq=False)
@@ -79,21 +80,18 @@ class Input(Expr):
     """A name: a program's input, or a script's variable."""
 
     name: str
-    label: str = ""
 
 
 @dataclass(frozen=True, eq=False)
 class Attr(Expr):
     base: Expr
     attr: str
-    label: str = ""
 
 
 @dataclass(frozen=True, eq=False)
 class Call(Expr):
     fn: Any            # an entry (settings bound by functools.partial), a program, or a node holding a model
     args: tuple[Any, ...]
-    label: str = ""
 
     @property
     def op(self) -> Any:
@@ -200,7 +198,7 @@ def _rewriter(match: Callable[[Any], bool], change: Callable[[Any], Any]) -> Cal
 def _updates_inside(where: str, roots: list[Any], allowed: Any = None) -> list[str]:
     """An update called inside an expression (other than the statement's own): the split, broken."""
     return [f"{where}: {_name(e.fn)} changes a model inside an expression; make it a statement (update)"
-            for e in _nodes(roots) if isinstance(e, Call) and e is not allowed and updates(e.op) is not None]
+            for e in _nodes(roots) if isinstance(e, Call) and e is not allowed and changes(e.op) is not None]
 
 
 def _sub_checks(roots: list[Any]) -> list[str]:
@@ -279,9 +277,9 @@ def let(name: Input, value: Any) -> Let:
 
 def update(name: Input, op: Any, *args: Any, **settings: Any) -> Update:
     """op(args) with name put where op takes the model it changes (train: first; transfer: the target)."""
-    i = updates(op)
+    i = changes(op)
     if i is None:
-        raise TypeError(f"{_name(op)} is pure; an update needs an entry that changes a model (train, adapt)")
+        raise TypeError(f"{_name(op)} is functional; an update needs a statement of the catalog (fit, assign, alter)")
     return Update(name, call(op, *args[:i], name, *args[i:], **settings))
 
 
@@ -351,7 +349,7 @@ class Script:
         for s in _flat(self.body):
             where = f"{self.name}: {s.name.name}"
             if isinstance(s, Update):
-                i = updates(s.call.op)
+                i = changes(s.call.op)
                 if i is None or i >= len(s.call.args) or s.call.args[i] is not s.name:
                     out.append(f"{where}: {_name(s.call.fn)} is not an update of {s.name.name}")
             out += _updates_inside(where, [_expr(s)], s.call if isinstance(s, Update) else None)
