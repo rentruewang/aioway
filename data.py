@@ -245,10 +245,14 @@ type Step[S] = Callable[[S], S]
 """S → S: the step of a PartialSeq. A chooser is a Step[PartialTree], a schedule a Step[Holes], an update a Step[θ]."""
 
 
-class Model[A, B](Protocol):
-    """A learned function from A to B: an nn.Module, called on containers (or on their tensors)."""
+class Model[A, B](nn.Module):
+    """A learned function from A to B: an nn.Module, called on containers (or on their tensors). Training changes
+    its parameters in place; everything else reads it."""
 
-    def __call__(self, x: A, /) -> B: ...
+    def forward(self, x: A, /) -> B: ...
+
+    def __call__(self, x: A, /) -> B:
+        return super().__call__(x)
 
 
 type Weights = nn.Module

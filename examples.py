@@ -54,17 +54,17 @@ def decode_with_search(lm: Any, prompt: Seq, verify: Callable[[Tensor], Tensor])
             "searched": C.walk(C.mcts(tree, simulations=64), C.greedy, steps=32)}
 
 
-def reinforcement_learning(env: Environment, agent: nn.ModuleDict, rounds: int = 100) -> nn.ModuleDict:
+def reinforcement_learning(env: Environment, policy: Predictor, rounds: int = 100) -> Predictor:
     """Rounds of walking the environment's tree with the policy and learning from the paths (REINFORCE with a
     batch-mean baseline)."""
 
-    def objective(agent: nn.ModuleDict) -> Tensor:
-        path = C.walk(C.env_tree(env, agent["policy"]), C.sample, steps=50)
+    def objective(policy: Predictor) -> Tensor:
+        path = C.walk(C.env_tree(env, policy), C.sample, steps=50)
         return C.reinforce(path, C.batch_baseline(C.discounted_return(path, gamma=0.99)))
 
     for _ in range(rounds):
-        C.train(agent, objective, steps=10)
-    return agent
+        C.train(policy, objective, steps=10)
+    return policy
 
 
 def plan(env: Environment, experience: Path) -> Path:
@@ -77,7 +77,7 @@ def plan(env: Environment, experience: Path) -> Path:
     return C.walk(C.planned(tree, C.imagined(tree, world)), C.greedy, steps=50)
 
 
-def align(policy: nn.Module, chosen: Seq, rejected: Seq) -> nn.Module:
+def align(policy: Predictor, chosen: Seq, rejected: Seq) -> Predictor:
     """Preferences, without a reward model: DPO against a frozen copy."""
     reference = C.frozen_copy(policy)
     C.train(policy, C.dpo(reference), chosen, rejected, steps=500)
@@ -98,7 +98,7 @@ def curate(sources: list[Container], weights: list[float], quality: Callable[[Co
     return C.curriculum(kept, quality(kept))
 
 
-def interpret(model: nn.Module, layer: nn.Module, x: Container, labels: Value, direction: Tensor) -> dict[str, Any]:
+def interpret(model: Predictor, layer: nn.Module, x: Container, labels: Value, direction: Tensor) -> dict[str, Any]:
     """Read a layer's activations, probe them, decompose them, and steer along a direction."""
     acts = Value(C.observe(model, layer)(x))
     return {"probe": C.linear_probe(acts, labels), "features": C.sparse_autoencoder(64, features=1024),
