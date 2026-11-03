@@ -149,6 +149,26 @@ class Stmt(Method):
     expression."""
 
 
+class Intent:
+    """What is wanted, not which method: a config of its own class that subclasses the group it stands in for (an
+    AugmentImage is a Convert[Grid, Grid]), so it type-checks wherever a method of that group goes, as a call, an
+    argument or a setting. Its candidates are the configs it may become; the first is its default. A resolver lowers
+    a program's intents to candidates (resolve.py); running one before then is an error."""
+
+    candidates: ClassVar[tuple[Method, ...]] = ()
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        if not cls.candidates:
+            raise TypeError(f"{cls.__name__}: an intent lists its candidates")
+        for c in cls.candidates:
+            if issubclass(cls, Stmt) != isinstance(c, Stmt) or changes(cls) != changes(c):
+                raise TypeError(f"{cls.__name__}: {type(c).__name__} is not the same kind of method (expression, statement, update)")
+
+    def __call__(self, *args: Any, **named: Any) -> Any:
+        raise RuntimeError(f"{type(self).__name__} is an intent: lower the program to concrete methods first (resolve.py)")
+
+
 def settings_of(config: Method) -> dict[str, Any]:
     """A config's settings that differ from their defaults (all of the required ones)."""
     if not is_dataclass(config):
@@ -321,21 +341,27 @@ def _parameters(cls: type, base: type) -> tuple[Any, ...]:
     return ()
 
 
+def group_parameters(cls: type) -> tuple[Any, ...]:
+    """The type parameters a method gives its group: (Path, Path, (Value,)) for Best; () for a group that has none."""
+    return _parameters(cls, group_class(cls))
+
+
 def entry_of(f: Any) -> Entry | None:
     """The entry of a method: its class, or a config of it."""
     return _BY_CLASS.get(f if isinstance(f, type) else type(f))
 
 
 def changes(f: Any) -> int | None:
-    """Which argument of its __call__ f changes in place, when f is an update (None otherwise)."""
-    e = entry_of(f)
-    return e.changes if e is not None else None
+    """Which argument of its __call__ f changes in place, when f is an update (None otherwise): a method, an intent
+    for one, or a class of either."""
+    cls = f if isinstance(f, type) else type(f)
+    return cls.changes if isinstance(cls, type) and issubclass(cls, Method) else None
 
 
 def is_statement(f: Any) -> bool:
-    """Whether f is a statement: it reads a dataset, or changes something; either way, never inside an expression."""
+    """Whether f is a statement: it makes new state, changes something or reads a dataset; never inside an expression."""
     cls = f if isinstance(f, type) else type(f)
-    return isinstance(cls, type) and issubclass(cls, Stmt) and cls in _BY_CLASS
+    return isinstance(cls, type) and issubclass(cls, Stmt)
 
 
 def phenomenon(name: str, explanation: str) -> None:
