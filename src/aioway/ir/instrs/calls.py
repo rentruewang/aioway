@@ -7,7 +7,7 @@ from collections import abc as cabc
 
 from torch import nn
 
-from aioway.t import (
+from aioway.tensors import (
     BoundArgs,
     GetAttrKey,
     Sign,

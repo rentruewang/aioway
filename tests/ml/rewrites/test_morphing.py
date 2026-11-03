@@ -6,7 +6,7 @@ from torch import nn
 
 from aioway.ir import ExactSequential, NnProc, TypeSequential, track_module_thunks
 from aioway.ml import NetMorphLinearSeqDeeper
-from aioway.t import fake_mode
+from aioway.tensors import fake_mode
 
 
 @pytest.fixture(autouse=True)

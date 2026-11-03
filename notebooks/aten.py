@@ -19,7 +19,7 @@ import contextlib as ctxl
 import torch
 from torch import nn
 
-from aioway.t import PrintTorchDisp, PrintTorchFunc, fake_mode, route_aten_mode
+from aioway.tensors import PrintTorchDisp, PrintTorchFunc, fake_mode, route_aten_mode
 
 
 # %%

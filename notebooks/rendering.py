@@ -23,7 +23,7 @@ from rich import pretty
 from aioway.ir import FuncProc, TorchFuncDag, render_func_proc
 
 # %%
-from aioway.t import BoundArgs, fake_mode
+from aioway.tensors import BoundArgs, fake_mode
 
 pretty.install()
 

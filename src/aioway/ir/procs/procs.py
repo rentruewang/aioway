@@ -17,7 +17,7 @@ import torch
 from aioway._utils import AnySet, IntArray, any_set, is_list_of
 from aioway.ir.instrs import Instr, InstrList
 from aioway.ir.queries import OrderedIndex, Query
-from aioway.t import (
+from aioway.tensors import (
     BoundArgs,
     KeyEntry,
     MappingKey,
@@ -83,11 +83,13 @@ class Proc[I: Instr = typing.Any]:
             )
 
     def __repr__(self) -> str:
-        return textwrap.dedent(f"""
+        return textwrap.dedent(
+            f"""
         inputs: {self.inputs!r}
         outputs: {self.outputs!r}
         instrs: {self.instrs!r}
-        """).strip()
+        """
+        ).strip()
 
     def __str__(self) -> str:
         return str(self._code)

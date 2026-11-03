@@ -23,7 +23,7 @@ pretty.install()
 
 # %%
 from aioway.ir import IndexQuery, track_module_thunks
-from aioway.t import fake_mode
+from aioway.tensors import fake_mode
 
 # %%
 with fake_mode():

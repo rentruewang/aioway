@@ -18,7 +18,7 @@ from aioway.ir import (
     TorchFuncDag,
     TypeSequential,
 )
-from aioway.t import fake_mode, parse_attr
+from aioway.tensors import fake_mode, parse_attr
 
 # Shared utilities ====
 
