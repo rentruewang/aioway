@@ -174,11 +174,11 @@ def describe(x: Any) -> str:
 
 # ═══ Partial containers ═══════════════════════════════════════════════════════════════════════════
 
-Dist = dist.Distribution
+type Dist = dist.Distribution
 """A set known by how to draw from it: a model's prediction, a policy, a generator, a data augmentation's views,
 the search distribution of evolution strategies."""
 
-Prediction = Dist | Tensor | TensorDictBase
+type Prediction = Dist | Tensor | TensorDictBase
 """A distribution, or what parameterizes one: logits, values, a record of them."""
 
 
@@ -327,11 +327,10 @@ class Buffer[C](Dataset[C], Protocol):
 type Predictor = Model[Any, Prediction]
 """A model that predicts: a network's output is the distribution of what it was trained to predict."""
 
-type Split = Callable[..., Example]
-"""C → Example: how a container becomes a training example."""
-
 type Schedule = Callable[[Holes[Any], Prediction], Holes[Any]]
-"""A fill's step: from the holes and the model's prediction for them, the next holes (which levels fall, how far)."""
+"""A fill's step: from the holes and the model's prediction for them, the next holes (which levels fall, how far).
+The catalog's Order methods are schedules."""
 
 type Chooser = Step[PartialTree[Any, Any]]
-"""A walk's step: from the tree expanded so far, the next (which edges to follow, which leaves to keep)."""
+"""A walk's step: from the tree expanded so far, the next (which edges to follow, which leaves to keep). The
+catalog's Choose methods are choosers."""
