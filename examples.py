@@ -14,11 +14,17 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
+import torch
+from sklearn.cluster import DBSCAN, KMeans
+from sklearn.decomposition import PCA
+from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.model_selection import StratifiedKFold
+from sklearn.preprocessing import StandardScaler
 from torch import Tensor, nn
 
 import catalog as C
 from catalog import Expr, Fit, Stmt
-from data import Container, Dataset, Environment, Grid, Holes, Path, Predictor, Seq, Set, Value
+from data import Container, Dataset, Environment, Grid, Holes, Indexed, Path, Predictor, Seq, Set, Subset, Value
 
 # ═══ Statements that build a model, train it, and return it ═══════════════════════════════════════
 
@@ -102,12 +108,13 @@ class SearchDocuments(Stmt):
 
 @dataclass(frozen=True)
 class Curation(Stmt):
-    """Mix the sources, drop the copies, keep the better fraction, easy first: each step reads every batch."""
+    """Mix the sources, drop the copies, keep the better fraction, easy first: each step reads every batch. What comes
+    out is a Subset of the mixture, and its repr says which steps chose it."""
 
     weights: list[float]
     keep: float = 0.5
 
-    def __call__(self, *sources: Dataset[Seq], quality: Callable[[Seq], Value]) -> Dataset[Seq]:
+    def __call__(self, *sources: Indexed[Seq], quality: Callable[[Seq], Value]) -> Subset[Seq]:
         data = C.DropNearDuplicates()(C.Dedup()(C.Mix(weights=self.weights)(*sources)))
         return C.Curriculum()(C.KeepBest(keep=self.keep)(data, quality), quality)
 
@@ -220,40 +227,64 @@ class Probe(Stmt):
         return {"probe": probe, "features": sae}
 
 
-# ═══ Classical machine learning: the same split, a model and the statement that fits it ═════════
+# ═══ Classical machine learning: scikit-learn's estimators, made, fitted, then called ═════════════
 
 
 @dataclass(frozen=True)
 class Tabular(Stmt):
-    """Feature vectors and a target: gradient-boosted trees, logistic (or linear) regression and k nearest neighbours,
-    each scored on held-out data. The target's type picks classification or regression for all three."""
+    """Feature vectors and a target: features standardized by the training data only, then gradient-boosted trees,
+    logistic (or linear) regression and k nearest neighbours, each scored on held-out data. The target's type picks
+    classification or regression for the last two; the estimator says which for the trees."""
 
     trees: int = 200
     k: int = 5
 
     def __call__(self, x: Value, y: Value, test_x: Value, test_y: Value, /) -> dict[str, Tensor]:
+        scaler = C.Standardization(StandardScaler())()
+        C.FitEstimator()(scaler, C.Batches(size=1024)(x))
+        x, test_x = scaler.transform(x), scaler.transform(test_x)
         data = C.Batches(size=1024)(x, y)
-        boosted = C.Trees(n=self.trees)(x, y)
-        C.GrowTrees()(boosted, data)
+        boosted = C.BoostedTrees(HistGradientBoostingClassifier(max_iter=self.trees))()
+        C.FitEstimator()(boosted, data)
         linear = C.Linear()(x, y)
         C.Train(steps=500)(linear, C.Objective(split=C.Labelled()), data)
         memory = C.EmptyIndex()(x)
         C.Insert()(memory, C.Batches(size=1024, shuffle=False)(x))
-        return {"boosted trees": C.Accuracy()(boosted(test_x), test_y), "linear": C.Accuracy()(linear(test_x), test_y),
+        return {"boosted trees": C.Accuracy()(boosted.predict(test_x).data, test_y), "linear": C.Accuracy()(linear(test_x), test_y),
                 "kNN": C.Accuracy()(C.KNN(k=self.k)(memory, test_x, y), test_y)}
 
 
 @dataclass(frozen=True)
 class Cluster(Stmt):
-    """No labels: project onto the principal components, then find k clusters there."""
+    """No labels: project onto the principal components, find k clusters there, and the dense regions without a k
+    (DBSCAN, which labels only the data it is fitted to: a dataset statement)."""
 
     dim: int = 16
     k: int = 10
 
-    def __call__(self, x: Value, /) -> Value:
-        projection = C.Projection(dim=self.dim)(x)
-        C.PCA()(projection, C.Batches(size=1024)(x))
-        z = Value(projection(x))
-        centroids = C.Centroids(k=self.k)(z)
-        C.KMeans()(centroids, C.Batches(size=1024)(z))
-        return centroids(z)
+    def __call__(self, x: Value, /) -> dict[str, Tensor]:
+        pca = C.PrincipalComponents(PCA(n_components=self.dim))()
+        C.FitEstimator()(pca, C.Batches(size=1024)(x))
+        z = pca.transform(x)
+        kmeans = C.KMeansClustering(KMeans(n_clusters=self.k))()
+        C.FitEstimator()(kmeans, C.Batches(size=1024)(z))
+        return {"k-means": kmeans.predict(z).data, "density": C.DensityClustering(DBSCAN(eps=0.5))(C.Batches(size=1024, shuffle=False)(z))}
+
+
+@dataclass(frozen=True)
+class CrossValidate(Stmt):
+    """k folds, each class in the same proportion in each: a new network trained on each fold's train part and scored
+    on its test part. Each part is a Subset, so the run can log which examples each fold trained on."""
+
+    k: int = 5
+    steps: int = 500
+
+    def __call__(self, x: Container, labels: Value, /) -> dict[str, Any]:
+        loss = C.Objective(split=C.Labelled())
+        folds = C.CrossValidation(StratifiedKFold(n_splits=self.k, shuffle=True), label=lambda batch: batch[1].data)
+        scores: list[Tensor] = []
+        for train, test in folds(C.Batches(size=64)(x, labels)):
+            model = C.Network()(x, labels)
+            C.Train(steps=self.steps)(model, loss, train)
+            scores.append(C.Evaluate()(test, loss, model))
+        return {"mean": torch.stack(scores).mean(), "folds": scores}

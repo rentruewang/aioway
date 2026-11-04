@@ -16,9 +16,10 @@ expression bound to its name, that later expressions call: net = Network()(x, y)
     let(net, expr)                          net = expr                       a name for a value (or a dataset)
     update(net, Train(steps=200), loss, ds) Train(steps=200)(net!, loss, ds) changes net in place, returns None
     repeat(n, *statements)                  for _ in range(n): …             the statements, n times
+    repeat(n, *statements, until=stop)      … if stop: break                 …at most n times, until stop is true
 
-The catalog's statements (Fit, Assign, Alter, Store: they change their argument marked !; Source, Curate, Reduce:
-they read a whole dataset) are lines of their own, never inside an expression, as a SQL write or CREATE INDEX sits
+The catalog's statements (Fit, Assign, Alter, Store: they change their argument marked !; Source, Curate, Partition,
+Reduce: they read a whole dataset) are lines of their own, never inside an expression, as a SQL write or CREATE INDEX sits
 at the top of a statement. A statement's arguments are expressions (on batches) or dataset statements, nested as
 a FROM nests: Train(net!, loss, Batches(x, y; size=64)). An update returns None and the name still names the same
 model, now changed. A statement evaluates its arguments first, then runs: data read from the model before is a
@@ -57,7 +58,7 @@ from torch import nn
 
 from catalog import (
     Accuracy, Autoencoder, Batches, Blank, Curriculum, Dedup, DiscountedReturn, DPOLoss, Droppable, DropNearDuplicates, Dynamics,
-    EmptyIndex, Encoder, EnvTree, EpsilonGreedy, Extend, Fill, Flatten, Freeze, FrozenCopy, Given, Greedy, GroupRelative, Guided,
+    EarlyStop, EmptyIndex, Encoder, EnvTree, EpsilonGreedy, Evaluate, Extend, Fill, Flatten, Freeze, FrozenCopy, Given, Greedy, GroupRelative, Guided, Holdout,
     Imagined, Independent, InfoNCE, Insert, KeepBest, Labelled, LMTree, LogProb, LoRA, Loss, Mask, MCTS, Method, Mix, MoE, MostConfident,
     Network, Noise, Patchify, Peek, Planned, PPOClip, QTarget, QualityFilter, Reconstruction, Reinforce, ReplayBuffer, RetrievalAccuracy,
     Retrieve, ReturnsToGo, Sample, SearchTargets, SelectiveScan, Shift, Split, Temperature, Together, Train, TrainIndex, Transfer,
@@ -82,6 +83,9 @@ class Node:
     def __call__(self, *args: Any, **kwargs: Any) -> Call:
         return Call(self, args, kwargs)
 
+    def __getitem__(self, i: int) -> Attr:
+        return Attr(self, str(i))
+
     def named(self, label: str) -> Self:
         return replace(self, label=label)
 
@@ -95,7 +99,7 @@ class Input(Node):
 
 @dataclass(frozen=True, eq=False)
 class Attr(Node):
-    """base.attr: a field of a node's value (ex.target), or an element of it (pair.0)."""
+    """base.attr: a field of a node's value (ex.target), or an element of it (splits[0], its attr "0")."""
 
     base: Node
     attr: str
@@ -326,10 +330,12 @@ class Update:
 
 @dataclass(frozen=True)
 class Repeat:
-    """The statements, in order, times times."""
+    """The statements, in order, times times; with until, an expression, at most times times, stopping as soon as it
+    is true (it is read before each pass)."""
 
     times: int
     body: tuple[Statement, ...]
+    until: Any = None
 
 
 type Statement = Let | Update | Repeat
@@ -348,13 +354,20 @@ def update(name: Input, op: Any, *args: Any) -> Update:
     return Update(name, call(op, *args[:i], name, *args[i:]))
 
 
-def repeat(times: int, *body: Statement) -> Repeat:
-    return Repeat(times, body)
+def repeat(times: int, *body: Statement, until: Any = None) -> Repeat:
+    return Repeat(times, body, until)
 
 
 def _flat(body: tuple[Statement, ...]) -> Iterator[Let | Update]:
     for s in body:
         yield from _flat(s.body) if isinstance(s, Repeat) else (s,)
+
+
+def _untils(body: tuple[Statement, ...]) -> Iterator[Any]:
+    for s in body:
+        if isinstance(s, Repeat):
+            yield from (s.until,) if s.until is not None else ()
+            yield from _untils(s.body)
 
 
 def _expr(s: Let | Update) -> Any:
@@ -380,6 +393,8 @@ class Script:
             for s in body:
                 if isinstance(s, Repeat):
                     for _ in range(s.times):
+                        if s.until is not None and _evaluate(s.until, env, f"{self.name}: until"):
+                            break
                         run(s.body)
                 elif isinstance(s, Let):
                     env[s.name.name] = _evaluate(s.value, env, f"{self.name}: {s.name.name}")
@@ -390,7 +405,7 @@ class Script:
         return _evaluate(self.output, env, self.name)
 
     def _roots(self) -> list[Any]:
-        return [*map(_expr, _flat(self.body)), self.output]
+        return [*map(_expr, _flat(self.body)), *_untils(self.body), self.output]
 
     def nodes(self) -> list[Node]:
         return _nodes(self._roots())
@@ -403,8 +418,8 @@ class Script:
 
         def statement(s: Statement) -> Statement:
             if isinstance(s, Repeat):
-                body = statements(s.body)
-                return s if body is s.body else Repeat(s.times, body)
+                body, until = statements(s.body), go(s.until)
+                return s if body is s.body and until is s.until else Repeat(s.times, body, until)
             if isinstance(s, Let):
                 value = go(s.value)
                 return s if value is s.value else Let(s.name, value)
@@ -423,15 +438,26 @@ class Script:
         it is read."""
         out: list[str] = []
         bound = {i.name for i in self.inputs}
-        for s in _flat(self.body):
-            where = f"{self.name}: {s.name.name}"
-            if isinstance(s, Update):
-                i = changes(s.call.op)
-                if not s.call.runs or i is None or i >= len(s.call.args) or s.call.args[i] is not s.name:
-                    out.append(f"{where}: {_name(s.call.op)} is not an update of {s.name.name}")
-            out += _misplaced(where, _expr(s), top=True, update=s.call if isinstance(s, Update) else None)
-            out += [f"{where}: reads {e.name} before it is bound" for e in _nodes([_expr(s)]) if isinstance(e, Input) and e.name not in bound]
-            bound.add(s.name.name)
+
+        def unbound(where: str, e: Any) -> list[str]:
+            return [f"{where}: reads {n.name} before it is bound" for n in _nodes([e]) if isinstance(n, Input) and n.name not in bound]
+
+        def walk(body: tuple[Statement, ...]) -> None:
+            for s in body:
+                if isinstance(s, Repeat):
+                    if s.until is not None:   # an expression, read before the first pass
+                        out.extend(_misplaced(f"{self.name}: until", s.until, top=False) + unbound(f"{self.name}: until", s.until))
+                    walk(s.body)
+                    continue
+                where = f"{self.name}: {s.name.name}"
+                if isinstance(s, Update):
+                    i = changes(s.call.op)
+                    if not s.call.runs or i is None or i >= len(s.call.args) or s.call.args[i] is not s.name:
+                        out.append(f"{where}: {_name(s.call.op)} is not an update of {s.name.name}")
+                out.extend(_misplaced(where, _expr(s), top=True, update=s.call if isinstance(s, Update) else None) + unbound(where, _expr(s)))
+                bound.add(s.name.name)
+
+        walk(self.body)
         out += _misplaced(self.name, self.output, top=False)
         out += [f"{self.name}: reads {e.name}, never bound" for e in _nodes([self.output]) if isinstance(e, Input) and e.name not in bound]
         return out + _sub_checks(self._roots())
@@ -443,7 +469,8 @@ class Script:
             pad = "  " * depth
             for s in body:
                 if isinstance(s, Repeat):
-                    rows.append((f"    {pad}repeat ×{s.times}:", ""))
+                    head = _tree(s.until, pad, f"repeat ×{s.times}, until ") if s.until is not None else [(f"    {pad}repeat ×{s.times}", "")]
+                    rows.extend([(head[0][0] + ":", head[0][1]), *head[1:]])
                     show(s.body, depth + 1)
                 elif isinstance(s, Let):
                     rows.extend(_tree(s.value, pad, f"{s.name.name} = "))
@@ -490,9 +517,13 @@ def _text(e: Any) -> str:
     if isinstance(e, Input):
         return e.name
     if isinstance(e, Attr):
-        return e.label or f"{_text(e.base)}.{e.attr}"
+        return e.label or _text(e.base) + _attr(e.attr)
     assert isinstance(e, Call)
     return e.label or (_text(e.fn) if isinstance(e.fn, Node) and not _makes_config_node(e.fn) else _name(e)) + "(…)"
+
+
+def _attr(attr: str) -> str:
+    return f"[{attr}]" if attr.lstrip("-").isdigit() else f".{attr}"
 
 
 def _makes_config_node(n: Node) -> bool:
@@ -527,7 +558,7 @@ def _tree(root: Any, pad: str, lhs: str = "", changes: Input | None = None) -> l
 
     top, path = root, ""
     while isinstance(top, Attr):
-        top, path = top.base, f".{top.attr}{path}"
+        top, path = top.base, _attr(top.attr) + path
     if isinstance(top, Call):
         show(top, 0, lhs if not top.label or lhs else f"{top.label} = ")
         if path and lhs:
@@ -582,6 +613,11 @@ def towers(image: nn.Module, text: nn.Module) -> nn.ModuleDict:
 def head(name: str) -> bool:
     """Whether a parameter belongs to the readout."""
     return name.startswith("readout")
+
+
+def append(xs: tuple[Any, ...], x: Any) -> tuple[Any, ...]:
+    """xs with x at the end: a learning curve, one score longer."""
+    return (*xs, x)
 
 
 # ═══ Losses, as programs: a split, a model, a score ═══════════════════════════════════════════════
@@ -971,11 +1007,11 @@ def synthetic_data(n: int = 8, length: int = 4, threshold: float = 0.5) -> Progr
 def curation(keep: float = 0.5) -> Script:
     """The same thing in plain Python (every line a dataset statement):
 
-        def curation(web: Dataset[Seq], books: Dataset[Seq], code: Dataset[Seq], quality: Callable[[Seq], Value],
-                     difficulty: Callable[[Seq], Value], *, keep: float = 0.5) -> Dataset[Seq]:
-            mixed: Dataset[Seq] = Mix(weights=[0.7, 0.2, 0.1])(web, books, code)
-            kept: Dataset[Seq] = KeepBest(keep=keep)(DropNearDuplicates()(Dedup()(mixed)), quality)
-            return Curriculum()(kept, difficulty)
+        def curation(web: Indexed[Seq], books: Indexed[Seq], code: Indexed[Seq], quality: Callable[[Seq], Value],
+                     difficulty: Callable[[Seq], Value], *, keep: float = 0.5) -> Subset[Seq]:
+            mixed: Indexed[Seq] = Mix(weights=[0.7, 0.2, 0.1])(web, books, code)
+            kept: Subset[Seq] = KeepBest(keep=keep)(DropNearDuplicates()(Dedup()(mixed)), quality)
+            return Curriculum()(kept, difficulty)       # a Subset of mixed: it remembers each step that chose it
     """
     web, books, code, quality, difficulty, data = inputs("web books code quality difficulty data")
     mixed = call(Mix(weights=[0.7, 0.2, 0.1]), web, books, code)
@@ -983,6 +1019,38 @@ def curation(keep: float = 0.5) -> Script:
     return Script("Data curation", (web, books, code, quality, difficulty), (
         let(data, call(Curriculum(), kept, difficulty)),
     ), data, "mix the sources, drop copies and near-copies, keep the better half, easy first: every step reads every batch")
+
+
+def early_stopping(rounds: int = 50, steps: int = 100, patience: int = 3) -> Script:
+    """The same thing in plain Python:
+
+        def early_stopping(images: Grid, labels: Value, *, rounds: int = 50, steps: int = 100,
+                           patience: int = 3) -> Tensor:
+            splits: tuple[tuple[Subset[Any], ...], ...] = Holdout(fractions=(0.8, 0.1, 0.1))(Batches(size=64)(images, labels))
+            net: Predictor = Network()(images, labels)
+            curve: tuple[Tensor, ...] = ()
+            for _ in range(rounds):
+                if EarlyStop(patience=patience)(curve):
+                    break
+                Train(steps=steps)(net, supervised_loss, splits[0][0])
+                score: Tensor = Evaluate()(splits[0][1], supervised_loss, net)
+                curve = append(curve, score)
+            test: Tensor = Evaluate()(splits[0][2], supervised_loss, net)
+            return test
+    """
+    images, labels, splits, net, curve, score, test = inputs("images labels splits network curve score test")
+    train, validation, held_out = splits[0][0], splits[0][1], splits[0][2]
+    return Script("Early stopping", (images, labels), (
+        let(splits, call(Holdout(fractions=(0.8, 0.1, 0.1)), call(Batches(size=64), images, labels))),
+        let(net, call(Network(), images, labels)),
+        let(curve, ()),
+        repeat(rounds,
+               update(net, Train(steps=steps), supervised_loss, train),
+               let(score, call(Evaluate(), validation, supervised_loss, net)),
+               let(curve, call(append, curve, score)),
+               until=call(EarlyStop(patience=patience), curve)),
+        let(test, call(Evaluate(), held_out, supervised_loss, net)),
+    ), test, "train in rounds on one part, score on another, stop when the score stops improving; report the third part")
 
 
 def rag(k: int = 4) -> Script:
@@ -1008,7 +1076,7 @@ def rag(k: int = 4) -> Script:
 
 PROGRAMS: list[Program | Script] = [
     language_model(), vit(), clip(), stable_diffusion(), mamba(), mixtral(), lora_finetune(), dpo(), alphazero(), r1(), diffusion_lm(),
-    pretrain_finetune(), ppo(), dqn(), world_model_planning(), synthetic_data(), curation(), rag(),
+    pretrain_finetune(), ppo(), dqn(), world_model_planning(), synthetic_data(), curation(), early_stopping(), rag(),
 ]
 
 if __name__ == "__main__":

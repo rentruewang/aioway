@@ -50,12 +50,14 @@ STATEMENTS · making new state, changing it in place (!), or reading a whole dat
               Encode[A, B, **R]          (*R) -> Codec[A, B]            a new codec: raw data in a vocabulary
               Empty[S, **R]              (*R) -> S                      a new, empty index or buffer
               Copy[M]                    (x: M) -> M                    a copy with weights of its own
+              Sklearn[E]                 () -> SkModel[E]               a classical model: a scikit-learn estimator
   update      Fit[X, **R]                (x: X!, *R) -> None            fit to data: a loss, a closed form, a rule
               Assign[X, **R]             (x: X!, *R) -> None            set parameter values directly
               Alter[X, **R]              (x: X!, *R) -> None            change what the parameters are
               Store[X, **R]              (x: X!, *R) -> None            train an index, insert, delete, extend
   dataset     Source[D, **R]             (*R) -> D                      where batches come from
-              Curate[C, **R]             (data: Dataset[C], *R) -> Dataset[C]   look at every example (blocking)
+              Curate[C, **R]             (data: Indexed[C], *R) -> Subset[C]    keep, drop, reorder, resample examples
+              Partition[C, **R]          (data: Indexed[C], *R) -> splits       train / test, k folds: Subsets each
               Reduce[C, A, **R]          (data: Dataset[C], *R) -> A    one value from a whole dataset
 
 A model is an Expr once made (data.Model is an nn.Module and an Expr): calling it reads its parameters and changes
@@ -71,12 +73,16 @@ op leaves alone.
 So Best is a Fold[Path, Path, [Value]] (a Path in and a Path out, given the Values that score it), Network a
 MapLayer[Container, Prediction, [Container, Container]] (a statement: it makes a new model from examples of its
 inputs and targets), Train a Fit[nn.Module, [Callable[..., Tensor], Dataset[Any] | None]] (it changes a module, reading an
-objective and a dataset). Fill, Walk and Unroll are each one method, and the group is that method.
+objective and a dataset). Fill, Walk, Unroll and Sklearn are each one method, and the group is that method.
 
 Supervised learning is a Labelled split and the Loss its target picks: classes make it classification, real values
-regression, for any model that predicts the target (Network, Linear, Trees, KNN). The classical algorithms follow
-the same split as the rest: a layer builds the model (Linear, Trees, Centroids, Projection, Mixture), a Fit
-statement fits it (Train, LeastSquares, GrowTrees, KMeans, PCA, EM).
+regression, for any model that predicts the target (Network, Linear, KNN, a boosted-trees estimator). Classical
+methods are scikit-learn's, whose API comes in a few kinds, each one of ours: an estimator is made (Sklearn) and
+fitted (FitEstimator), its predict and transform are expressions, fit_predict and fit_transform read a whole dataset
+(FitPredict, FitTransform), a splitter partitions one (Folds), a metric reduces one (Metric).
+
+Curating, splitting and sampling all choose examples, so they all return a Subset: a sub-dataset that batches like
+any other and remembers what chose it, so a run can log which examples each step saw.
 
 What a statement changes is never a config: a config is a setting, and calling a create statement's config makes
 the new thing (Network(d=64)(x, y), Tokenizer(vocab=32_000)()), which statements then change and expressions read.
@@ -93,10 +99,11 @@ properties of the groups; the well-known works are programs of methods (program.
 
 from __future__ import annotations
 
+import copy
 import inspect
 import re
 import textwrap
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import MISSING, dataclass, fields, is_dataclass
 from typing import Any, ClassVar, NoDefault, ParamSpec, TypeVarTuple, get_args, get_origin
 
@@ -105,8 +112,9 @@ from torch import Tensor, nn
 
 import data
 from data import (
-    Buffer, Chooser, Codec, Container, Dataset, Dist, Environment, Example, Graph, Grid, Holes, Index, Model, PartialSeq, PartialTree, Path,
-    Prediction, Predictor, Product, Schedule, Seq, Set, Value, Weights,
+    Buffer, Chooser, Codec, Container, Dataset, Dist, Environment, Estimator, Example, Graph, Grid, Holes, Index, Indexed, Model,
+    PartialSeq, PartialTree, Path, Prediction, Predictor, Product, Schedule, Seq, Set, SkModel, Splitter, StreamMetric, Subset, Value,
+    Weights,
 )
 
 # ═══ Methods and groups ═══════════════════════════════════════════════════════════════════════════
@@ -122,6 +130,7 @@ class Method:
     changes: ClassVar[int | None] = None  # an update: which argument of __call__ it changes in place
     function: ClassVar[str] = ""          # a method torch already has: its name there (nothing to call here)
     signature: ClassVar[str] = ""         # such a method's signature, when not its group's form
+    hook: ClassVar[str] = ""              # a group whose __call__ is written once: the method its methods write instead
 
     group: ClassVar[str] = ""             # a group: its name, its family, its form; about says what it does
     family: ClassVar[str] = ""
@@ -317,9 +326,11 @@ def _render(cls: type[Method]) -> tuple[list[str], str, str]:
     if issubclass(cls, Scan):
         x, s, y = (_short(_type_text(a)) for a in _parameters(cls, Scan))
         return [f"Seq[{x}]"], f"Seq[{y}]", s
-    call = cls.__call__
+    g = group_class(cls)
+    hooked = bool(g.hook) and g.hook in {n for k in cls.__mro__[: cls.__mro__.index(g)] for n in k.__dict__}
+    call = getattr(cls, g.hook) if hooked else cls.__call__        # Curate's methods write indices; the group, __call__
     bounds = {t.__name__: getattr(t.__bound__, "__name__", t.__name__) for t in getattr(call, "__type_params__", ()) if t.__bound__ is not None}
-    owner = next(k for k in cls.__mro__ if "__call__" in k.__dict__)   # an inherited call reads the class's parameters
+    owner = g if hooked else next(k for k in cls.__mro__ if "__call__" in k.__dict__)   # an inherited call reads the class's parameters
     bounds |= {t.__name__: _type_text(a) for t, a in zip(getattr(owner, "__type_params__", ()), _parameters(cls, owner))}
 
     def short(annotation: Any) -> str:
@@ -329,7 +340,8 @@ def _render(cls: type[Method]) -> tuple[list[str], str, str]:
     params = [p for p in list(sig.parameters.values())[1:]
               if p.kind == p.VAR_POSITIONAL or (p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD) and p.default is inspect.Parameter.empty)]
     ins = [short(p.annotation) + ("…" if p.kind == p.VAR_POSITIONAL else "") + ("!" if i == cls.changes else "") for i, p in enumerate(params)]
-    return ins, short(sig.return_annotation), ""
+    returns = inspect.signature(g.__call__).return_annotation if hooked else sig.return_annotation
+    return ins, short(returns), ""
 
 
 def _parameters(cls: type, base: type) -> tuple[Any, ...]:
@@ -582,11 +594,25 @@ class Copy[M](Stmt):
     def __call__(self, x: M, /) -> M: ...
 
 
+@dataclass(frozen=True)
+class Sklearn[E: Estimator](Stmt):
+    """Create a classical model from a scikit-learn estimator, or anything with its API (xgboost, lightgbm, umap): a
+    fresh copy each call, so each is a model of its own. FitEstimator fits it; then its predict, predict_proba,
+    transform, … are expressions on batches."""
+    group, family, form, side = "estimator", "create", "Estimator → SkModel", "agnostic"
+    about = "a scikit-learn estimator, as a model: fitted by a statement, then called on batches"
+    title = "scikit-learn estimator"
+    estimator: E
+
+    def __call__(self) -> SkModel[E]:
+        return SkModel(copy.deepcopy(self.estimator))
+
+
 # An update changes its first argument, an X, in place and returns None; R is what else it reads.
 
 
 class Fit[X, **R = []](Stmt):
-    """Fit an X to data, in place: a model by a loss's gradient or a closed form, a codec or a clustering by its own
+    """Fit an X to data, in place: a model by a loss's gradient or a closed form, a codec or an estimator by its own
     rule."""
     group, family, form, side = "fit", "update", "X! × Dataset", "agnostic"
     changes = 0
@@ -626,10 +652,28 @@ class Source[D, **R = []](Stmt):
 
 
 class Curate[C, **R = []](Stmt):
-    """Keep, drop or reorder examples, looking at all of them (blocking): a dataset of C in, one of C out."""
-    group, family, form, side = "curate", "dataset", "Dataset → Dataset", "agnostic"
+    """Keep, drop, reorder or resample examples, looking at all of them (blocking): a sub-dataset of the one given.
+    A method only chooses the indices; the group makes them a Subset, which batches, iterates and logs them."""
+    group, family, form, side = "curate", "dataset", "Indexed → Subset", "agnostic"
+    hook = "indices"
 
-    def __call__(self, data: Dataset[C], /, *rest: R.args, **named: R.kwargs) -> Dataset[C]: ...
+    def indices(self, data: Indexed[C], /, *rest: R.args, **named: R.kwargs) -> Tensor: ...
+
+    def __call__(self, data: Indexed[C], /, *rest: R.args, **named: R.kwargs) -> Subset[C]:
+        return Subset.of(data, self.indices(data, *rest, **named), short(self))
+
+
+class Partition[C, **R = []](Stmt):
+    """Split a dataset into sub-datasets: a list of splits, each a tuple of parts (train and test, or train,
+    validation and test). A method only chooses the indices of each part; the group makes them Subsets."""
+    group, family, form, side = "partition", "dataset", "Indexed → splits of Subsets", "agnostic"
+    hook = "parts"
+
+    def parts(self, data: Indexed[C], /, *rest: R.args, **named: R.kwargs) -> tuple[tuple[Tensor, ...], ...]: ...
+
+    def __call__(self, data: Indexed[C], /, *rest: R.args, **named: R.kwargs) -> tuple[tuple[Subset[C], ...], ...]:
+        return tuple(tuple(Subset.of(data, part, f"{short(self)}[{i}][{j}]") for j, part in enumerate(split))
+                     for i, split in enumerate(self.parts(data, *rest, **named)))
 
 
 class Reduce[C, A, **R = []](Stmt):
@@ -916,12 +960,12 @@ class Majority(Fold[Value, Value]):
 
 
 @dataclass(frozen=True)
-class EarlyStop(Fold[Seq, bool]):
-    """Whether the validation loss has stopped improving for `patience` evaluations."""
+class EarlyStop(Fold[Sequence[Tensor], bool]):
+    """Whether the validation scores, lowest best, have not improved on their best for `patience` evaluations."""
     title = "Early stopping"
     patience: int = 3
 
-    def __call__(self, curve: Seq, /) -> bool: ...
+    def __call__(self, curve: Sequence[Tensor], /) -> bool: ...
 
 
 @dataclass(frozen=True)
@@ -1043,7 +1087,7 @@ class Labelled(Split[Container, [Container]]):
 class Classification(Split[Container, [Container]]):
     """Supervised learning with classes as the target: Labelled, then Loss picks cross-entropy (a categorical's
     negative log-likelihood); Accuracy measures it. Any model that predicts the classes does it: Linear (logistic
-    regression), Trees, Network, KNN."""
+    regression), Network, KNN, a boosted-trees estimator."""
     title = "Classification"
     function = "Labelled, Loss"
 
@@ -1051,7 +1095,7 @@ class Classification(Split[Container, [Container]]):
 @dataclass(frozen=True)
 class Regression(Split[Container, [Container]]):
     """Supervised learning with real values as the target: Labelled, then Loss picks squared error (a Gaussian's
-    negative log-likelihood). Linear with LeastSquares is linear regression; Trees, Network and KNN do it too."""
+    negative log-likelihood). Linear with LeastSquares is linear regression; Network, KNN and boosted trees do it too."""
     title = "Regression"
     function = "Labelled, Loss"
 
@@ -1936,48 +1980,6 @@ class KernelFeatures(MapLayer[Value, Value, [Value]]):
 
 
 @dataclass(frozen=True)
-class Trees(MapLayer[Value, Prediction, [Value, Container]]):
-    """An ensemble of decision trees on feature vectors, empty until GrowTrees grows it: one tree (CART), a random
-    forest (bagged, their predictions averaged) or gradient boosting (each tree fitted to the errors of the ones
-    before it). What the target holds picks classification or regression, as for every model."""
-    title = "Decision trees, random forests, gradient boosting"
-    kind: str = "boosting"
-    n: int = 100
-    depth: int = 6
-
-    def __call__(self, x: Value, y: Container, /) -> Model[Value, Prediction]: ...
-
-
-@dataclass(frozen=True)
-class Centroids(MapLayer[Value, Value, [Value]]):
-    """k centroids in the inputs' space, each input mapped to the nearest (its cluster); fitted by KMeans."""
-    title = "Clustering (k centroids)"
-    k: int
-
-    def __call__(self, x: Value, /) -> Model[Value, Value]: ...
-
-
-@dataclass(frozen=True)
-class Projection(MapLayer[Value, Value, [Value]]):
-    """A linear map onto dim directions: the principal components once PCA has fitted it, a random projection before."""
-    title = "Dimensionality reduction (a linear projection)"
-    dim: int
-
-    def __call__(self, x: Value, /) -> Model[Value, Value]: ...
-
-
-@dataclass(frozen=True)
-class Mixture(MapLayer[Value, Dist, [Value]]):
-    """k weighted components (Gaussians by default) in the inputs' space: a density, and soft clusters by
-    responsibility; fitted by EM. One component per class, fitted to that class's examples, is a generative
-    classifier (naive Bayes, LDA)."""
-    title = "Mixture models (GMM)"
-    k: int
-
-    def __call__(self, x: Value, /) -> Model[Value, Dist]: ...
-
-
-@dataclass(frozen=True)
 class Residual(MapLayer[Container, Container, [nn.Module]]):
     """h + f(norm h): the layer edits the stream instead of replacing it."""
     title = "Residual connections"
@@ -2166,6 +2168,69 @@ class FrozenCopy(Copy[nn.Module]):
     def __call__[M: nn.Module](self, model: M, /) -> M: ...
 
 
+# ═══ Sklearn[E]: Estimator → SkModel ══════════════════════════════════════════════════════════════
+# The classical models, by the estimators that make them: each is Sklearn with a name, Sklearn(estimator) all the same.
+
+
+@dataclass(frozen=True)
+class BoostedTrees(Sklearn[Estimator]):
+    """Decision trees on feature vectors: one (CART), many on bootstrap samples averaged (a random forest), or each
+    fitted to the errors of the ones before it (gradient boosting). Classifier or regressor, by the estimator."""
+    title = "Decision trees, random forests, gradient boosting"
+    function = "sklearn.ensemble.HistGradientBoostingClassifier / Regressor, RandomForestClassifier, sklearn.tree.DecisionTreeClassifier, xgboost, lightgbm"
+
+
+@dataclass(frozen=True)
+class SupportVectorMachines(Sklearn[Estimator]):
+    """The widest-margin separator in a kernel's feature space (a linear one is Linear with Hinge)."""
+    title = "Support vector machines (kernel SVM)"
+    function = "sklearn.svm.SVC, SVR"
+
+
+@dataclass(frozen=True)
+class NaiveBayes(Sklearn[Estimator]):
+    """A generative classifier whose features are independent given the class: counts or one Gaussian per feature."""
+    title = "Naive Bayes"
+    function = "sklearn.naive_bayes.GaussianNB, MultinomialNB"
+
+
+@dataclass(frozen=True)
+class GaussianProcesses(Sklearn[Estimator]):
+    """A distribution over functions, set by a kernel: a prediction and its uncertainty, from every training example."""
+    title = "Gaussian processes"
+    function = "sklearn.gaussian_process.GaussianProcessRegressor, GaussianProcessClassifier"
+
+
+@dataclass(frozen=True)
+class KMeansClustering(Sklearn[Estimator]):
+    """k centroids, each example to its nearest and each centroid to the mean of its examples, until nothing moves;
+    predict gives a new example's cluster."""
+    title = "k-means"
+    function = "sklearn.cluster.KMeans, MiniBatchKMeans"
+
+
+@dataclass(frozen=True)
+class GaussianMixtureModel(Sklearn[Estimator]):
+    """k weighted Gaussians fitted by expectation–maximization: a density, and soft clusters by responsibility."""
+    title = "Mixture models (GMM, EM)"
+    function = "sklearn.mixture.GaussianMixture, BayesianGaussianMixture"
+
+
+@dataclass(frozen=True)
+class PrincipalComponents(Sklearn[Estimator]):
+    """A linear map onto the directions of most variance; transform projects onto them."""
+    title = "PCA (dimensionality reduction)"
+    function = "sklearn.decomposition.PCA, IncrementalPCA, TruncatedSVD"
+
+
+@dataclass(frozen=True)
+class Standardization(Sklearn[Estimator]):
+    """Each feature shifted and scaled (to mean 0 and variance 1, or into a range), by statistics of the training data
+    only, so that the validation and test data are scaled as it was."""
+    title = "Standardization (feature scaling)"
+    function = "sklearn.preprocessing.StandardScaler, MinMaxScaler, RobustScaler"
+
+
 # ═══ Fit[X, **R = []]: X! × Dataset ═══════════════════════════════════════════════════════════════
 
 
@@ -2206,46 +2271,15 @@ class LeastSquares(Fit[nn.Module, [Dataset[Any]]]):
 
 
 @dataclass(frozen=True)
-class GrowTrees(Fit[nn.Module, [Dataset[Any]]]):
-    """Grow a Trees model, in place: each tree by greedy splits that most reduce the loss (CART); a forest grows each
-    on a bootstrap sample, boosting each on the gradient of the loss of the trees so far."""
-    title = "Tree growing (CART, bagging, boosting)"
-    side = "model"
-    learning_rate: float = 0.1
+class FitEstimator(Fit[SkModel[Any], [Dataset[Any]]]):
+    """Fit an estimator's model to a dataset, in place: batch by batch by partial_fit when incremental (by default,
+    whenever the estimator has it), otherwise every batch gathered and fit once. Each batch is (features, target), or
+    features alone for an unsupervised one."""
+    title = "Fitting an estimator (fit, partial_fit)"
+    changes = 0
+    incremental: bool | None = None
 
-    def __call__(self, model: nn.Module, data: Dataset[Any], /) -> None: ...
-
-
-@dataclass(frozen=True)
-class KMeans(Fit[nn.Module, [Dataset[Value]]]):
-    """Lloyd's iterations on a Centroids model, in place: each example to its nearest centroid, each centroid to the
-    mean of its examples, until nothing moves (or iterations runs out)."""
-    title = "k-means"
-    side = "model"
-    iterations: int = 100
-
-    def __call__(self, model: nn.Module, data: Dataset[Value], /) -> None: ...
-
-
-@dataclass(frozen=True)
-class PCA(Fit[nn.Module, [Dataset[Value]]]):
-    """Fit a Projection to the top principal components, in place: the leading eigenvectors of the data's covariance,
-    accumulated over the batches (or an SVD of them)."""
-    title = "PCA"
-    side = "model"
-
-    def __call__(self, model: nn.Module, data: Dataset[Value], /) -> None: ...
-
-
-@dataclass(frozen=True)
-class EM(Fit[nn.Module, [Dataset[Value]]]):
-    """Expectation–maximization on a Mixture, in place: each component's responsibility for each example, then each
-    component refitted to its share, until the likelihood stops rising (or iterations runs out)."""
-    title = "Expectation–maximization"
-    side = "model"
-    iterations: int = 100
-
-    def __call__(self, model: nn.Module, data: Dataset[Value], /) -> None: ...
+    def __call__(self, model: SkModel[Any], data: Dataset[Any], /) -> None: ...
 
 
 @dataclass(frozen=True)
@@ -2399,14 +2433,14 @@ class Extend(Store[Buffer[Container], [Container]]):
 
 
 @dataclass(frozen=True)
-class Batches(Source[Dataset[Any], ...]):
+class Batches(Source[Indexed[Any], ...]):
     """Containers in memory as a dataset: random minibatches of size examples, the containers sliced together (a
-    tuple per batch when there are several)."""
+    tuple per batch when there are several). Indexed, so it can be curated and split."""
     title = "Minibatches"
     size: int
     shuffle: bool = True
 
-    def __call__(self, *data: Container) -> Dataset[Any]: ...
+    def __call__(self, *data: Container) -> Indexed[Any]: ...
 
 
 @dataclass(frozen=True)
@@ -2421,12 +2455,13 @@ class Collector(Source[Dataset[Path], [Environment, Predictor]]):
 
 
 @dataclass(frozen=True)
-class Mix(Source[Dataset[Any], ...]):
-    """Batches drawn from several datasets in proportion to their weights (web, code, books): the mixture as a dataset."""
+class Mix(Source[Indexed[Any], ...]):
+    """Several datasets as one (web, code, books), each example weighted so that batches draw from them in proportion
+    to the weights: the mixture as one Indexed, to curate and split like any."""
     title = "Data mixture weights"
     weights: list[float]
 
-    def __call__(self, *datasets: Dataset[Any]) -> Dataset[Any]: ...
+    def __call__(self, *datasets: Indexed[Any]) -> Indexed[Any]: ...
 
 
 @dataclass(frozen=True)
@@ -2442,38 +2477,104 @@ class Each(Source[Dataset[Any], [Callable[..., Any], Dataset[Any]]]):
 
 
 @dataclass(frozen=True)
-class Dedup(Curate[Container]):
+class Dedup(Curate[Any]):
     """Drop exact copies across the whole dataset (by hash): the first of each kept."""
     title = "Data deduplication"
 
-    def __call__[C: Container](self, data: Dataset[C], /) -> Dataset[C]: ...
+    def indices(self, data: Indexed[Any], /) -> Tensor: ...
 
 
 @dataclass(frozen=True)
-class DropNearDuplicates(Curate[Container]):
+class DropNearDuplicates(Curate[Any]):
     """Drop examples whose MinHash signatures collide with an earlier one's above a similarity threshold: dedup beyond
     exact copies."""
     title = "Near-duplicate removal (MinHash / LSH)"
     threshold: float = 0.8
 
-    def __call__[C: Container](self, data: Dataset[C], /) -> Dataset[C]: ...
+    def indices(self, data: Indexed[Any], /) -> Tensor: ...
 
 
 @dataclass(frozen=True)
-class KeepBest(Curate[Container, [Callable[[Container], Value]]]):
-    """The best-scoring fraction of the whole dataset: a quantile of every score first, then a threshold per batch."""
+class KeepBest(Curate[Any, [Callable[[Any], Value]]]):
+    """The best-scoring fraction of the whole dataset: every score first, then the ones above their quantile."""
     title = "Data filtering by fraction"
     keep: float = 0.5
 
-    def __call__[C: Container](self, data: Dataset[C], score: Callable[[C], Value], /) -> Dataset[C]: ...
+    def indices(self, data: Indexed[Any], score: Callable[[Any], Value], /) -> Tensor: ...
 
 
 @dataclass(frozen=True)
-class Curriculum(Curate[Container, [Callable[[Container], Value]]]):
+class Curriculum(Curate[Any, [Callable[[Any], Value]]]):
     """The dataset sorted by difficulty, easy first: a global sort, so it reads every batch before the first comes out."""
     title = "Curriculum learning"
 
-    def __call__[C: Container](self, data: Dataset[C], difficulty: Callable[[C], Value], /) -> Dataset[C]: ...
+    def indices(self, data: Indexed[Any], difficulty: Callable[[Any], Value], /) -> Tensor: ...
+
+
+@dataclass(frozen=True)
+class Subsample(Curate[Any]):
+    """A random fraction of the examples, without replacement: a smaller run, a quick look."""
+    title = "Random subsampling"
+    fraction: float
+    seed: int = 0
+
+    def indices(self, data: Indexed[Any], /) -> Tensor: ...
+
+
+@dataclass(frozen=True)
+class Resample(Curate[Any, [Callable[[Any], Value]]]):
+    """n examples drawn with replacement, each in proportion to its weight: importance sampling, or the bootstrap when
+    every weight is 1 (n defaults to the dataset's size)."""
+    title = "Resampling (importance sampling, bootstrap)"
+    n: int | None = None
+    seed: int = 0
+
+    def indices(self, data: Indexed[Any], weight: Callable[[Any], Value], /) -> Tensor: ...
+
+
+@dataclass(frozen=True)
+class Rebalance(Curate[Any, [Callable[[Any], Tensor]]]):
+    """As many examples of each class as of the largest ("oversample", repeating the rarer ones) or the smallest
+    ("undersample", dropping some of the commoner ones)."""
+    title = "Class rebalancing (over- and undersampling)"
+    mode: str = "oversample"
+    seed: int = 0
+
+    def indices(self, data: Indexed[Any], label: Callable[[Any], Tensor], /) -> Tensor: ...
+
+
+# ═══ Partition[C, **R = []]: Indexed → splits of Subsets ══════════════════════════════════════════
+
+
+@dataclass(frozen=True)
+class Holdout(Partition[Any]):
+    """One split, at random, into parts of the given fractions (train, validation, test), each class in the same
+    proportions in every part when label says what an example's class is (stratified)."""
+    title = "Train / validation / test split"
+    fractions: tuple[float, ...] = (0.8, 0.1, 0.1)
+    label: Callable[[Any], Tensor] | None = None
+    seed: int = 0
+
+    def parts(self, data: Indexed[Any], /) -> tuple[tuple[Tensor, ...], ...]: ...
+
+
+@dataclass(frozen=True)
+class Folds(Partition[Any]):
+    """The splits of any scikit-learn splitter, each a (train, test) pair: label gives it the classes to stratify by,
+    groups the groups to keep together (each called on batches, one value per example)."""
+    title = "Splits from a splitter"
+    splitter: Splitter
+    label: Callable[[Any], Tensor] | None = None
+    groups: Callable[[Any], Tensor] | None = None
+
+    def parts(self, data: Indexed[Any], /) -> tuple[tuple[Tensor, ...], ...]: ...
+
+
+@dataclass(frozen=True)
+class CrossValidation(Folds):
+    """k (train, test) splits, each example tested once: plain, stratified by class, by group, or forward in time."""
+    title = "k-fold cross-validation"
+    function = "sklearn.model_selection.KFold, StratifiedKFold, GroupKFold, TimeSeriesSplit"
 
 
 # ═══ Reduce[C, A, **R = []]: Dataset → a ══════════════════════════════════════════════════════════
@@ -2481,10 +2582,86 @@ class Curriculum(Curate[Container, [Callable[[Container], Value]]]):
 
 @dataclass(frozen=True)
 class Evaluate(Reduce[Any, Tensor, [Callable[..., Tensor]]]):
-    """A per-batch metric (accuracy, a loss, perplexity), averaged over every batch, weighted by their sizes."""
+    """A per-batch metric (accuracy, a loss, perplexity), averaged over every batch, weighted by their sizes; given a
+    model, the metric is called as metric(model, *batch), as a loss is."""
     title = "Evaluation (a metric over a dataset)"
 
-    def __call__(self, data: Dataset[Any], metric: Callable[..., Tensor], /) -> Tensor: ...
+    def __call__(self, data: Dataset[Any], metric: Callable[..., Tensor], model: nn.Module | None = None, /) -> Tensor: ...
+
+
+@dataclass(frozen=True)
+class Metric(Reduce[tuple[Tensor, Tensor], Any]):
+    """A metric of every prediction and target at once, not a mean of per-batch values: data is (prediction, target)
+    pairs, gathered, then fn(targets, predictions), as scikit-learn's metrics take them."""
+    title = "Whole-dataset metric"
+    fn: Callable[[Any, Any], Any]
+
+    def __call__(self, data: Dataset[tuple[Tensor, Tensor]], /) -> Any: ...
+
+
+@dataclass(frozen=True)
+class ClassificationMetrics(Metric):
+    """The ones that need every score ranked or counted together: ROC AUC, F1, precision and recall, a confusion matrix."""
+    title = "Classification metrics (AUC, F1, precision / recall, confusion matrix)"
+    function = "sklearn.metrics.roc_auc_score, f1_score, precision_recall_fscore_support, confusion_matrix"
+
+
+@dataclass(frozen=True)
+class Streaming(Reduce[tuple[Tensor, Tensor], Tensor]):
+    """The same number as Metric without keeping every prediction: the metric is reset, updated on each (prediction,
+    target) batch, then computed (torchmetrics' API)."""
+    title = "Streaming metric"
+    metric: StreamMetric
+
+    def __call__(self, data: Dataset[tuple[Tensor, Tensor]], /) -> Tensor: ...
+
+
+@dataclass(frozen=True)
+class StreamingMetrics(Streaming):
+    """Metrics of a whole dataset that keep running totals instead of every prediction: calibration error, FID."""
+    title = "Calibration error, FID (streaming)"
+    function = "torchmetrics.classification.CalibrationError, torchmetrics.image.fid.FrechetInceptionDistance"
+
+
+@dataclass(frozen=True)
+class FitPredict(Reduce[Any, Tensor]):
+    """A fresh clone of the estimator fitted to the whole dataset, and what it says of each example: for methods that
+    cannot label new data, only the data they were fitted to (fit_predict)."""
+    title = "Fit and predict (transductive)"
+    estimator: Estimator
+
+    def __call__(self, data: Dataset[Any], /) -> Tensor: ...
+
+
+@dataclass(frozen=True)
+class DensityClustering(FitPredict):
+    """Clusters as dense regions, how many found rather than given, some examples left as noise."""
+    title = "Density clustering (DBSCAN, HDBSCAN)"
+    function = "sklearn.cluster.DBSCAN, HDBSCAN, OPTICS"
+
+
+@dataclass(frozen=True)
+class HierarchicalClustering(FitPredict):
+    """Clusters merged bottom up, the closest pair first, or cut from a graph of similarities (spectral)."""
+    title = "Hierarchical and spectral clustering"
+    function = "sklearn.cluster.AgglomerativeClustering, SpectralClustering"
+
+
+@dataclass(frozen=True)
+class FitTransform(Reduce[Any, Tensor]):
+    """A fresh clone of the estimator fitted to the whole dataset, and each example's new features: for embeddings that
+    place only the data they were fitted to (fit_transform)."""
+    title = "Fit and transform (transductive)"
+    estimator: Estimator
+
+    def __call__(self, data: Dataset[Any], /) -> Tensor: ...
+
+
+@dataclass(frozen=True)
+class Embedding2D(FitTransform):
+    """A low-dimensional map that keeps each example's neighbours near it: for looking at data, not for features."""
+    title = "Neighbour embeddings (t-SNE, UMAP)"
+    function = "sklearn.manifold.TSNE, umap.UMAP"
 
 
 @dataclass(frozen=True)
@@ -2537,10 +2714,18 @@ NEW = {"Tokenization (BPE, SentencePiece, bytes)", "Image tokenizer (VQ-VAE, VQG
        "Teacher forcing (walking the data's path)", "Supervised", "Log-probability", "Retrieval accuracy", "Blank (where generation starts)",
        "A condition, fixed", "Objective (a split, then its loss)", "Minibatches", "Classifier-free guidance training", "Recurrence (RNN / LSTM / GRU)",
        "State-space models / linear recurrences", "Walk", "Classification", "Regression", "Linear models (linear and logistic regression)",
-       "Kernel methods (random features)", "Decision trees, random forests, gradient boosting", "Clustering (k centroids)",
-       "Dimensionality reduction (a linear projection)", "Mixture models (GMM)", "k-nearest neighbours (classification, regression)",
-       "Hinge loss (SVM)", "Least squares (closed form, ridge)", "Tree growing (CART, bagging, boosting)", "k-means", "PCA",
-       "Expectation–maximization"}
+       "Kernel methods (random features)", "k-nearest neighbours (classification, regression)", "Hinge loss (SVM)",
+       "Least squares (closed form, ridge)",
+       # scikit-learn's API: estimators, their fitting, transductive methods, metrics
+       "scikit-learn estimator", "Decision trees, random forests, gradient boosting", "Support vector machines (kernel SVM)",
+       "Naive Bayes", "Gaussian processes", "k-means", "Mixture models (GMM, EM)", "PCA (dimensionality reduction)",
+       "Standardization (feature scaling)", "Fitting an estimator (fit, partial_fit)", "Fit and predict (transductive)",
+       "Density clustering (DBSCAN, HDBSCAN)", "Hierarchical and spectral clustering", "Fit and transform (transductive)",
+       "Neighbour embeddings (t-SNE, UMAP)", "Whole-dataset metric", "Classification metrics (AUC, F1, precision / recall, confusion matrix)",
+       "Streaming metric", "Calibration error, FID (streaming)",
+       # sub-datasets: sampling and splitting
+       "Random subsampling", "Resampling (importance sampling, bootstrap)", "Class rebalancing (over- and undersampling)",
+       "Train / validation / test split", "Splits from a splitter", "k-fold cross-validation"}
 
 
 def _paint(code: str) -> Callable[[str], str]:

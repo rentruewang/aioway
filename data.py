@@ -36,6 +36,15 @@ Signatures
 Datasets: read by statements, never by expressions
   Dataset[C]         batches of type C, one pass per iter(): a DataLoader, a collector, files on disk
   Buffer[C]          a dataset that statements write to as well (extend): a replay buffer
+  Indexed[C]         a dataset whose examples can be fetched by position: in memory, a file of records
+  Subset[C]          some examples of an Indexed, by index: what curating, splitting and sampling return; it
+                     remembers what chose them, so a run can log which examples went where
+
+scikit-learn: the API classical methods share, as protocols (anything with it fits: xgboost, lightgbm, umap)
+  Estimator          fit, get_params: a model (a classifier, a regressor, a transformer, a clusterer)
+  Splitter           split: index arrays for (train, test), one pair per fold
+  StreamMetric       update, compute: a metric accumulated over batches (torchmetrics)
+  SkModel[E]         an estimator wrapped as an Expr: its predict, transform, … take and give batches
   Environment        reset, and step a state by an action: a simulator, a game
 """
 
@@ -330,6 +339,95 @@ class Buffer[C](Dataset[C], Protocol):
     it samples (uniformly, by priority, the latest)."""
 
     def extend(self, batch: C, /) -> None: ...
+
+
+class Indexed[C](Dataset[C], Protocol):
+    """A dataset whose examples can be fetched by position: in memory, a file of records. Iterating gives its
+    batches; take gives the batch of the examples at some indices."""
+
+    def __len__(self) -> int: ...
+
+    def take(self, indices: Tensor, /) -> C: ...
+
+
+@dataclass(frozen=True)
+class Subset[C]:
+    """Some examples of an Indexed, by index, in order (an index may repeat: sampling with replacement). It is what
+    curating, splitting and sampling return: they only choose indices, and a Subset is the one thing that batches,
+    iterates and logs them. made_by is what chose them, from the original dataset on; a subset of a subset is
+    folded into indices on the original, so its lineage is one dataset and a chain of choices."""
+
+    parent: Indexed[C]
+    indices: Tensor
+    made_by: tuple[str, ...]
+    batch: int = 64
+
+    @staticmethod
+    def of(data: Indexed[C], indices: Tensor, made_by: str) -> Subset[C]:
+        if isinstance(data, Subset):
+            return Subset(data.parent, data.indices[indices], (*data.made_by, made_by), data.batch)
+        return Subset(data, indices, (made_by,))
+
+    def __len__(self) -> int:
+        return len(self.indices)
+
+    def take(self, indices: Tensor, /) -> C:
+        return self.parent.take(self.indices[indices])
+
+    def __iter__(self) -> Iterator[C]:
+        for i in range(0, len(self.indices), self.batch):
+            yield self.parent.take(self.indices[i : i + self.batch])
+
+    def __repr__(self) -> str:
+        return f"{' ∘ '.join(reversed(self.made_by))} of {type(self.parent).__name__}: {len(self)} of {len(self.parent)}"
+
+
+# ═══ scikit-learn: classical methods share one API ════════════════════════════════════════════════
+
+
+class Estimator(Protocol):
+    """A scikit-learn estimator: a config (get_params) and, once fit, a model. Classifiers and regressors predict,
+    transformers transform, clusterers predict or only fit_predict."""
+
+    def fit(self, X: Any, y: Any, /) -> Any: ...                    # y is None for an unsupervised one
+
+    def get_params(self, deep: bool = True) -> dict[str, Any]: ...
+
+
+class Splitter(Protocol):
+    """A scikit-learn cross-validation splitter (KFold, StratifiedKFold, GroupKFold, TimeSeriesSplit, ShuffleSplit):
+    index arrays for each (train, test)."""
+
+    def split(self, X: Any, y: Any, groups: Any, /) -> Iterator[tuple[Any, ...]]: ...
+
+
+class StreamMetric(Protocol):
+    """A metric accumulated batch by batch (a torchmetrics Metric): update with each batch, compute at the end."""
+
+    def update(self, preds: Tensor, target: Tensor, /) -> None: ...
+
+    def compute(self) -> Tensor: ...
+
+    def reset(self) -> None: ...
+
+
+class SkModel[E: Estimator](Expr):
+    """An estimator wrapped as an expression: its methods take a batch (a Value of feature vectors) and give one,
+    converting to and from arrays. Calling it predicts (a transformer: transforms). A statement makes it (Sklearn)
+    and fits it (FitEstimator); expressions only read it."""
+
+    def __init__(self, estimator: E) -> None:
+        self.estimator = estimator
+
+    def __call__(self, x: Value, /) -> Value: ...
+
+    def predict(self, x: Value, /) -> Value: ...
+
+    def predict_proba(self, x: Value, /) -> Value: ...
+
+    def decision_function(self, x: Value, /) -> Value: ...
+
+    def transform(self, x: Value, /) -> Value: ...
 
 
 type Predictor = Model[Any, Prediction]
