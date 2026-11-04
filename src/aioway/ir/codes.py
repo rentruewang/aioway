@@ -17,14 +17,14 @@ from aioway._utils import AnyDict, any_dict, render_fcall
 from aioway.ir.instrs import FuncCall
 from aioway.ir.instrs.instrs import InstrList
 from aioway.ir.procs import Proc
-from aioway.t import (
+from aioway.tensors import (
     Sign,
     keystr,
     render_torch_func_name,
     tree_flatten_with_path,
     tree_map_only,
 )
-from aioway.t.signs import BoundArgs
+from aioway.tensors.signs import BoundArgs
 
 __all__ = ["CodeRender", "render_func_proc", "render_stmts", "VarName"]
 

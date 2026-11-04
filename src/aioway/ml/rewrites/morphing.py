@@ -17,7 +17,7 @@ from aioway.ir import (
     TypeSequential,
     track_module_thunks,
 )
-from aioway.t import fake_mode
+from aioway.tensors import fake_mode
 
 from .rewrites import RewriteRule
 

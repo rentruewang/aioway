@@ -11,7 +11,7 @@ from aioway.io import (
     linear_regression,
     unbounded_box_tspec,
 )
-from aioway.t import Shape
+from aioway.tensors import Shape
 
 
 @pytest.fixture

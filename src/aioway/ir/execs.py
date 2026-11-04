@@ -8,7 +8,7 @@ from collections import abc as cabc
 import loguru as L
 import torch
 
-from aioway.t import (
+from aioway.tensors import (
     BoundArgs,
     has_fake,
     is_fake_tensor,

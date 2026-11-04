@@ -17,7 +17,7 @@ import torch
 from aioway._utils import AnySet, IntArray, any_set, is_list_of
 from aioway.ir.instrs import Instr, InstrList
 from aioway.ir.queries import OrderedIndex, Query
-from aioway.t import (
+from aioway.tensors import (
     BoundArgs,
     KeyEntry,
     MappingKey,

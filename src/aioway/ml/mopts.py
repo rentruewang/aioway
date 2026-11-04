@@ -8,7 +8,7 @@ import functools
 import torch
 from torch import nn, optim
 
-from aioway.t import tree_leaves
+from aioway.tensors import tree_leaves
 
 __all__ = ["Mopt"]
 

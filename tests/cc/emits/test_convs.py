@@ -11,7 +11,7 @@ from aioway.io import (
     set_batch_size,
     unbounded_box_tspec,
 )
-from aioway.t import Shape
+from aioway.tensors import Shape
 
 
 @pytest.fixture
