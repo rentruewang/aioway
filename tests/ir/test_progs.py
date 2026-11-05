@@ -6,7 +6,7 @@ from collections import abc as cabc
 import pytest
 
 from aioway.ir import FuncCall, Proc, TensorLifetime
-from aioway.tensors import BoundArgs, TList, tree_flatten, tree_unflatten
+from aioway.t import BoundArgs, TList, tree_flatten, tree_unflatten
 
 
 class TestInstr:

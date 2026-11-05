@@ -9,7 +9,7 @@ from torch import nn
 from torch.utils import data as du
 
 from aioway._utils import is_list_of
-from aioway.tensors import TreeSpec, tree_flatten, tree_unflatten
+from aioway.t import TreeSpec, tree_flatten, tree_unflatten
 
 __all__ = ["AttrAdaptor", "AttrRemains"]
 

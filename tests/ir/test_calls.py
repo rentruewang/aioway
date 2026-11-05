@@ -8,7 +8,7 @@ from torch import ops
 from torch import testing as tt
 
 from aioway.ir import Exec, Proc, TorchFuncDag, fake_aten_dag
-from aioway.tensors import fake_mode, has_fake, is_aten_op, parse_attr
+from aioway.t import fake_mode, has_fake, is_aten_op, parse_attr
 
 type Fakes = tuple[torch.Tensor, torch.Tensor]
 

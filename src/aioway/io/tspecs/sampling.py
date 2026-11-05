@@ -6,7 +6,7 @@ from collections import abc as cabc
 
 import torch
 
-from aioway.tensors import is_fake_mode_on
+from aioway.t import is_fake_mode_on
 
 from .tspecs import TSpec
 

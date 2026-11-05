@@ -7,7 +7,7 @@ import torch
 from torch import nn
 
 from aioway.ir.rebuild import rebuild_module
-from aioway.tensors import all_real, has_fake, real_mode
+from aioway.t import all_real, has_fake, real_mode
 
 
 @pytest.fixture

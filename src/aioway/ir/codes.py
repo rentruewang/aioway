@@ -17,14 +17,14 @@ from aioway._utils import AnyDict, any_dict, render_fcall
 from aioway.ir.instrs import FuncCall
 from aioway.ir.instrs.instrs import InstrList
 from aioway.ir.procs import Proc
-from aioway.tensors import (
+from aioway.t import (
     Sign,
     keystr,
     render_torch_func_name,
     tree_flatten_with_path,
     tree_map_only,
 )
-from aioway.tensors.signs import BoundArgs
+from aioway.t.signs import BoundArgs
 
 __all__ = ["CodeRender", "render_func_proc", "render_stmts", "VarName"]
 
@@ -300,21 +300,25 @@ def _dedent(string: str):
 
 
 def _function_template():
-    return _dedent("""
+    return _dedent(
+        """
         def {{ name }}{{ params }}:
             {% for line in body %}
             {{ line }}
             {% endfor %}
             return {{ returns }}
-""")
+"""
+    )
 
 
 def _statements_template():
-    return _dedent("""
+    return _dedent(
+        """
         {% for line in body %}
         {{ line }}
         {% endfor %}
-    """)
+    """
+    )
 
 
 def _py_env():

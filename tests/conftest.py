@@ -14,7 +14,7 @@ from numpy import random as npr
 from rich import traceback
 from torch import cuda
 
-from aioway.tensors import fake_mode, real_mode, route_aten_mode
+from aioway.t import fake_mode, real_mode, route_aten_mode
 
 _PROJECT_ROOT = pathlib.Path(__file__).parent.parent.resolve()
 _REPO = git.Repo(_PROJECT_ROOT)

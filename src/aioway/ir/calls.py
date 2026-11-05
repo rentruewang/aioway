@@ -5,7 +5,7 @@ import contextlib as ctxl
 import dataclasses as dcls
 import typing
 
-from aioway.tensors import (
+from aioway.t import (
     TorchDispMode,
     TorchFuncMode,
     fake_mode,

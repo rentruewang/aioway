@@ -7,7 +7,7 @@ from torch import nn
 
 from aioway.io.tspecs import TSpecLike, as_tspec, sample_from_tspec, set_batch_size
 from aioway.ir import NnProc, track_module_thunks
-from aioway.tensors import TList, clone_in_fake_mode, fake_mode, route_aten_mode
+from aioway.t import TList, clone_in_fake_mode, fake_mode, route_aten_mode
 
 __all__ = ["module_tspec_to_proc", "chain_sequential_proc", "Activation"]
 
