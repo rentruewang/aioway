@@ -1,7 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import typing
-from torchvision import tv_tensors
 
 _DOMAIN_TYPES: set[type] = set()
 
