@@ -6,8 +6,8 @@ import typing
 import tensordict as td
 import torch
 from torchrl.data import tensor_specs as tspecs
-from torchvision import datasets
-from torchvision import transforms as T
+from torchvision import datasets as tvdsets
+from torchvision.transforms import v2 as tvt
 
 from aioway.io import InputTarget, InputTargetLikeDset
 
@@ -16,14 +16,14 @@ __all__ = ["MnistDataset"]
 
 class MnistDataset(InputTargetLikeDset):
     def __init__(self) -> None:
-        self._mnist = datasets.MNIST(pathlib.Path.home(), download=True)
+        self._mnist = tvdsets.MNIST(pathlib.Path.home(), download=True)
 
     def __len__(self) -> int:
         return len(self._mnist)
 
     def __getitem__(self, idx) -> InputTarget:
         x, y = self._mnist[idx]
-        x = T.ToTensor()(x)
+        x = tvt.ToTensor()(x)
         return InputTarget(x, y)
 
     @typing.no_type_check
