@@ -7,8 +7,8 @@ import typing
 
 import torch
 from PIL import Image as image
-from torchvision import io as vio
-from torchvision.transforms import v2 as tt
+from torchvision import io as tvio
+from torchvision.transforms import v2 as tvt
 
 from aioway.tensors import is_fake_mode_on, parse_attr, torch_set_fake_mode_func
 
@@ -56,7 +56,7 @@ class ComposedImageLoader(ImageLoader):
     loader: ImageLoader
     "The image loader."
 
-    transform: tt.Transform = tt.Lambda(lambda t: t)
+    transform: tvt.Transform = tvt.Lambda(lambda t: t)
     """
     This is a series of `torchvision` `Transform`.
     Default to null op (a lambda because compose cannot be empty).
@@ -74,7 +74,7 @@ class PillowImageLoader(ImageLoader):
     This is the pillow image loader + torchvision compose.
     """
 
-    transform: tt.Transform = tt.PILToTensor()
+    transform: tvt.Transform = tvt.PILToTensor()
     "The transform to use to convert the pillow image to a tensor."
 
     @typing.override
@@ -87,7 +87,7 @@ class PillowImageLoader(ImageLoader):
 
     def _real_load_img(self, fname: str | pathlib.Path, /) -> torch.Tensor:
         with image.open(fname) as img:
-            transform = tt.PILToTensor()
+            transform = tvt.PILToTensor()
             return transform(img)
 
     def _fake_load_img(self, fname: str | pathlib.Path, /) -> torch.Tensor:
@@ -124,7 +124,7 @@ class TvioImageLoader(ImageLoader):
             # According to torch's documentation,
             # weirdly the `decode_image` function only decode these files.
             case ".jpg" | ".png" | ".gif" | ".webp":
-                return vio.decode_image(fname_str)
+                return tvio.decode_image(fname_str)
 
             # This requires installing extra dependencies, do this later.
             # https://docs.pytorch.org/vision/main/generated/torchvision.io.decode_image.html
