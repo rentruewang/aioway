@@ -2,6 +2,7 @@
 
 import operator
 import typing
+from collections import abc as cabc
 
 import pytest
 import torch
@@ -13,7 +14,7 @@ from aioway.exprs import CallExpr, Expr, ModuleExpr
 
 class Case(typing.NamedTuple):
     name: str
-    func: typing.Callable
+    func: cabc.Callable
     args: tuple
     kwargs: dict
     expected: typing.Any
@@ -23,7 +24,7 @@ def _sub(a, b=0):
     return a - b
 
 
-def call_cases() -> typing.Iterator[Case]:
+def call_cases():
     yield Case("add", operator.add, (1, 2), {}, 3)
     yield Case("kwargs", _sub, (5,), {"b": 2}, 3)
     yield Case(
@@ -49,23 +50,18 @@ def call_cases() -> typing.Iterator[Case]:
     )
 
 
-def module_cases() -> typing.Iterator[Case]:
+def module_cases():
     layer, x = nn.Linear(2, 3), torch.randn(1, 2)
     yield Case("linear", layer, (x,), {}, layer(x))
 
 
-def all_cases() -> typing.Iterator[Case]:
+def all_cases():
     yield from call_cases()
     yield from module_cases()
 
 
 def _case_id(case: Case) -> str:
     return case.name
-
-
-def _make_expr(case: Case) -> CallExpr:
-    cls = ModuleExpr if isinstance(case.func, nn.Module) else CallExpr
-    return cls(func=case.func, args=case.args, kwargs=case.kwargs)
 
 
 @pytest.fixture(params=call_cases(), ids=_case_id)
@@ -88,7 +84,8 @@ def any_case(request: pytest.FixtureRequest) -> Case:
 
 @pytest.fixture
 def any_expr(any_case: Case) -> CallExpr:
-    return _make_expr(any_case)
+    cls: typing.Any = ModuleExpr if isinstance(any_case.func, nn.Module) else CallExpr
+    return cls(func=any_case.func, args=any_case.args, kwargs=any_case.kwargs)
 
 
 def test_call(any_expr: CallExpr, any_case: Case):
