@@ -7,11 +7,7 @@ import pytest
 import torch
 from torch import nn
 
-from aioway.tensors import (
-    BoundArgs,
-    Param,
-    ParamKind,
-    Sign,
+from aioway._pytrees import (
     keystr,
     tree_flatten,
     tree_flatten_with_path,
@@ -19,6 +15,7 @@ from aioway.tensors import (
     tree_structure,
     tree_unflatten,
 )
+from aioway.tensors import BoundArgs, Param, ParamKind, Sign
 
 
 def _add_i(a: int, b: int) -> int:
