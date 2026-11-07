@@ -9,16 +9,16 @@ from collections import abc as cabc
 
 import torch
 
-from aioway._utils import is_seq_of, is_set_of
-from aioway.tensors.attrs import parse_attr
-from aioway.tensors.overrides import is_fake_tensor
-from aioway.tensors.pytrees import (
+from aioway._pytrees import (
     KeyEntry,
     PyTreeFlatten,
     PyTreeFlattenWithKey,
     PyTreeMixin,
     SequenceKey,
 )
+from aioway._utils import is_seq_of, is_set_of
+from aioway.tensors.attrs import parse_attr
+from aioway.tensors.overrides import is_fake_tensor
 
 if typing.TYPE_CHECKING:
     from aioway.tensors import Attr, Device, DType, Layout, Shape
