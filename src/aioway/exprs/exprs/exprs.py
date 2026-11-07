@@ -27,10 +27,21 @@ class Expr[T = object](abc.ABC):
 
     __match_args__: typing.ClassVar[tuple[str, ...]]
 
-    @abc.abstractmethod
     def __call__(self) -> T:
+        return self.evaluate()
+
+    @abc.abstractmethod
+    def evaluate(self) -> T:
+        """
+        Evaluate and compute the result of this expression.
+        """
+
         raise NotImplementedError
 
     @abc.abstractmethod
-    def inputs(self) -> cabc.Iterable[Expr]:
+    def deps(self) -> cabc.Iterable[Expr]:
+        """
+        The expressions that this current expression depends on.
+        """
+
         raise NotImplementedError

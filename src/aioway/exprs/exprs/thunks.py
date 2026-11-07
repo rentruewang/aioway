@@ -36,12 +36,14 @@ class CallExpr[F: cabc.Callable](Expr, abc.ABC):
     """
 
     @typing.override
-    def __call__(self):
+    def evaluate(self):
         return self.func(*self.args, **self.kwargs)
 
     @typing.override
-    def inputs(self):
-        for expr in tree_leaves([self.args, self.kwargs]):
+    def deps(self):
+        for expr in tree_leaves(
+            [self.args, self.kwargs], is_leaf=lambda e: isinstance(e, Expr)
+        ):
             if isinstance(expr, Expr):
                 yield expr
 

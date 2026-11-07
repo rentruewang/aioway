@@ -97,13 +97,13 @@ def test_module_call(module_expr: ModuleExpr):
 
 
 def test_inputs_empty(any_expr: Expr):
-    assert list(any_expr.inputs()) == []
+    assert list(any_expr.deps()) == []
 
 
 def test_inputs_nested(call_expr: CallExpr):
     outer = CallExpr(func=lambda x: x, args=(call_expr,), kwargs={})
 
-    found = list(outer.inputs())
+    found = list(outer.deps())
     assert len(found) == 1
     assert found[0] is call_expr
 
