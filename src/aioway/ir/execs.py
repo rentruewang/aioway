@@ -8,14 +8,9 @@ from collections import abc as cabc
 import loguru as L
 import torch
 
-from aioway.tensors import (
-    BoundArgs,
-    has_fake,
-    is_fake_tensor,
-    is_real_tensor,
-    tree_leaves,
-    tree_map_only,
-)
+from aioway._pytrees import tree_leaves, tree_map_only
+from aioway._signs import BoundArgs
+from aioway.tensors import has_fake, is_fake_tensor, is_real_tensor
 
 if typing.TYPE_CHECKING:
     from aioway.ir import FuncCall, Proc

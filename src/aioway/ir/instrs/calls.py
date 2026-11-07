@@ -7,15 +7,9 @@ from collections import abc as cabc
 
 from torch import nn
 
-from aioway.tensors import (
-    BoundArgs,
-    GetAttrKey,
-    Sign,
-    TList,
-    find_nested_tensors,
-    render_tensor_func_short,
-    replace_tensors_with_attr,
-)
+from aioway._pytrees import GetAttrKey, find_nested_tensors
+from aioway._signs import BoundArgs, Sign
+from aioway.tensors import TList, render_tensor_func_short, replace_tensors_with_attr
 
 from .instrs import Instr
 

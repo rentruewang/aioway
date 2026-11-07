@@ -14,20 +14,18 @@ from collections import abc as cabc
 import numpy as np
 import torch
 
-from aioway._utils import AnySet, IntArray, any_set, is_list_of
-from aioway.ir.instrs import Instr, InstrList
-from aioway.ir.queries import OrderedIndex, Query
-from aioway.tensors import (
-    BoundArgs,
+from aioway._pytrees import (
     KeyEntry,
     MappingKey,
-    TList,
-    all_real,
     is_tensor_container,
-    parse_attr,
     tree_leaves,
     tree_map_only,
 )
+from aioway._signs import BoundArgs
+from aioway._utils import AnySet, IntArray, any_set, is_list_of
+from aioway.ir.instrs import Instr, InstrList
+from aioway.ir.queries import OrderedIndex, Query
+from aioway.tensors import TList, all_real, parse_attr
 
 __all__ = ["Proc", "TensorRef", "TensorIndex", "TensorLifetime"]
 

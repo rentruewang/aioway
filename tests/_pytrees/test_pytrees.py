@@ -8,7 +8,7 @@ import pytest
 import torch
 from torch.utils import _pytree
 
-from aioway.tensors import (
+from aioway._pytrees import (
     SUPPORTED_NODES,
     MappingKey,
     PyTreeDataclassMixin,

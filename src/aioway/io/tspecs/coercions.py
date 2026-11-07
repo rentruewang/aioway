@@ -7,7 +7,7 @@ from collections import abc as cabc
 import loguru as L
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.tensors.signs import Sign
+from aioway._signs import Sign
 
 from .tspecs import TSpec
 
