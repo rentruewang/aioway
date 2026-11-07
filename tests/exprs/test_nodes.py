@@ -1,7 +1,9 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import operator
+import typing
 
+import pytest
 import torch
 from torch import nn
 
@@ -9,73 +11,83 @@ from aioway._signs import Sign
 from aioway.exprs import CallExpr, ModuleExpr
 
 
-def test_call_positional():
-    expr = CallExpr(func=operator.add, args=(1, 2), kwargs={})
-    assert expr() == 3
+class Case(typing.NamedTuple):
+    func: typing.Callable
+    args: tuple
+    kwargs: dict
+    expected: typing.Any
 
 
-def test_call_kwargs():
-    def f(a, b=0):
-        return a - b
-
-    expr = CallExpr(func=f, args=(5,), kwargs={"b": 2})
-    assert expr() == 3
+def _sub(a, b=0):
+    return a - b
 
 
-def test_torch_add():
-    x, y = torch.ones(3), torch.full((3,), 2.0)
-    expr = CallExpr(func=torch.add, args=(x, y), kwargs={})
-    assert torch.equal(expr(), torch.full((3,), 3.0))
+CASES = {
+    "add": Case(operator.add, (1, 2), {}, 3),
+    "kwargs": Case(_sub, (5,), {"b": 2}, 3),
+    "torch_add": Case(
+        torch.add,
+        (torch.ones(3), torch.full((3,), 2.0)),
+        {},
+        torch.full((3,), 3.0),
+    ),
+    "torch_relu": Case(
+        torch.relu,
+        (torch.tensor([-1.0, 0.0, 2.0]),),
+        {},
+        torch.tensor([0.0, 0.0, 2.0]),
+    ),
+    "torch_sum": Case(
+        torch.sum,
+        (torch.arange(6.0).reshape(2, 3),),
+        {"dim": 1},
+        torch.tensor([3.0, 12.0]),
+    ),
+}
 
 
-def test_torch_relu():
-    x = torch.tensor([-1.0, 0.0, 2.0])
-    expr = CallExpr(func=torch.relu, args=(x,), kwargs={})
-    assert torch.equal(expr(), torch.tensor([0.0, 0.0, 2.0]))
+@pytest.fixture(params=list(CASES.values()), ids=list(CASES.keys()))
+def case(request) -> Case:
+    return request.param
 
 
-def test_torch_sum_kwargs():
-    x = torch.arange(6.0).reshape(2, 3)
-    expr = CallExpr(func=torch.sum, args=(x,), kwargs={"dim": 1})
-    assert torch.equal(expr(), torch.tensor([3.0, 12.0]))
+@pytest.fixture
+def call_expr(case) -> CallExpr:
+    return CallExpr(func=case.func, args=case.args, kwargs=case.kwargs)
 
 
-def test_inputs_empty():
-    expr = CallExpr(func=operator.add, args=(1, 2), kwargs={})
-    assert list(expr.inputs()) == []
+@pytest.fixture
+def module_expr() -> ModuleExpr:
+    torch.manual_seed(0)
+    return ModuleExpr(func=nn.Linear(2, 3), args=(torch.randn(1, 2),), kwargs={})
 
 
-def test_inputs_nested():
-    inner = CallExpr(func=operator.add, args=(1, 2), kwargs={})
-    outer = CallExpr(func=operator.neg, args=(inner,), kwargs={})
+@pytest.fixture(params=[call_expr.name, module_expr.name])
+def any_expr(request):
+    return request.getfixturevalue(request.param)
+
+
+def test_call(call_expr, case):
+    torch.testing.assert_close(call_expr(), case.expected)
+
+
+def test_module_call(module_expr):
+    out = module_expr()
+    assert out.shape == (1, 3)
+    torch.testing.assert_close(out, module_expr.func(*module_expr.args))
+
+
+def test_inputs_empty(any_expr):
+    assert list(any_expr.inputs()) == []
+
+
+def test_inputs_nested(call_expr):
+    outer = CallExpr(func=lambda x: x, args=(call_expr,), kwargs={})
 
     found = list(outer.inputs())
     assert len(found) == 1
-    assert found[0] is inner
+    assert found[0] is call_expr
 
 
-def test_inputs_ignores_tensors():
-    expr = CallExpr(func=torch.relu, args=(torch.ones(2),), kwargs={})
-    assert list(expr.inputs()) == []
-
-
-def test_call_sign():
-    expr = CallExpr(func=operator.add, args=(1, 2), kwargs={})
-    assert isinstance(expr.sign, Sign)
-
-
-def test_module_call():
-    torch.manual_seed(0)
-    layer = nn.Linear(2, 3)
-    x = torch.randn(1, 2)
-
-    expr = ModuleExpr(func=layer, args=(x,), kwargs={})
-    out = expr()
-
-    assert out.shape == (1, 3)
-    assert torch.equal(out, layer(x))
-
-
-def test_module_sign():
-    expr = ModuleExpr(func=nn.Linear(2, 3), args=(torch.randn(1, 2),), kwargs={})
-    assert isinstance(expr.sign, Sign)
+def test_sign(any_expr):
+    assert isinstance(any_expr.sign, Sign)
