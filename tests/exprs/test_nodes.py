@@ -1,6 +1,5 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from aioway.ml import params
 import operator
 import typing
 
@@ -50,35 +49,54 @@ def call_cases() -> typing.Iterator[Case]:
     )
 
 
-@pytest.fixture(params=call_cases(), ids=lambda c: c.name)
-def case(request) -> Case:
-    return request.param
+def module_cases() -> typing.Iterator[Case]:
+    layer, x = nn.Linear(2, 3), torch.randn(1, 2)
+    yield Case("linear", layer, (x,), {}, layer(x))
 
 
-@pytest.fixture(params=)
-def call_expr(case: Case) -> CallExpr:
+def all_cases() -> typing.Iterator[Case]:
+    yield from call_cases()
+    yield from module_cases()
+
+
+def _case_id(case: Case) -> str:
+    return case.name
+
+
+def _make_expr(case: Case) -> CallExpr:
+    cls = ModuleExpr if isinstance(case.func, nn.Module) else CallExpr
+    return cls(func=case.func, args=case.args, kwargs=case.kwargs)
+
+
+@pytest.fixture(params=call_cases(), ids=_case_id)
+def call_expr(request: pytest.FixtureRequest) -> CallExpr:
+    case: Case = request.param
     return CallExpr(func=case.func, args=case.args, kwargs=case.kwargs)
 
 
+@pytest.fixture(params=module_cases(), ids=_case_id)
+def module_expr(request: pytest.FixtureRequest) -> ModuleExpr:
+    case: Case = request.param
+    assert isinstance(case.func, nn.Module)
+    return ModuleExpr(func=case.func, args=case.args, kwargs=case.kwargs)
+
+
+@pytest.fixture(params=all_cases(), ids=_case_id)
+def any_case(request: pytest.FixtureRequest) -> Case:
+    return request.param
+
+
 @pytest.fixture
-def module_expr() -> ModuleExpr:
-    return ModuleExpr(func=nn.Linear(2, 3), args=(torch.randn(1, 2),), kwargs={})
+def any_expr(any_case: Case) -> CallExpr:
+    return _make_expr(any_case)
 
 
-@pytest.fixture(params=[call_expr.name, module_expr.name])
-def any_expr(request: pytest.FixtureRequest):
-    pytest.xfail("fail")
-    return request.getfixturevalue(request.param)
-
-
-def test_call(call_expr, case):
-    torch.testing.assert_close(call_expr(), case.expected)
+def test_call(any_expr: CallExpr, any_case: Case):
+    torch.testing.assert_close(any_expr(), any_case.expected)
 
 
 def test_module_call(module_expr: ModuleExpr):
-    out = module_expr()
-    assert out.shape == (1, 3)
-    torch.testing.assert_close(out, module_expr.func(*module_expr.args))
+    torch.testing.assert_close(module_expr(), module_expr.func(*module_expr.args))
 
 
 def test_inputs_empty(any_expr: Expr):
