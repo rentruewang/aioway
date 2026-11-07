@@ -19,11 +19,13 @@ import rich
 import torch
 from rich import pretty
 
+from aioway._signs import BoundArgs
+
 # %%
 from aioway.ir import FuncProc, TorchFuncDag, render_func_proc
 
 # %%
-from aioway.tensors import BoundArgs, fake_mode
+from aioway.tensors import fake_mode
 
 pretty.install()
 

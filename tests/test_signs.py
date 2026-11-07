@@ -15,7 +15,7 @@ from aioway._pytrees import (
     tree_structure,
     tree_unflatten,
 )
-from aioway.tensors import BoundArgs, Param, ParamKind, Sign
+from aioway._signs import BoundArgs, Param, ParamKind, Sign
 
 
 def _add_i(a: int, b: int) -> int:
