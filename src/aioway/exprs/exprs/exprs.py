@@ -5,7 +5,7 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-__all__ = ["Expr", "expr_dcls"]
+__all__ = ["Expr", "expr_dcls", "execute"]
 
 
 @typing.dataclass_transform(frozen_default=True)
@@ -27,10 +27,29 @@ class Expr[T = object](abc.ABC):
 
     __match_args__: typing.ClassVar[tuple[str, ...]]
 
-    @abc.abstractmethod
     def __call__(self) -> T:
+        return self.execute()
+
+    @abc.abstractmethod
+    def execute(self) -> T:
+        """
+        Evaluate and compute the result of this expression.
+        """
+
         raise NotImplementedError
 
     @abc.abstractmethod
-    def inputs(self) -> cabc.Iterable[Expr]:
+    def deps(self) -> cabc.Iterable[Expr]:
+        """
+        The expressions that this current expression depends on.
+        """
+
         raise NotImplementedError
+
+
+def execute(item):
+    if isinstance(item, Expr):
+        return item()
+
+    else:
+        return item

@@ -1,5 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import dataclasses as dcls
 import operator
 import typing
 from collections import abc as cabc
@@ -9,15 +10,30 @@ import torch
 from torch import nn
 
 from aioway._signs import Sign
-from aioway.exprs import CallExpr, Expr, ModuleExpr
+from aioway.exprs import CallExpr, ModuleExpr, TensorExpr, execute
 
 
-class Case(typing.NamedTuple):
+@dcls.dataclass
+class Case:
     name: str
     func: cabc.Callable
     args: tuple
     kwargs: dict
     expected: typing.Any
+
+    def __init__(
+        self, name: str, func: cabc.Callable, expected, *args, **kwargs
+    ) -> None:
+        self.name = name
+        self.func = func
+        self.args = args
+        self.kwargs = kwargs
+        self.expected = expected
+
+        for arg in *self.args, *self.kwargs.values():
+            # FIXME: Remove after domain tensor is done.
+            if isinstance(arg, torch.Tensor):
+                raise TypeError("Tensors should be wrapped.")
 
 
 def _sub(a, b=0):
@@ -25,34 +41,34 @@ def _sub(a, b=0):
 
 
 def call_cases():
-    yield Case("add", operator.add, (1, 2), {}, 3)
-    yield Case("kwargs", _sub, (5,), {"b": 2}, 3)
+    yield Case("add", operator.add, 3, 1, 2)
+    yield Case("kwargs", _sub, 3, 5, b=2)
     yield Case(
         "torch_add",
         torch.add,
-        (torch.ones(3), torch.full((3,), 2.0)),
-        {},
         torch.full((3,), 3.0),
+        TensorExpr(torch.ones(3)),
+        TensorExpr(torch.full((3,), 2.0)),
     )
     yield Case(
         "torch_relu",
         torch.relu,
-        (torch.tensor([-1.0, 0.0, 2.0]),),
-        {},
         torch.tensor([0.0, 0.0, 2.0]),
+        TensorExpr(torch.tensor([-1.0, 0.0, 2.0])),
     )
     yield Case(
         "torch_sum",
         torch.sum,
-        (torch.arange(6.0).reshape(2, 3),),
-        {"dim": 1},
         torch.tensor([3.0, 12.0]),
+        TensorExpr(torch.arange(6.0).reshape(2, 3)),
+        dim=1,
     )
 
 
 def module_cases():
-    layer, x = nn.Linear(2, 3), torch.randn(1, 2)
-    yield Case("linear", layer, (x,), {}, layer(x))
+    layer = nn.Linear(2, 3)
+    x = torch.randn(1, 2)
+    yield Case("linear", layer, layer(x), TensorExpr(x))
 
 
 def all_cases():
@@ -93,17 +109,15 @@ def test_call(any_expr: CallExpr, any_case: Case):
 
 
 def test_module_call(module_expr: ModuleExpr):
-    torch.testing.assert_close(module_expr(), module_expr.func(*module_expr.args))
-
-
-def test_inputs_empty(any_expr: Expr):
-    assert list(any_expr.inputs()) == []
+    torch.testing.assert_close(
+        module_expr(), module_expr.func(*[execute(a) for a in module_expr.args])
+    )
 
 
 def test_inputs_nested(call_expr: CallExpr):
     outer = CallExpr(func=lambda x: x, args=(call_expr,), kwargs={})
 
-    found = list(outer.inputs())
+    found = list(outer.deps())
     assert len(found) == 1
     assert found[0] is call_expr
 

@@ -9,7 +9,7 @@ from torch import nn
 from aioway._pytrees import tree_leaves
 from aioway._signs import Sign
 
-from .exprs import Expr, expr_dcls
+from .exprs import Expr, execute, expr_dcls
 
 __all__ = ["CallExpr", "ModuleExpr"]
 
@@ -36,12 +36,17 @@ class CallExpr[F: cabc.Callable](Expr, abc.ABC):
     """
 
     @typing.override
-    def __call__(self):
-        return self.func(*self.args, **self.kwargs)
+    def execute(self):
+        args = [execute(arg) for arg in self.args]
+        kwargs = {key: execute(val) for key, val in self.kwargs.items()}
+
+        return self.func(*args, **kwargs)
 
     @typing.override
-    def inputs(self):
-        for expr in tree_leaves([self.args, self.kwargs]):
+    def deps(self):
+        for expr in tree_leaves(
+            [self.args, self.kwargs], is_leaf=lambda e: isinstance(e, Expr)
+        ):
             if isinstance(expr, Expr):
                 yield expr
 
