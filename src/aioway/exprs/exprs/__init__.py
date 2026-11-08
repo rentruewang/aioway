@@ -2,3 +2,4 @@
 
 from .exprs import *
 from .thunks import *
+from .vars import *
