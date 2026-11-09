@@ -8,13 +8,14 @@ import pytest
 from aioway._signs import Param
 from aioway.ops import (
     CachedOpExec,
+    FuncInputOp,
     Op,
+    OpFunc,
     default_op_exec,
     exec_op,
     executor,
     set_executor,
 )
-from aioway.ops.funcs import FuncInputOp, OpFunc
 
 
 class SumCountOp(Op):
