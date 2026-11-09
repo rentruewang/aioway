@@ -8,7 +8,7 @@ import torch
 from torch import nn
 from torch import testing as tt
 
-from aioway._signs import Param
+from aioway._signs import Param, Sign
 from aioway.ops import (
     CachedOpExec,
     FuncInputOp,
@@ -60,9 +60,9 @@ def test_set_executor():
 
 
 def test_set_executor_error():
-    with pytest.raises(RuntimeError):
-        with set_executor(CachedOpExec()):
-            raise RuntimeError
+    cache = CachedOpExec()
+    with pytest.raises(RuntimeError), set_executor(cache):
+        raise RuntimeError
     assert executor() is default_op_exec
 
 
@@ -109,18 +109,34 @@ def test_func_call():
     assert f(a=1, b=2, c=3) == 6
 
 
-def test_func_shared_input():
+def test_func_dedup_input():
     x = inp("x")
     op = SumCountOp(0, x, x)
 
-    # Disallow (x, x) as signature.
-    with pytest.raises(ValueError, match="duplicate"):
-        OpFunc(op)
+    # (x, x) would have signature (x)
+    assert OpFunc(op).signature == Sign.from_input_names(["x"])
+
+
+def test_func_input_mismatch():
+    x = inp("x")
+
+    # Same name, different param.
+    diff_param = SumCountOp(
+        0, x, FuncInputOp(param=Param.build("x", default=0), typ=int)
+    )
+    with pytest.raises(TypeError, match="same name"):
+        OpFunc(diff_param)
+
+    # Same name, different typ.
+    diff_typ = SumCountOp(0, x, FuncInputOp(param=Param.build("x"), typ=float))
+    with pytest.raises(TypeError, match="same name"):
+        OpFunc(diff_typ)
 
 
 def test_func_bad_args():
+    func = OpFunc(inp("a"))
     with pytest.raises(TypeError):
-        OpFunc(inp("a"))()
+        func()
 
 
 def test_func_no_stale_result():
@@ -132,8 +148,9 @@ def test_func_no_stale_result():
 
 
 def test_func_input_without_exec():
+    x = inp("x")
     with pytest.raises(RuntimeError):
-        inp("x")()
+        x()
 
 
 def test_func_module():
