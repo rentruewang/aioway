@@ -5,10 +5,9 @@ import inspect
 import typing
 
 from aioway._signs import BoundArgs, Param, Sign
-from aioway.ops import op_dcls
 
 from .execs import CachedOpExec, OpExec, set_executor
-from .ops import Op, post_order
+from .ops import Op, op_dcls, post_order
 
 __all__ = ["OpFunc"]
 

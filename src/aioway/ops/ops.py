@@ -57,7 +57,7 @@ def post_order(op: Op) -> cabc.Iterator[Op]:
     for dep in op.deps():
         yield from post_order(dep)
 
-    yield dep
+    yield op
 
 
 def exec_op(obj):
