@@ -18,17 +18,17 @@ __all__ = [
     "ModuleRebuilder",
     "Init",
     "NoInit",
-    "Constant",
-    "Zeros",
-    "Ones",
-    "Uniform",
-    "Normal",
-    "TruncNormal",
-    "XavierUniform",
-    "XavierNormal",
-    "KaimingUniform",
-    "KaimingNormal",
-    "Orthogonal",
+    "ConstantInit",
+    "ZerosInit",
+    "OnesInit",
+    "UniformInit",
+    "NormalInit",
+    "TruncNormalInit",
+    "XavierUniformInit",
+    "XavierNormalInit",
+    "KaimingUniformInit",
+    "KaimingNormalInit",
+    "OrthogonalInit",
 ]
 
 
@@ -65,7 +65,7 @@ class ModuleRebuilder:
     init: Init = dcls.field(default_factory=NoInit)
     "The initialization strategy, applied in place to every parameter and buffer."
 
-    def __call__(self, module: nn.Module, /) -> nn.Module:
+    def __call__[T: nn.Module](self, module: T, /) -> T:
         return copy.deepcopy(module, memo=self._tensor_memo(module))
 
     def _tensor_memo(self, module: nn.Module) -> dict[int, torch.Tensor]:
@@ -103,7 +103,7 @@ class ModuleRebuilder:
 
 
 @dcls.dataclass(frozen=True)
-class Constant(Init):
+class ConstantInit(Init):
     "Wraps `torch.nn.init.constant_`."
 
     val: float
@@ -114,7 +114,7 @@ class Constant(Init):
 
 
 @dcls.dataclass(frozen=True)
-class Zeros(Init):
+class ZerosInit(Init):
     "Wraps `torch.nn.init.zeros_`."
 
     def __call__(self, tensor: torch.Tensor, /) -> None:
@@ -122,7 +122,7 @@ class Zeros(Init):
 
 
 @dcls.dataclass(frozen=True)
-class Ones(Init):
+class OnesInit(Init):
     "Wraps `torch.nn.init.ones_`."
 
     def __call__(self, tensor: torch.Tensor, /) -> None:
@@ -133,7 +133,7 @@ class Ones(Init):
 
 
 @dcls.dataclass(frozen=True)
-class Uniform(Init):
+class UniformInit(Init):
     "Wraps `torch.nn.init.uniform_`."
 
     a: float = 0.0
@@ -147,7 +147,7 @@ class Uniform(Init):
 
 
 @dcls.dataclass(frozen=True)
-class Normal(Init):
+class NormalInit(Init):
     "Wraps `torch.nn.init.normal_`."
 
     mean: float = 0.0
@@ -161,7 +161,7 @@ class Normal(Init):
 
 
 @dcls.dataclass(frozen=True)
-class TruncNormal(Init):
+class TruncNormalInit(Init):
     "Wraps `torch.nn.init.trunc_normal_`."
 
     mean: float = 0.0
@@ -185,7 +185,7 @@ class TruncNormal(Init):
 
 
 @dcls.dataclass(frozen=True)
-class XavierUniform(Init):
+class XavierUniformInit(Init):
     "Wraps `torch.nn.init.xavier_uniform_`."
 
     gain: float = 1.0
@@ -196,7 +196,7 @@ class XavierUniform(Init):
 
 
 @dcls.dataclass(frozen=True)
-class XavierNormal(Init):
+class XavierNormalInit(Init):
     "Wraps `torch.nn.init.xavier_normal_`."
 
     gain: float = 1.0
@@ -207,7 +207,7 @@ class XavierNormal(Init):
 
 
 @dcls.dataclass(frozen=True)
-class KaimingUniform(Init):
+class KaimingUniformInit(Init):
     "Wraps `torch.nn.init.kaiming_uniform_`."
 
     a: float = 0.0
@@ -220,13 +220,14 @@ class KaimingUniform(Init):
     "The activation after this layer, used to pick the gain."
 
     def __call__(self, tensor: torch.Tensor, /) -> None:
+        nonlinearity: typing.Any = self.nonlinearity
         nn.init.kaiming_uniform_(
-            tensor, a=self.a, mode=self.mode, nonlinearity=self.nonlinearity
+            tensor, a=self.a, mode=self.mode, nonlinearity=nonlinearity
         )
 
 
 @dcls.dataclass(frozen=True)
-class KaimingNormal(Init):
+class KaimingNormalInit(Init):
     "Wraps `torch.nn.init.kaiming_normal_`."
 
     a: float = 0.0
@@ -239,13 +240,14 @@ class KaimingNormal(Init):
     "The activation after this layer, used to pick the gain."
 
     def __call__(self, tensor: torch.Tensor, /) -> None:
+        nonlinearity: typing.Any = self.nonlinearity
         nn.init.kaiming_normal_(
-            tensor, a=self.a, mode=self.mode, nonlinearity=self.nonlinearity
+            tensor, a=self.a, mode=self.mode, nonlinearity=nonlinearity
         )
 
 
 @dcls.dataclass(frozen=True)
-class Orthogonal(Init):
+class OrthogonalInit(Init):
     "Wraps `torch.nn.init.orthogonal_`."
 
     gain: float = 1.0
