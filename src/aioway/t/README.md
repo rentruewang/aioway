@@ -1,4 +1,4 @@
-# `aioway.tensors`
+# `aioway.t`
 
 This is a set of tensor related utilities used by `aioway`.
 

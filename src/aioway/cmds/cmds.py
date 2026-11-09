@@ -13,7 +13,7 @@ class Stmt(abc.ABC):
 
     A statement can modify global state or perform expensive computation.
 
-    It exists for state mutation, when `Expr` is stateless. For instance:
+    It exists for state mutation, when `Op` is stateless. For instance:
 
     1. Create or update `nn.Module`s.
     2. Create or update `Dataset`s.

@@ -7,12 +7,12 @@ import typing
 
 import loguru as L
 
-from aioway.tensors.guards import is_aten_op
+from aioway.t.guards import is_aten_op
 
 from .aten import Aten, find_aten
 
 if typing.TYPE_CHECKING:
-    from aioway.tensors import TorchDispThunk
+    from aioway.t import TorchDispThunk
 
 __all__ = ["AtenThunk"]
 

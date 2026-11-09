@@ -4,7 +4,7 @@ import pytest
 import tensordict as td
 import torch
 
-from aioway.tensors import Attr, AttrDict, parse_attr
+from aioway.t import Attr, AttrDict, parse_attr
 
 
 def make_attr(dtype: torch.dtype = torch.float32) -> Attr:

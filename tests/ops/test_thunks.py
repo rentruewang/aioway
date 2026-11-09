@@ -10,7 +10,7 @@ import torch
 from torch import nn
 
 from aioway._signs import Sign
-from aioway.ops import CallExpr, ModuleExpr, TensorExpr, execute
+from aioway.ops import CallOp, ModuleOp, TensorOp, execute
 
 
 @dcls.dataclass
@@ -47,20 +47,20 @@ def call_cases():
         "torch_add",
         torch.add,
         torch.full((3,), 3.0),
-        TensorExpr(torch.ones(3)),
-        TensorExpr(torch.full((3,), 2.0)),
+        TensorOp(torch.ones(3)),
+        TensorOp(torch.full((3,), 2.0)),
     )
     yield Case(
         "torch_relu",
         torch.relu,
         torch.tensor([0.0, 0.0, 2.0]),
-        TensorExpr(torch.tensor([-1.0, 0.0, 2.0])),
+        TensorOp(torch.tensor([-1.0, 0.0, 2.0])),
     )
     yield Case(
         "torch_sum",
         torch.sum,
         torch.tensor([3.0, 12.0]),
-        TensorExpr(torch.arange(6.0).reshape(2, 3)),
+        TensorOp(torch.arange(6.0).reshape(2, 3)),
         dim=1,
     )
 
@@ -68,7 +68,7 @@ def call_cases():
 def module_cases():
     layer = nn.Linear(2, 3)
     x = torch.randn(1, 2)
-    yield Case("linear", layer, layer(x), TensorExpr(x))
+    yield Case("linear", layer, layer(x), TensorOp(x))
 
 
 def all_cases():
@@ -81,16 +81,16 @@ def _case_id(case: Case) -> str:
 
 
 @pytest.fixture(params=call_cases(), ids=_case_id)
-def call_expr(request: pytest.FixtureRequest) -> CallExpr:
+def call_expr(request: pytest.FixtureRequest) -> CallOp:
     case: Case = request.param
-    return CallExpr(func=case.func, args=case.args, kwargs=case.kwargs)
+    return CallOp(func=case.func, args=case.args, kwargs=case.kwargs)
 
 
 @pytest.fixture(params=module_cases(), ids=_case_id)
-def module_expr(request: pytest.FixtureRequest) -> ModuleExpr:
+def module_expr(request: pytest.FixtureRequest) -> ModuleOp:
     case: Case = request.param
     assert isinstance(case.func, nn.Module)
-    return ModuleExpr(func=case.func, args=case.args, kwargs=case.kwargs)
+    return ModuleOp(func=case.func, args=case.args, kwargs=case.kwargs)
 
 
 @pytest.fixture(params=all_cases(), ids=_case_id)
@@ -99,28 +99,28 @@ def any_case(request: pytest.FixtureRequest) -> Case:
 
 
 @pytest.fixture
-def any_expr(any_case: Case) -> CallExpr:
-    cls: typing.Any = ModuleExpr if isinstance(any_case.func, nn.Module) else CallExpr
+def any_expr(any_case: Case) -> CallOp:
+    cls: typing.Any = ModuleOp if isinstance(any_case.func, nn.Module) else CallOp
     return cls(func=any_case.func, args=any_case.args, kwargs=any_case.kwargs)
 
 
-def test_call(any_expr: CallExpr, any_case: Case):
+def test_call(any_expr: CallOp, any_case: Case):
     torch.testing.assert_close(any_expr(), any_case.expected)
 
 
-def test_module_call(module_expr: ModuleExpr):
+def test_module_call(module_expr: ModuleOp):
     torch.testing.assert_close(
         module_expr(), module_expr.func(*[execute(a) for a in module_expr.args])
     )
 
 
-def test_inputs_nested(call_expr: CallExpr):
-    outer = CallExpr(func=lambda x: x, args=(call_expr,), kwargs={})
+def test_inputs_nested(call_expr: CallOp):
+    outer = CallOp(func=lambda x: x, args=(call_expr,), kwargs={})
 
     found = list(outer.deps())
     assert len(found) == 1
     assert found[0] is call_expr
 
 
-def test_sign(any_expr: CallExpr):
+def test_sign(any_expr: CallOp):
     assert isinstance(any_expr.sign, Sign)

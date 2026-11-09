@@ -8,7 +8,7 @@ import pytest
 from aioway._pytrees import tree_flatten, tree_unflatten
 from aioway._signs import BoundArgs
 from aioway.ir import FuncCall, Proc, TensorLifetime
-from aioway.tensors import TList
+from aioway.t import TList
 
 
 class TestInstr:

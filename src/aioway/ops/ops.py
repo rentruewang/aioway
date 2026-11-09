@@ -5,7 +5,7 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-__all__ = ["Expr", "expr_dcls", "execute"]
+__all__ = ["Op", "expr_dcls", "execute"]
 
 
 @typing.dataclass_transform(frozen_default=True)
@@ -13,11 +13,11 @@ def expr_dcls(cls):
     return dcls.dataclass(frozen=True)(cls)
 
 
-class Expr[T = object](abc.ABC):
+class Op[T = object](abc.ABC):
     """
     The base class for expressions.
 
-    Expressions refer to those operations that are
+    Opessions refer to those operations that are
 
     1. Pure.
     2. Operate on batches.
@@ -39,7 +39,7 @@ class Expr[T = object](abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def deps(self) -> cabc.Iterable[Expr]:
+    def deps(self) -> cabc.Iterable[Op]:
         """
         The expressions that this current expression depends on.
         """
@@ -48,7 +48,7 @@ class Expr[T = object](abc.ABC):
 
 
 def execute(item):
-    if isinstance(item, Expr):
+    if isinstance(item, Op):
         return item()
 
     else:

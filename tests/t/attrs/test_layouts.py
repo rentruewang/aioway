@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from aioway.tensors import Layout, LayoutLike
+from aioway.t import Layout, LayoutLike
 
 
 def _layouts():

@@ -19,7 +19,7 @@ from .layouts import Layout, LayoutLike
 from .shapes import Shape, ShapeLike
 
 if typing.TYPE_CHECKING:
-    from aioway.tensors import TList
+    from aioway.t import TList
 
 __all__ = ["Attr", "AttrDict", "parse_attr"]
 
@@ -149,7 +149,7 @@ class Attr:
         Generate a random tensor. This should be used under fake mode.
         """
 
-        from aioway.tensors import fake_mode
+        from aioway.t import fake_mode
 
         with fake_mode():
             return torch.zeros(
@@ -374,7 +374,7 @@ def parse_attr(obj: typing.Any, /) -> typing.Never: ...
 
 def parse_attr(obj, /):
     # Doing this isinstance check first because it's the fastest.
-    from aioway.tensors import TList
+    from aioway.t import TList
 
     if isinstance(obj, TList):
         return [parse_attr(elem) for elem in obj]

@@ -25,7 +25,7 @@ from aioway._signs import BoundArgs
 from aioway.ir import FuncProc, TorchFuncDag, render_func_proc
 
 # %%
-from aioway.tensors import fake_mode
+from aioway.t import fake_mode
 
 pretty.install()
 

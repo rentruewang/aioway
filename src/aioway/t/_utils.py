@@ -10,7 +10,7 @@ from collections import abc as cabc
 import tensordict as td
 from torch import nn
 
-from aioway.tensors.guards import (
+from aioway.t.guards import (
     is_op_overload_packet,
     is_tensor_method,
     is_torch_function,

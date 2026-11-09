@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"Tests for `aioway.tensors` and the pytree mixins."
+"Tests for `aioway.t` and the pytree mixins."
 
 import dataclasses as dcls
 

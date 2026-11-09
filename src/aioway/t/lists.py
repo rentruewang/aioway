@@ -17,11 +17,11 @@ from aioway._pytrees import (
     SequenceKey,
 )
 from aioway._utils import is_seq_of, is_set_of
-from aioway.tensors.attrs import parse_attr
-from aioway.tensors.overrides import is_fake_tensor
+from aioway.t.attrs import parse_attr
+from aioway.t.overrides import is_fake_tensor
 
 if typing.TYPE_CHECKING:
-    from aioway.tensors import Attr, Device, DType, Layout, Shape
+    from aioway.t import Attr, Device, DType, Layout, Shape
 
 __all__ = ["TList"]
 

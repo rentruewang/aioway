@@ -9,7 +9,7 @@ from torch import nn
 
 from aioway._pytrees import GetAttrKey, find_nested_tensors
 from aioway._signs import BoundArgs, Sign
-from aioway.tensors import TList, render_tensor_func_short, replace_tensors_with_attr
+from aioway.t import TList, render_tensor_func_short, replace_tensors_with_attr
 
 from .instrs import Instr
 

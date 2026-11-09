@@ -7,8 +7,8 @@ from collections import abc as cabc
 import tensordict as td
 import torch
 
-from aioway.tensors._utils import tcol_to_tdict
-from aioway.tensors.overrides import all_real
+from aioway.t._utils import tcol_to_tdict
+from aioway.t.overrides import all_real
 
 from .attrs import Attr, AttrDict, parse_attr
 

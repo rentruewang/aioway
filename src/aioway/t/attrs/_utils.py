@@ -7,7 +7,7 @@ from collections import abc as cabc
 
 from aioway._pytrees import replace_tensors
 from aioway._utils import render_fcall
-from aioway.tensors._utils import render_torch_func_name
+from aioway.t._utils import render_torch_func_name
 
 from .attrs import parse_attr
 

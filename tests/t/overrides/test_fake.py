@@ -9,7 +9,7 @@ import tensordict as td
 import torch
 from torch._subclasses import fake_tensor as ft
 
-from aioway.tensors import (
+from aioway.t import (
     all_fake,
     all_real,
     clone_fake_tensor,

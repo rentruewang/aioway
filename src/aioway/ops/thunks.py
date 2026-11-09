@@ -9,13 +9,13 @@ from torch import nn
 from aioway._pytrees import tree_leaves
 from aioway._signs import Sign
 
-from .ops import Expr, execute, expr_dcls
+from .ops import Op, execute, expr_dcls
 
-__all__ = ["CallExpr", "ModuleExpr"]
+__all__ = ["CallOp", "ModuleOp"]
 
 
 @expr_dcls
-class CallExpr[F: cabc.Callable](Expr, abc.ABC):
+class CallOp[F: cabc.Callable](Op, abc.ABC):
     """
     The base class denoting a function call.
     """
@@ -45,9 +45,9 @@ class CallExpr[F: cabc.Callable](Expr, abc.ABC):
     @typing.override
     def deps(self):
         for expr in tree_leaves(
-            [self.args, self.kwargs], is_leaf=lambda e: isinstance(e, Expr)
+            [self.args, self.kwargs], is_leaf=lambda e: isinstance(e, Op)
         ):
-            if isinstance(expr, Expr):
+            if isinstance(expr, Op):
                 yield expr
 
     @property
@@ -56,9 +56,9 @@ class CallExpr[F: cabc.Callable](Expr, abc.ABC):
 
 
 @expr_dcls
-class ModuleExpr(CallExpr[nn.Module]):
+class ModuleOp(CallOp[nn.Module]):
     """
-    The `nn.Module` version of `CallExpr`.
+    The `nn.Module` version of `CallOp`.
     """
 
     func: nn.Module

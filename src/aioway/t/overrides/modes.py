@@ -16,7 +16,7 @@ from torch.utils import _python_dispatch as pyd
 
 from aioway._pytrees import find_nested_tensors
 from aioway._utils import Stack
-from aioway.tensors.attrs import render_function_body_prefix
+from aioway.t.attrs import render_function_body_prefix
 
 __all__ = [
     "Mode",

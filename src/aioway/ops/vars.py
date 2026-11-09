@@ -4,20 +4,20 @@ import typing
 
 import torch
 
-from .ops import Expr, expr_dcls
+from .ops import Op, expr_dcls
 
-__all__ = ["TensorExpr"]
+__all__ = ["TensorOp"]
 
 
 @expr_dcls
-class TensorExpr(Expr):
+class TensorOp(Op):
     """
-    The `Expr` that just holds a `torch.Tensor`.
+    The `Op` that just holds a `torch.Tensor`.
     """
 
     tensor: torch.Tensor
     """
-    The tensor that this `Expr` holds.
+    The tensor that this `Op` holds.
     """
 
     @typing.override
