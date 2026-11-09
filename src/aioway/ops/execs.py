@@ -8,7 +8,7 @@ from aioway._utils import AnyDict, any_dict
 
 from .ops import Op
 
-__all__ = ["OpExec", "executor", "set_executor"]
+__all__ = ["OpExec", "executor", "set_executor", "default_op_exec", "CachedOpExec"]
 
 
 def executor() -> OpExec:
@@ -70,12 +70,20 @@ class CachedOpExec(OpExec):
 
     def __call__(self, op: Op) -> typing.Any:
         if op not in self:
-            result = op.execute()
-            self[op] = result
-        return self[op]
+            try:
+                result = op.execute()
+            except Exception as e:
+                self[op] = e
+            else:
+                self[op] = result
 
-    @ctxl.contextmanager
+        if isinstance(result := self[op], Exception):
+            raise result
+        else:
+            return self[op]
+
     @classmethod
+    @ctxl.contextmanager
     def cache_op(cls) -> cabc.Generator[typing.Self]:
         """
         A context manager that caches the current operator.

@@ -1,6 +1,5 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import abc
 import typing
 from collections import abc as cabc
 
@@ -15,7 +14,7 @@ __all__ = ["CallOp", "ModuleOp"]
 
 
 @op_dcls
-class CallOp[F: cabc.Callable](Op, abc.ABC):
+class CallOp[F: cabc.Callable](Op):
     """
     The base class denoting a function call.
     """
