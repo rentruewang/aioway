@@ -15,7 +15,7 @@ from aioway.t import (
     route_aten_mode,
 )
 
-from .execs import Exec
+from .execs import IrExec
 from .instrs import FuncCall
 from .procs import FuncProc
 
@@ -59,8 +59,8 @@ class _TorchCallDag(abc.ABC):
         return FuncProc.from_instr_list(self.thunks)
 
     @property
-    def exec(self) -> Exec:
-        return Exec(self.proc)
+    def exec(self) -> IrExec:
+        return IrExec(self.proc)
 
 
 @typing.final

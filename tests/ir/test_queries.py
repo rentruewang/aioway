@@ -10,9 +10,9 @@ from torch import testing as tt
 
 from aioway.ir import (
     ExactSequential,
-    Exec,
     FuncCall,
     IndexQuery,
+    IrExec,
     Proc,
     Query,
     TorchFuncDag,
@@ -177,7 +177,7 @@ def test_rewrite_last_runs(graph: Graph):
     x_real, y_real = torch.randn(3), torch.randn(3)
     summed = x_real + y_real
 
-    tt.assert_close(Exec(result)(x_real, y_real), torch.abs(summed * x_real - summed))
+    tt.assert_close(IrExec(result)(x_real, y_real), torch.abs(summed * x_real - summed))
 
 
 def test_rewrite_middle(graph: Graph):
@@ -199,7 +199,7 @@ def test_rewrite_middle_runs(graph: Graph):
     x_real, y_real = torch.randn(3), torch.randn(3)
 
     # difference becomes (summed + x) - summed == x, so the program computes relu(x).
-    tt.assert_close(Exec(result)(x_real, y_real), torch.relu(x_real))
+    tt.assert_close(IrExec(result)(x_real, y_real), torch.relu(x_real))
 
 
 def test_rewrite_keeps_io_attrs(graph: Graph):
@@ -343,4 +343,4 @@ def test_seqs_rewrite_runs(graph: Graph):
     x_real, y_real = torch.randn(3), torch.randn(3)
     summed = x_real + y_real
 
-    tt.assert_close(Exec(result)(x_real, y_real), torch.abs(summed * x_real - summed))
+    tt.assert_close(IrExec(result)(x_real, y_real), torch.abs(summed * x_real - summed))

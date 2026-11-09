@@ -7,7 +7,7 @@ import torch
 from torch import ops
 from torch import testing as tt
 
-from aioway.ir import Exec, Proc, TorchFuncDag, fake_aten_dag
+from aioway.ir import IrExec, Proc, TorchFuncDag, fake_aten_dag
 from aioway.t import fake_mode, has_fake, is_aten_op, parse_attr
 
 type Fakes = tuple[torch.Tensor, torch.Tensor]
@@ -62,7 +62,7 @@ def test_seq_like_api():
 def test_dag_property():
     dag = TorchFuncDag()
 
-    assert isinstance(dag.exec, Exec)
+    assert isinstance(dag.exec, IrExec)
 
 
 def test_fake_aten_dag_tensor():
@@ -131,7 +131,7 @@ def test_dag_inputs_many_same_step():
     assert all(_attr_eq(got, want) for got, want in zip(dag.inputs.values(), xs))
 
 
-def trace_func(fn: cabc.Callable) -> tuple[Exec, Fakes]:
+def trace_func(fn: cabc.Callable) -> tuple[IrExec, Fakes]:
     tracer = TorchFuncDag()
 
     with fake_mode():
@@ -143,7 +143,7 @@ def trace_func(fn: cabc.Callable) -> tuple[Exec, Fakes]:
     return tracer.exec, (x, y)
 
 
-def trace_aten(fn: cabc.Callable) -> tuple[Exec, Fakes]:
+def trace_aten(fn: cabc.Callable) -> tuple[IrExec, Fakes]:
     with fake_mode():
         x, y = torch.zeros(3), torch.zeros(3)
 
@@ -163,7 +163,7 @@ def _traces():
 
 
 @pytest.fixture(params=_traces())
-def trace(request) -> cabc.Callable[[cabc.Callable], tuple[Exec, Fakes]]:
+def trace(request) -> cabc.Callable[[cabc.Callable], tuple[IrExec, Fakes]]:
     return request.param
 
 

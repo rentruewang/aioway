@@ -4,12 +4,12 @@ import typing
 
 import torch
 
-from .ops import Op, expr_dcls
+from .ops import Op, op_dcls
 
 __all__ = ["TensorOp"]
 
 
-@expr_dcls
+@op_dcls
 class TensorOp(Op):
     """
     The `Op` that just holds a `torch.Tensor`.

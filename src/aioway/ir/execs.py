@@ -15,7 +15,7 @@ from aioway.t import has_fake, is_fake_tensor, is_real_tensor
 if typing.TYPE_CHECKING:
     from aioway.ir import FuncCall, Proc
 
-__all__ = ["Exec", "LocalScope"]
+__all__ = ["IrExec", "LocalScope"]
 
 
 class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
@@ -150,7 +150,7 @@ class LocalScope(cabc.Mapping[torch.Tensor, torch.Tensor | None]):
             raise ValueError("Real tensor in `fake` paired with a different value.")
 
 
-class Exec[F: cabc.Callable = typing.Any]:
+class IrExec[F: cabc.Callable = typing.Any]:
     """
     This is the executor responsible for executing a traced thunk list on real data.
 

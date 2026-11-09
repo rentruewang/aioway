@@ -9,12 +9,12 @@ from torch import nn
 from aioway._pytrees import tree_leaves
 from aioway._signs import Sign
 
-from .ops import Op, execute, expr_dcls
+from .ops import Op, execute, op_dcls
 
 __all__ = ["CallOp", "ModuleOp"]
 
 
-@expr_dcls
+@op_dcls
 class CallOp[F: cabc.Callable](Op, abc.ABC):
     """
     The base class denoting a function call.
@@ -55,7 +55,7 @@ class CallOp[F: cabc.Callable](Op, abc.ABC):
         return Sign.from_callable(self.func)
 
 
-@expr_dcls
+@op_dcls
 class ModuleOp(CallOp[nn.Module]):
     """
     The `nn.Module` version of `CallOp`.

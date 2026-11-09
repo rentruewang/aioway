@@ -40,9 +40,9 @@ class NnProcModule(nn.Module):
         return self._module_list[idx]
 
     def forward(self, *args, **kwargs):
-        from aioway.ir import Exec
+        from aioway.ir import IrExec
 
-        executor = Exec(self._proc)
+        executor = IrExec(self._proc)
         return executor(*args, **kwargs)
 
     @property

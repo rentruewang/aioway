@@ -5,11 +5,11 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-__all__ = ["Op", "expr_dcls", "execute"]
+__all__ = ["Op", "op_dcls", "execute"]
 
 
 @typing.dataclass_transform(frozen_default=True)
-def expr_dcls(cls):
+def op_dcls(cls):
     return dcls.dataclass(frozen=True)(cls)
 
 
