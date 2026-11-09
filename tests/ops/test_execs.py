@@ -77,7 +77,7 @@ def test_cached_shared_dep():
 
 def test_cache_op():
     op = SumCountOp(1)
-    with CachedOpExec.cache_op() as cache:
+    with CachedOpExec.enable() as cache:
         assert executor() is cache
         op()
         op()

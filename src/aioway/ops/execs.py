@@ -84,7 +84,7 @@ class CachedOpExec(OpExec):
 
     @classmethod
     @ctxl.contextmanager
-    def cache_op(cls) -> cabc.Generator[typing.Self]:
+    def enable(cls) -> cabc.Generator[typing.Self]:
         """
         A context manager that caches the current operator.
         """
