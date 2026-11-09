@@ -60,8 +60,9 @@ def test_set_executor():
 
 
 def test_set_executor_error():
+    cache = CachedOpExec()
     with pytest.raises(RuntimeError):
-        with set_executor(CachedOpExec()):
+        with set_executor(cache):
             raise RuntimeError
     assert executor() is default_op_exec
 
@@ -117,18 +118,26 @@ def test_func_dedup_input():
     assert OpFunc(op).signature == Sign.from_input_names(["x"])
 
 
-def test_func_input_param_mismatch():
-    a = inp("x")
-    b = FuncInputOp(param=Param.build("x", default=0), typ=int)
+def test_func_input_mismatch():
+    x = inp("x")
 
-    # Same name, different params.
-    with pytest.raises(TypeError):
-        OpFunc(SumCountOp(0, a, b))
+    # Same name, different param.
+    diff_param = SumCountOp(
+        0, x, FuncInputOp(param=Param.build("x", default=0), typ=int)
+    )
+    with pytest.raises(TypeError, match="same name"):
+        OpFunc(diff_param)
+
+    # Same name, different typ.
+    diff_typ = SumCountOp(0, x, FuncInputOp(param=Param.build("x"), typ=float))
+    with pytest.raises(TypeError, match="same name"):
+        OpFunc(diff_typ)
 
 
 def test_func_bad_args():
+    func = OpFunc(inp("a"))
     with pytest.raises(TypeError):
-        OpFunc(inp("a"))()
+        func()
 
 
 def test_func_no_stale_result():
@@ -140,8 +149,9 @@ def test_func_no_stale_result():
 
 
 def test_func_input_without_exec():
+    x = inp("x")
     with pytest.raises(RuntimeError):
-        inp("x")()
+        x()
 
 
 def test_func_module():
