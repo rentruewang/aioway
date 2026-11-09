@@ -114,7 +114,16 @@ def test_func_dedup_input():
     op = SumCountOp(0, x, x)
 
     # (x, x) would have signature (x)
-    assert OpFunc(op).signature == Sign.from_input_names("x")
+    assert OpFunc(op).signature == Sign.from_input_names(["x"])
+
+
+def test_func_input_param_mismatch():
+    a = inp("x")
+    b = FuncInputOp(param=Param.build("x", default=0), typ=int)
+
+    # Same name, different params.
+    with pytest.raises(TypeError):
+        OpFunc(SumCountOp(0, a, b))
 
 
 def test_func_bad_args():

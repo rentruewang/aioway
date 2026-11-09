@@ -66,23 +66,22 @@ class OpFunc(nn.Module):
 
     @functools.cached_property
     def signature(self) -> Sign:
-        def is_input(op) -> typing.TypeIs[FuncInputOp]:
-            return isinstance(op, FuncInputOp)
-
-        input_set: set[FuncInputOp] = set()
-        input_list: list[FuncInputOp] = []
+        # The dictionary is ordered.
+        args: dict[str, FuncInputOp] = {}
 
         for op in self._all_ops():
-            if not is_input(op):
+            if not isinstance(op, FuncInputOp):
                 continue
 
-            if op in input_set:
+            if op.name in args:
+                if args[op.name] != op:
+                    raise TypeError("Different parameters defined with the same name.")
+
                 continue
 
-            input_set.add(op)
-            input_list.append(op)
+            args[op.name] = op
 
-        return Sign.from_params([i.param for i in input_list])
+        return Sign.from_params([i.param for i in args.values()])
 
     @property
     def output(self) -> Op:
