@@ -1,6 +1,5 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import abc
 import typing
 from collections import abc as cabc
 
@@ -9,13 +8,13 @@ from torch import nn
 from aioway._pytrees import tree_leaves
 from aioway._signs import Sign
 
-from .ops import Op, execute, expr_dcls
+from .ops import Op, exec_op, op_dcls
 
 __all__ = ["CallOp", "ModuleOp"]
 
 
-@expr_dcls
-class CallOp[F: cabc.Callable](Op, abc.ABC):
+@op_dcls
+class CallOp[F: cabc.Callable](Op):
     """
     The base class denoting a function call.
     """
@@ -37,8 +36,8 @@ class CallOp[F: cabc.Callable](Op, abc.ABC):
 
     @typing.override
     def execute(self):
-        args = [execute(arg) for arg in self.args]
-        kwargs = {key: execute(val) for key, val in self.kwargs.items()}
+        args = [exec_op(arg) for arg in self.args]
+        kwargs = {key: exec_op(val) for key, val in self.kwargs.items()}
 
         return self.func(*args, **kwargs)
 
@@ -55,7 +54,7 @@ class CallOp[F: cabc.Callable](Op, abc.ABC):
         return Sign.from_callable(self.func)
 
 
-@expr_dcls
+@op_dcls
 class ModuleOp(CallOp[nn.Module]):
     """
     The `nn.Module` version of `CallOp`.
