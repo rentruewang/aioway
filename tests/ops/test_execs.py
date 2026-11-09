@@ -4,11 +4,15 @@ import inspect
 import typing
 
 import pytest
+import torch
+from torch import nn
+from torch import testing as tt
 
 from aioway._signs import Param
 from aioway.ops import (
     CachedOpExec,
     FuncInputOp,
+    ModuleThunkOp,
     Op,
     OpFunc,
     default_op_exec,
@@ -119,13 +123,25 @@ def test_func_bad_args():
         OpFunc(inp("a"))()
 
 
-def test_func_no_stale_results_under_cache():
+def test_func_no_stale_result():
     f = OpFunc(SumCountOp(0, inp("a"), inp("b")))
+    # This enable should have no effect.
     with CachedOpExec.enable():
         assert f(1, 2) == 3
         assert f(3, 4) == 7
 
 
-def test_func_input_outside_func_raises():
+def test_func_input_without_exec():
     with pytest.raises(RuntimeError):
         inp("x")()
+
+
+def test_func_module():
+    layer = nn.Linear(2, 3)
+    x = torch.randn(1, 2)
+    f = OpFunc(ModuleThunkOp(func=layer, args=(inp("x"),), kwargs={}))
+
+    f_params = set(f.parameters())
+    layer_params = set(layer.parameters())
+    assert f_params == layer_params
+    tt.assert_close(f(x), layer(x))

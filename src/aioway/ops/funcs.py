@@ -1,18 +1,22 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 import dataclasses as dcls
+import functools
 import inspect
 import typing
+
+from torch import nn
 
 from aioway._signs import BoundArgs, Param, Sign
 
 from .execs import CachedOpExec, OpExec, set_executor
-from .ops import Op, op_dcls, post_order
+from .ops import Op, op_dcls
+from .thunks import ModuleOp
 
 __all__ = ["OpFunc", "OpFuncEnv", "FuncInputOp"]
 
 
-class OpFunc:
+class OpFunc(nn.Module):
     """
     The function kind for `Op`.
 
@@ -27,12 +31,16 @@ class OpFunc:
     """
 
     def __init__(self, output: Op) -> None:
+        super().__init__()
+
         self._output = output
 
-        all_ops = list(post_order(self.output))
-        inputs = [op for op in all_ops if isinstance(op, FuncInputOp)]
+        # Register the sub modules.
+        modules = [op.nn for op in self._all_ops() if isinstance(op, ModuleOp)]
+        self.module_list = nn.ModuleList(modules)
 
-        self._signature = Sign.from_params([i.param for i in inputs])
+        # Compute signature, may also raise errors.
+        _ = self.signature
 
     def __call__(self, *args, **kwargs) -> typing.Any:
         env = OpFuncEnv(self.signature.bind(*args, **kwargs))
@@ -44,13 +52,20 @@ class OpFunc:
     def __signature__(self) -> inspect.Signature:
         return self.signature.to_inspect()
 
-    @property
+    @functools.cached_property
     def signature(self) -> Sign:
-        return self._signature
+        def is_input(op) -> typing.TypeIs[FuncInputOp]:
+            return isinstance(op, FuncInputOp)
+
+        inputs = filter(is_input, self._all_ops())
+        return Sign.from_params([i.param for i in inputs])
 
     @property
     def output(self) -> Op:
         return self._output
+
+    def _all_ops(self):
+        yield from self.output.post_order()
 
 
 @dcls.dataclass(frozen=True)

@@ -5,7 +5,7 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-__all__ = ["Op", "op_dcls", "exec_op", "post_order"]
+__all__ = ["Op", "op_dcls", "exec_op"]
 
 
 @typing.dataclass_transform(frozen_default=True)
@@ -48,16 +48,15 @@ class Op[T = object](abc.ABC):
 
         raise NotImplementedError
 
+    def post_order(self) -> cabc.Iterator[Op]:
+        """
+        Get the post order traversal of `Op`.
+        """
 
-def post_order(op: Op) -> cabc.Iterator[Op]:
-    """
-    Get the post order traversal of `Op`.
-    """
+        for dep in self.deps():
+            yield from dep.post_order()
 
-    for dep in op.deps():
-        yield from post_order(dep)
-
-    yield op
+        yield self
 
 
 def exec_op(obj):
