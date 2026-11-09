@@ -4,7 +4,7 @@ import typing
 
 import torch
 
-from .exprs import Expr, expr_dcls
+from .ops import Expr, expr_dcls
 
 __all__ = ["TensorExpr"]
 

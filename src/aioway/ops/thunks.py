@@ -9,7 +9,7 @@ from torch import nn
 from aioway._pytrees import tree_leaves
 from aioway._signs import Sign
 
-from .exprs import Expr, execute, expr_dcls
+from .ops import Expr, execute, expr_dcls
 
 __all__ = ["CallExpr", "ModuleExpr"]
 

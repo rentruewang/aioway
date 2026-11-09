@@ -10,7 +10,7 @@ import torch
 from torch import nn
 
 from aioway._signs import Sign
-from aioway.exprs import CallExpr, ModuleExpr, TensorExpr, execute
+from aioway.ops import CallExpr, ModuleExpr, TensorExpr, execute
 
 
 @dcls.dataclass
