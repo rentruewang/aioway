@@ -8,7 +8,7 @@ import tensordict as td
 import torch
 from torchrl.data import tensor_specs as tspecs
 
-from aioway.tensors import has_fake, tcol_to_tdict
+from aioway.t import has_fake, tcol_to_tdict
 
 from .coercions import default_coerce
 from .tspecs import TSpec

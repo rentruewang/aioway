@@ -5,7 +5,7 @@ import torch
 
 from aioway._signs import BoundArgs
 from aioway.ir import FuncCall, Proc
-from aioway.tensors import TList, fake_mode
+from aioway.t import TList, fake_mode
 
 
 def add(left: torch.Tensor, right: torch.Tensor) -> torch.Tensor:

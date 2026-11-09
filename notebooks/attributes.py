@@ -19,7 +19,7 @@ import pickle
 import torch
 
 # %%
-from aioway.tensors import parse_attr
+from aioway.t import parse_attr
 
 # %%
 

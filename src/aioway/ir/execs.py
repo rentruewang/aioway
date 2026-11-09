@@ -10,7 +10,7 @@ import torch
 
 from aioway._pytrees import tree_leaves, tree_map_only
 from aioway._signs import BoundArgs
-from aioway.tensors import has_fake, is_fake_tensor, is_real_tensor
+from aioway.t import has_fake, is_fake_tensor, is_real_tensor
 
 if typing.TYPE_CHECKING:
     from aioway.ir import FuncCall, Proc

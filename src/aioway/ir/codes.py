@@ -19,7 +19,7 @@ from aioway._utils import AnyDict, any_dict, render_fcall
 from aioway.ir.instrs import FuncCall
 from aioway.ir.instrs.instrs import InstrList
 from aioway.ir.procs import Proc
-from aioway.tensors import render_torch_func_name
+from aioway.t import render_torch_func_name
 
 __all__ = ["CodeRender", "render_func_proc", "render_stmts", "VarName"]
 

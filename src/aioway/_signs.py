@@ -16,7 +16,7 @@ from torch import nn, overrides
 
 from aioway._pytrees import MappingKey, PyTreeDictMixin, tree_leaves
 from aioway._utils import is_any_type_hint, is_nn_type
-from aioway.tensors import TList, is_torch_function
+from aioway.t import TList, is_torch_function
 
 __all__ = ["Param", "ParamKind", "Sign", "BoundArgs"]
 

@@ -5,7 +5,7 @@ from torch import nn
 
 from aioway._pytrees import tree_map_only
 from aioway.ir.instrs import FuncCall, ModuleCall
-from aioway.tensors import is_fake_tensor, parse_attr
+from aioway.t import is_fake_tensor, parse_attr
 
 from .procs import Proc
 

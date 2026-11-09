@@ -16,7 +16,7 @@
 # %%
 import torch
 
-from aioway.tensors import TorchDispMode
+from aioway.t import TorchDispMode
 
 
 # %%

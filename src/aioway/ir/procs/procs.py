@@ -25,7 +25,7 @@ from aioway._signs import BoundArgs
 from aioway._utils import AnySet, IntArray, any_set, is_list_of
 from aioway.ir.instrs import Instr, InstrList
 from aioway.ir.queries import OrderedIndex, Query
-from aioway.tensors import TList, all_real, parse_attr
+from aioway.t import TList, all_real, parse_attr
 
 __all__ = ["Proc", "TensorRef", "TensorIndex", "TensorLifetime"]
 
