@@ -140,7 +140,7 @@ def test_func_module():
     x = torch.randn(1, 2)
     f = OpFunc(ModuleThunkOp(func=layer, args=(inp("x"),), kwargs={}))
 
-    f_params, layer_params = list(f.parameters()), list(layer.parameters())
-    assert len(f_params) == len(layer_params)
-    assert all(a is b for a, b in zip(f_params, layer_params))
+    f_params = set(f.parameters())
+    layer_params = set(layer.parameters())
+    assert f_params == layer_params
     tt.assert_close(f(x), layer(x))
