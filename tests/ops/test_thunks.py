@@ -10,7 +10,7 @@ import torch
 from torch import nn
 
 from aioway._signs import Sign
-from aioway.ops import CallOp, ModuleOp, TensorOp, exec_op
+from aioway.ops import CallOp, ModuleThunkOp, TensorOp, exec_op
 
 
 @dcls.dataclass
@@ -87,10 +87,10 @@ def call_expr(request: pytest.FixtureRequest) -> CallOp:
 
 
 @pytest.fixture(params=module_cases(), ids=_case_id)
-def module_expr(request: pytest.FixtureRequest) -> ModuleOp:
+def module_expr(request: pytest.FixtureRequest) -> ModuleThunkOp:
     case: Case = request.param
     assert isinstance(case.func, nn.Module)
-    return ModuleOp(func=case.func, args=case.args, kwargs=case.kwargs)
+    return ModuleThunkOp(func=case.func, args=case.args, kwargs=case.kwargs)
 
 
 @pytest.fixture(params=all_cases(), ids=_case_id)
@@ -100,7 +100,7 @@ def any_case(request: pytest.FixtureRequest) -> Case:
 
 @pytest.fixture
 def any_expr(any_case: Case) -> CallOp:
-    cls: typing.Any = ModuleOp if isinstance(any_case.func, nn.Module) else CallOp
+    cls: typing.Any = ModuleThunkOp if isinstance(any_case.func, nn.Module) else CallOp
     return cls(func=any_case.func, args=any_case.args, kwargs=any_case.kwargs)
 
 
@@ -108,7 +108,7 @@ def test_call(any_expr: CallOp, any_case: Case):
     torch.testing.assert_close(any_expr(), any_case.expected)
 
 
-def test_module_call(module_expr: ModuleOp):
+def test_module_call(module_expr: ModuleThunkOp):
     torch.testing.assert_close(
         module_expr(), module_expr.func(*[exec_op(a) for a in module_expr.args])
     )

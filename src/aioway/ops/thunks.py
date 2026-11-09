@@ -10,7 +10,7 @@ from aioway._signs import Sign
 
 from .ops import Op, exec_op, op_dcls
 
-__all__ = ["CallOp", "ModuleOp"]
+__all__ = ["CallOp", "ModuleThunkOp"]
 
 
 @op_dcls
@@ -55,7 +55,7 @@ class CallOp[F: cabc.Callable](Op):
 
 
 @op_dcls
-class ModuleOp(CallOp[nn.Module]):
+class ModuleThunkOp(CallOp[nn.Module]):
     """
     The `nn.Module` version of `CallOp`.
     """
