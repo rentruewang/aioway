@@ -104,9 +104,10 @@ class ModuleRebuilder:
 
 @dcls.dataclass(frozen=True)
 class Constant(Init):
-    "Fill with `val`."
+    "Wraps `torch.nn.init.constant_`."
 
     val: float
+    "The fill value."
 
     def __call__(self, tensor: torch.Tensor, /) -> None:
         nn.init.constant_(tensor, self.val)
@@ -114,7 +115,7 @@ class Constant(Init):
 
 @dcls.dataclass(frozen=True)
 class Zeros(Init):
-    "Fill with 0."
+    "Wraps `torch.nn.init.zeros_`."
 
     def __call__(self, tensor: torch.Tensor, /) -> None:
         nn.init.zeros_(tensor)
@@ -122,7 +123,7 @@ class Zeros(Init):
 
 @dcls.dataclass(frozen=True)
 class Ones(Init):
-    "Fill with 1."
+    "Wraps `torch.nn.init.ones_`."
 
     def __call__(self, tensor: torch.Tensor, /) -> None:
         nn.init.ones_(tensor)
@@ -133,10 +134,13 @@ class Ones(Init):
 
 @dcls.dataclass(frozen=True)
 class Uniform(Init):
-    "Sample from U(a, b)."
+    "Wraps `torch.nn.init.uniform_`."
 
     a: float = 0.0
+    "Lower bound."
+
     b: float = 1.0
+    "Upper bound."
 
     def __call__(self, tensor: torch.Tensor, /) -> None:
         nn.init.uniform_(tensor, a=self.a, b=self.b)
@@ -144,10 +148,13 @@ class Uniform(Init):
 
 @dcls.dataclass(frozen=True)
 class Normal(Init):
-    "Sample from N(mean, std²)."
+    "Wraps `torch.nn.init.normal_`."
 
     mean: float = 0.0
+    "Mean of the normal distribution."
+
     std: float = 1.0
+    "Standard deviation of the normal distribution."
 
     def __call__(self, tensor: torch.Tensor, /) -> None:
         nn.init.normal_(tensor, mean=self.mean, std=self.std)
@@ -155,25 +162,34 @@ class Normal(Init):
 
 @dcls.dataclass(frozen=True)
 class TruncNormal(Init):
-    "Sample from N(mean, std²), redrawing values outside [a, b]."
+    "Wraps `torch.nn.init.trunc_normal_`."
 
     mean: float = 0.0
+    "Mean of the normal distribution."
+
     std: float = 1.0
+    "Standard deviation of the normal distribution."
+
     a: float = -2.0
+    "Lower cutoff, values below are redrawn."
+
     b: float = 2.0
+    "Upper cutoff, values above are redrawn."
 
     def __call__(self, tensor: torch.Tensor, /) -> None:
         nn.init.trunc_normal_(tensor, mean=self.mean, std=self.std, a=self.a, b=self.b)
 
 
 # Fan-scaled inits ====
+# These need tensors with at least 2 dims, so they fail on biases and norm layers.
 
 
 @dcls.dataclass(frozen=True)
 class XavierUniform(Init):
-    "Glorot uniform, scaled by fan_in + fan_out. Needs at least 2 dims."
+    "Wraps `torch.nn.init.xavier_uniform_`."
 
     gain: float = 1.0
+    "Scaling factor."
 
     def __call__(self, tensor: torch.Tensor, /) -> None:
         nn.init.xavier_uniform_(tensor, gain=self.gain)
@@ -181,9 +197,10 @@ class XavierUniform(Init):
 
 @dcls.dataclass(frozen=True)
 class XavierNormal(Init):
-    "Glorot normal, scaled by fan_in + fan_out. Needs at least 2 dims."
+    "Wraps `torch.nn.init.xavier_normal_`."
 
     gain: float = 1.0
+    "Scaling factor."
 
     def __call__(self, tensor: torch.Tensor, /) -> None:
         nn.init.xavier_normal_(tensor, gain=self.gain)
@@ -191,11 +208,16 @@ class XavierNormal(Init):
 
 @dcls.dataclass(frozen=True)
 class KaimingUniform(Init):
-    "He uniform, scaled by fan `mode` and `nonlinearity`. Needs at least 2 dims."
+    "Wraps `torch.nn.init.kaiming_uniform_`."
 
     a: float = 0.0
+    "Negative slope of the rectifier after this layer (only for `leaky_relu`)."
+
     mode: typing.Literal["fan_in", "fan_out"] = "fan_in"
+    "`fan_in` preserves the variance in the forward pass, `fan_out` in the backward."
+
     nonlinearity: str = "leaky_relu"
+    "The activation after this layer, used to pick the gain."
 
     def __call__(self, tensor: torch.Tensor, /) -> None:
         nn.init.kaiming_uniform_(
@@ -205,11 +227,16 @@ class KaimingUniform(Init):
 
 @dcls.dataclass(frozen=True)
 class KaimingNormal(Init):
-    "He normal, scaled by fan `mode` and `nonlinearity`. Needs at least 2 dims."
+    "Wraps `torch.nn.init.kaiming_normal_`."
 
     a: float = 0.0
+    "Negative slope of the rectifier after this layer (only for `leaky_relu`)."
+
     mode: typing.Literal["fan_in", "fan_out"] = "fan_in"
+    "`fan_in` preserves the variance in the forward pass, `fan_out` in the backward."
+
     nonlinearity: str = "leaky_relu"
+    "The activation after this layer, used to pick the gain."
 
     def __call__(self, tensor: torch.Tensor, /) -> None:
         nn.init.kaiming_normal_(
@@ -219,9 +246,10 @@ class KaimingNormal(Init):
 
 @dcls.dataclass(frozen=True)
 class Orthogonal(Init):
-    "(Semi-)orthogonal matrix, scaled by `gain`. Needs at least 2 dims."
+    "Wraps `torch.nn.init.orthogonal_`."
 
     gain: float = 1.0
+    "Scaling factor."
 
     def __call__(self, tensor: torch.Tensor, /) -> None:
         nn.init.orthogonal_(tensor, gain=self.gain)
