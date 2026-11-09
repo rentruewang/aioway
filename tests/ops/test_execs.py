@@ -110,7 +110,7 @@ def test_func_shared_input():
     op = SumCountOp(0, x, x)
 
     # Disallow (x, x) as signature.
-    with pytest.raises(ValueError, match="dupliate"):
+    with pytest.raises(ValueError, match="duplicate"):
         OpFunc(op)
 
 
