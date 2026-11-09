@@ -107,7 +107,7 @@ class TestSign:
         assert stripped.params["greeting"].default == "hi"
 
     def test_from_inputs(self, add: Sign):
-        assert Sign.from_inputs(["a", "b"]) == add
+        assert Sign.from_input_names(["a", "b"]) == add
 
     def test_apply_defaults(self, greet: Sign):
         assert greet.apply("bob") == {
@@ -131,7 +131,7 @@ class TestSign:
         assert add_i.args_annot() != add_f.args_annot()
 
     def test_name_match(self, add: Sign):
-        assert add.args_annot() != Sign.from_inputs(["a", "c"]).args_annot()
+        assert add.args_annot() != Sign.from_input_names(["a", "c"]).args_annot()
 
     @pytest.mark.parametrize(
         "module", [AddModule, AddModule()], ids=["type", "instance"]
@@ -320,7 +320,7 @@ class TestBoundArgs:
         bound = BoundArgs.from_dict({"y": y, "x": x})
 
         # Parameters follow the mapping's order, not alphabetical.
-        assert bound.sign == Sign.from_inputs(["y", "x"])
+        assert bound.sign == Sign.from_input_names(["y", "x"])
         assert bound["y"] is y and bound["x"] is x
         assert [id(t) for t in bound.tensors] == [id(y), id(x)]
 
