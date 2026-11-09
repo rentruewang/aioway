@@ -3,11 +3,13 @@
 "Rebuilds an `nn.Module`."
 
 from __future__ import annotations
+
 import abc
+import contextlib as ctxl
 import copy
 import dataclasses as dcls
 import typing
-import contextlib as ctxl
+
 import loguru as L
 import torch
 from torch import nn
