@@ -48,17 +48,41 @@ class OpFunc(nn.Module):
         with set_executor(env):
             return self.output()
 
+    def __str__(self) -> str:
+        return str(self._codes)
+
+    def __rich__(self):
+        return self._codes
+
     @property
     def __signature__(self) -> inspect.Signature:
         return self.signature.to_inspect()
+
+    @property
+    def _codes(self):
+        from .codes import FuncCodePrint
+
+        return FuncCodePrint(self)()
 
     @functools.cached_property
     def signature(self) -> Sign:
         def is_input(op) -> typing.TypeIs[FuncInputOp]:
             return isinstance(op, FuncInputOp)
 
-        inputs = filter(is_input, self._all_ops())
-        return Sign.from_params([i.param for i in inputs])
+        input_set: set[FuncInputOp] = set()
+        input_list: list[FuncInputOp] = []
+
+        for op in self._all_ops():
+            if not is_input(op):
+                continue
+
+            if op in input_set:
+                continue
+
+            input_set.add(op)
+            input_list.append(op)
+
+        return Sign.from_params([i.param for i in input_list])
 
     @property
     def output(self) -> Op:
@@ -85,7 +109,7 @@ class OpFuncEnv(OpExec):
 
     def __call__(self, op: Op) -> typing.Any:
         if isinstance(op, FuncInputOp):
-            return self.bounded[op.param.name]
+            return self.bounded[op.name]
         else:
             return self.fallback(op)
 
@@ -117,3 +141,7 @@ class FuncInputOp[T](Op[T]):
     @typing.override
     def deps(self):
         return ()
+
+    @property
+    def name(self) -> str:
+        return self.param.name

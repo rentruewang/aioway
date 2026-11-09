@@ -8,7 +8,7 @@ import torch
 from torch import nn
 from torch import testing as tt
 
-from aioway._signs import Param
+from aioway._signs import Param, Sign
 from aioway.ops import (
     CachedOpExec,
     FuncInputOp,
@@ -113,9 +113,8 @@ def test_func_shared_input():
     x = inp("x")
     op = SumCountOp(0, x, x)
 
-    # Disallow (x, x) as signature.
-    with pytest.raises(ValueError, match="duplicate"):
-        OpFunc(op)
+    # (x, x) would have signature (x)
+    assert OpFunc(op).signature == Sign.from_input_names("x")
 
 
 def test_func_bad_args():
