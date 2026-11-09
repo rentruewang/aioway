@@ -3,9 +3,11 @@
 import pytest
 import torch
 from torch import nn
+from torch._subclasses.fake_tensor import FakeTensorMode, is_fake
 
 from aioway.ops import (
     ConstantInit,
+    InitError,
     KaimingNormalInit,
     KaimingUniformInit,
     ModuleRebuilder,
@@ -19,7 +21,6 @@ from aioway.ops import (
     XavierUniformInit,
     ZerosInit,
 )
-from aioway.t import fake_mode, is_fake_tensor
 
 
 class Tied(nn.Module):
@@ -39,6 +40,7 @@ def tensors(module):
 
 @pytest.fixture
 def model():
+    "A model with tied weights, a frozen parameter, and both kinds of buffers."
     return Tied()
 
 
@@ -47,14 +49,15 @@ def model():
         NoInit(),
         ZerosInit(),
         OnesInit(),
-        ConstantInit(3.5),
-        UniformInit(-0.5, 0.5),
+        ConstantInit(val=3.5),
+        UniformInit(a=-0.5, b=0.5),
         NormalInit(std=0.02),
         TruncNormalInit(a=-0.1, b=0.1),
     ],
     ids=repr,
 )
 def init(request):
+    "Inits that work on tensors of any shape, so they can run on `model`."
     return request.param
 
 
@@ -69,6 +72,7 @@ def init(request):
     ids=repr,
 )
 def fan_init(request):
+    "Inits that need tensors with at least 2 dims, so they can't run on `model`."
     return request.param
 
 
@@ -99,17 +103,31 @@ def test_fan_init(fan_init):
     assert torch.isfinite(new.weight).all()
 
 
-def test_fake_mode(model: Tied, init):
-    with fake_mode():
-        fake: Tied = ModuleRebuilder(init)(model)
+def test_fake_mode(model, init):
+    with FakeTensorMode():
+        fake = ModuleRebuilder(init)(model)
 
-    assert all(is_fake_tensor(t) for t in tensors(fake))
+    assert all(is_fake(t) for t in tensors(fake))
     assert fake.emb.weight is fake.head.weight
 
 
-def test_fake_to_real(model: Tied):
-    with fake_mode():
+def test_fake_to_real(model):
+    with FakeTensorMode():
         fake = ModuleRebuilder()(model)
 
     real = ModuleRebuilder(OnesInit())(fake)
     assert all(torch.all(t == 1) for t in tensors(real))
+
+
+def test_init_error_names_the_tensor():
+    with pytest.raises(InitError, match="'bias'") as e:
+        ModuleRebuilder(XavierUniformInit())(nn.Linear(4, 4))
+
+    assert isinstance(e.value.__cause__, ValueError)
+
+
+def test_allow_failure():
+    new = ModuleRebuilder(XavierUniformInit(allow_failure=True))(nn.Linear(4, 4))
+
+    # The 2-D weight is initialized, the 1-D bias fails and is skipped.
+    assert torch.isfinite(new.weight).all()

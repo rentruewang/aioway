@@ -3,11 +3,11 @@
 "Rebuilds an `nn.Module`."
 
 from __future__ import annotations
-
+import abc
 import copy
 import dataclasses as dcls
 import typing
-
+import contextlib as ctxl
 import loguru as L
 import torch
 from torch import nn
@@ -16,6 +16,7 @@ from aioway.t import is_real_tensor
 
 __all__ = [
     "ModuleRebuilder",
+    "InitError",
     "Init",
     "NoInit",
     "ConstantInit",
@@ -35,17 +36,41 @@ __all__ = [
 # Init base ====
 
 
-class Init(typing.Protocol):
+@typing.dataclass_transform(frozen_default=True, kw_only_default=True)
+def init_dcls(cls):
+    return dcls.dataclass(frozen=True, kw_only=True)(cls)
+
+
+class InitError(Exception):
+    "An `Init` failed on one of the module's tensors."
+
+
+@init_dcls
+class Init(abc.ABC):
     "Initializes a tensor in place."
 
-    def __call__(self, tensor: torch.Tensor, /) -> None: ...
+    allow_failure: bool = False
+
+    @typing.final
+    def __call__(self, tensor: torch.Tensor, /) -> None:
+        try:
+            self.init(tensor)
+        except Exception as e:
+            if self.allow_failure:
+                return
+            else:
+                raise
+
+    @abc.abstractmethod
+    def init(self, tensor: torch.Tensor, /) -> None:
+        raise NotImplementedError
 
 
-@dcls.dataclass(frozen=True)
+@init_dcls
 class NoInit(Init):
     "Leave the tensor as allocated (uninitialized memory)."
 
-    def __call__(self, tensor: torch.Tensor, /) -> None:
+    def init(self, tensor: torch.Tensor, /) -> None:
         pass
 
 
@@ -78,61 +103,76 @@ class ModuleRebuilder:
         for name, param in module.named_parameters():
             L.logger.trace("Rebuilding parameter {}", name)
             memo[id(param)] = nn.Parameter(
-                self._new_like(param),
+                self._new_like(name, param),
                 requires_grad=param.requires_grad,
             )
 
         for name, buf in module.named_buffers():
             L.logger.trace("Rebuilding buffer {}", name)
-            memo[id(buf)] = self._new_like(buf)
+            memo[id(buf)] = self._new_like(name, buf)
 
         return memo
 
-    def _new_like(self, tensor: torch.Tensor) -> torch.Tensor:
+    def _new_like(self, name: str, tensor: torch.Tensor) -> torch.Tensor:
         with torch.no_grad():
             new = _empty_like(tensor)
 
             # Fake tensors have no data.
-            if is_real_tensor(new):
+            if not is_real_tensor(new):
+                return new
+
+            with self._init_guard(name, tensor):
                 self.init(new)
 
             return new
+
+    @ctxl.contextmanager
+    def _init_guard(self, name: str, tensor: torch.Tensor):
+        "Re-raise init failures as `InitError`, naming the tensor."
+
+        try:
+            yield
+        except Exception as e:
+            raise InitError(
+                f"{self.init!r} failed on {name!r} "
+                f"(shape={tuple(tensor.shape)}, dtype={tensor.dtype})"
+            ) from e
 
 
 # Constant inits ====
 
 
-@dcls.dataclass(frozen=True)
+@init_dcls
 class ConstantInit(Init):
     "Wraps `torch.nn.init.constant_`."
 
     val: float
     "The fill value."
 
-    def __call__(self, tensor: torch.Tensor, /) -> None:
+    def init(self, tensor: torch.Tensor, /) -> None:
         nn.init.constant_(tensor, self.val)
 
 
-@dcls.dataclass(frozen=True)
+@init_dcls
 class ZerosInit(Init):
     "Wraps `torch.nn.init.zeros_`."
 
-    def __call__(self, tensor: torch.Tensor, /) -> None:
+    def init(self, tensor: torch.Tensor, /) -> None:
         nn.init.zeros_(tensor)
 
 
-@dcls.dataclass(frozen=True)
+@init_dcls
 class OnesInit(Init):
     "Wraps `torch.nn.init.ones_`."
 
-    def __call__(self, tensor: torch.Tensor, /) -> None:
+    def init(self, tensor: torch.Tensor, /) -> None:
         nn.init.ones_(tensor)
 
 
 # Random inits ====
 
 
-@dcls.dataclass(frozen=True)
+@init_dcls
 class UniformInit(Init):
     "Wraps `torch.nn.init.uniform_`."
 
@@ -142,11 +182,11 @@ class UniformInit(Init):
     b: float = 1.0
     "Upper bound."
 
-    def __call__(self, tensor: torch.Tensor, /) -> None:
+    def init(self, tensor: torch.Tensor, /) -> None:
         nn.init.uniform_(tensor, a=self.a, b=self.b)
 
 
-@dcls.dataclass(frozen=True)
+@init_dcls
 class NormalInit(Init):
     "Wraps `torch.nn.init.normal_`."
 
@@ -156,11 +196,11 @@ class NormalInit(Init):
     std: float = 1.0
     "Standard deviation of the normal distribution."
 
-    def __call__(self, tensor: torch.Tensor, /) -> None:
+    def init(self, tensor: torch.Tensor, /) -> None:
         nn.init.normal_(tensor, mean=self.mean, std=self.std)
 
 
-@dcls.dataclass(frozen=True)
+@init_dcls
 class TruncNormalInit(Init):
     "Wraps `torch.nn.init.trunc_normal_`."
 
@@ -176,37 +216,36 @@ class TruncNormalInit(Init):
     b: float = 2.0
     "Upper cutoff, values above are redrawn."
 
-    def __call__(self, tensor: torch.Tensor, /) -> None:
+    def init(self, tensor: torch.Tensor, /) -> None:
         nn.init.trunc_normal_(tensor, mean=self.mean, std=self.std, a=self.a, b=self.b)
 
 
-# Fan-scaled inits ====
-# These need tensors with at least 2 dims, so they fail on biases and norm layers.
+# Fan-scaled inits (at least 2 dims, so no biases nor norms) ====
 
 
-@dcls.dataclass(frozen=True)
+@init_dcls
 class XavierUniformInit(Init):
     "Wraps `torch.nn.init.xavier_uniform_`."
 
     gain: float = 1.0
     "Scaling factor."
 
-    def __call__(self, tensor: torch.Tensor, /) -> None:
+    def init(self, tensor: torch.Tensor, /) -> None:
         nn.init.xavier_uniform_(tensor, gain=self.gain)
 
 
-@dcls.dataclass(frozen=True)
+@init_dcls
 class XavierNormalInit(Init):
     "Wraps `torch.nn.init.xavier_normal_`."
 
     gain: float = 1.0
     "Scaling factor."
 
-    def __call__(self, tensor: torch.Tensor, /) -> None:
+    def init(self, tensor: torch.Tensor, /) -> None:
         nn.init.xavier_normal_(tensor, gain=self.gain)
 
 
-@dcls.dataclass(frozen=True)
+@init_dcls
 class KaimingUniformInit(Init):
     "Wraps `torch.nn.init.kaiming_uniform_`."
 
@@ -219,14 +258,14 @@ class KaimingUniformInit(Init):
     nonlinearity: str = "leaky_relu"
     "The activation after this layer, used to pick the gain."
 
-    def __call__(self, tensor: torch.Tensor, /) -> None:
+    def init(self, tensor: torch.Tensor, /) -> None:
         nonlinearity: typing.Any = self.nonlinearity
         nn.init.kaiming_uniform_(
             tensor, a=self.a, mode=self.mode, nonlinearity=nonlinearity
         )
 
 
-@dcls.dataclass(frozen=True)
+@init_dcls
 class KaimingNormalInit(Init):
     "Wraps `torch.nn.init.kaiming_normal_`."
 
@@ -239,21 +278,21 @@ class KaimingNormalInit(Init):
     nonlinearity: str = "leaky_relu"
     "The activation after this layer, used to pick the gain."
 
-    def __call__(self, tensor: torch.Tensor, /) -> None:
+    def init(self, tensor: torch.Tensor, /) -> None:
         nonlinearity: typing.Any = self.nonlinearity
         nn.init.kaiming_normal_(
             tensor, a=self.a, mode=self.mode, nonlinearity=nonlinearity
         )
 
 
-@dcls.dataclass(frozen=True)
+@init_dcls
 class OrthogonalInit(Init):
     "Wraps `torch.nn.init.orthogonal_`."
 
     gain: float = 1.0
     "Scaling factor."
 
-    def __call__(self, tensor: torch.Tensor, /) -> None:
+    def init(self, tensor: torch.Tensor, /) -> None:
         nn.init.orthogonal_(tensor, gain=self.gain)
 
 
