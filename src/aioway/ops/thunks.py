@@ -1,5 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import abc
 import typing
 from collections import abc as cabc
 
@@ -54,8 +55,22 @@ class CallOp[F: cabc.Callable](Op):
         return Sign.from_callable(self.func)
 
 
+class ModuleOp(Op, abc.ABC):
+    """
+    A marker that the `Op` is an `nn.Module`.
+    """
+
+    @property
+    @abc.abstractmethod
+    def nn(self) -> nn.Module:
+        """
+        The underlying `nn.Module`.
+        """
+        raise NotImplementedError
+
+
 @op_dcls
-class ModuleThunkOp(CallOp[nn.Module]):
+class ModuleThunkOp(CallOp[nn.Module], ModuleOp):
     """
     The `nn.Module` version of `CallOp`.
     """
@@ -66,3 +81,7 @@ class ModuleThunkOp(CallOp[nn.Module]):
     @property
     def sign(self) -> Sign:
         return Sign.from_nn_forward(self.func)
+
+    @property
+    def nn(self) -> nn.Module:
+        return self.func
