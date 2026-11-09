@@ -110,7 +110,7 @@ def test_func_shared_input():
 
     # Disallow (x, x) as signature.
     with pytest.raises(ValueError):
-        assert OpFunc(op)
+        OpFunc(op)
 
 
 def test_func_bad_args():
