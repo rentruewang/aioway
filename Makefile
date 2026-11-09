@@ -11,7 +11,7 @@ PYREFLY_ARGS :=
 
 # Running in GitHub Actions
 ifeq ($(GITHUB_ACTIONS),true)
-    SH := python3 ci/group-actions.py
+    SH := bash ci/group-actions.sh
 	CLEANUP := $(SUDO) $(SH) bash ci/cleanup-github.sh
 # Running locally
 else
