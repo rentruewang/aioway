@@ -34,7 +34,7 @@ class Tied(nn.Module):
         self.register_buffer("tmp", torch.ones(3), persistent=False)
 
 
-def tensors(module):
+def _tensors(module):
     return [*module.parameters(), *module.buffers()]
 
 
@@ -77,12 +77,12 @@ def fan_init(request):
 
 
 def test_original_untouched(model, init):
-    old = tensors(model)
+    old = _tensors(model)
     before = {k: v.clone() for k, v in model.state_dict().items()}
 
     ModuleRebuilder(init)(model)
 
-    assert all(a is b for a, b in zip(tensors(model), old))
+    assert all(a is b for a, b in zip(_tensors(model), old))
     assert all(torch.equal(v, before[k]) for k, v in model.state_dict().items())
 
 
@@ -93,7 +93,7 @@ def test_structure(model, init):
     assert not new.frozen.requires_grad
     assert "tmp" in new._non_persistent_buffers_set
     assert new.state_dict().keys() == model.state_dict().keys()
-    for a, b in zip(tensors(model), tensors(new)):
+    for a, b in zip(_tensors(model), _tensors(new)):
         assert a.data_ptr() != b.data_ptr()
         assert (a.shape, a.dtype, a.device) == (b.shape, b.dtype, b.device)
 
@@ -107,7 +107,7 @@ def test_fake_mode(model, init):
     with FakeTensorMode():
         fake = ModuleRebuilder(init)(model)
 
-    assert all(is_fake(t) for t in tensors(fake))
+    assert all(is_fake(t) for t in _tensors(fake))
     assert fake.emb.weight is fake.head.weight
 
 
@@ -116,7 +116,7 @@ def test_fake_to_real(model):
         fake = ModuleRebuilder()(model)
 
     real = ModuleRebuilder(OnesInit())(fake)
-    assert all(torch.all(t == 1) for t in tensors(real))
+    assert all(torch.all(t == 1) for t in _tensors(real))
 
 
 def test_init_error_names_the_tensor():
