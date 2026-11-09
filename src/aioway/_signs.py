@@ -331,8 +331,14 @@ class Sign:
         return cls(inspect.signature(func))
 
     @classmethod
-    def from_inputs(cls, names: cabc.Iterable[str]) -> typing.Self:
+    def from_params(cls, params: cabc.Iterable[Param]) -> typing.Self:
         "Create the signature from input parameters."
+
+        return cls(inspect.Signature(parameters=[param.parameter for param in params]))
+
+    @classmethod
+    def from_input_names(cls, names: cabc.Iterable[str]) -> typing.Self:
+        "Create the signature from input parameter names."
         return cls(
             inspect.Signature(
                 parameters=[
@@ -512,10 +518,10 @@ class BoundArgs(PyTreeDictMixin):
 
         tensors = tuple(items)
         names = [key_func(i) for i in range(len(tensors))]
-        return cls.from_sign(Sign.from_inputs(names), *tensors)
+        return cls.from_sign(Sign.from_input_names(names), *tensors)
 
     @classmethod
     def from_dict(cls, mapping: cabc.Mapping[str, typing.Any], /) -> typing.Self:
         "Bind tensors by name, in the order of the mapping."
 
-        return cls.from_sign(Sign.from_inputs(mapping.keys()), **mapping)
+        return cls.from_sign(Sign.from_input_names(mapping.keys()), **mapping)

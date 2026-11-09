@@ -80,7 +80,7 @@ class CachedOpExec(OpExec):
         if isinstance(result := self[op], Exception):
             raise result
         else:
-            return self[op]
+            return result
 
     @classmethod
     @ctxl.contextmanager
