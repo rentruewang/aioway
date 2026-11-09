@@ -109,7 +109,7 @@ def test_func_call():
     assert f(a=1, b=2, c=3) == 6
 
 
-def test_func_shared_input():
+def test_func_dedup_input():
     x = inp("x")
     op = SumCountOp(0, x, x)
 
