@@ -7,7 +7,7 @@ import typing
 from aioway._signs import BoundArgs, Param, Sign
 from aioway.ops import op_dcls
 
-from .execs import OpExec, executor
+from .execs import CachedOpExec, OpExec, set_executor
 from .ops import Op, post_order
 
 __all__ = ["OpFunc"]
@@ -37,8 +37,11 @@ class OpFunc:
 
     def __call__(self, *args, **kwargs) -> typing.Any:
         env = OpFuncEnv(self.signature.bind(*args, **kwargs))
-        return env(self.output)
 
+        with set_executor(env):
+            return self.output()
+
+    @property
     def __signature__(self) -> inspect.Signature:
         return self.signature.to_inspect()
 
@@ -60,7 +63,7 @@ class OpFuncEnv(OpExec):
     bounded: BoundArgs
     "The arguments that are bounded."
 
-    fallback: OpExec = dcls.field(default_factory=executor)
+    fallback: OpExec = dcls.field(default_factory=CachedOpExec)
     """
     The fallback executor to use.
     By default, use the "current default" at the time of init. 
@@ -84,9 +87,6 @@ class OpFuncEnv(OpExec):
 
 @op_dcls
 class FuncInputOp[T](Op[T]):
-    env: OpFuncEnv
-    "The environment that the input uses."
-
     param: Param
     "The parameter that is associated with the input."
 
@@ -95,9 +95,10 @@ class FuncInputOp[T](Op[T]):
 
     @typing.override
     def execute(self) -> T:
-        result = self.env[self.param.name]
-        assert isinstance(result, self.typ)
-        return result
+        raise RuntimeError(
+            "This function should enver be called, "
+            "as `FuncInputOp` can only be executed by `OpFuncEnv`."
+        )
 
     @typing.override
     def deps(self):
