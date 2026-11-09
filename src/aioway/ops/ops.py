@@ -5,7 +5,7 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-__all__ = ["Op", "op_dcls", "execute"]
+__all__ = ["Op", "op_dcls", "exec_op"]
 
 
 @typing.dataclass_transform(frozen_default=True)
@@ -28,7 +28,9 @@ class Op[T = object](abc.ABC):
     __match_args__: typing.ClassVar[tuple[str, ...]]
 
     def __call__(self) -> T:
-        return self.execute()
+        from .execs import executor
+
+        return executor()(self)
 
     @abc.abstractmethod
     def execute(self) -> T:
@@ -47,9 +49,13 @@ class Op[T = object](abc.ABC):
         raise NotImplementedError
 
 
-def execute(item):
-    if isinstance(item, Op):
-        return item()
+def exec_op(obj):
+    """
+    Execute `obj` if it is `Op`, else return identity.
+    """
+
+    if isinstance(obj, Op):
+        return obj()
 
     else:
-        return item
+        return obj

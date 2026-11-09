@@ -9,7 +9,7 @@ from torch import nn
 from aioway._pytrees import tree_leaves
 from aioway._signs import Sign
 
-from .ops import Op, execute, op_dcls
+from .ops import Op, exec_op, op_dcls
 
 __all__ = ["CallOp", "ModuleOp"]
 
@@ -37,8 +37,8 @@ class CallOp[F: cabc.Callable](Op, abc.ABC):
 
     @typing.override
     def execute(self):
-        args = [execute(arg) for arg in self.args]
-        kwargs = {key: execute(val) for key, val in self.kwargs.items()}
+        args = [exec_op(arg) for arg in self.args]
+        kwargs = {key: exec_op(val) for key, val in self.kwargs.items()}
 
         return self.func(*args, **kwargs)
 

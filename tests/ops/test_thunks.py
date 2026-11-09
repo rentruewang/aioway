@@ -10,7 +10,7 @@ import torch
 from torch import nn
 
 from aioway._signs import Sign
-from aioway.ops import CallOp, ModuleOp, TensorOp, execute
+from aioway.ops import CallOp, ModuleOp, TensorOp, exec_op
 
 
 @dcls.dataclass
@@ -110,7 +110,7 @@ def test_call(any_expr: CallOp, any_case: Case):
 
 def test_module_call(module_expr: ModuleOp):
     torch.testing.assert_close(
-        module_expr(), module_expr.func(*[execute(a) for a in module_expr.args])
+        module_expr(), module_expr.func(*[exec_op(a) for a in module_expr.args])
     )
 
 
