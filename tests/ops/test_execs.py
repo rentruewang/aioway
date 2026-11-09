@@ -61,9 +61,8 @@ def test_set_executor():
 
 def test_set_executor_error():
     cache = CachedOpExec()
-    with pytest.raises(RuntimeError):
-        with set_executor(cache):
-            raise RuntimeError
+    with pytest.raises(RuntimeError), set_executor(cache):
+        raise RuntimeError
     assert executor() is default_op_exec
 
 
