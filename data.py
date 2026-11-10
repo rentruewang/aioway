@@ -11,7 +11,7 @@ Containers: a batch in memory, N examples side by side, data [N, *positions, *va
   Graph(edges)   elements joined by edges: molecules, meshes, a model's computation
   Tree(parent)   elements under a root: parse trees, search trees
   Product(parts) several at once: Product(video, (Seq, Grid)) is frames × pixels
-  what an element holds: classes · bits · real · record (from the dtype, or a torchrl spec)
+  what an element holds: classes · bits · real · record (from the dtype)
 
 Partial containers: what is known so far, and how to get the rest
   Holes[C]           C with a level per element: 0 known · 1 unknown · in between, noised to that level
@@ -58,7 +58,6 @@ import torch
 import torch.distributions as dist
 from tensordict import TensorDictBase
 from torch import Tensor, nn
-from torchrl.data import Binary, Categorical, Composite, OneHot, TensorSpec
 
 # ═══ Containers ═══════════════════════════════════════════════════════════════════════════════════
 
@@ -68,7 +67,6 @@ class Container:
     """N examples, each a structure of elements; data is [N, *positions, *value]."""
 
     data: Any
-    spec: TensorSpec | None = field(default=None, kw_only=True)
 
     rank: ClassVar[int] = 1  # how many dims after the first index positions
 
@@ -78,12 +76,16 @@ class Container:
 
     @property
     def positions(self) -> tuple[int, ...]:
-        shape = self.data.batch_size if isinstance(self.data, TensorDictBase) else self.data.shape
+        shape = (
+            self.data.batch_size
+            if isinstance(self.data, TensorDictBase)
+            else self.data.shape
+        )
         return tuple(shape[1 : 1 + self.position_dims])
 
     @property
     def value_shape(self) -> tuple[int, ...]:
-        return tuple(self.spec.shape) if self.spec is not None else tuple(self.data.shape[1 + self.position_dims :])
+        return tuple(self.data.shape[1 + self.position_dims :])
 
     @property
     def type(self) -> Self:
@@ -101,7 +103,9 @@ class Container:
         return replace(self, data=self.data[i])
 
     def __repr__(self) -> str:
-        where = " × ".join(map(str, self.positions)) + (", causal" if getattr(self, "causal", False) else "")
+        where = " × ".join(map(str, self.positions)) + (
+            ", causal" if getattr(self, "causal", False) else ""
+        )
         return f"{type(self).__name__}({where}) of {describe(self)}"
 
 
@@ -132,12 +136,16 @@ class Grid(Container):
 
 @dataclass(frozen=True, eq=False, repr=False)
 class Graph(Container):
-    edges: Tensor = field(default_factory=lambda: torch.zeros(2, 0, dtype=torch.long))  # [2, E], row 0 → row 1
+    edges: Tensor = field(
+        default_factory=lambda: torch.zeros(2, 0, dtype=torch.long)
+    )  # [2, E], row 0 → row 1
 
 
 @dataclass(frozen=True, eq=False, repr=False)
 class Tree(Container):
-    parent: Tensor = field(default_factory=lambda: torch.zeros(0, dtype=torch.long))  # parent[i]; −1 at a root
+    parent: Tensor = field(
+        default_factory=lambda: torch.zeros(0, dtype=torch.long)
+    )  # parent[i]; −1 at a root
 
 
 @dataclass(frozen=True, eq=False, repr=False)
@@ -149,37 +157,26 @@ class Product(Container):
         return sum(p.rank for p in self.parts)
 
 
-def n_classes(spec: TensorSpec | None) -> int:
-    if spec is None:
-        raise TypeError("how many classes? give the container a spec, e.g. Seq(tokens, spec=Categorical(n))")
-    return spec.shape[-1] if isinstance(spec, OneHot) else int(getattr(spec, "space").n)
-
-
 def kind(x: Any) -> str:
-    """What the elements are: "classes", "bits", "real", "record" or "distribution"; from the spec, else the dtype."""
+    """What the elements are: "classes", "bits", "real", "record" or "distribution", from the dtype."""
     if isinstance(x, dist.Distribution):
         return "distribution"
-    spec = x.spec if isinstance(x, Container) else x if isinstance(x, TensorSpec) else None
-    if spec is None:
-        data = x.data if isinstance(x, Container) else x
-        if isinstance(data, TensorDictBase):
-            return "record"
-        assert isinstance(data, Tensor)
-        return "bits" if data.dtype == torch.bool else "real" if data.is_floating_point() else "classes"
-    if isinstance(spec, Composite):
+    data = x.data if isinstance(x, Container) else x
+    if isinstance(data, TensorDictBase):
         return "record"
-    return "bits" if isinstance(spec, Binary) else "classes" if isinstance(spec, (Categorical, OneHot)) else "real"
+    return (
+        "bits"
+        if data.dtype == torch.bool
+        else "real" if data.is_floating_point() else "classes"
+    )
 
 
 def describe(x: Any) -> str:
-    spec = x.spec if isinstance(x, Container) else x
-    if isinstance(spec, Composite):
-        return "{" + ", ".join(f"{k}: {describe(v)}" for k, v in spec.items()) + "}"
-    k = kind(x)
-    if k == "classes" and isinstance(spec, TensorSpec):
-        return f"classes({n_classes(spec)})"
-    shape = x.value_shape if isinstance(x, Container) else tuple(spec.shape) if spec is not None else ()
-    return f"{k}{shape}" if shape else k
+    data = x.data if isinstance(x, Container) else x
+    if isinstance(data, TensorDictBase):
+        return "{" + ", ".join(f"{k}: {describe(v)}" for k, v in data.items()) + "}"
+    shape = x.value_shape if isinstance(x, Container) else tuple(data.shape)
+    return f"{kind(x)}{shape}" if shape else kind(x)
 
 
 # ═══ Partial containers ═══════════════════════════════════════════════════════════════════════════
@@ -285,7 +282,8 @@ stays. In torch the parameters live in the module, so this is a subtype of Modul
 
 class Codec[A, B](Protocol):
     """A way to write raw data in a vocabulary and read it back: encode A → B, decode B → A. The codec decides the
-    content of B (classes of its vocabulary), and is fitted to data (BPE merges, a VQ codebook) or fixed (bytes)."""
+    content of B (classes of its vocabulary), and is fitted to data (BPE merges, a VQ codebook) or fixed (bytes).
+    """
 
     def encode(self, x: A, /) -> B: ...
 
@@ -355,7 +353,8 @@ class Subset[C]:
     """Some examples of an Indexed, by index, in order (an index may repeat: sampling with replacement). It is what
     curating, splitting and sampling return: they only choose indices, and a Subset is the one thing that batches,
     iterates and logs them. made_by is what chose them, from the original dataset on; a subset of a subset is
-    folded into indices on the original, so its lineage is one dataset and a chain of choices."""
+    folded into indices on the original, so its lineage is one dataset and a chain of choices.
+    """
 
     parent: Indexed[C]
     indices: Tensor
@@ -365,7 +364,9 @@ class Subset[C]:
     @staticmethod
     def of(data: Indexed[C], indices: Tensor, made_by: str) -> Subset[C]:
         if isinstance(data, Subset):
-            return Subset(data.parent, data.indices[indices], (*data.made_by, made_by), data.batch)
+            return Subset(
+                data.parent, data.indices[indices], (*data.made_by, made_by), data.batch
+            )
         return Subset(data, indices, (made_by,))
 
     def __len__(self) -> int:
@@ -389,7 +390,7 @@ class Estimator(Protocol):
     """A scikit-learn estimator: a config (get_params) and, once fit, a model. Classifiers and regressors predict,
     transformers transform, clusterers predict or only fit_predict."""
 
-    def fit(self, X: Any, y: Any, /) -> Any: ...                    # y is None for an unsupervised one
+    def fit(self, X: Any, y: Any, /) -> Any: ...  # y is None for an unsupervised one
 
     def get_params(self, deep: bool = True) -> dict[str, Any]: ...
 
