@@ -28,7 +28,9 @@ class Domain[T = typing.Any](abc.ABC):
     For instance, images, videos, texts, trees etc.
     """
 
-    def __init_subclass__(cls) -> None:
+    def __init_subclass__(cls, **kwargs) -> None:
+        super().__init_subclass__(**kwargs)
+
         # Register subclasses automatically as dataclass.
         dataclass = dcls.dataclass(frozen=True)(cls)
         assert dataclass is cls
