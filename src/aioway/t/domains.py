@@ -11,6 +11,12 @@ from aioway.t import has_real
 __all__ = ["Domain"]
 
 
+class InvalidDomainValue(ValueError):
+    """
+    This error is raised if the value is not accepted.
+    """
+
+
 @typing.dataclass_transform(frozen_default=True)
 class Domain[T = typing.Any](abc.ABC):
     """
@@ -27,9 +33,6 @@ class Domain[T = typing.Any](abc.ABC):
         dataclass = dcls.dataclass(frozen=True)(cls)
         assert dataclass is cls
 
-    def sub_domain_of(self, other: Domain) -> bool:
-        raise NotImplementedError
-
     @property
     def __parents__(self) -> list[Domain[T]]:
         """
@@ -40,7 +43,7 @@ class Domain[T = typing.Any](abc.ABC):
 
         return []
 
-    def is_sub_domain(self, domain: Domain[T]) -> bool:
+    def sub_domain_of(self, domain: Domain[T]) -> bool:
         """
         Check if `self` can be considered a `domain`.
         """
@@ -51,7 +54,7 @@ class Domain[T = typing.Any](abc.ABC):
         """
         Find all the ancesotrs of the `Domain`.
 
-        This is useful for `is_sub_domain` checks.
+        This is useful for `sub_domain_of` checks.
         """
 
         def visit_ancestors(domain: Domain[T]) -> None:
@@ -68,6 +71,12 @@ class Domain[T = typing.Any](abc.ABC):
 
     @typing.final
     def check(self, obj: T, /) -> None:
+        """
+        Check if `obj` is valid.
+
+        Raises `InvalidDomainValue` if not.
+        """
+
         self.check_type(obj)
 
         if has_real(obj):
