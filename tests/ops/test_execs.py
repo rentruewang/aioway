@@ -164,19 +164,48 @@ def test_func_module():
     tt.assert_close(f(x), layer(x))
 
 
+# OpFunc.apply ====
+
+
 def test_func_apply():
     f = OpFunc(SumCountOp(0, inp("a"), inp("b")))
     g = f.apply(SumCountOp(1), b=SumCountOp(2))
 
     # All inputs are bound, so the applied function takes no arguments.
-    assert list(inspect.signature(g).parameters) == []
+    assert not inspect.signature(g).parameters
     assert g() == 3
 
     # The original function is unaffected.
     assert f(10, 20) == 30
 
 
-def test_func_apply_rejects_tensor():
+def test_func_apply_no_tensor():
     f = OpFunc(SumCountOp(0, inp("a")))
     with pytest.raises(TypeError, match="wrapped"):
         f.apply(torch.tensor(1))
+
+
+def test_func_apply_bad_args():
+    f = OpFunc(SumCountOp(0, inp("a"), inp("b")))
+
+    with pytest.raises(TypeError):
+        f.apply(SumCountOp(1))  # missing `b`
+
+    with pytest.raises(TypeError):
+        f.apply(SumCountOp(1), SumCountOp(2), SumCountOp(3))  # too many
+
+    with pytest.raises(TypeError):
+        f.apply(SumCountOp(1), c=SumCountOp(2))  # unknown name
+
+
+def test_func_apply_bad_args():
+    f = OpFunc(SumCountOp(0, inp("a"), inp("b")))
+
+    with pytest.raises(TypeError):
+        f.apply(SumCountOp(1))  # missing `b`
+
+    with pytest.raises(TypeError):
+        f.apply(SumCountOp(1), SumCountOp(2), SumCountOp(3))  # too many
+
+    with pytest.raises(TypeError):
+        f.apply(SumCountOp(1), c=SumCountOp(2))  # unknown name
