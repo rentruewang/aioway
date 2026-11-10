@@ -1,10 +1,12 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import copy
 import dataclasses as dcls
-import functools
 import inspect
 import typing
 
+import tensordict as td
+import torch
 from torch import nn
 
 from aioway._signs import BoundArgs, Param, Sign
@@ -43,10 +45,34 @@ class OpFunc(nn.Module):
         _ = self.signature
 
     def __call__(self, *args, **kwargs) -> typing.Any:
-        env = OpFuncEnv(self.signature.bind(*args, **kwargs))
+        bound = self.signature.bind(*args, **kwargs)
+        env = OpFuncEnv(bound)
 
         with set_executor(env):
             return self.output()
+
+    def apply(self, *args, **kwargs) -> typing.Self:
+        """
+        Apply the function onto some `Op`s, merging into a bigger expression tree.
+
+        Accepts the same signature as the `__call__` method,
+        with `Domain` types replaced by `Op`s.
+        """
+
+        # FIXME: Op type as lazy Domain #737
+        bound = self.signature.bind(*args, **kwargs)
+
+        for arg in bound.values():
+            if isinstance(arg, torch.Tensor) or td.is_tensor_collection(arg):
+                raise TypeError("The tensor objects should be wrapped.")
+
+        # The memo for replacement.
+        replace: dict[int, object] = {}
+        for node in self._input_ops():
+            replace[id(node)] = bound[node.name]
+
+        new = copy.deepcopy(self.output, memo=replace)
+        return type(self)(new)
 
     def __str__(self) -> str:
         return str(self._codes)
@@ -64,8 +90,7 @@ class OpFunc(nn.Module):
 
         return FuncCodePrint(self)()
 
-    @functools.cached_property
-    def signature(self) -> Sign:
+    def _input_ops(self):
         # The dictionary is ordered.
         args: dict[str, FuncInputOp] = {}
 
@@ -80,8 +105,11 @@ class OpFunc(nn.Module):
                 continue
 
             args[op.name] = op
+        return args.values()
 
-        return Sign.from_params([i.param for i in args.values()])
+    @property
+    def signature(self) -> Sign:
+        return Sign.from_params([i.param for i in self._input_ops()])
 
     @property
     def output(self) -> Op:

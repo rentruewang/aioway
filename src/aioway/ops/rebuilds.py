@@ -93,9 +93,9 @@ class ModuleRebuilder:
     "The initialization strategy, applied in place to every parameter and buffer."
 
     def __call__[T: nn.Module](self, module: T, /) -> T:
-        return copy.deepcopy(module, memo=self._tensor_memo(module))
+        return copy.deepcopy(module, memo=self._replace_param_memo(module))
 
-    def _tensor_memo(self, module: nn.Module) -> dict[int, torch.Tensor]:
+    def _replace_param_memo(self, module: nn.Module) -> dict[int, torch.Tensor]:
         """
         Get a `copy.deepcopy` memo for the tensors of the modules.
         """
