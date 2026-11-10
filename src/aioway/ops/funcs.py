@@ -1,6 +1,5 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import copy
 import dataclasses as dcls
 import inspect
 import typing
@@ -10,6 +9,7 @@ import torch
 from torch import nn
 
 from aioway._signs import BoundArgs, Param, Sign
+from aioway._utils import AnyDict, any_dict
 
 from .execs import CachedOpExec, OpExec, set_executor
 from .ops import Op, op_dcls
@@ -67,11 +67,11 @@ class OpFunc(nn.Module):
                 raise TypeError("The tensor objects should be wrapped.")
 
         # The memo for replacement.
-        replace: dict[int, object] = {}
+        memo: AnyDict[typing.Any, object] = any_dict()
         for node in self._input_ops():
-            replace[id(node)] = bound[node.name]
+            memo[node] = bound[node.name]
 
-        new = copy.deepcopy(self.output, memo=replace)
+        new = memo.replace(self.output)
         return type(self)(new)
 
     def __str__(self) -> str:

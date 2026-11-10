@@ -2,11 +2,8 @@
 
 "Rebuilds an `nn.Module`."
 
-from __future__ import annotations
-
 import abc
 import contextlib as ctxl
-import copy
 import dataclasses as dcls
 import typing
 
@@ -14,6 +11,7 @@ import loguru as L
 import torch
 from torch import nn
 
+from aioway._utils import AnyDict, any_dict
 from aioway.t import is_real_tensor
 
 __all__ = [
@@ -93,25 +91,27 @@ class ModuleRebuilder:
     "The initialization strategy, applied in place to every parameter and buffer."
 
     def __call__[T: nn.Module](self, module: T, /) -> T:
-        return copy.deepcopy(module, memo=self._replace_param_memo(module))
+        return self._replace_param_memo(module).replace(module)
 
-    def _replace_param_memo(self, module: nn.Module) -> dict[int, torch.Tensor]:
+    def _replace_param_memo(
+        self, module: nn.Module
+    ) -> AnyDict[torch.Tensor, torch.Tensor]:
         """
-        Get a `copy.deepcopy` memo for the tensors of the modules.
+        Get the replacement memo for the tensors of the module.
         """
 
-        memo: dict[int, torch.Tensor] = {}
+        memo: AnyDict[torch.Tensor, torch.Tensor] = any_dict()
 
         for name, param in module.named_parameters():
             L.logger.trace("Rebuilding parameter {}", name)
-            memo[id(param)] = nn.Parameter(
+            memo[param] = nn.Parameter(
                 self._new_like(name, param),
                 requires_grad=param.requires_grad,
             )
 
         for name, buf in module.named_buffers():
             L.logger.trace("Rebuilding buffer {}", name)
-            memo[id(buf)] = self._new_like(name, buf)
+            memo[buf] = self._new_like(name, buf)
 
         return memo
 
