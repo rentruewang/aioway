@@ -2,15 +2,16 @@
 
 "Domain are a set of common 'type's we support."
 
-from aioway.t import has_real
 import abc
+import dataclasses as dcls
 import typing
 
-from collections import abc as cabc
+from aioway.t import has_real
 
 __all__ = ["Domain"]
 
 
+@typing.dataclass_transform(frozen_default=True)
 class Domain[T = typing.Any](abc.ABC):
     """
     The base type for `Domain`s.
@@ -21,14 +22,49 @@ class Domain[T = typing.Any](abc.ABC):
     For instance, images, videos, texts, trees etc.
     """
 
-    def bases(self) -> cabc.Iterable[Domain[T]]:
+    def __init_subclass__(cls) -> None:
+        # Register subclasses automatically as dataclass.
+        dataclass = dcls.dataclass(frozen=True)(cls)
+        assert dataclass is cls
+
+    def sub_domain_of(self, other: Domain) -> bool:
+        raise NotImplementedError
+
+    @property
+    def __parents__(self) -> list[Domain[T]]:
         """
-        The base types that this base `Domain` is based on.
+        The immediate base types that this base `Domain` is based on.
 
         For example, an `Image` is a `Grid`.
         """
 
-        return ()
+        return []
+
+    def is_sub_domain(self, domain: Domain[T]) -> bool:
+        """
+        Check if `self` can be considered a `domain`.
+        """
+
+        return domain in self.ancestors()
+
+    def ancestors(self) -> set[Domain[T]]:
+        """
+        Find all the ancesotrs of the `Domain`.
+
+        This is useful for `is_sub_domain` checks.
+        """
+
+        def visit_ancestors(domain: Domain[T]) -> None:
+            if domain in visited:
+                return
+
+            visited.add(domain)
+            for parent in domain.__parents__:
+                visit_ancestors(parent)
+
+        visited = set()
+        visit_ancestors(self)
+        return visited
 
     @typing.final
     def check(self, obj: T, /) -> None:
