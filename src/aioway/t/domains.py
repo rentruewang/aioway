@@ -8,7 +8,7 @@ import typing
 
 from aioway.t import has_real
 
-__all__ = ["Domain"]
+__all__ = ["Domain", "InvalidDomainValue"]
 
 
 class InvalidDomainValue(ValueError):
@@ -89,7 +89,7 @@ class Domain[T = typing.Any](abc.ABC):
         Checks that can be run on fake values.
         """
 
-    def check_data(self, obj: T) -> None:
+    def check_data(self, obj: T, /) -> None:
         """
         Checks that should be run on real values.
         """
