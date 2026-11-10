@@ -203,6 +203,20 @@ class TestAnyDict:
         assert not hasattr(d, "discard")
         assert not hasattr(d, "__sub__")
 
+    def test_replace(self):
+        a = [1]
+        new = object()
+        out = any_dict((a, new)).replace({"k": [a, (a,)]})
+        assert out["k"][0] is new
+        assert out["k"][1][0] is new
+
+    def test_replace_copies_rest(self):
+        a = [1]
+        b = [2]
+        out = any_dict((a, "A")).replace([a, b])
+        assert out == ["A", [2]]
+        assert out[1] is not b
+
 
 class TestAnyKey:
     def test_wrap_any(self):
