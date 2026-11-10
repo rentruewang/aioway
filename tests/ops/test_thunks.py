@@ -31,7 +31,7 @@ class Case:
         self.expected = expected
 
         for arg in *self.args, *self.kwargs.values():
-            # FIXME: Remove after domain tensor is done.
+            # FIXME: Op type as lazy Domain #737
             if isinstance(arg, torch.Tensor):
                 raise TypeError("Tensors should be wrapped.")
 

@@ -162,3 +162,21 @@ def test_func_module():
     layer_params = set(layer.parameters())
     assert f_params == layer_params
     tt.assert_close(f(x), layer(x))
+
+
+def test_func_apply():
+    f = OpFunc(SumCountOp(0, inp("a"), inp("b")))
+    g = f.apply(SumCountOp(1), b=SumCountOp(2))
+
+    # All inputs are bound, so the applied function takes no arguments.
+    assert list(inspect.signature(g).parameters) == []
+    assert g() == 3
+
+    # The original function is unaffected.
+    assert f(10, 20) == 30
+
+
+def test_func_apply_rejects_tensor():
+    f = OpFunc(SumCountOp(0, inp("a")))
+    with pytest.raises(TypeError, match="wrapped"):
+        f.apply(torch.tensor(1))
