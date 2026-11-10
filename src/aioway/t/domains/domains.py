@@ -6,7 +6,7 @@ import abc
 import dataclasses as dcls
 import typing
 
-from aioway.t import has_real
+from aioway.t.overrides import has_real
 
 __all__ = ["Domain", "InvalidDomainValue"]
 
