@@ -1,5 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import copy
 import dataclasses as dcls
 import typing
 from collections import abc as cabc
@@ -214,6 +215,15 @@ class _AnyDict[K, V]:
 
     def copy(self) -> typing.Self:
         return type(self)(data=self._data.copy())
+
+    def replace[T](self, obj: T) -> T:
+        """
+        Conceptually `copy.deepcopy(obj, self)`,
+        replacing every key in `self` to it's corresponding value.
+        """
+
+        memo = {id(key): val for key, val in self.items()}
+        return copy.deepcopy(obj, memo)
 
 
 # Helpers. ====
