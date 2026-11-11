@@ -68,11 +68,11 @@ class OpFunc(nn.Module):
                 raise TypeError("The tensor objects should be wrapped.")
 
         # The memo for replacement.
-        memo: AnyDict[typing.Any, object] = any_dict()
+        memo: AnyDict[Op, Op] = any_dict()
         for node in self._input_ops():
-            memo[node] = bound[node.name]
+            memo[node] = ValueOp(bound[node.name])
 
-        new = memo.replace(self.output)
+        new = self.output.replace(memo)
         return type(self)(new)
 
     def __str__(self) -> str:
@@ -136,13 +136,13 @@ class OpFuncEnv(OpExec):
     """
 
     def __call__(self, op: Op) -> typing.Any:
-        input_mapping: AnyDict[FuncInputOp, ValueOp] = any_dict()
+        input_mapping: AnyDict[Op, Op] = any_dict()
         for sub_op in op.post_order():
             if isinstance(sub_op, FuncInputOp):
                 input_mapping[sub_op] = ValueOp(self.bounded[sub_op.name])
 
         # Replace placeholder with concrete values.
-        replaced = input_mapping.replace(op)
+        replaced = op.replace(input_mapping)
 
         with set_executor(self.fallback):
             return replaced()
