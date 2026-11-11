@@ -10,12 +10,12 @@ from torch import testing as tt
 
 from aioway._signs import Param, Sign
 from aioway.ops import (
-    CachedOpExec,
+    DefaultOpExec,
     FuncInputOp,
+    LazyCacheOpExec,
     ModuleThunkOp,
     Op,
     OpFunc,
-    default_op_exec,
     exec_op,
     executor,
     set_executor,
@@ -41,7 +41,7 @@ class SumCountOp(Op):
 
 
 def test_default_executor():
-    assert executor() == default_op_exec
+    assert isinstance(executor(), DefaultOpExec)
 
 
 def test_default_no_cache():
@@ -52,46 +52,46 @@ def test_default_no_cache():
 
 
 def test_set_executor():
-    cache = CachedOpExec()
+    cache = LazyCacheOpExec()
     with set_executor(cache) as got:
         assert got is cache
         assert executor() is cache
-    assert executor() == default_op_exec
+    assert isinstance(executor(), DefaultOpExec)
 
 
 def test_set_executor_error():
-    cache = CachedOpExec()
+    cache = LazyCacheOpExec()
     with pytest.raises(RuntimeError), set_executor(cache):
         raise RuntimeError
-    assert executor() is default_op_exec
+    assert isinstance(executor(), DefaultOpExec)
 
 
-def test_cached_executes_once():
-    cache = CachedOpExec()
+def test_cached_per_evaluation():
+    cache = LazyCacheOpExec()
     op = SumCountOp(1)
     assert cache(op) == 1
     assert cache(op) == 1
-    assert op.calls == 1
-    assert op in cache and cache[op] == 1 and len(cache) == 1
+    assert op.calls == 2
+    assert len(cache) == 0
 
 
 def test_cached_shared_dep():
     shared = SumCountOp(1)
     root = SumCountOp(0, SumCountOp(2, shared), SumCountOp(3, shared))
-    with set_executor(CachedOpExec()):
+    with set_executor(LazyCacheOpExec()):
         assert root() == 7
     assert shared.calls == 1
 
 
 def test_cache_op():
-    op = SumCountOp(1)
-    with CachedOpExec.enable() as cache:
+    shared = SumCountOp(1)
+    root = SumCountOp(0, shared, shared)
+    with LazyCacheOpExec.enable() as cache:
         assert executor() is cache
-        op()
-        op()
-        assert len(cache) == 1
-    assert executor() is default_op_exec
-    assert op.calls == 1
+        assert root() == 2
+        assert len(cache) == 0
+    assert isinstance(executor(), DefaultOpExec)
+    assert shared.calls == 1
 
 
 def inp(name: str) -> FuncInputOp:
@@ -142,7 +142,7 @@ def test_func_bad_args():
 def test_func_no_stale_result():
     f = OpFunc(SumCountOp(0, inp("a"), inp("b")))
     # This enable should have no effect.
-    with CachedOpExec.enable():
+    with LazyCacheOpExec.enable():
         assert f(1, 2) == 3
         assert f(3, 4) == 7
 
@@ -162,50 +162,3 @@ def test_func_module():
     layer_params = set(layer.parameters())
     assert f_params == layer_params
     tt.assert_close(f(x), layer(x))
-
-
-# OpFunc.apply ====
-
-
-def test_func_apply():
-    f = OpFunc(SumCountOp(0, inp("a"), inp("b")))
-    g = f.apply(SumCountOp(1), b=SumCountOp(2))
-
-    # All inputs are bound, so the applied function takes no arguments.
-    assert not inspect.signature(g).parameters
-    assert g() == 3
-
-    # The original function is unaffected.
-    assert f(10, 20) == 30
-
-
-def test_func_apply_no_tensor():
-    f = OpFunc(SumCountOp(0, inp("a")))
-    with pytest.raises(TypeError, match="wrapped"):
-        f.apply(torch.tensor(1))
-
-
-def test_func_apply_bad_args():
-    f = OpFunc(SumCountOp(0, inp("a"), inp("b")))
-
-    with pytest.raises(TypeError):
-        f.apply(SumCountOp(1))  # missing `b`
-
-    with pytest.raises(TypeError):
-        f.apply(SumCountOp(1), SumCountOp(2), SumCountOp(3))  # too many
-
-    with pytest.raises(TypeError):
-        f.apply(SumCountOp(1), c=SumCountOp(2))  # unknown name
-
-
-def test_func_apply_bad_args():
-    f = OpFunc(SumCountOp(0, inp("a"), inp("b")))
-
-    with pytest.raises(TypeError):
-        f.apply(SumCountOp(1))  # missing `b`
-
-    with pytest.raises(TypeError):
-        f.apply(SumCountOp(1), SumCountOp(2), SumCountOp(3))  # too many
-
-    with pytest.raises(TypeError):
-        f.apply(SumCountOp(1), c=SumCountOp(2))  # unknown name

@@ -17,12 +17,7 @@ from aioway.ml.tasks import Task
 
 from ._utils import AttrAdaptor, AttrRemains
 
-__all__ = ["CaptumConceptTask", "build_concept_dcls", "BuildTCAV"]
-
-
-@typing.dataclass_transform(frozen_default=True, kw_only_default=True)
-def build_concept_dcls(cls):
-    return dcls.dataclass(frozen=True, kw_only=True)(cls)
+__all__ = ["CaptumConceptTask", "BuildTCAV"]
 
 
 # The base class ====
@@ -36,7 +31,8 @@ class CaptumConceptTask(Task):
     Output: shape `[concepts, layers]`, concept's relative attention.
     """
 
-    @build_concept_dcls
+    @typing.dataclass_transform(frozen_default=True, kw_only_default=True)
+    @dcls.dataclass(frozen=True, kw_only=True)
     class Strategy(abc.ABC):
         """
         Strategy for building a `captum.concept.ConceptInterpreter` for a module.
@@ -47,6 +43,9 @@ class CaptumConceptTask(Task):
 
         _CAPTUM_CLASS: typing.ClassVar[cabc.Callable[..., concept.ConceptInterpreter]]
         "The `captum` class to build."
+
+        def __init_subclass__(cls, **kwargs):
+            dcls.dataclass(frozen=True, kw_only=True)(cls)
 
         def __call__(
             self, module: nn.Module, save_path: str
@@ -135,7 +134,6 @@ def _score(layers, result: dict[str, typing.Any], k: str):
     return [float(result[k][layer]["sign_count"][0]) for layer in layers]
 
 
-@build_concept_dcls
 class BuildTCAV(CaptumConceptTask.Strategy):
     """
     The score: the share of examples whose own class's score rises along the concept's direction.
