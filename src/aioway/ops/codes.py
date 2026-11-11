@@ -1,5 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import abc
 import dataclasses as dcls
 import functools
 import itertools
@@ -31,14 +32,16 @@ class CodeRender(typing.Protocol):
 
 
 def render_op_func(func: OpFunc, name: str = "forward") -> CodeRender:
-    return _FunctionRenderer(func=func, vars=VarName(), name=name)()
+    stmt_print = CallStmtPrint(vars=VarName())
+    return _FunctionRenderer(func=func, stmt_print=stmt_print, name=name)()
 
 
 def render_op_module(func: OpFunc, name: str = "Module") -> CodeRender:
-    self_vars = VarName()
-    forward = _FunctionRenderer(func=func, vars=VarName(), self_vars=self_vars)()
+    modules = VarName()
+    stmt_print = ModuleStmtPrint(vars=VarName(), modules=modules)
+    forward = _FunctionRenderer(func=func, stmt_print=stmt_print)()
     return _ModuleRenderer(
-        name=name, modules=list(self_vars._vars.values()), forward=forward
+        name=name, modules=list(modules._vars.values()), forward=forward
     )
 
 
@@ -111,55 +114,60 @@ class VarName:
         return f"{prefix}_{next_int}"
 
 
-class StmtCodePrint:
+# Print line ====
+
+
+@dcls.dataclass(frozen=True)
+class StmtCodePrint(abc.ABC):
     """
-    Render an op as a statement.
+    Render an op as a statement. One implementation per kind of op.
     """
 
-    def __init__(self, vars: VarName, self_vars: VarName | None = None) -> None:
-        """
-        Args:
-            vars: The (local) variable manager.
-            self_vars: The `self.<name>` manager, for modules.
-        """
+    vars: VarName
+    "The (local) variable manager."
 
-        self._vars = vars
-        self._self_vars = self_vars
+    @abc.abstractmethod
+    def __call__(self, op: Op) -> str: ...
 
-    def __repr__(self):
-        return repr(self._vars)
+
+@dcls.dataclass(frozen=True)
+class CallStmtPrint(StmtCodePrint):
+    """
+    Render a `CallOp` as a `func(...)` statement.
+    """
 
     def __call__(self, op: Op) -> str:
-        "Convert an op to a statement."
-        match op:
-            case ModuleThunkOp():
-                return self.print_module_line(op)
-            case CallOp():
-                return self.print_call_line(op)
-            case _:
-                raise TypeError(f"Cannot render {type(op)=}.")
+        assert isinstance(op, CallOp), f"Cannot render {type(op)=}."
 
-    def print_call_line(self, op: CallOp) -> str:
-        "Convert a call op to a `func(...)` statement."
-        args = tree_map_only(Op, self._vars.__getitem__, op.args)
-        kwargs = tree_map_only(Op, self._vars.__getitem__, op.kwargs)
+        args = tree_map_only(Op, self.vars.__getitem__, op.args)
+        kwargs = tree_map_only(Op, self.vars.__getitem__, op.kwargs)
 
-        lhs = self._vars.get_or_name(op)
+        lhs = self.vars.get_or_name(op)
 
         func_name = render_torch_func_name(op.func)
         return lhs + " = " + render_fcall(func_name, *args, **kwargs)
 
-    def print_module_line(self, op: ModuleThunkOp) -> str:
-        "Convert a module op to a `self.<module>(...)` statement."
-        if self._self_vars is None:
-            raise ValueError("Modules can only be rendered inside `nn.Module`.")
 
-        args = tree_map_only(Op, self._vars.__getitem__, op.args)
-        kwargs = tree_map_only(Op, self._vars.__getitem__, op.kwargs)
+@dcls.dataclass(frozen=True)
+class ModuleStmtPrint(StmtCodePrint):
+    """
+    Render a `ModuleThunkOp` as a `self.<module>(...)` statement.
+    """
 
-        lhs = self._vars.get_or_name(op)
+    modules: VarName
+    "The `self.<name>` manager, for modules."
 
-        func_name = "self." + self._self_vars.get_or_name(op.nn)
+    def __call__(self, op: Op) -> str:
+        # Plain calls render the same as in a function.
+        if not isinstance(op, ModuleThunkOp):
+            return CallStmtPrint(vars=self.vars)(op)
+
+        args = tree_map_only(Op, self.vars.__getitem__, op.args)
+        kwargs = tree_map_only(Op, self.vars.__getitem__, op.kwargs)
+
+        lhs = self.vars.get_or_name(op)
+
+        func_name = "self." + self.modules.get_or_name(op.nn)
         return lhs + " = " + render_fcall(func_name, *args, **kwargs)
 
 
@@ -176,26 +184,23 @@ class _FunctionRenderer:
     def __init__(
         self,
         func: OpFunc,
-        vars: VarName | None = None,
+        stmt_print: StmtCodePrint,
         name: str = "forward",
-        self_vars: VarName | None = None,
     ) -> None:
         self._func = func
-        self._vars = VarName() if vars is None else vars
+        self._stmt_print = stmt_print
         self._name = name
-        self._self_vars = self_vars
 
     @typing.final
     def __call__(self):
         # Name each input after its parameter in the signature.
         for op in self.inputs:
-            self._vars[op] = op.param.name
+            self.vars[op] = op.param.name
 
         L.logger.debug("Prepare walking the {} instructions.", len(self.instrs))
 
-        body_render = StmtCodePrint(vars=self._vars, self_vars=self._self_vars)
         # Render the steps one by one in topo sorted order.
-        body_lines = [body_render(op) for op in self.instrs]
+        body_lines = [self._stmt_print(op) for op in self.instrs]
 
         L.logger.debug("Preparing the output.")
 
@@ -205,6 +210,10 @@ class _FunctionRenderer:
             lines=body_lines,
             returns=self._render_return_obj_init(),
         )
+
+    @property
+    def vars(self) -> VarName:
+        return self._stmt_print.vars
 
     @property
     def func(self) -> OpFunc:
@@ -232,12 +241,12 @@ class _FunctionRenderer:
         # E.g. mapping will not show up if we use pytree.
         def render(obj) -> str:
             # If the object is named, stop decomposing.
-            if obj in self._vars:
-                return self._vars[obj]
+            if obj in self.vars:
+                return self.vars[obj]
 
             # Tensors must be input or indexed already.
             if isinstance(obj, torch.Tensor):
-                return self._vars[obj]
+                return self.vars[obj]
 
             if isinstance(obj, cabc.Mapping):
                 builder = ["{"]
