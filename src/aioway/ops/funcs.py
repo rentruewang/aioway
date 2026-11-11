@@ -131,7 +131,7 @@ class OpFuncEnv(OpExec):
     fallback: OpExec = dcls.field(default_factory=executor)
     """
     The fallback executor to use.
-    By default, a new `LazyCacheOpExec` for each call.
+    By default, use the "current default" at the time of init.
     """
 
     def __call__(self, op: Op) -> typing.Any:
@@ -139,6 +139,10 @@ class OpFuncEnv(OpExec):
             return self.bounded[op.name]
         else:
             return self.fallback(op)
+
+    def reset(self) -> None:
+        # Results depend on `bounded`, so they must not outlive this call.
+        self.fallback.reset()
 
     def __len__(self) -> int:
         return len(self.bounded)

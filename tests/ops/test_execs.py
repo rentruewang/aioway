@@ -10,12 +10,12 @@ from torch import testing as tt
 
 from aioway._signs import Param, Sign
 from aioway.ops import (
+    DefaultOpExec,
     FuncInputOp,
     LazyCacheOpExec,
     ModuleThunkOp,
     Op,
     OpFunc,
-    default_op_exec,
     exec_op,
     executor,
     set_executor,
@@ -41,7 +41,7 @@ class SumCountOp(Op):
 
 
 def test_default_executor():
-    assert executor() is default_op_exec
+    assert isinstance(executor().exec, DefaultOpExec)
 
 
 def test_default_no_cache():
@@ -55,22 +55,23 @@ def test_set_executor():
     cache = LazyCacheOpExec()
     with set_executor(cache) as got:
         assert got is cache
-        assert executor() is cache
-    assert executor() is default_op_exec
+        assert executor().exec is cache
+    assert isinstance(executor().exec, DefaultOpExec)
 
 
 def test_set_executor_error():
     cache = LazyCacheOpExec()
     with pytest.raises(RuntimeError), set_executor(cache):
         raise RuntimeError
-    assert executor() is default_op_exec
+    assert isinstance(executor().exec, DefaultOpExec)
 
 
 def test_cached_per_evaluation():
     cache = LazyCacheOpExec()
     op = SumCountOp(1)
-    assert cache(op) == 1
-    assert cache(op) == 1
+    with set_executor(cache):
+        assert op() == 1
+        assert op() == 1
     assert op.calls == 2
     assert len(cache) == 0
 
@@ -87,10 +88,10 @@ def test_cache_op():
     shared = SumCountOp(1)
     root = SumCountOp(0, shared, shared)
     with LazyCacheOpExec.enable() as cache:
-        assert executor() is cache
+        assert executor().exec is cache
         assert root() == 2
         assert len(cache) == 0
-    assert executor() is default_op_exec
+    assert isinstance(executor().exec, DefaultOpExec)
     assert shared.calls == 1
 
 
