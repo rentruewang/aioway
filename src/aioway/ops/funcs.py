@@ -68,11 +68,11 @@ class OpFunc(nn.Module):
                 raise TypeError("The tensor objects should be wrapped.")
 
         # The memo for replacement.
-        memo: AnyDict[typing.Any, object] = any_dict()
+        memo: AnyDict[Op, Op] = any_dict()
         for node in self._input_ops():
-            memo[node] = bound[node.name]
+            memo[node] = ValueOp(bound[node.name])
 
-        new = memo.replace(self.output)
+        new = self.output.replace(memo)
         return type(self)(new)
 
     def __str__(self) -> str:
@@ -91,26 +91,37 @@ class OpFunc(nn.Module):
 
         return FuncCodePrint(self)()
 
-    def _input_ops(self):
-        # The dictionary is ordered.
-        args: dict[str, FuncInputOp] = {}
+    def _input_ops(self) -> list[FuncInputOp]:
+        """
+        All the `FuncInputOp`s, including equal copies sharing the same name.
+
+        Raises:
+            TypeError: if different parameters share the same name.
+        """
+
+        # Return all the input nodes. Since different nodes can have the same param,
+        # ensure all input nodes with the same name are the same param,
+        # so check against the first occurence of the name.
+        first: dict[str, FuncInputOp] = {}
+        inputs: list[FuncInputOp] = []
 
         for op in self._all_ops():
             if not isinstance(op, FuncInputOp):
                 continue
 
-            if op.name in args:
-                if args[op.name] != op:
-                    raise TypeError("Different parameters defined with the same name.")
+            if op.name in first and first[op.name] != op:
+                raise TypeError("Different parameters defined with the same name.")
 
-                continue
+            first.setdefault(op.name, op)
+            inputs.append(op)
 
-            args[op.name] = op
-        return args.values()
+        return inputs
 
     @property
     def signature(self) -> Sign:
-        return Sign.from_params([i.param for i in self._input_ops()])
+        # One parameter per name, ordered by first appearance.
+        params = {op.name: op.param for op in self._input_ops()}
+        return Sign.from_params(params.values())
 
     @property
     def output(self) -> Op:
@@ -136,13 +147,13 @@ class OpFuncEnv(OpExec):
     """
 
     def __call__(self, op: Op) -> typing.Any:
-        input_mapping: AnyDict[FuncInputOp, ValueOp] = any_dict()
+        input_mapping: AnyDict[Op, Op] = any_dict()
         for sub_op in op.post_order():
             if isinstance(sub_op, FuncInputOp):
                 input_mapping[sub_op] = ValueOp(self.bounded[sub_op.name])
 
         # Replace placeholder with concrete values.
-        replaced = input_mapping.replace(op)
+        replaced = op.replace(input_mapping)
 
         with set_executor(self.fallback):
             return replaced()
