@@ -148,10 +148,14 @@ class StmtCodePrint[T: Op = typing.Any](abc.ABC):
     def __call__(self, op: T) -> str:
         "Convert an op to a statement."
 
+        raise NotImplementedError
+
     @property
     @abc.abstractmethod
     def op_type(self) -> type[T]:
         "The kind of op this renders."
+
+        raise NotImplementedError
 
 
 class _FcallMixin(abc.ABC):
@@ -455,25 +459,30 @@ def _dedent(string: str):
 
 
 def _function_template():
-    return _dedent("""
+    return _dedent(
+        """
         def {{ name }}{{ param_list }}:
             {% for line in body %}
             {{ line }}
             {% endfor %}
             return {{ returns }}
-""")
+"""
+    )
 
 
 def _statements_template():
-    return _dedent("""
+    return _dedent(
+        """
         {% for line in body %}
         {{ line }}
         {% endfor %}
-    """)
+    """
+    )
 
 
 def _module_template():
-    return _dedent("""
+    return _dedent(
+        """
         class {{ name }}(nn.Module):
             def __init__(self{% for m in modules %}, {{ m }}{% endfor %}):
                 super().__init__()
@@ -482,7 +491,8 @@ def _module_template():
                 {% endfor %}
 
         {{ forward | indent(4, first=True) }}
-    """)
+    """
+    )
 
 
 def _py_env():
