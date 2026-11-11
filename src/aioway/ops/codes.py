@@ -136,7 +136,7 @@ class VarName:
 
 
 @dcls.dataclass(frozen=True)
-class StmtCodePrint(abc.ABC):
+class StmtCodePrint[T: Op = typing.Any](abc.ABC):
     """
     Render an op as a statement. One implementation per kind of op.
     """
@@ -145,23 +145,23 @@ class StmtCodePrint(abc.ABC):
     "The (local) variable manager."
 
     @abc.abstractmethod
-    def __call__(self, op: Op) -> str:
+    def __call__(self, op: T) -> str:
         "Convert an op to a statement."
 
     @property
     @abc.abstractmethod
-    def op_type(self) -> type[Op]:
+    def op_type(self) -> type[T]:
         "The kind of op this renders."
 
 
-class _FcallStmtPrint(abc.ABC):
+class _FcallMixin(abc.ABC):
     """
     Mixin rendering an op as `lhs = func(...)`, for ops that are a single call.
     """
 
     vars: VarName
 
-    def __call__(self, op: Op) -> str:
+    def __call__(self, op: CallOp) -> str:
         "Convert an op to a `lhs = func(...)` statement."
         # First, s.t. an op of the wrong kind fails here.
         func_name = self.func_name(op)
@@ -174,29 +174,31 @@ class _FcallStmtPrint(abc.ABC):
         return lhs + " = " + render_fcall(func_name, *args, **kwargs)
 
     @abc.abstractmethod
-    def func_name(self, op: Op) -> str:
+    def func_name(self, op: CallOp) -> str:
         "The name of the function the op calls."
+
+        raise NotImplementedError
 
 
 @dcls.dataclass(frozen=True)
-class CallStmtPrint(_FcallStmtPrint, StmtCodePrint):
+class CallStmtPrint(_FcallMixin, StmtCodePrint[CallOp]):
     """
     Render a `CallOp` as a `func(...)` statement.
     """
 
     @property
-    def op_type(self) -> type[Op]:
+    def op_type(self) -> type[CallOp]:
         "Renders `CallOp`."
         return CallOp
 
-    def func_name(self, op: Op) -> str:
+    def func_name(self, op: CallOp) -> str:
         "The torch function's name."
         assert isinstance(op, CallOp), f"Cannot render {type(op)=}."
         return render_torch_func_name(op.func)
 
 
 @dcls.dataclass(frozen=True)
-class ModuleStmtPrint(_FcallStmtPrint, StmtCodePrint):
+class ModuleStmtPrint(_FcallMixin, StmtCodePrint[ModuleThunkOp]):
     """
     Render a `ModuleThunkOp` as a `self.<module>(...)` statement.
     """
@@ -205,18 +207,18 @@ class ModuleStmtPrint(_FcallStmtPrint, StmtCodePrint):
     "The `self.<name>` manager, for modules."
 
     @property
-    def op_type(self) -> type[Op]:
+    def op_type(self) -> type[ModuleThunkOp]:
         "Renders `ModuleThunkOp`."
         return ModuleThunkOp
 
-    def func_name(self, op: Op) -> str:
+    def func_name(self, op: ModuleThunkOp) -> str:
         "The module's name, `self.<module>`."
         assert isinstance(op, ModuleThunkOp), f"Cannot render {type(op)=}."
         return "self." + self.modules.get_or_name(op.nn)
 
 
 @dcls.dataclass(frozen=True)
-class StmtSwitch(StmtCodePrint):
+class StmtSwitch(StmtCodePrint[Op]):
     """
     Render each op with the printer registered for its type.
     """
@@ -453,30 +455,25 @@ def _dedent(string: str):
 
 
 def _function_template():
-    return _dedent(
-        """
+    return _dedent("""
         def {{ name }}{{ param_list }}:
             {% for line in body %}
             {{ line }}
             {% endfor %}
             return {{ returns }}
-"""
-    )
+""")
 
 
 def _statements_template():
-    return _dedent(
-        """
+    return _dedent("""
         {% for line in body %}
         {{ line }}
         {% endfor %}
-    """
-    )
+    """)
 
 
 def _module_template():
-    return _dedent(
-        """
+    return _dedent("""
         class {{ name }}(nn.Module):
             def __init__(self{% for m in modules %}, {{ m }}{% endfor %}):
                 super().__init__()
@@ -485,8 +482,7 @@ def _module_template():
                 {% endfor %}
 
         {{ forward | indent(4, first=True) }}
-    """
-    )
+    """)
 
 
 def _py_env():
