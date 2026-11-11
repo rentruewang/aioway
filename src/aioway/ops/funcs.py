@@ -130,10 +130,10 @@ class OpFuncEnv(OpExec):
         super().__init__()
         self._bounded = bounded
         self._fallback_fn = fallback
-        self.reset()
+        self._fallback = self._fallback_fn()
 
     def reset(self) -> None:
-        self._fallback = self._fallback_fn()
+        pass
 
     def execute(self, op: Op) -> typing.Any:
         if isinstance(op, FuncInputOp):
