@@ -5,9 +5,10 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
+from aioway._pytrees import tree_leaves, tree_map_only
 from aioway._utils import AnyDict, any_dict
 
-__all__ = ["Op", "exec_op"]
+__all__ = ["Op", "exec_op", "OpReplacer"]
 
 
 @typing.dataclass_transform()
@@ -53,10 +54,8 @@ class Op[T = object](_OpDclsMixin, abc.ABC):
 
         raise NotImplementedError
 
-    def replace(self, replacement: AnyDict[Op, Op], /) -> typing.Self:
-        result = OpReplacer(mapping=replacement)(self)
-        assert type(result) == type(self)
-        return result
+    def replace(self, replacement: AnyDict[Op, Op], /) -> Op:
+        return OpReplacer(mapping=replacement)(self)
 
     def post_order(self) -> cabc.Iterator[Op]:
         """
@@ -94,14 +93,18 @@ class OpReplacer:
         if op in self.mapping:
             return self.mapping[op]
 
-        changes: dict[str, Op] = {}
+        changes: dict[str, typing.Any] = {}
         for field in dcls.fields(op):
-            val = getattr(op, field.name)
-            if not isinstance(val, Op):
-                continue
+            old = getattr(op, field.name)
+
+            # Convert also nested `Op`s in containers.
+            new = tree_map_only(Op, self, old)
 
             # Replacement has happened.
-            if (new := self(val)) is not val:
+            olds = list(_op_leaves(old))
+            news = list(_op_leaves(new))
+
+            if len(olds) != len(news) or any(o is not n for o, n in zip(olds, news)):
                 changes[field.name] = new
 
         # All children unchanged, and `op` itself is not replaced.
@@ -109,6 +112,13 @@ class OpReplacer:
             return op
 
         return dcls.replace(op, **changes)
+
+
+def _op_leaves(tree) -> cabc.Generator[Op]:
+    is_op = lambda f: isinstance(f, Op)
+    for leaf in tree_leaves(tree, is_leaf=is_op):
+        if isinstance(leaf, Op):
+            yield leaf
 
 
 def exec_op(obj):

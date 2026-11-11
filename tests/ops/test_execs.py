@@ -1,5 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import dataclasses as dcls
 import inspect
 import typing
 
@@ -25,13 +26,9 @@ from aioway.ops import (
 class SumCountOp(Op):
     "Sums its children (or returns `value` if none) and counts executions."
 
-    value: int
-    children: list
+    value: int = 0
+    children: list = dcls.field(default_factory=list)
     calls: int = 0
-
-    def __init__(self, value: int = 0, *children: Op) -> None:
-        self.value = value
-        self.children = list(children)
 
     @typing.override
     def execute(self):
@@ -81,7 +78,7 @@ def test_cached_per_evaluation():
 
 def test_cached_shared_dep():
     shared = SumCountOp(1)
-    root = SumCountOp(0, SumCountOp(2, shared), SumCountOp(3, shared))
+    root = SumCountOp(0, [SumCountOp(2, [shared]), SumCountOp(3, [shared])])
     with set_executor(LazyCacheOpExec()):
         assert root() == 7
     assert shared.calls == 1
@@ -89,7 +86,7 @@ def test_cached_shared_dep():
 
 def test_cache_op():
     shared = SumCountOp(1)
-    root = SumCountOp(0, shared, shared)
+    root = SumCountOp(0, [shared, shared])
     with LazyCacheOpExec.enable() as cache:
         assert executor() is cache
         assert root() == 2
@@ -103,19 +100,19 @@ def inp(name: str) -> FuncInputOp:
 
 
 def test_func_signature():
-    f = OpFunc(SumCountOp(0, inp("a"), inp("b")))
+    f = OpFunc(SumCountOp(0, [inp("a"), inp("b")]))
     assert list(inspect.signature(f).parameters) == ["a", "b"]
 
 
 def test_func_call():
-    f = OpFunc(SumCountOp(0, inp("a"), SumCountOp(0, inp("b"), inp("c"))))
+    f = OpFunc(SumCountOp(0, [inp("a"), SumCountOp(0, [inp("b"), inp("c")])]))
     assert f(1, 2, 3) == 6
     assert f(a=1, b=2, c=3) == 6
 
 
 def test_func_dedup_input():
     x = inp("x")
-    op = SumCountOp(0, x, x)
+    op = SumCountOp(0, [x, x])
 
     # (x, x) would have signature (x)
     assert OpFunc(op).signature == Sign.from_input_names(["x"])
@@ -126,13 +123,13 @@ def test_func_input_mismatch():
 
     # Same name, different param.
     diff_param = SumCountOp(
-        0, x, FuncInputOp(param=Param.build("x", default=0), typ=int)
+        0, [x, FuncInputOp(param=Param.build("x", default=0), typ=int)]
     )
     with pytest.raises(TypeError, match="same name"):
         OpFunc(diff_param)
 
     # Same name, different typ.
-    diff_typ = SumCountOp(0, x, FuncInputOp(param=Param.build("x"), typ=float))
+    diff_typ = SumCountOp(0, [x, FuncInputOp(param=Param.build("x"), typ=float)])
     with pytest.raises(TypeError, match="same name"):
         OpFunc(diff_typ)
 
@@ -144,7 +141,7 @@ def test_func_bad_args():
 
 
 def test_func_no_stale_result():
-    f = OpFunc(SumCountOp(0, inp("a"), inp("b")))
+    f = OpFunc(SumCountOp(0, [inp("a"), inp("b")]))
     # This enable should have no effect.
     with LazyCacheOpExec.enable():
         assert f(1, 2) == 3
