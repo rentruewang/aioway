@@ -129,7 +129,7 @@ class OpFuncEnv(OpExec):
     bounded: BoundArgs
     "The arguments that are bounded."
 
-    fallback: OpExec = dcls.field(default_factory=lambda: executor().exec)
+    fallback: OpExec = dcls.field(default_factory=executor)
     """
     The fallback executor to use.
     By default, use the "current default" at the time of init.
@@ -146,10 +146,6 @@ class OpFuncEnv(OpExec):
 
         with set_executor(self.fallback):
             return replaced()
-
-    def reset(self) -> None:
-        # Results depend on `bounded`, so they must not outlive this call.
-        self.fallback.reset()
 
     def __len__(self) -> int:
         return len(self.bounded)
