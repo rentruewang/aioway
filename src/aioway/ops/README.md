@@ -19,6 +19,6 @@ and then use the cached result. This ensures `.execute` is only called once,
 but splits `__call__` into a check.
 
 I have thought about whether to split into plain `.execute` and `.lookup`,
-but since there is no way we know statically if this is the first call,
-as the graph can be reassembled quickly,
+but since there is no way we know statically if this is the first call without a scheduler,
+as the graph can be reassembled quickly and not all the executors use schedulers,
 it's best to keep a signle entry point `__call__` and keep the lookup part dynamic.
