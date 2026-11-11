@@ -19,9 +19,9 @@ from aioway.t import render_torch_func_name
 
 from .funcs import FuncInputOp, OpFunc
 from .ops import Op
-from .thunks import CallOp
+from .thunks import CallOp, ModuleThunkOp
 
-__all__ = ["CodeRender", "render_op_func", "VarName"]
+__all__ = ["CodeRender", "render_op_func", "render_op_module", "VarName"]
 
 
 class CodeRender(typing.Protocol):
@@ -31,7 +31,15 @@ class CodeRender(typing.Protocol):
 
 
 def render_op_func(func: OpFunc, name: str = "forward") -> CodeRender:
-    return FuncCodePrint(func=func, vars=VarName(), name=name)()
+    return _FunctionRenderer(func=func, vars=VarName(), name=name)()
+
+
+def render_op_module(func: OpFunc, name: str = "Module") -> CodeRender:
+    self_vars = VarName()
+    forward = _FunctionRenderer(func=func, vars=VarName(), self_vars=self_vars)()
+    return _ModuleRenderer(
+        name=name, modules=list(self_vars._vars.values()), forward=forward
+    )
 
 
 # The renderer itself ====
@@ -105,31 +113,34 @@ class VarName:
 
 class StmtCodePrint:
     """
-    Render multiple statements.
+    Render an op as a statement.
     """
 
-    def __init__(self, vars: VarName) -> None:
+    def __init__(self, vars: VarName, self_vars: VarName | None = None) -> None:
         """
         Args:
-            vars: The variable manager.
+            vars: The (local) variable manager.
+            self_vars: The `self.<name>` manager, for modules.
         """
 
         self._vars = vars
+        self._self_vars = self_vars
 
     def __repr__(self):
         return repr(self._vars)
 
-    def __call__(self, ops: cabc.Iterable[Op]) -> cabc.Generator[str]:
-        # Execute the steps one by one in topo sorted order.
-        for op in ops:
-            stmt = self.print_line(op)
-            yield stmt
-
-    def print_line(self, op: Op) -> str:
+    def __call__(self, op: Op) -> str:
         "Convert an op to a statement."
-        # FIXME: Only `CallOp` can be rendered as a function call for now.
-        assert isinstance(op, CallOp), f"Cannot render {type(op)=}."
+        match op:
+            case ModuleThunkOp():
+                return self.print_module_line(op)
+            case CallOp():
+                return self.print_call_line(op)
+            case _:
+                raise TypeError(f"Cannot render {type(op)=}.")
 
+    def print_call_line(self, op: CallOp) -> str:
+        "Convert a call op to a `func(...)` statement."
         args = tree_map_only(Op, self._vars.__getitem__, op.args)
         kwargs = tree_map_only(Op, self._vars.__getitem__, op.kwargs)
 
@@ -138,8 +149,21 @@ class StmtCodePrint:
         func_name = render_torch_func_name(op.func)
         return lhs + " = " + render_fcall(func_name, *args, **kwargs)
 
+    def print_module_line(self, op: ModuleThunkOp) -> str:
+        "Convert a module op to a `self.<module>(...)` statement."
+        if self._self_vars is None:
+            raise ValueError("Modules can only be rendered inside `nn.Module`.")
 
-class FuncCodePrint:
+        args = tree_map_only(Op, self._vars.__getitem__, op.args)
+        kwargs = tree_map_only(Op, self._vars.__getitem__, op.kwargs)
+
+        lhs = self._vars.get_or_name(op)
+
+        func_name = "self." + self._self_vars.get_or_name(op.nn)
+        return lhs + " = " + render_fcall(func_name, *args, **kwargs)
+
+
+class _FunctionRenderer:
     """
     Render the `OpFunc` as a python function.
 
@@ -150,11 +174,16 @@ class FuncCodePrint:
     TYPE = str
 
     def __init__(
-        self, func: OpFunc, vars: VarName | None = None, name: str = "forward"
+        self,
+        func: OpFunc,
+        vars: VarName | None = None,
+        name: str = "forward",
+        self_vars: VarName | None = None,
     ) -> None:
         self._func = func
         self._vars = VarName() if vars is None else vars
         self._name = name
+        self._self_vars = self_vars
 
     @typing.final
     def __call__(self):
@@ -164,8 +193,9 @@ class FuncCodePrint:
 
         L.logger.debug("Prepare walking the {} instructions.", len(self.instrs))
 
-        body_render = StmtCodePrint(vars=self._vars)
-        body_lines = list(body_render(self.instrs))
+        body_render = StmtCodePrint(vars=self._vars, self_vars=self._self_vars)
+        # Render the steps one by one in topo sorted order.
+        body_lines = [body_render(op) for op in self.instrs]
 
         L.logger.debug("Preparing the output.")
 
@@ -266,6 +296,32 @@ class _FuncRender:
 
 
 @dcls.dataclass(frozen=True, slots=False)
+class _ModuleRenderer:
+    name: str
+    modules: list[str]
+    forward: _FuncRender
+
+    def __str__(self) -> str:
+        forward = _function_renderer()(
+            name=self.forward.name,
+            params=_with_self(str(self.forward.params)),
+            body=self.forward.lines,
+            returns=self.forward.returns,
+        )
+        return _module_renderer()(name=self.name, modules=self.modules, forward=forward)
+
+    def __rich__(self):
+        return syntax.Syntax(str(self), lexer="py")
+
+
+def _with_self(params: str) -> str:
+    "`(x, y)` -> `(self, x, y)`, `()` -> `(self)`."
+    if params.startswith("()"):
+        return "(self" + params[1:]
+    return "(self, " + params[1:]
+
+
+@dcls.dataclass(frozen=True, slots=False)
 class _StmtsRender:
     body: list[str]
 
@@ -281,21 +337,40 @@ def _dedent(string: str):
 
 
 def _function_template():
-    return _dedent("""
+    return _dedent(
+        """
         def {{ name }}{{ params }}:
             {% for line in body %}
             {{ line }}
             {% endfor %}
             return {{ returns }}
-""")
+"""
+    )
 
 
 def _statements_template():
-    return _dedent("""
+    return _dedent(
+        """
         {% for line in body %}
         {{ line }}
         {% endfor %}
-    """)
+    """
+    )
+
+
+def _module_template():
+    return _dedent(
+        """
+        class {{ name }}(nn.Module):
+            def __init__(self{% for m in modules %}, {{ m }}{% endfor %}):
+                super().__init__()
+                {% for m in modules %}
+                self.{{ m }} = {{ m }}
+                {% endfor %}
+
+        {{ forward | indent(4, first=True) }}
+    """
+    )
 
 
 def _py_env():
@@ -316,3 +391,8 @@ def _stmts_renderer():
 @functools.cache
 def _function_renderer():
     return _py_env().from_string(_function_template()).render
+
+
+@functools.cache
+def _module_renderer():
+    return _py_env().from_string(_module_template()).render
