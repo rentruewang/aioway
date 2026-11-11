@@ -100,7 +100,8 @@ class OpFunc(nn.Module):
         """
 
         # Return all the input nodes. Since different nodes can have the same param,
-        # ensure all input nodes with the same name are the same param.
+        # ensure all input nodes with the same name are the same param,
+        # so check against the first occurence of the name.
         first: dict[str, FuncInputOp] = {}
         inputs: list[FuncInputOp] = []
 
