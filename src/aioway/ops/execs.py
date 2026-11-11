@@ -58,6 +58,10 @@ def default_op_exec(op: Op) -> typing.Any:
     return op.execute()
 
 
+class _ExceptionWrapper(typing.NamedTuple):
+    exception: Exception
+
+
 class LazyCacheOpExec(OpExec):
     """
     The `OpExec` that caches each call during evaluation, and frees up once done.
@@ -103,12 +107,13 @@ class LazyCacheOpExec(OpExec):
             try:
                 result = op.execute()
             except Exception as e:
-                self[op] = e
+                self[op] = _ExceptionWrapper(e)
             else:
                 self[op] = result
 
-        if isinstance(result := self[op], Exception):
-            raise result
+        # The exception is also cached.
+        if isinstance(result := self[op], _ExceptionWrapper):
+            raise result.exception
         else:
             return result
 
