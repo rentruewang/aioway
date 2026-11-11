@@ -1,8 +1,8 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import dataclasses as dcls
 import inspect
 import typing
-from collections import abc as cabc
 
 import tensordict as td
 import torch
@@ -119,23 +119,22 @@ class OpFunc(nn.Module):
         yield from self.output.post_order()
 
 
+@dcls.dataclass(frozen=True)
 class OpFuncEnv(OpExec):
     """
     The environment mapping that holds the function's input.
     """
 
-    def __init__(
-        self, bounded: BoundArgs, fallback: cabc.Callable[[], OpExec] = executor
-    ) -> None:
-        super().__init__()
-        self._bounded = bounded
-        self._fallback_fn = fallback
-        self._fallback = self._fallback_fn()
+    bounded: BoundArgs
+    "The arguments that are bounded."
 
-    def reset(self) -> None:
-        pass
+    fallback: OpExec = dcls.field(default_factory=executor)
+    """
+    The fallback executor to use.
+    By default, a new `LazyCacheOpExec` for each call.
+    """
 
-    def execute(self, op: Op) -> typing.Any:
+    def __call__(self, op: Op) -> typing.Any:
         if isinstance(op, FuncInputOp):
             return self.bounded[op.name]
         else:
@@ -149,19 +148,6 @@ class OpFuncEnv(OpExec):
 
     def __iter__(self):
         return iter(self.bounded.arguments)
-
-    @property
-    def bounded(self) -> BoundArgs:
-        "The arguments that are bounded."
-        return self._bounded
-
-    @property
-    def fallback(self) -> OpExec:
-        """
-        The fallback executor to use.
-        By default, use the "current default" at the time of init.
-        """
-        return self._fallback
 
 
 @op_dcls

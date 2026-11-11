@@ -1,6 +1,5 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import abc
 import contextlib as ctxl
 import typing
 from collections import abc as cabc
@@ -9,7 +8,7 @@ from aioway._utils import AnyDict, any_dict
 
 from .ops import Op
 
-__all__ = ["OpExec", "executor", "set_executor", "DefaultOpExec", "LazyCacheOpExec"]
+__all__ = ["OpExec", "executor", "set_executor", "default_op_exec", "LazyCacheOpExec"]
 
 
 def executor() -> OpExec:
@@ -33,13 +32,28 @@ def set_executor[O: OpExec](executor: O) -> cabc.Generator[O]:
         _op_exec = before
 
 
-class OpExec[T = typing.Any](abc.ABC):
+class OpExec[T = typing.Any](typing.Protocol):
     """
     This is the executor responsible for executing an `Op`.
-    It does so by recursively executing its dependencies,
-    caching the values on the way, until the `Op` is not consumed by anyone else.
+    It does so by recursively executing its dependencies.
+    """
 
-    `OpExec` should not persist state, and should handle cleanup after done.
+    def __call__(self, op: Op[T]) -> T: ...
+
+
+def default_op_exec(op: Op) -> typing.Any:
+    "The default execution strategy. Only calls `.execute()`."
+    return op.execute()
+
+
+class LazyCacheOpExec(OpExec):
+    """
+    The `OpExec` that caches each call during evaluation, and frees up once done.
+
+    An evaluation is one outermost call to the executor, together with
+    every nested call it makes while executing dependencies.
+    Within it, each `Op` is executed at most once, and an error it raises
+    is cached and re-raised as well.
     """
 
     def __init__(self) -> None:
@@ -50,66 +64,11 @@ class OpExec[T = typing.Any](abc.ABC):
         a count of 0 means that execution is inactive.
         """
 
-    @typing.final
-    def __call__(self, op: Op[T]) -> T:
+        self.reset()
+
+    def __call__(self, op: Op) -> typing.Any:
         with self._cleanup_on_finish():
             return self.execute(op)
-
-    def __repr__(self) -> str:
-        return f"{type(self).__name__}(active={self.is_active})"
-
-    @property
-    def is_active(self) -> bool:
-        return self._nested_count != 0
-
-    @abc.abstractmethod
-    def reset(self) -> None:
-        """
-        Reset the entire `OpExec` to the original state.
-        """
-
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def execute(self, op: Op[T]) -> T:
-        """
-        The implementation for `__call__`.
-        """
-        raise NotImplementedError
-
-    @ctxl.contextmanager
-    def _cleanup_on_finish(self) -> cabc.Generator[None]:
-        self._nested_count += 1
-        try:
-            yield
-        finally:
-            self._nested_count -= 1
-
-            # Clean up once done.
-            if not self.is_active:
-                self.reset()
-
-
-class DefaultOpExec(OpExec):
-    "The default execution strategy. Only calls `.execute()`."
-
-    @typing.override
-    def reset(self) -> None:
-        pass
-
-    @typing.override
-    def execute[T](self, op: Op[T]) -> T:
-        return op.execute()
-
-
-class LazyCacheOpExec(OpExec):
-    """
-    The `OpExec` that caches each call during evaluation, and frees up once done.
-    """
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.reset()
 
     def __contains__(self, obj) -> bool:
         return obj in self._cache
@@ -123,10 +82,20 @@ class LazyCacheOpExec(OpExec):
     def __setitem__(self, key: Op, val) -> None:
         self._cache[key] = val
 
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}(active={self.is_active})"
+
+    @property
+    def is_active(self) -> bool:
+        return self._nested_count != 0
+
     def reset(self) -> None:
+        "Drop all cached results."
         self._cache: AnyDict[Op, typing.Any] = any_dict()
 
     def execute(self, op: Op) -> typing.Any:
+        "Execute `op` if it is not cached yet, then return its cached result."
+
         if op not in self:
             try:
                 result = op.execute()
@@ -140,11 +109,23 @@ class LazyCacheOpExec(OpExec):
         else:
             return result
 
+    @ctxl.contextmanager
+    def _cleanup_on_finish(self) -> cabc.Generator[None]:
+        self._nested_count += 1
+        try:
+            yield
+        finally:
+            self._nested_count -= 1
+
+            # Clean up once done.
+            if not self.is_active:
+                self.reset()
+
     @classmethod
     @ctxl.contextmanager
     def enable(cls) -> cabc.Generator[typing.Self]:
         """
-        A context manager that caches the current operator.
+        Use a new `LazyCacheOpExec` as the executor within the block.
         """
 
         cache = cls()
@@ -153,4 +134,4 @@ class LazyCacheOpExec(OpExec):
             yield cache
 
 
-_op_exec: OpExec = DefaultOpExec()
+_op_exec: OpExec = default_op_exec
