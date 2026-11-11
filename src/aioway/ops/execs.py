@@ -65,8 +65,8 @@ class OpExec[T = typing.Any](abc.ABC):
         raise NotImplementedError
 
 
-@dcls.dataclass
-class OpExecRc(OpExec):
+@dcls.dataclass(eq=False)
+class OpExecRc:
     """
     Reference counts the active calls to the wrapped `OpExec`,
     and resets it once no call is active.
@@ -78,11 +78,8 @@ class OpExecRc(OpExec):
     exec: OpExec
     "The wrapped `OpExec`."
 
-    count: int = 0
+    count: int = dcls.field(default=0, init=False)
     "The number of currently active (nested) calls."
-
-    def __repr__(self) -> str:
-        return f"{type(self).__name__}({self.exec!r}, count={self.count})"
 
     def __call__(self, op: Op) -> typing.Any:
         self.count += 1
@@ -93,10 +90,7 @@ class OpExecRc(OpExec):
 
             # Clean up once done.
             if self.count == 0:
-                self.reset()
-
-    def reset(self) -> None:
-        self.exec.reset()
+                self.exec.reset()
 
 
 class DefaultOpExec(OpExec):
