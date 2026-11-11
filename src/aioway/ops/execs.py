@@ -195,12 +195,12 @@ class DagOpExec(OpExec):
     _results: AnyDict[Op, typing.Any] = dcls.field(
         default_factory=any_dict, init=False, repr=False
     )
-    "The computed results, kept until their last consumer is done."
+    "The computed results, kept until last consumer has used it."
 
     _consumers: AnyDict[Op, int] = dcls.field(
         default_factory=any_dict, init=False, repr=False
     )
-    "How many more times each result will be looked up."
+    "Remaining times each result will be looked up."
 
     def __call__(self, op: Op) -> typing.Any:
         order = self.schedule(op)
