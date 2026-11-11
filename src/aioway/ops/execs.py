@@ -1,5 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+"The package reponsible for executing the `Op`s."
+
 import abc
 import contextlib as ctxl
 import dataclasses as dcls
