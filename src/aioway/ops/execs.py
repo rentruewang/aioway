@@ -36,6 +36,8 @@ class OpExec[T = typing.Any](typing.Protocol):
     """
     This is the executor responsible for executing an `Op`.
     It does so by recursively executing its dependencies.
+
+    Each `OpExec` should cleanup itself once done a full top level `__call__`.
     """
 
     def __call__(self, op: Op[T]) -> T: ...
