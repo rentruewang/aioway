@@ -47,9 +47,13 @@ def render_op_module(func: OpFunc, name: str = "Module") -> CodeRender:
     modules = VarName()
 
     # Modules first, they are checked in order.
-    stmt_print = StmtSwitch(vars=vars)
-    stmt_print.register(ModuleStmtPrint(vars=vars, modules=modules))
-    stmt_print.register(CallStmtPrint(vars=vars))
+    stmt_print = StmtSwitch(
+        vars=vars,
+        cases=[
+            ModuleStmtPrint(vars=vars, modules=modules),
+            CallStmtPrint(vars=vars),
+        ],
+    )
 
     forward = _FunctionRenderer(func=func, stmt_print=stmt_print)()
     return _ModuleRenderer(
@@ -224,20 +228,16 @@ class ModuleStmtPrint(_FcallMixin, StmtCodePrint[ModuleThunkOp]):
 @dcls.dataclass(frozen=True)
 class StmtSwitch(StmtCodePrint[Op]):
     """
-    Render each op with the printer registered for its type.
+    Render each op with the first of `cases` that handles its type.
     """
 
-    cases: list[StmtCodePrint] = dcls.field(default_factory=list)
-    "The printers, checked in the order they are registered."
+    cases: list[StmtCodePrint]
+    "The printers, checked in order."
 
     @property
     def op_type(self) -> type[Op]:
-        "Renders any op, given a registered printer for it."
+        "Renders any op, given a printer in `cases` for it."
         return Op
-
-    def register(self, case: StmtCodePrint) -> None:
-        "Render ops of `case.op_type` with `case`, unless an earlier case matches."
-        self.cases.append(case)
 
     def __call__(self, op: Op) -> str:
         "Render with the first printer whose `op_type` matches."
@@ -459,30 +459,25 @@ def _dedent(string: str):
 
 
 def _function_template():
-    return _dedent(
-        """
+    return _dedent("""
         def {{ name }}{{ param_list }}:
             {% for line in body %}
             {{ line }}
             {% endfor %}
             return {{ returns }}
-"""
-    )
+""")
 
 
 def _statements_template():
-    return _dedent(
-        """
+    return _dedent("""
         {% for line in body %}
         {{ line }}
         {% endfor %}
-    """
-    )
+    """)
 
 
 def _module_template():
-    return _dedent(
-        """
+    return _dedent("""
         class {{ name }}(nn.Module):
             def __init__(self{% for m in modules %}, {{ m }}{% endfor %}):
                 super().__init__()
@@ -491,8 +486,7 @@ def _module_template():
                 {% endfor %}
 
         {{ forward | indent(4, first=True) }}
-    """
-    )
+    """)
 
 
 def _py_env():
