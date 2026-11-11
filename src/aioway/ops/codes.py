@@ -43,8 +43,14 @@ def render_op_func(func: OpFunc, name: str = "forward") -> CodeRender:
 
 def render_op_module(func: OpFunc, name: str = "Module") -> CodeRender:
     "Render the `OpFunc` as an `nn.Module` class."
+    vars = VarName()
     modules = VarName()
-    stmt_print = ModuleStmtPrint(vars=VarName(), modules=modules)
+
+    # Modules first, they are checked in order.
+    stmt_print = StmtSwitch(vars=vars)
+    stmt_print.register(ModuleStmtPrint(vars=vars, modules=modules))
+    stmt_print.register(CallStmtPrint(vars=vars))
+
     forward = _FunctionRenderer(func=func, stmt_print=stmt_print)()
     return _ModuleRenderer(
         name=name, modules=list(modules._vars.values()), forward=forward
@@ -142,28 +148,55 @@ class StmtCodePrint(abc.ABC):
     def __call__(self, op: Op) -> str:
         "Convert an op to a statement."
 
+    @property
+    @abc.abstractmethod
+    def op_type(self) -> type[Op]:
+        "The kind of op this renders."
 
-@dcls.dataclass(frozen=True)
-class CallStmtPrint(StmtCodePrint):
+
+class _FcallStmtPrint(abc.ABC):
     """
-    Render a `CallOp` as a `func(...)` statement.
+    Mixin rendering an op as `lhs = func(...)`, for ops that are a single call.
     """
+
+    vars: VarName
 
     def __call__(self, op: Op) -> str:
-        "Render `lhs = func(...)`."
-        assert isinstance(op, CallOp), f"Cannot render {type(op)=}."
+        "Convert an op to a `lhs = func(...)` statement."
+        # First, s.t. an op of the wrong kind fails here.
+        func_name = self.func_name(op)
 
         args = tree_map_only(Op, self.vars.__getitem__, op.args)
         kwargs = tree_map_only(Op, self.vars.__getitem__, op.kwargs)
 
         lhs = self.vars.get_or_name(op)
 
-        func_name = render_torch_func_name(op.func)
         return lhs + " = " + render_fcall(func_name, *args, **kwargs)
+
+    @abc.abstractmethod
+    def func_name(self, op: Op) -> str:
+        "The name of the function the op calls."
 
 
 @dcls.dataclass(frozen=True)
-class ModuleStmtPrint(StmtCodePrint):
+class CallStmtPrint(_FcallStmtPrint, StmtCodePrint):
+    """
+    Render a `CallOp` as a `func(...)` statement.
+    """
+
+    @property
+    def op_type(self) -> type[Op]:
+        "Renders `CallOp`."
+        return CallOp
+
+    def func_name(self, op: Op) -> str:
+        "The torch function's name."
+        assert isinstance(op, CallOp), f"Cannot render {type(op)=}."
+        return render_torch_func_name(op.func)
+
+
+@dcls.dataclass(frozen=True)
+class ModuleStmtPrint(_FcallStmtPrint, StmtCodePrint):
     """
     Render a `ModuleThunkOp` as a `self.<module>(...)` statement.
     """
@@ -171,19 +204,42 @@ class ModuleStmtPrint(StmtCodePrint):
     modules: VarName
     "The `self.<name>` manager, for modules."
 
+    @property
+    def op_type(self) -> type[Op]:
+        "Renders `ModuleThunkOp`."
+        return ModuleThunkOp
+
+    def func_name(self, op: Op) -> str:
+        "The module's name, `self.<module>`."
+        assert isinstance(op, ModuleThunkOp), f"Cannot render {type(op)=}."
+        return "self." + self.modules.get_or_name(op.nn)
+
+
+@dcls.dataclass(frozen=True)
+class StmtSwitch(StmtCodePrint):
+    """
+    Render each op with the printer registered for its type.
+    """
+
+    cases: list[StmtCodePrint] = dcls.field(default_factory=list)
+    "The printers, checked in the order they are registered."
+
+    @property
+    def op_type(self) -> type[Op]:
+        "Renders any op, given a registered printer for it."
+        return Op
+
+    def register(self, case: StmtCodePrint) -> None:
+        "Render ops of `case.op_type` with `case`, unless an earlier case matches."
+        self.cases.append(case)
+
     def __call__(self, op: Op) -> str:
-        "Render `lhs = self.<module>(...)`, or a plain call."
-        # Plain calls render the same as in a function.
-        if not isinstance(op, ModuleThunkOp):
-            return CallStmtPrint(vars=self.vars)(op)
+        "Render with the first printer whose `op_type` matches."
+        for case in self.cases:
+            if isinstance(op, case.op_type):
+                return case(op)
 
-        args = tree_map_only(Op, self.vars.__getitem__, op.args)
-        kwargs = tree_map_only(Op, self.vars.__getitem__, op.kwargs)
-
-        lhs = self.vars.get_or_name(op)
-
-        func_name = "self." + self.modules.get_or_name(op.nn)
-        return lhs + " = " + render_fcall(func_name, *args, **kwargs)
+        raise TypeError(f"Cannot render {type(op)=}.")
 
 
 class _FunctionRenderer:
