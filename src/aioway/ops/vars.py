@@ -4,12 +4,27 @@ import typing
 
 import torch
 
-from .ops import Op, op_dcls
+from .ops import Op
 
-__all__ = ["TensorOp"]
+__all__ = ["ValueOp", "TensorOp"]
 
 
-@op_dcls
+class ValueOp[T](Op[T]):
+    """
+    The `Op` that wraps any value.
+    """
+
+    value: T
+    "Any value that is wrapped."
+
+    def execute(self) -> T:
+        return self.value
+
+    @typing.override
+    def deps(self) -> tuple[()]:
+        return ()
+
+
 class TensorOp(Op):
     """
     The `Op` that just holds a `torch.Tensor`.

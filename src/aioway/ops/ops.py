@@ -5,14 +5,10 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-__all__ = ["Op", "op_dcls", "exec_op"]
+__all__ = ["Op", "exec_op"]
 
 
-@typing.dataclass_transform(frozen_default=True)
-def op_dcls(cls):
-    return dcls.dataclass(frozen=True)(cls)
-
-
+@typing.dataclass_transform()
 class Op[T = object](abc.ABC):
     """
     The base class for expressions.
@@ -26,6 +22,9 @@ class Op[T = object](abc.ABC):
     """
 
     __match_args__: typing.ClassVar[tuple[str, ...]]
+
+    def __init_subclass__(cls, **kwargs):
+        _ = dcls.dataclass()(cls)
 
     def __call__(self) -> T:
         from .execs import executor
