@@ -61,3 +61,41 @@ print(func)
 
 # %%
 func(torch.ones(3), torch.full((3,), 2.0))
+
+# %% [markdown]
+# Modules are rendered as `self.<name>`, and the whole thing as an `nn.Module`.
+#
+# step 0: hidden = linear(x)
+# step 1: activated = relu(hidden)
+# step 2: summed = add(activated, y)
+# step 3: normed = norm(summed)
+# step 4: out = linear(normed)  <- same module again, same `self.linear_1`
+
+# %%
+from torch import nn
+
+from aioway.ops import ModuleThunkOp
+from aioway.ops.codes import render_op_module
+
+linear = nn.Linear(3, 3)
+norm = nn.LayerNorm(3)
+
+x = FuncInputOp(param=Param.build("x"), typ=torch.Tensor)
+y = FuncInputOp(param=Param.build("y"), typ=torch.Tensor)
+
+hidden = ModuleThunkOp(func=linear, args=(x,), kwargs={})
+activated = CallOp(func=torch.relu, args=(hidden,), kwargs={})
+summed = CallOp(func=torch.add, args=(activated, y), kwargs={})
+normed = ModuleThunkOp(func=norm, args=(summed,), kwargs={})
+out = ModuleThunkOp(func=linear, args=(normed,), kwargs={})
+
+module_func = OpFunc(out)
+
+# %%
+rich.print(render_op_module(module_func, name="Example"))
+
+# %%
+print(render_op_module(module_func, name="Example"))
+
+# %%
+module_func(torch.ones(3), torch.full((3,), 2.0))

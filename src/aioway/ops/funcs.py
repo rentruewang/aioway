@@ -87,9 +87,9 @@ class OpFunc(nn.Module):
 
     @property
     def _codes(self):
-        from .codes import FuncCodePrint
+        from .codes import render_op_module
 
-        return FuncCodePrint(self)()
+        return render_op_module(self)
 
     def _input_ops(self) -> list[FuncInputOp]:
         """
