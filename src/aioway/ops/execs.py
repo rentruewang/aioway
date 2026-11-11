@@ -3,6 +3,7 @@
 "The package reponsible for executing the `Op`s."
 
 import contextlib as ctxl
+import dataclasses as dcls
 import graphlib
 import typing
 from collections import abc as cabc
@@ -17,6 +18,7 @@ __all__ = [
     "set_executor",
     "default_op_exec",
     "LazyCacheOpExec",
+    "DagSchedule",
     "DagOpExec",
 ]
 
@@ -139,40 +141,76 @@ class LazyCacheOpExec(OpExec):
             yield cache
 
 
+class DagSchedule(typing.Protocol):
+    """
+    Orders the `Op`s under an `Op` (inclusive) for `DagOpExec`.
+
+    Each `Op` appears once, after all of its dependencies.
+    """
+
+    def __call__(self, op: Op, /) -> list[Op]: ...
+
+
+def _topo_sort(op: Op) -> list[Op]:
+    "The `Op`s under `op` (inclusive), each once, dependencies first."
+
+    # Collect `Op` by `id`.
+    ops: dict[int, Op] = {}
+
+    def collect(node: Op) -> None:
+        if id(node) not in ops:
+            ops[id(node)] = node
+            for dep in node.deps():
+                collect(dep)
+
+    collect(op)
+
+    # Build the dependency graph on the ids.
+    graph = {i: [id(dep) for dep in node.deps()] for i, node in ops.items()}
+
+    # Sort.
+    return [ops[i] for i in graphlib.TopologicalSorter(graph).static_order()]
+
+
+@dcls.dataclass
 class DagOpExec(OpExec):
     """
-    Executes the DAG under an `Op` in topological order.
+    Executes the DAG under an `Op` in the order given by `schedule`.
 
     Each `Op.execute` is called exactly once, with the executor set to
     only look up the results of its dependencies.
     A result is freed once its last consumer is done.
-
-    This is scheduled with `_topo_sort`.
     """
 
-    def __init__(self) -> None:
-        self._results: AnyDict[Op, typing.Any] = any_dict()
-        "The computed results, kept until their budget runs out."
+    schedule: DagSchedule = _topo_sort
+    "Orders the `Op`s to execute."
 
-        self._consumers: AnyDict[Op, int] = any_dict()
-        "How many more times each result will be looked up."
+    _results: AnyDict[Op, typing.Any] = dcls.field(
+        default_factory=any_dict, init=False, repr=False
+    )
+    "The computed results, kept until their last consumer is done."
+
+    _consumers: AnyDict[Op, int] = dcls.field(
+        default_factory=any_dict, init=False, repr=False
+    )
+    "How many more times each result will be looked up."
 
     def __call__(self, op: Op) -> typing.Any:
-        order = _topo_sort(op)
+        order = self.schedule(op)
 
         # Each `Op` is looked up once per consumer.
         for node in order:
             for dep in node.deps():
                 self._consumers[dep] = self._consumers.get(dep, 0) + 1
 
-        # Dependencies are already computed, so only look them up.
         try:
             return self._execute_in_order(order, op)
         finally:
             self._results = any_dict()
             self._consumers = any_dict()
 
-    def _execute_in_order(self, order: list[Op], op: Op):
+    def _execute_in_order(self, order: list[Op], op: Op) -> typing.Any:
+        # Only need to look up because it's in order already with dag.
         with set_executor(self.lookup):
             for node in order:
                 self._results[node] = node.execute()
@@ -183,7 +221,7 @@ class DagOpExec(OpExec):
         """
         The temporary executor during `__call__`, looking up computed results.
 
-        A result is freed once its budget runs out (its last consumer is done).
+        A result is freed once its last consumer is done.
         """
 
         result = self._results[op]
@@ -206,27 +244,6 @@ class DagOpExec(OpExec):
 
         with set_executor(dag):
             yield dag
-
-
-def _topo_sort(op: Op) -> list[Op]:
-    "The `Op`s under `op` (inclusive), each once, dependencies first."
-
-    # Collect `Op` by `id`.
-    ops: dict[int, Op] = {}
-
-    def collect(node: Op) -> None:
-        if id(node) not in ops:
-            ops[id(node)] = node
-            for dep in node.deps():
-                collect(dep)
-
-    collect(op)
-
-    # Build the dependency graph on the ids.
-    graph = {i: [id(dep) for dep in node.deps()] for i, node in ops.items()}
-
-    # Sort.
-    return [ops[i] for i in graphlib.TopologicalSorter(graph).static_order()]
 
 
 _op_exec: OpExec = default_op_exec
