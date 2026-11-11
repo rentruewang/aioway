@@ -12,8 +12,9 @@ from aioway._signs import BoundArgs, Param, Sign
 from aioway._utils import AnyDict, any_dict
 
 from .execs import OpExec, executor, set_executor
-from .ops import Op, op_dcls
+from .ops import Op
 from .thunks import ModuleOp
+from .vars import ValueOp
 
 __all__ = ["OpFunc", "OpFuncEnv", "FuncInputOp"]
 
@@ -135,10 +136,16 @@ class OpFuncEnv(OpExec):
     """
 
     def __call__(self, op: Op) -> typing.Any:
-        if isinstance(op, FuncInputOp):
-            return self.bounded[op.name]
-        else:
-            return self.fallback(op)
+        input_mapping: AnyDict[FuncInputOp, ValueOp] = any_dict()
+        for sub_op in op.post_order():
+            if isinstance(sub_op, FuncInputOp):
+                input_mapping[sub_op] = ValueOp(self.bounded[sub_op.name])
+
+        # Replace placeholder with concrete values.
+        replaced = input_mapping.replace(op)
+
+        with set_executor(self.fallback):
+            return replaced()
 
     def reset(self) -> None:
         # Results depend on `bounded`, so they must not outlive this call.
@@ -154,7 +161,6 @@ class OpFuncEnv(OpExec):
         return iter(self.bounded.arguments)
 
 
-@op_dcls
 class FuncInputOp[T](Op[T]):
     param: Param
     "The parameter that is associated with the input."
@@ -165,8 +171,7 @@ class FuncInputOp[T](Op[T]):
     @typing.override
     def execute(self) -> T:
         raise RuntimeError(
-            "This function should enver be called, "
-            "as `FuncInputOp` can only be executed by `OpFuncEnv`."
+            "`FuncInputOp` is a placeholder, and never supposed to be called."
         )
 
     @typing.override

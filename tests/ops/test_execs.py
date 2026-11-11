@@ -25,10 +25,13 @@ from aioway.ops import (
 class SumCountOp(Op):
     "Sums its children (or returns `value` if none) and counts executions."
 
-    def __init__(self, value=0, *children: Op) -> None:
+    value: int
+    children: list
+    calls: int = 0
+
+    def __init__(self, value: int = 0, *children: Op) -> None:
         self.value = value
-        self.children = children
-        self.calls = 0
+        self.children = list(children)
 
     @typing.override
     def execute(self):

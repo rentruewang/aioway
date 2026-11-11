@@ -9,12 +9,11 @@ from torch import nn
 from aioway._pytrees import tree_leaves
 from aioway._signs import Sign
 
-from .ops import Op, exec_op, op_dcls
+from .ops import Op, exec_op
 
 __all__ = ["CallOp", "ModuleThunkOp"]
 
 
-@op_dcls
 class CallOp[F: cabc.Callable](Op):
     """
     The base class denoting a function call.
@@ -69,7 +68,6 @@ class ModuleOp(Op, abc.ABC):
         raise NotImplementedError
 
 
-@op_dcls
 class ModuleThunkOp(CallOp[nn.Module], ModuleOp):
     """
     The `nn.Module` version of `CallOp`.
