@@ -158,10 +158,12 @@ def _topo_sort(op: Op) -> list[Op]:
     ops: dict[int, Op] = {}
 
     def collect(node: Op) -> None:
-        if id(node) not in ops:
-            ops[id(node)] = node
-            for dep in node.deps():
-                collect(dep)
+        if id(node) in ops:
+            return
+
+        ops[id(node)] = node
+        for dep in node.deps():
+            collect(dep)
 
     collect(op)
 
@@ -177,8 +179,8 @@ class DagOpExec(OpExec):
     """
     Executes the DAG under an `Op` in the order given by `schedule`.
 
-    Each `Op.execute` is called exactly once, with the executor set to
-    only look up the results of its dependencies.
+    Each `Op.execute` is called exactly once, in order.
+
     A result is freed once its last consumer is done.
     """
 
