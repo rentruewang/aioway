@@ -23,6 +23,13 @@ __all__ = ["CaptumConceptTask", "BuildTCAV"]
 # The base class ====
 
 
+@typing.dataclass_transform(frozen_default=True, kw_only_default=True)
+class _StrategyDclsMixin:
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        dcls.dataclass(frozen=True, kw_only=True)(cls)
+
+
 @dcls.dataclass
 class CaptumConceptTask(Task):
     """
@@ -31,9 +38,7 @@ class CaptumConceptTask(Task):
     Output: shape `[concepts, layers]`, concept's relative attention.
     """
 
-    @typing.dataclass_transform(frozen_default=True, kw_only_default=True)
-    @dcls.dataclass(frozen=True, kw_only=True)
-    class Strategy(abc.ABC):
+    class Strategy(_StrategyDclsMixin, abc.ABC):
         """
         Strategy for building a `captum.concept.ConceptInterpreter` for a module.
 
@@ -43,9 +48,6 @@ class CaptumConceptTask(Task):
 
         _CAPTUM_CLASS: typing.ClassVar[cabc.Callable[..., concept.ConceptInterpreter]]
         "The `captum` class to build."
-
-        def __init_subclass__(cls, **kwargs):
-            dcls.dataclass(frozen=True, kw_only=True)(cls)
 
         def __call__(
             self, module: nn.Module, save_path: str
