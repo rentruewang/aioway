@@ -211,7 +211,7 @@ class ModuleStmtPrint(_FcallMixin, StmtCodePrint[ModuleThunkOp]):
         "Renders `ModuleThunkOp`."
         return ModuleThunkOp
 
-    def func_name(self, op: ModuleThunkOp) -> str:
+    def func_name(self, op: CallOp) -> str:
         "The module's name, `self.<module>`."
         assert isinstance(op, ModuleThunkOp), f"Cannot render {type(op)=}."
         return "self." + self.modules.get_or_name(op.nn)
