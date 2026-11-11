@@ -11,11 +11,13 @@ from torch import testing as tt
 
 from aioway._signs import Param, Sign
 from aioway.ops import (
+    DagOpExec,
     FuncInputOp,
     LazyCacheOpExec,
     ModuleThunkOp,
     Op,
     OpFunc,
+    ValueOp,
     default_op_exec,
     exec_op,
     executor,
@@ -40,6 +42,15 @@ class SumCountOp(Op):
         return self.children
 
 
+type CachedExec = LazyCacheOpExec | DagOpExec
+
+
+@pytest.fixture(params=[LazyCacheOpExec, DagOpExec], ids=lambda c: c.__name__)
+def exec_cls(request: pytest.FixtureRequest) -> type[CachedExec]:
+    "The executors that execute each `Op` at most once per evaluation."
+    return request.param
+
+
 def test_default_executor():
     assert executor() is default_op_exec
 
@@ -51,48 +62,87 @@ def test_default_no_cache():
     assert op.calls == 2
 
 
-def test_set_executor():
-    cache = LazyCacheOpExec()
+def test_set_executor(exec_cls: type[CachedExec]):
+    cache = exec_cls()
     with set_executor(cache) as got:
         assert got is cache
         assert executor() is cache
     assert executor() is default_op_exec
 
 
-def test_set_executor_error():
-    cache = LazyCacheOpExec()
+def test_set_executor_error(exec_cls: type[CachedExec]):
+    cache = exec_cls()
     with pytest.raises(RuntimeError), set_executor(cache):
         raise RuntimeError
     assert executor() is default_op_exec
 
 
-def test_cached_per_evaluation():
-    cache = LazyCacheOpExec()
+def test_cached_per_evaluation(exec_cls: type[CachedExec]):
     op = SumCountOp(1)
-    with set_executor(cache):
+    with set_executor(exec_cls()):
         assert op() == 1
         assert op() == 1
     assert op.calls == 2
+
+
+def test_lazy_cache_cleanup():
+    cache = LazyCacheOpExec()
+    with set_executor(cache):
+        SumCountOp(1)()
     assert len(cache) == 0
 
 
-def test_cached_shared_dep():
+def test_cached_shared_dep(exec_cls: type[CachedExec]):
     shared = SumCountOp(1)
     root = SumCountOp(0, [SumCountOp(2, [shared]), SumCountOp(3, [shared])])
-    with set_executor(LazyCacheOpExec()):
+    with set_executor(exec_cls()):
         assert root() == 7
     assert shared.calls == 1
 
 
-def test_cache_op():
+def test_cache_op(exec_cls: type[CachedExec]):
     shared = SumCountOp(1)
     root = SumCountOp(0, [shared, shared])
-    with LazyCacheOpExec.enable() as cache:
+    with exec_cls.enable() as cache:
         assert executor() is cache
         assert root() == 2
-        assert len(cache) == 0
     assert executor() is default_op_exec
     assert shared.calls == 1
+
+
+def test_dag_frees_results():
+    dag = DagOpExec()
+    alive: list[int] = []
+
+    class SpyOp(SumCountOp):
+        def execute(self):
+            alive.append(len(dag._results))
+            return super().execute()
+
+    op = SpyOp(1)
+    for _ in range(10):
+        op = SpyOp(0, [op])
+
+    with set_executor(dag):
+        assert op() == 1
+
+    # A chain only ever needs the previous result.
+    assert max(alive) == 1
+    assert len(dag._results) == 0
+
+
+def test_dag_error_cleans_up():
+    dag = DagOpExec()
+
+    class FailOp(SumCountOp):
+        def execute(self):
+            raise RuntimeError
+
+    op = SumCountOp(0, [SumCountOp(1), FailOp()])
+    with set_executor(dag), pytest.raises(RuntimeError):
+        op()
+
+    assert len(dag._results) == 0
 
 
 def inp(name: str) -> FuncInputOp:
@@ -140,10 +190,10 @@ def test_func_bad_args():
         func()
 
 
-def test_func_no_stale_result():
+def test_func_no_stale_result(exec_cls: type[CachedExec]):
     f = OpFunc(SumCountOp(0, [inp("a"), inp("b")]))
     # This enable should have no effect.
-    with LazyCacheOpExec.enable():
+    with exec_cls.enable():
         assert f(1, 2) == 3
         assert f(3, 4) == 7
 
@@ -163,3 +213,12 @@ def test_func_module():
     layer_params = set(layer.parameters())
     assert f_params == layer_params
     tt.assert_close(f(x), layer(x))
+
+
+def test_func_apply_equal_inputs():
+    # Two equal, separate inputs.
+    f = OpFunc(SumCountOp(0, [inp("x"), inp("x")]))
+    g = f.apply(ValueOp(1))
+
+    # Every `x` is bound, so nothing is left in the signature.
+    assert g.signature == Sign.from_input_names([])
