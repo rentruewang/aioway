@@ -11,7 +11,7 @@ from torch import nn
 from aioway._signs import BoundArgs, Param, Sign
 from aioway._utils import AnyDict, any_dict
 
-from .execs import CachedOpExec, OpExec, set_executor
+from .execs import OpExec, executor, set_executor
 from .ops import Op, op_dcls
 from .thunks import ModuleOp
 
@@ -128,10 +128,10 @@ class OpFuncEnv(OpExec):
     bounded: BoundArgs
     "The arguments that are bounded."
 
-    fallback: OpExec = dcls.field(default_factory=CachedOpExec)
+    fallback: OpExec = dcls.field(default_factory=executor)
     """
     The fallback executor to use.
-    By default, use the "current default" at the time of init. 
+    By default, use the "current default" at the time of init.
     """
 
     def __call__(self, op: Op) -> typing.Any:
@@ -139,6 +139,10 @@ class OpFuncEnv(OpExec):
             return self.bounded[op.name]
         else:
             return self.fallback(op)
+
+    def reset(self) -> None:
+        # Results depend on `bounded`, so they must not outlive this call.
+        self.fallback.reset()
 
     def __len__(self) -> int:
         return len(self.bounded)
