@@ -266,7 +266,6 @@ class _FunctionRenderer:
         # E.g. mapping will not show up if we use pytree.
         def render(obj) -> str:
             "Render `obj`, decomposing containers until a named object."
-
             # If the object is named, stop decomposing.
             if obj in self.vars:
                 return self.vars[obj]
@@ -332,7 +331,7 @@ class _FuncRender:
         "The function's source code."
         return _function_renderer()(
             name=self.name,
-            params=str(self.params),
+            param_list=str(self.params),
             body=self.lines,
             returns=self.returns,
         )
@@ -359,7 +358,7 @@ class _ModuleRenderer:
         "The class's source code, with `self` added to `forward`."
         forward = _function_renderer()(
             name=self.forward.name,
-            params=_with_self(str(self.forward.params)),
+            param_list=_with_self(str(self.forward.params)),
             body=self.forward.lines,
             returns=self.forward.returns,
         )
@@ -400,7 +399,7 @@ def _dedent(string: str):
 def _function_template():
     return _dedent(
         """
-        def {{ name }}{{ params }}:
+        def {{ name }}{{ param_list }}:
             {% for line in body %}
             {{ line }}
             {% endfor %}
