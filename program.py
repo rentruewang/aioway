@@ -19,7 +19,7 @@ expressions call: net = Network(target=y), then Train(…)(net!, …), then net(
     repeat(n, *statements, until=stop)      … if stop: break                 …at most n times, until stop is true
 
 The catalog's statements (Fit, Assign, Alter, Store: they change their argument marked !; Source, Curate, Partition,
-Reduce: they read a whole dataset) are lines of their own, never inside an expression, as a SQL write or CREATE INDEX sits
+ReduceCmd: they read a whole dataset) are lines of their own, never inside an expression, as a SQL write or CREATE INDEX sits
 at the top of a statement. A statement's arguments are expressions (on batches) or dataset statements, nested as
 a FROM nests: Train(net!, loss, Batches(x, y; size=64)). An update returns None and the name still names the same
 model, now changed. A statement evaluates its arguments first, then runs: data read from the model before is a
@@ -58,7 +58,7 @@ from torch import nn
 
 from catalog import (
     Accuracy, Autoencoder, Batches, Blank, Condition, Curriculum, Dedup, DiscountedReturn, DPO, CFGDropout, NearDedup,
-    EarlyStop, NewIndex, Encoder, EnvTree, EpsilonGreedy, Evaluate, Extend, Fill, Flatten, Freeze, FrozenCopy, Given, Greedy, GroupAdvantage, CFG, TrainTestSplit,
+    NewIndex, Encoder, EnvTree, EpsilonGreedy, Evaluate, Extend, Fill, Flatten, Freeze, FrozenCopy, Given, Greedy, GroupAdvantage, CFG, TrainTestSplit,
     WorldModel, NPaths, InfoNCE, Insert, KeepBest, LMTree, LogProb, LoRA, Loss, Mask, MCTS, Method, Mix, MoE, MostConfident,
     LayerOp, Network, Noise, Patchify, MPC, PPO, QualityFilter, Reconstruction, Reinforce, ReplayBuffer, RetrievalAccuracy,
     Retrieve, ReturnsToGo, Sample, SSM, NextToken, Temperature, AllAtOnce, Train, TrainIndex, Transfer,
@@ -631,11 +631,6 @@ def search_targets(path: Path, search: PartialTree[Any, Any]) -> tuple[Any, Any]
     ...
 
 
-def append(xs: tuple[Any, ...], x: Any) -> tuple[Any, ...]:
-    """xs with x at the end: a learning curve, one score longer."""
-    return (*xs, x)
-
-
 # ═══ Losses, as programs: a split, a model, a score ═══════════════════════════════════════════════
 
 
@@ -1039,36 +1034,25 @@ def curation(keep: float = 0.5) -> Script:
     ), data, "mix the sources, drop copies and near-copies, keep the better half, easy first: every step reads every batch")
 
 
-def early_stopping(rounds: int = 50, steps: int = 100, patience: int = 3) -> Script:
+def early_stopping(steps: int = 5000, every: int = 100, patience: int = 3) -> Script:
     """The same thing in plain Python:
 
-        def early_stopping(images: Grid, labels: Value, *, rounds: int = 50, steps: int = 100,
+        def early_stopping(images: Grid, labels: Value, *, steps: int = 5000, every: int = 100,
                            patience: int = 3) -> Tensor:
             splits: tuple[tuple[Subset[Any], ...], ...] = TrainTestSplit(fractions=(0.8, 0.1, 0.1))(Batches(size=64)(images, labels))
             net: Predictor = Network(target=labels)
-            curve: tuple[Tensor, ...] = ()
-            for _ in range(rounds):
-                if EarlyStop(patience=patience)(curve):
-                    break
-                Train(steps=steps)(net, supervised_loss, splits[0][0])
-                score: Tensor = Evaluate()(splits[0][1], supervised_loss, net)
-                curve = append(curve, score)
+            Train(steps=steps, patience=patience, every=every)(net, supervised_loss, splits[0][0], splits[0][1])
             test: Tensor = Evaluate()(splits[0][2], supervised_loss, net)
             return test
     """
-    images, labels, splits, net, curve, score, test = inputs("images labels splits network curve score test")
+    images, labels, splits, net, test = inputs("images labels splits network test")
     train, validation, held_out = splits[0][0], splits[0][1], splits[0][2]
     return Script("Early stopping", (images, labels), (
         let(splits, call(TrainTestSplit(fractions=(0.8, 0.1, 0.1)), call(Batches(size=64), images, labels))),
         let(net, call(Network, target=labels)),
-        let(curve, ()),
-        repeat(rounds,
-               update(net, Train(steps=steps), supervised_loss, train),
-               let(score, call(Evaluate(), validation, supervised_loss, net)),
-               let(curve, call(append, curve, score)),
-               until=call(EarlyStop(patience=patience), curve)),
+        update(net, Train(steps=steps, patience=patience, every=every), supervised_loss, train, validation),
         let(test, call(Evaluate(), held_out, supervised_loss, net)),
-    ), test, "train in rounds on one part, score on another, stop when the score stops improving; report the third part")
+    ), test, "train on one part, scored on another every few steps; Train stops when the score stops improving; report the third part")
 
 
 def rag(k: int = 4) -> Script:

@@ -4,7 +4,7 @@ are its settings, its __call__ takes the data, its docstring says what it does, 
 what kind of thing it is, with the group's type parameters filled in:
 
     @dataclass(frozen=True)
-    class BestOfN(Fold[Path, Path, [Value]]):  # an expression: best-of-N is a fold, a Path in (and Values), a Path out
+    class BestOfN(ReduceOp[Path, Path, [Value]]):  # an expression: best-of-N is a fold, a Path in (and Values), a Path out
         n: int                              # a setting
         def __call__(self, paths: Path, scores: Value, /) -> Path: ...
 
@@ -29,7 +29,7 @@ EXPRESSIONS · on a batch: nothing changes, nothing new is made
                 ElementwiseOp[A, B, **R] (x: A, *R) -> B                …each output element made from its input element
               Aggregate[C, **R]          (x: C, *R) -> C                each element reads the ones related to it
               Select[C, **R]             (x: C, *R) -> C                keep, drop, reorder or reweight elements
-              Fold[C, A, **R]            (x: C, *R) -> A                reduce a container to one value
+              ReduceOp[C, A, **R]        (x: C, *R) -> A                reduce a container to one value, in order
               Scan[X, S, Y]              init, step; (xs: Seq) -> Seq   carry a state S along a sequence
   learning    ScoreOp[P, O, **R]         (pred: P, *R) -> O             how bad a prediction is
                 LossOp[P, T]             (pred: P, target: T) -> ℝ      …to minimize, differentiable
@@ -57,7 +57,7 @@ STATEMENTS · making new state, changing it in place (!), or reading a whole dat
   dataset     Source[D, **R]             (*R) -> D                      where batches come from
               Curate[C, **R]             (data: Indexed[C], *R) -> Subset[C]    keep, drop, reorder, resample examples
               Partition[C, **R]          (data: Indexed[C], *R) -> splits       train / test, k folds: Subsets each
-              Reduce[C, A, **R]          (data: Dataset[C], *R) -> A    one value from a whole dataset
+              ReduceCmd[C, A, **R]       (data: Dataset[C], *R) -> A    one value from a whole dataset
 
 A layer (LayerOp) is an expression that is a stateful nn.Module (a data.Model): calling it reads its parameters
 and changes nothing; making one allocates them; statements change them in place (Train, LoRA, …). Layer wraps any
@@ -69,7 +69,7 @@ write or CREATE INDEX sits at the top of a statement. Update statements change t
 None; dataset statements change nothing but read every batch. Weights is the subtype of Module whose architecture an
 op leaves alone.
 
-So BestOfN is a Fold[Path, Path, [Value]] (a Path in and a Path out, given the Values that score it), Network a
+So BestOfN is a ReduceOp[Path, Path, [Value]] (a Path in and a Path out, given the Values that score it), Network a
 LayerOp[Container, Prediction] (a layer: the target's type picks its readout, the first input sizes the rest), Train a Fit[nn.Module, [Callable[..., Tensor], Dataset[Any]]] (it changes a module, reading an
 objective and a dataset). Fill, Walk, Unroll and Sklearn are each one method, and the group is that method.
 
@@ -343,7 +343,7 @@ def _render(cls: type[Method]) -> tuple[list[str], str, str]:
 
 
 def _parameters(cls: type, base: type) -> tuple[Any, ...]:
-    """The type parameters cls gives base: (Path, Path) for BestOfN(Fold[Path, Path]); () when it gives none."""
+    """The type parameters cls gives base: (Path, Path) for BestOfN(ReduceOp[Path, Path]); () when it gives none."""
     for k in cls.__mro__:
         for b in k.__dict__.get("__orig_bases__", ()):
             if get_origin(b) is base:
@@ -383,8 +383,8 @@ def meta(name: str, groups: tuple[type[Method], ...], explanation: str) -> None:
 
 
 # ═══ Expression groups ════════════════════════════════════════════════════════════════════════════
-# Each group's __call__ is what its methods do, in the group's own type parameters: Fold[C, A] takes a C and gives
-# an A. R is what else a method takes (none by default), so Best, a Fold[Path, Path, [Value]], takes a Path and a
+# Each group's __call__ is what its methods do, in the group's own type parameters: ReduceOp[C, A] takes a C and gives
+# an A. R is what else a method takes (none by default), so Best, a ReduceOp[Path, Path, [Value]], takes a Path and a
 # Value. A method's own __call__ names its inputs; pyright checks it against its group's. An expression makes no new
 # state: building a model (or a codec, an index, a buffer) is a statement, CREATE.
 
@@ -419,9 +419,9 @@ class Select[C, **R = []](Expr):
     def __call__(self, x: C, /, *rest: R.args, **named: R.kwargs) -> C: ...
 
 
-class Fold[C, A, **R = []](Expr):
-    """Reduce a container C to one value A."""
-    group, family, form, side = "fold", "structure", "C[a] → a", "agnostic"
+class ReduceOp[C, A, **R = []](Expr):
+    """ReduceCmd a container C to one value A, in order (left to right, as functools.reduce)."""
+    group, family, form, side = "reduce", "structure", "C[a] → a", "agnostic"
 
     def __call__(self, x: C, /, *rest: R.args, **named: R.kwargs) -> A: ...
 
@@ -679,9 +679,9 @@ class Partition[C, **R = []](Stmt):
                      for i, split in enumerate(self.parts(data, *rest, **named)))
 
 
-class Reduce[C, A, **R = []](Stmt):
+class ReduceCmd[C, A, **R = []](Stmt):
     """One value A from a whole dataset of C: a metric over every batch, a statistic, one batch."""
-    group, family, form, side = "reduce", "dataset", "Dataset → a", "agnostic"
+    group, family, form, side = "reduce dataset", "dataset", "Dataset → a", "agnostic"
 
     def __call__(self, data: Dataset[C], /, *rest: R.args, **named: R.kwargs) -> A: ...
 
@@ -912,11 +912,11 @@ class TokenDropout(Select[Seq]):
     def __call__(self, x: Seq, /) -> Seq: ...
 
 
-# ═══ Fold[C, A, **R = []]: C[a] → a ═══════════════════════════════════════════════════════════════
+# ═══ ReduceOp[C, A, **R = []]: C[a] → a ═══════════════════════════════════════════════════════════
 
 
 @dataclass(frozen=True)
-class DecayGroups(Fold[nn.Module, list[dict[str, Any]]]):
+class DecayGroups(ReduceOp[nn.Module, list[dict[str, Any]]]):
     """The parameters to decay (the weight matrices) apart from the rest (norms, biases, embeddings)."""
     title = "Weight decay (parameter groups)"
     weight_decay: float = 0.1
@@ -925,7 +925,7 @@ class DecayGroups(Fold[nn.Module, list[dict[str, Any]]]):
 
 
 @dataclass(frozen=True)
-class MuP(Fold[nn.Module, list[dict[str, Any]]]):
+class MuP(ReduceOp[nn.Module, list[dict[str, Any]]]):
     """Hidden matrices reweighted by base_width / width, so a learning rate tuned narrow carries over wide."""
     title = "Parameterization (μP)"
     width: int
@@ -935,7 +935,7 @@ class MuP(Fold[nn.Module, list[dict[str, Any]]]):
 
 
 @dataclass(frozen=True)
-class DiscountedReturn(Fold[Path, Value]):
+class DiscountedReturn(ReduceOp[Path, Value]):
     """Σ γ^t·r_t along each path: what RL maximizes. A walk can't be differentiated through, so its gradient comes
     from scoring the path (reinforce)."""
     title = "Expected return (the RL objective)"
@@ -945,7 +945,7 @@ class DiscountedReturn(Fold[Path, Value]):
 
 
 @dataclass(frozen=True)
-class BestOfN(Fold[Path, Path, [Value]]):
+class BestOfN(ReduceOp[Path, Path, [Value]]):
     """The best-scoring of each group of n paths (scored by a verifier or a reward model)."""
     title = "Best-of-N with a verifier"
     n: int
@@ -954,7 +954,7 @@ class BestOfN(Fold[Path, Path, [Value]]):
 
 
 @dataclass(frozen=True)
-class MajorityVote(Fold[Value, Value]):
+class MajorityVote(ReduceOp[Value, Value]):
     """The most frequent answer of each group of n samples."""
     title = "Self-consistency (majority vote)"
     n: int
@@ -963,16 +963,7 @@ class MajorityVote(Fold[Value, Value]):
 
 
 @dataclass(frozen=True)
-class EarlyStop(Fold[Sequence[Tensor], bool]):
-    """Whether the validation scores, lowest best, have not improved on their best for `patience` evaluations."""
-    title = "Early stopping"
-    patience: int = 3
-
-    def __call__(self, curve: Sequence[Tensor], /) -> bool: ...
-
-
-@dataclass(frozen=True)
-class ScalingLaw(Fold[Seq, tuple[float, float], [Seq]]):
+class ScalingLaw(ReduceOp[Seq, tuple[float, float], [Seq]]):
     """loss ≈ a·size^(−b), fitted on the logs."""
     title = "Scaling laws (power-law fit)"
 
@@ -2087,19 +2078,23 @@ class Standardize(Sklearn[Estimator]):
 
 
 @dataclass(frozen=True)
-class Train(Fit[nn.Module, [Callable[..., Tensor], Dataset[Any]]]):
+class Train(Fit[nn.Module, [Callable[..., Tensor], Dataset[Any], Dataset[Any] | None]]):
     """Descend the objective over the dataset's batches: each step, objective(model, *batch) (under autocast to
     precision), its gradient (clipped to max_grad_norm), the optimizer's update of the parameters, in place, at the
     schedule's rate. In training mode only here, so a forward's own effects (BatchNorm statistics) are training's
-    too. Reinforcement learning has a loop of its own: TrainRL."""
+    too. Given valid and patience, every `every` steps the objective's mean on valid is checked, and training ends
+    early once it has not improved for `patience` checks. Reinforcement learning has a loop of its own: TrainRL."""
     title = "Training"
     steps: int
     optimizer: Scan[Tensor, Any, Tensor] = Optimizer()
     schedule: Scan[int, int, float] | None = None
     max_grad_norm: float | None = 1.0
     precision: torch.dtype | None = None
+    patience: int | None = None
+    every: int = 100
 
-    def __call__(self, model: nn.Module, objective: Callable[..., Tensor], data: Dataset[Any], /) -> None: ...
+    def __call__(self, model: nn.Module, objective: Callable[..., Tensor], data: Dataset[Any],
+                 valid: Dataset[Any] | None = None, /) -> None: ...
 
 
 @dataclass(frozen=True)
@@ -2446,11 +2441,11 @@ class KFold(Folds):
     function = "sklearn.model_selection.KFold, StratifiedKFold, GroupKFold, TimeSeriesSplit"
 
 
-# ═══ Reduce[C, A, **R = []]: Dataset → a ══════════════════════════════════════════════════════════
+# ═══ ReduceCmd[C, A, **R = []]: Dataset → a ═══════════════════════════════════════════════════════
 
 
 @dataclass(frozen=True)
-class Evaluate(Reduce[Any, Tensor, [Callable[..., Tensor]]]):
+class Evaluate(ReduceCmd[Any, Tensor, [Callable[..., Tensor]]]):
     """A per-batch metric (accuracy, a loss, perplexity), averaged over every batch, weighted by their sizes; given a
     model, the metric is called as metric(model, *batch), as a loss is."""
     title = "Evaluation (a metric over a dataset)"
@@ -2459,7 +2454,7 @@ class Evaluate(Reduce[Any, Tensor, [Callable[..., Tensor]]]):
 
 
 @dataclass(frozen=True)
-class Metric(Reduce[tuple[Tensor, Tensor], Any]):
+class Metric(ReduceCmd[tuple[Tensor, Tensor], Any]):
     """A metric of every prediction and target at once, not a mean of per-batch values: data is (prediction, target)
     pairs, gathered, then fn(targets, predictions), as scikit-learn's metrics take them."""
     title = "Whole-dataset metric"
@@ -2476,7 +2471,7 @@ class ClassificationMetrics(Metric):
 
 
 @dataclass(frozen=True)
-class Streaming(Reduce[tuple[Tensor, Tensor], Tensor]):
+class Streaming(ReduceCmd[tuple[Tensor, Tensor], Tensor]):
     """The same number as Metric without keeping every prediction: the metric is reset, updated on each (prediction,
     target) batch, then computed (torchmetrics' API)."""
     title = "Streaming metric"
@@ -2493,7 +2488,7 @@ class StreamingMetrics(Streaming):
 
 
 @dataclass(frozen=True)
-class FitPredict(Reduce[Any, Tensor]):
+class FitPredict(ReduceCmd[Any, Tensor]):
     """A fresh clone of the estimator fitted to the whole dataset, and what it says of each example: for methods that
     cannot label new data, only the data they were fitted to (fit_predict)."""
     title = "Fit and predict (transductive)"
@@ -2517,7 +2512,7 @@ class HierarchicalClustering(FitPredict):
 
 
 @dataclass(frozen=True)
-class FitTransform(Reduce[Any, Tensor]):
+class FitTransform(ReduceCmd[Any, Tensor]):
     """A fresh clone of the estimator fitted to the whole dataset, and each example's new features: for embeddings that
     place only the data they were fitted to (fit_transform)."""
     title = "Fit and transform (transductive)"
@@ -2534,7 +2529,7 @@ class Embedding2D(FitTransform):
 
 
 @dataclass(frozen=True)
-class Accumulate(Reduce[Any, Any, [Scan[Any, Any, Any]]]):
+class Accumulate(ReduceCmd[Any, Any, [Scan[Any, Any, Any]]]):
     """A Scan's state carried across a dataset's batches, its final state returned: normalization statistics, a
     histogram, any metric that is not a mean."""
     title = "Accumulate (a scan across batches)"
@@ -2560,7 +2555,7 @@ meta("Learning is compression", (ElementwiseOp,), "bottlenecks, codebooks and st
 meta("Bootstrap from yourself", (Fit,), "targets made by your own (older) model: TD, self-distillation, self-play, AlphaZero")
 meta("Amortize, or search", (ElementwiseOp, Walk, Reshape, Search), "one forward pass that answers at once, or a tree grown by search")
 meta("Every loss is a likelihood", (ScoreOp,), "Loss()(pred, target): what the target holds picks which")
-meta("Not every objective is a loss", (Fold, ScoreOp), "a return is a fold of a path; its gradient comes from scoring the path, or there is none")
+meta("Not every objective is a loss", (ReduceOp, ScoreOp), "a return is a reduce of a path; its gradient comes from scoring the path, or there is none")
 meta("Structure decides the computation", (Aggregate,), "the container picks what each element reads")
 
 # ═══ Printing ═════════════════════════════════════════════════════════════════════════════════════
@@ -2657,7 +2652,7 @@ def _type_parameter(t: Any) -> str:
 
 
 def _header(cls: type) -> str:
-    """A class header as written in this file: BestOfN(Fold[Path, Path, [Value]]), Fold[C, A, **R = []]."""
+    """A class header as written in this file: BestOfN(ReduceOp[Path, Path, [Value]]), ReduceOp[C, A, **R = []]."""
     if "group" in cls.__dict__:
         params = getattr(cls, "__type_params__", ())
         return cls.__name__ + (f"[{', '.join(map(_type_parameter, params))}]" if params else "")
