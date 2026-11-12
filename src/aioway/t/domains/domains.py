@@ -18,7 +18,13 @@ class InvalidDomainValue(ValueError):
 
 
 @typing.dataclass_transform(frozen_default=True)
-class Domain[T = typing.Any](abc.ABC):
+class _DomainDclsMixin:
+    def __init_subclass__(cls, **kwargs) -> None:
+        super().__init_subclass__(**kwargs)
+        _ = dcls.dataclass(frozen=True)(cls)
+
+
+class Domain[T = typing.Any](_DomainDclsMixin, abc.ABC):
     """
     The base type for `Domain`s.
 
@@ -27,11 +33,6 @@ class Domain[T = typing.Any](abc.ABC):
 
     For instance, images, videos, texts, trees etc.
     """
-
-    def __init_subclass__(cls) -> None:
-        # Register subclasses automatically as dataclass.
-        dataclass = dcls.dataclass(frozen=True)(cls)
-        assert dataclass is cls
 
     @property
     def __parents__(self) -> list[Domain[T]]:
