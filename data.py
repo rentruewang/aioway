@@ -4,14 +4,15 @@ Expressions take batches, statements take datasets. The state of a method is a p
 so far, and how to get the rest.
 
 Containers: a batch in memory, N examples side by side, data [N, *positions, *value]
-  Value          one element per example: a label, a score
-  Seq(causal)    elements in order: text, frames, time steps (causal: each reads only the earlier ones)
-  Set            elements in no order: objects, points, the examples of a batch
-  Grid(ndim)     elements on a lattice: pixels, voxels
-  Graph(edges)   elements joined by edges: molecules, meshes, a model's computation
-  Tree(parent)   elements under a root: parse trees, search trees
-  Product(parts) several at once: Product(video, (Seq, Grid)) is frames × pixels
-  what an element holds: classes · bits · real · record (from the dtype)
+  Value                one element per example: a label, a score
+  Seq[T]               elements in order
+    Temporal[T]        …with a direction: text, frames, time steps (causal: each reads only the earlier ones)
+    Spatial[T]         …with neighbours: a row of pixels, one axis of a volume
+  Set[T]               elements in no order: objects, points, the examples of a batch
+  Graph[T]             elements joined by edges: molecules, meshes, a model's computation
+  Tree[T]              elements under a root: parse trees, search trees
+  T is what each element is: another container (inner), or what it holds: classes · bits · real · record (from the
+  dtype). Nesting gives more dimensions: an image is Spatial[Spatial[real]] (Grid), a video Temporal[Grid].
 
 Partial containers: what is known so far, and how to get the rest
   Holes[C]           C with a level per element: 0 known · 1 unknown · in between, noised to that level
@@ -22,7 +23,7 @@ Partial containers: what is known so far, and how to get the rest
                      built and filled by statements (CREATE INDEX, INSERT), searched by expressions
 
 Results
-  Path[N, E]         one walk down a PartialTree: a Seq of steps
+  Path[N, E]         one walk down a PartialTree: a Temporal of steps
   Example            a split's output: the model's input (Holes) and its target
 
 Signatures
@@ -63,16 +64,24 @@ from torch import Tensor, nn
 
 
 @dataclass(frozen=True, eq=False, repr=False)
-class Container:
-    """N examples, each a structure of elements; data is [N, *positions, *value]."""
+class Container[T = Any]:
+    """N examples, each a structure of elements; data is [N, *positions, *value]. T is what each element is: an inner
+    container (its own positions come next in data), or what an element holds. Only the outermost container has data;
+    an inner one only describes its level (data None), with its own settings."""
 
     data: Any
+    inner: Container[Any] | None = None
 
-    rank: ClassVar[int] = 1  # how many dims after the first index positions
+    rank: ClassVar[int] = 1  # how many position dims this level adds
 
     @property
     def position_dims(self) -> int:
-        return type(self).rank
+        return type(self).rank + (self.inner.position_dims if self.inner is not None else 0)
+
+    @property
+    def levels(self) -> tuple[Container[Any], ...]:
+        """This container and the ones nested in it, outermost first: (Temporal, Spatial, Spatial) for a video."""
+        return (self, *(self.inner.levels if self.inner is not None else ()))
 
     @property
     def positions(self) -> tuple[int, ...]:
@@ -103,58 +112,65 @@ class Container:
         return replace(self, data=self.data[i])
 
     def __repr__(self) -> str:
-        where = " × ".join(map(str, self.positions)) + (
-            ", causal" if getattr(self, "causal", False) else ""
-        )
-        return f"{type(self).__name__}({where}) of {describe(self)}"
+        sizes, out = iter(self.positions), []
+        for level in self.levels:
+            where = ", ".join(str(next(sizes)) for _ in range(type(level).rank))
+            where += ", causal" if getattr(level, "causal", False) else ""
+            out.append(f"{type(level).__name__}({where})")
+        return f"{'['.join(out)}[{describe(self)}{']' * len(out)}"
 
 
 @dataclass(frozen=True, eq=False, repr=False)
-class Value(Container):
+class Value(Container[Any]):
     rank: ClassVar[int] = 0
 
 
 @dataclass(frozen=True, eq=False, repr=False)
-class Seq(Container):
+class Seq[T = Any](Container[T]):
+    """Elements in order: positions, nothing more."""
+
+
+@dataclass(frozen=True, eq=False, repr=False)
+class Temporal[T = Any](Seq[T]):
+    """Elements in order, with a direction: earlier → later (causal: each reads only the earlier ones)."""
+
     causal: bool = False
 
 
 @dataclass(frozen=True, eq=False, repr=False)
-class Set(Container):
+class Spatial[T = Any](Seq[T]):
+    """Elements in order, with neighbours: the same relation at every offset."""
+
+
+@dataclass(frozen=True, eq=False, repr=False)
+class Set[T = Any](Container[T]):
     pass
 
 
 @dataclass(frozen=True, eq=False, repr=False)
-class Grid(Container):
-    ndim: int = 2
-    rank: ClassVar[int] = 2
-
-    @property
-    def position_dims(self) -> int:
-        return self.ndim
-
-
-@dataclass(frozen=True, eq=False, repr=False)
-class Graph(Container):
+class Graph[T = Any](Container[T]):
     edges: Tensor = field(
         default_factory=lambda: torch.zeros(2, 0, dtype=torch.long)
     )  # [2, E], row 0 → row 1
 
 
 @dataclass(frozen=True, eq=False, repr=False)
-class Tree(Container):
+class Tree[T = Any](Container[T]):
     parent: Tensor = field(
         default_factory=lambda: torch.zeros(0, dtype=torch.long)
     )  # parent[i]; −1 at a root
 
 
-@dataclass(frozen=True, eq=False, repr=False)
-class Product(Container):
-    parts: tuple[type[Container], ...] = ()
+type Grid[T = Any] = Spatial[Spatial[T]]
+"""Elements on a lattice: an image is a Grid of pixels. A name for Spatial[Spatial[T]], not a container of its own."""
 
-    @property
-    def position_dims(self) -> int:
-        return sum(p.rank for p in self.parts)
+
+def grid(data: Any, ndim: int = 2) -> Spatial[Any]:
+    """A Spatial nested ndim deep around data: grid(images) for [N, H, W, C], grid(volumes, 3) for [N, D, H, W, C]."""
+    inner: Spatial[Any] | None = None
+    for _ in range(ndim - 1):
+        inner = Spatial(None, inner)
+    return Spatial(data, inner)
 
 
 def kind(x: Any) -> str:
@@ -235,8 +251,8 @@ class PartialTree[N, E]:
 
 
 @dataclass(frozen=True, eq=False, repr=False)
-class Path(Seq):
-    """One walk down a PartialTree from each root: a Seq of steps (edge, log_prob, reward, alive, done), the nodes it
+class Path(Temporal[Any]):
+    """One walk down a PartialTree from each root: a Temporal of steps (edge, log_prob, reward, alive, done), the nodes it
     left from, and the node it reached (for an LM: the sequence)."""
 
     end: Any = None

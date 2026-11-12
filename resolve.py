@@ -20,7 +20,7 @@ Three parts, each replaceable:
     Explain(resolver, passes)(plan)    the program as written, each choice and what it beat, the passes that applied,
                                        and the program that would run: EXPLAIN, without running anything.
 
-The oracle is assumed: a learned cost model, a short proxy run, scaling laws fitted to past runs (FitPowerLaw), a
+The oracle is assumed: a learned cost model, a short proxy run, scaling laws fitted to past runs (ScalingLaw), a
 table of measurements, a person.
 
     python resolve.py      explains an example under each resolver (the oracle's numbers are made up)
@@ -37,11 +37,11 @@ from typing import Any, Protocol
 from torch import Tensor, nn
 
 from catalog import (
-    Accuracy, AggregateLayer, Attention, Batches, Beam, Cached, Choose, ColorJitter, Convert, Fit, GaussianNoise, Greedy, InOrder, Intent,
-    LMTree, Loss, Method, MostConfident, Network, Order, PerElement, RandomCrop, RandomFlip, Recurrence, Sample, SelectiveScan, Stmt,
-    Together, Train, Walk, short,
+    Accuracy, AggregateLayer, Attention, Batches, Beam, KVCache, Choose, ColorJitter, Fit, GaussianNoise, Greedy, LeftToRight, Intent,
+    LMTree, Loss, MapOp, Method, MostConfident, Network, Order, PerElement, RandomCrop, RandomFlip, RNN, Sample, SSM, Stmt,
+    AllAtOnce, Train, Walk, short,
 )
-from data import Dataset, Grid, Seq
+from data import Dataset, Grid, Temporal
 from program import PROGRAMS, Call, Program, Script, call, inputs, let, update
 
 type Plan = Program | Script
@@ -51,7 +51,7 @@ type Choice = Mapping[Intent, Method]
 
 
 @dataclass(frozen=True)
-class AugmentImage(Intent, Convert[Grid, Grid]):
+class AugmentImage(Intent, MapOp[Grid, Grid]):
     """Some label-preserving random change of an image: a flip, a crop, colour jitter, noise."""
     candidates = (RandomFlip(), RandomCrop(), ColorJitter(), GaussianNoise())
 
@@ -65,13 +65,13 @@ class Decode(Intent, Choose):
 @dataclass(frozen=True)
 class FillOrder(Intent, Order):
     """Some order to fill holes in: all together (diffusion), the surest first, left to right, each its own level."""
-    candidates = (Together(), MostConfident(), InOrder(), PerElement())
+    candidates = (AllAtOnce(), MostConfident(), LeftToRight(), PerElement())
 
 
 @dataclass(frozen=True)
-class Mixer(Intent, AggregateLayer[Seq]):
+class Mixer(Intent, AggregateLayer[Temporal]):
     """Some way for a sequence's elements to read the earlier ones: attention, a selective scan, a recurrence."""
-    candidates = (Attention(d=64, causal=True), SelectiveScan(d=64), Recurrence(d=64))
+    candidates = (Attention(d=64, causal=True), SSM(d=64), RNN(d=64))
 
 
 @dataclass(frozen=True)
@@ -259,13 +259,13 @@ class Pass(Protocol):
 
 
 @dataclass(frozen=True)
-class KVCache:
+class UseKVCache:
     """Each walk of an LM's tree walks it with a KV cache: the same walk, cheaper."""
 
     def __call__(self, plan: Plan, /) -> Plan:
         def cached(e: Call) -> Call:
             tree = e.args[0]
-            return replace(e, args=(call(Cached(), tree), *e.args[1:]))
+            return replace(e, args=(call(KVCache(), tree), *e.args[1:]))
 
         return plan.rewrite(lambda e: isinstance(e, Call) and isinstance(e.fn, Walk) and bool(e.args)
                             and isinstance(e.args[0], Call) and isinstance(e.args[0].fn, LMTree), cached)
@@ -307,7 +307,7 @@ class Explain(Stmt):
     that changed something, and the exact program that would run."""
 
     resolver: Resolver = Default()
-    passes: tuple[Pass, ...] = (KVCache(),)
+    passes: tuple[Pass, ...] = (UseKVCache(),)
 
     def __call__(self, plan: Plan, /) -> Explanation:
         r = self.resolver(plan)
