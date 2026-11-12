@@ -18,17 +18,17 @@ from aioway.t.sessions import Cost
 if typing.TYPE_CHECKING:
     from aioway.t import TorchDispThunk
 
-__all__ = ["Aten", "aten_dcls", "find_aten", "all_aten_overrides"]
+__all__ = ["Aten", "find_aten", "all_aten_overrides"]
 
 
 @typing.dataclass_transform(frozen_default=True)
-def aten_dcls(cls, /):
-    "Decorator of dataclass for `Aten`."
-    return dcls.dataclass(repr=False, frozen=True)(cls)
+class _AtenDclsMixin:
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        _ = dcls.dataclass(repr=False, frozen=True)(cls)
 
 
-@aten_dcls
-class Aten(abc.ABC):
+class Aten(_AtenDclsMixin, abc.ABC):
     """
     `Aten` are a bunch of `torch.ops.aten.*` overrides.
 
