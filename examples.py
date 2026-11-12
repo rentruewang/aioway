@@ -38,7 +38,7 @@ class Classify(Stmt):
     batch: int = 64
 
     def __call__(self, x: Container, labels: Value, /) -> Predictor:
-        model = C.Network()(x, labels)
+        model = C.Network(target=labels)
         C.Train(steps=self.steps)(model, C.Objective(split=C.Supervised()), C.Batches(size=self.batch)(x, labels))
         return model
 
@@ -55,7 +55,7 @@ class Generate(Stmt):
     def __call__(self, data: Container, /) -> Container:
         split = C.AutoSplit()
         ex = split(data)
-        model = C.Network()(ex.input.known, ex.target)
+        model = C.Network(target=ex.target)
         C.Train(steps=self.steps)(model, C.Objective(split=split), C.Batches(size=64)(data))
         return C.Fill(steps=self.fill_steps)(C.Blank()(data[: self.n]), model, C.AllAtOnce())
 
@@ -69,8 +69,8 @@ class LanguageModel(Stmt):
     length: int = 32
 
     def __call__(self, corpus: Dataset[Temporal], prompt: Temporal, /) -> Path:
-        ex = C.NextToken()(C.Peek()(corpus))
-        lm = C.Network()(ex.input.known, ex.target)
+        ex = C.NextToken()(corpus.__domain__)
+        lm = C.Network(target=ex.target)
         C.Train(steps=self.steps)(lm, C.Objective(split=C.NextToken()), corpus)
         return C.Walk(steps=self.length)(C.LMTree()(lm, prompt), C.Beam(k=self.beam))
 
@@ -85,7 +85,7 @@ class Plan(Stmt):
     def __call__(self, env: Environment, experience: Path, /) -> Path:
         batch = C.Transitions()(experience)
         ex = C.Dynamics()(batch)
-        world = C.Network()(ex.input.known, ex.target)
+        world = C.Network(target=ex.target)
         C.Train(steps=self.steps)(world, C.Objective(split=C.Dynamics()), C.Batches(size=64)(batch))
         tree = C.EnvTree()(env)
         return C.Walk(steps=self.horizon)(C.MPC()(tree, C.WorldModel()(tree, world)), C.Greedy())
@@ -220,9 +220,9 @@ class Probe(Stmt):
 
     def __call__(self, model: Predictor, layer: nn.Module, x: Container, labels: Value, /) -> dict[str, Any]:
         acts = Value(C.Observe()(model, layer)(x))
-        probe = C.LinearProbe()(acts, labels)
+        probe = C.Layer(nn.LazyLinear(1))
         C.LeastSquares()(probe, C.Batches(size=1024)(acts, labels))
-        sae = C.SAE(d=acts.data.shape[-1], features=self.features)()
+        sae = C.SAE(d=acts.data.shape[-1], features=self.features)
         C.Train(steps=self.steps)(sae, C.Objective(split=C.Reconstruction()), C.Batches(size=256)(acts))
         return {"probe": probe, "features": sae}
 
@@ -246,7 +246,7 @@ class Tabular(Stmt):
         data = C.Batches(size=1024)(x, y)
         boosted = C.Trees(HistGradientBoostingClassifier(max_iter=self.trees))()
         C.FitEstimator()(boosted, data)
-        linear = C.Linear()(x, y)
+        linear = C.Layer(nn.LazyLinear(int(y.data.max()) + 1))
         C.Train(steps=500)(linear, C.Objective(split=C.Supervised()), data)
         memory = C.NewIndex()(x)
         C.Insert()(memory, C.Batches(size=1024, shuffle=False)(x))
@@ -284,7 +284,7 @@ class CrossValidate(Stmt):
         folds = C.KFold(StratifiedKFold(n_splits=self.k, shuffle=True), label=lambda batch: batch[1].data)
         scores: list[Tensor] = []
         for train, test in folds(C.Batches(size=64)(x, labels)):
-            model = C.Network()(x, labels)
+            model = C.Network(target=labels)
             C.Train(steps=self.steps)(model, loss, train)
             scores.append(C.Evaluate()(test, loss, model))
         return {"mean": torch.stack(scores).mean(), "folds": scores}
@@ -306,8 +306,8 @@ class GPT(Stmt):
         codec = C.Tokenizer(vocab=self.vocab)()
         C.FitCodec()(codec, texts)
         corpus: Dataset[Temporal] = C.MapBatches()(codec.encode, texts)
-        ex = C.NextToken()(C.Peek()(corpus))
-        lm = C.Network(d=256, depth=6)(ex.input.known, ex.target)
+        ex = C.NextToken()(corpus.__domain__)
+        lm = C.Network(target=ex.target, d=256, depth=6)
         schedule = C.WarmupCosine(warmup=self.steps // 10, total=self.steps)
         C.Train(steps=self.steps, schedule=schedule)(lm, C.Objective(split=C.NextToken()), corpus)
         tree = C.KVCache()(C.TopP(p=0.9)(C.Temperature(t=0.8)(C.LMTree()(lm, codec.encode(prompt)))))
@@ -323,10 +323,10 @@ class BERT(Stmt):
     steps: int = 1000
 
     def __call__(self, corpus: Dataset[Temporal], texts: Temporal, labels: Value, /) -> Predictor:
-        ex = C.Mask(ratio=self.ratio)(C.Peek()(corpus))
-        encoder = C.Network(d=256, depth=6)(ex.input.known, ex.target)
+        ex = C.Mask(ratio=self.ratio)(corpus.__domain__)
+        encoder = C.Network(target=ex.target, d=256, depth=6)
         C.Train(steps=self.steps)(encoder, C.Objective(split=C.Mask(ratio=self.ratio)), corpus)
-        classifier = C.Network(d=256, depth=6)(texts, labels)
+        classifier = C.Network(target=labels, d=256, depth=6)
         C.Transfer()(classifier, encoder)
         C.Train(steps=self.steps // 10)(classifier, C.Objective(split=C.Supervised()), C.Batches(size=32)(texts, labels))
         return classifier
@@ -353,7 +353,7 @@ class Distill(Stmt):
     steps: int = 500
 
     def __call__(self, teacher: Predictor, x: Container, y: Container, /) -> Predictor:
-        student = C.Network(d=64, depth=2)(x, y)
+        student = C.Network(target=y, d=64, depth=2)
 
         def objective(model: Predictor, batch: Container) -> Tensor:
             ex = C.Distillation()(batch, teacher)
@@ -399,7 +399,7 @@ class MAE(Stmt):
     def __call__(self, images: Grid, /) -> Predictor:
         patches = C.Flatten()(C.Patchify(size=self.patch)(images))
         ex = C.Mask(ratio=self.ratio)(patches)
-        model = C.Network(d=256, depth=8)(ex.input.known, ex.target)
+        model = C.Network(target=ex.target, d=256, depth=8)
         C.Train(steps=self.steps)(model, C.Objective(split=C.Mask(ratio=self.ratio)), C.Batches(size=256)(patches))
         return model
 
@@ -417,7 +417,7 @@ class SimCLR(Stmt):
     steps: int = 1000
 
     def __call__(self, images: Grid, /) -> Model[Container, Value]:
-        encoder = C.Encoder(dim=self.dim)(images)
+        encoder = C.Encoder(dim=self.dim)
 
         def objective(model: Model[Container, Value], x: Grid) -> Tensor:
             ex = C.Contrastive()(x, augment)
@@ -438,7 +438,7 @@ class FlowMatching(Stmt):
 
     def __call__(self, images: Grid, labels: Value, /) -> Grid:
         ex = C.Noise()(images)
-        velocity = C.Network(d=256, depth=8)(C.Condition()(ex.input.known, labels), ex.target)
+        velocity = C.Network(target=ex.target, d=256, depth=8)
 
         def objective(model: Predictor, x: Grid, y: Value) -> Tensor:
             noised = C.Noise()(x)
@@ -460,6 +460,6 @@ class MaskGIT(Stmt):
     def __call__(self, images: Grid, codec: Codec[Grid, Grid], /) -> Grid:
         tokens = codec.encode(images)
         ex = C.Mask()(tokens)
-        model = C.Network(d=256, depth=8)(ex.input.known, ex.target)
+        model = C.Network(target=ex.target, d=256, depth=8)
         C.Train(steps=self.steps)(model, C.Objective(split=C.Mask()), C.Batches(size=128)(tokens))
         return codec.decode(C.Fill(steps=self.fill_steps)(C.Blank()(tokens), model, C.MostConfident()))

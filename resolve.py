@@ -37,12 +37,12 @@ from typing import Any, Protocol
 from torch import Tensor, nn
 
 from catalog import (
-    Accuracy, AggregateLayer, Attention, Batches, Beam, KVCache, Choose, ColorJitter, Convert, Fit, GaussianNoise, Greedy, LeftToRight, Intent,
-    LMTree, Loss, Method, MostConfident, Network, Order, PerElement, RandomCrop, RandomFlip, RNN, Sample, SSM, Stmt,
+    Accuracy, Batches, Beam, KVCache, Choose, ColorJitter, ConvertOp, Fit, GaussianNoise, Greedy, LeftToRight, Intent,
+    Layer, LayerOp, LMTree, Loss, Method, MostConfident, Network, Order, PerElement, RandomCrop, RandomFlip, Sample, SSM, Stmt,
     AllAtOnce, Train, Walk, short,
 )
 from data import Dataset, Grid, Temporal
-from program import PROGRAMS, Call, Program, Script, call, inputs, let, update
+from program import PROGRAMS, Call, Program, Script, call, calls, inputs, let, update
 
 type Plan = Program | Script
 type Choice = Mapping[Intent, Method]
@@ -51,7 +51,7 @@ type Choice = Mapping[Intent, Method]
 
 
 @dataclass(frozen=True)
-class AugmentImage(Intent, Convert[Grid, Grid]):
+class AugmentImage(Intent, ConvertOp[Grid, Grid]):
     """Some label-preserving random change of an image: a flip, a crop, colour jitter, noise."""
     candidates = (RandomFlip(), RandomCrop(), ColorJitter(), GaussianNoise())
 
@@ -69,9 +69,9 @@ class FillOrder(Intent, Order):
 
 
 @dataclass(frozen=True)
-class Mixer(Intent, AggregateLayer[Temporal]):
+class Mixer(Intent, LayerOp[Temporal, Temporal]):
     """Some way for a sequence's elements to read the earlier ones: attention, a selective scan, a recurrence."""
-    candidates = (Attention(d=64, causal=True), SSM(d=64), RNN(d=64))
+    candidates = (Layer(nn.MultiheadAttention(64, 4, batch_first=True)), SSM(d=64), Layer(nn.GRU(64, 64, batch_first=True)))
 
 
 @dataclass(frozen=True)
@@ -327,7 +327,7 @@ def augmented_classifier() -> Script:
     """An image classifier, its augmentation and its length of training left to a resolver.
 
         def augmented_classifier(images: Grid, labels: Value) -> Tensor:
-            net: Predictor = Network()(images, labels)
+            net: Predictor = Network(target=labels)
             TrainLength()(net, augmented_loss, Batches(size=64)(images, labels))   # loss: Loss()(net(AugmentImage()(x)), y)
             return Accuracy()(net(images), labels)
     """
@@ -336,7 +336,7 @@ def augmented_classifier() -> Script:
                              "the label as the target, each batch augmented first")
     images, labels, net = inputs("images labels network")
     return Script("Augmented classifier", (images, labels), (
-        let(net, call(Network(), images, labels)),
+        let(net, call(Network, target=labels)),
         update(net, TrainLength(), augmented_loss, call(Batches(size=64), images, labels)),
     ), call(Accuracy(), net(images), labels), "a classifier, its augmentation and its training left to a resolver")
 
@@ -358,6 +358,5 @@ if __name__ == "__main__":
         print(Explain(resolver)(plan), end="\n\n" + "─" * 100 + "\n\n")
     again = Given.of(CoordinateDescent(_oracle, price=0.02)(plan))
     print("Given (the choices written down, to run again):", {k.__name__: short(v) for k, v in again.choices.items()}, end="\n\n")
-    gpt = PROGRAMS[0].rewrite(lambda e: isinstance(e, Call) and isinstance(e.fn, Network),
-                              lambda e: replace(e, fn=Network(mixer=Mixer())))
+    gpt = PROGRAMS[0].rewrite(calls(Network), lambda e: e.with_settings(mixer=Mixer()))
     print(Explain(Default())(gpt))

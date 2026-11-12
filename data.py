@@ -35,7 +35,7 @@ Signatures
   Scan[X, S, Y]      a state carried along a sequence: (S, X) → (S, Y): an optimizer, a running average, a buffer
 
 Datasets: read by statements, never by expressions
-  Dataset[C]         batches of type C, one pass per iter(): a DataLoader, a collector, files on disk
+  Dataset[C]         batches of type C, one pass per iter(), and their __domain__: a DataLoader, a collector, files
   Buffer[C]          a dataset that statements write to as well (extend): a replay buffer
   Indexed[C]         a dataset whose examples can be fetched by position: in memory, a file of records
   Subset[C]          some examples of an Indexed, by index: what curating, splitting and sampling return; it
@@ -100,6 +100,11 @@ class Container[T = Any]:
     def type(self) -> Self:
         """The container with no examples: its structure and content, without data."""
         return self[:0]
+
+    @property
+    def __domain__(self) -> Self:
+        """What it is, without the data: its type (a Dataset's batches have the same)."""
+        return self.type
 
     def with_data(self, data: Any) -> Self:
         return replace(self, data=data)
@@ -282,8 +287,8 @@ class Expr:
 
 class Model[A, B](nn.Module, Expr):
     """A learned function from A to B: an nn.Module, called on containers (or on their tensors), and an Expr:
-    calling it reads its parameters and changes nothing. A statement makes it (Network, Linear, …) and statements
-    change it in place (Train, LoRA, …); expressions read it."""
+    calling it reads its parameters and changes nothing. Making one allocates them (a layer: catalog.LayerOp),
+    statements change it in place (Train, LoRA, …), expressions read it."""
 
     def forward(self, x: A, /) -> B: ...
 
@@ -343,7 +348,11 @@ class Index(Protocol):
 class Dataset[C](Protocol):
     """Batches of type C to read, a fresh pass per iter() (a DataLoader, a collector, files on disk), never a
     single-use iterator. Only statements read a dataset, as only a SQL statement's FROM scans a table; the
-    expressions inside see one batch (a Container) at a time."""
+    expressions inside see one batch (a Container) at a time. Its __domain__ is what its batches are (their type:
+    structure and content, no examples), known without reading one: what a layer or an index is sized from."""
+
+    @property
+    def __domain__(self) -> C: ...
 
     def __iter__(self) -> Iterator[C]: ...
 
@@ -387,6 +396,10 @@ class Subset[C]:
 
     def __len__(self) -> int:
         return len(self.indices)
+
+    @property
+    def __domain__(self) -> C:
+        return self.parent.__domain__
 
     def take(self, indices: Tensor, /) -> C:
         return self.parent.take(self.indices[indices])

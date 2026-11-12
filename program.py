@@ -6,12 +6,12 @@ A Program is an expression: a pure tree over the catalog's expressions, on batch
 
     corpus, prompt = inputs("corpus prompt")
     ex = call(NextToken(), corpus).named("ex")                     # a config, called on a node
-    net = call(Network(d=64), ex.input.known, ex.target)       # .attr reaches into a node's value
+    net = call(Network, target=ex.target, d=64)                # .attr reaches into a node's value
     out = net(prompt)                                          # calling a node calls the value it stands for
 
-A Script is statements in order, over named values, then an expression of what they end up as. Making a model is
-a statement (it allocates parameters: each call makes a different one), and what it returns, a model, is an
-expression bound to its name, that later expressions call: net = Network()(x, y), then net(prompt).
+A Script is statements in order, over named values, then an expression of what they end up as. A model is a layer
+(catalog.LayerOp): making one allocates its parameters, so it is bound to a name, which statements change and later
+expressions call: net = Network(target=y), then Train(…)(net!, …), then net(prompt).
 
     let(net, expr)                          net = expr                       a name for a value (or a dataset)
     update(net, Train(steps=200), loss, ds) Train(steps=200)(net!, loss, ds) changes net in place, returns None
@@ -60,7 +60,7 @@ from catalog import (
     Accuracy, Autoencoder, Batches, Blank, Curriculum, Dedup, DiscountedReturn, DPO, CFGDropout, NearDedup, Dynamics,
     EarlyStop, NewIndex, Encoder, EnvTree, EpsilonGreedy, Evaluate, Extend, Fill, Flatten, Freeze, FrozenCopy, Given, Greedy, GroupAdvantage, CFG, TrainTestSplit,
     WorldModel, NPaths, InfoNCE, Insert, KeepBest, Supervised, LMTree, LogProb, LoRA, Loss, Mask, MCTS, Method, Mix, MoE, MostConfident,
-    Network, Noise, Patchify, Peek, MPC, PPO, QLearning, QualityFilter, Reconstruction, Reinforce, ReplayBuffer, RetrievalAccuracy,
+    LayerOp, Network, Noise, Patchify, MPC, PPO, QLearning, QualityFilter, Reconstruction, Reinforce, ReplayBuffer, RetrievalAccuracy,
     Retrieve, ReturnsToGo, Sample, AlphaZeroTargets, SSM, NextToken, Split, Temperature, AllAtOnce, Train, TrainIndex, Transfer,
     Transitions, Walk, changes, group_class, Intent, is_statement, settings_of, short,
 )
@@ -698,39 +698,39 @@ BUILDERS.add(grpo_loss)
 
 # ═══ Well-known work ══════════════════════════════════════════════════════════════════════════════
 # Training is a statement, so anything that trains is a script; the losses above, and what only reads a model, are
-# programs. A corpus is a dataset (Peek gives an expression its first batch); what fits in memory is made one by
+# programs. A corpus is a dataset (its __domain__ is what its batches are, read without one); what fits in memory is made one by
 # Batches.
 
 
 def language_model(name: str = "GPT", about: str = "a causal Transformer: shift, the loss, train; then walk the LM's tree",
-                   network: Network = Network(), steps: int = 200) -> Script:
+                   mixer: LayerOp[Any, Any] | None = None, mlp: LayerOp[Any, Any] | None = None, steps: int = 200) -> Script:
     """The same thing in plain Python (name and about are only labels):
 
-        def language_model(corpus: Dataset[Temporal], prompt: Temporal, *, network: Network = Network(),
-                           steps: int = 200) -> Temporal:
-            first: Temporal = Peek()(corpus)
+        def language_model(corpus: Dataset[Temporal], prompt: Temporal, *, mixer: LayerOp | None = None,
+                           mlp: LayerOp | None = None, steps: int = 200) -> Temporal:
+            first: Temporal = corpus.__domain__
             ex: Example = NextToken()(first)
-            net: Predictor = network(ex.input.known, ex.target)
+            net: Predictor = Network(target=ex.target, mixer=mixer, mlp=mlp)
             Train(steps=steps)(net, next_token_loss, corpus)
             return Walk(steps=8)(LMTree()(net, prompt), Greedy()).end
     """
     corpus, prompt, net, first = inputs("corpus prompt network first")
     ex = call(NextToken(), first).named("ex")
     return Script(name, (corpus, prompt), (
-        let(first, call(Peek(), corpus)),
-        let(net, call(network, ex.input.known, ex.target)),
+        let(first, Attr(corpus, "__domain__")),
+        let(net, call(Network, target=ex.target, mixer=mixer, mlp=mlp)),
         update(net, Train(steps=steps), next_token_loss, corpus),
     ), call(Walk(steps=8), call(LMTree(), net, prompt), Greedy()).end, about)
 
 
 def mamba() -> Script:
     """language_model with Network(mixer=SSM(d=64))."""
-    return language_model("Mamba", "GPT with a selective scan in place of attention", Network(mixer=SSM(d=64)))
+    return language_model("Mamba", "GPT with a selective scan in place of attention", mixer=SSM(d=64))
 
 
 def mixtral() -> Script:
     """language_model with Network(mlp=MoE(d=64))."""
-    return language_model("Mixtral / DeepSeek-V3", "GPT whose MLP is a routed mixture of experts", Network(mlp=MoE(d=64)))
+    return language_model("Mixtral / DeepSeek-V3", "GPT whose MLP is a routed mixture of experts", mlp=MoE(d=64))
 
 
 def vit(steps: int = 100) -> Script:
@@ -738,14 +738,14 @@ def vit(steps: int = 100) -> Script:
 
         def vit(images: Grid, labels: Value, *, steps: int = 100) -> Tensor:
             tokens: Seq = Flatten()(Patchify(size=4)(images))
-            net: Predictor = Network()(tokens, labels)
+            net: Predictor = Network(target=labels)
             Train(steps=steps)(net, supervised_loss, Batches(size=64)(tokens, labels))
             return Accuracy()(net(tokens), labels)
     """
     images, labels, tokens, net = inputs("images labels tokens network")
     return Script("ViT", (images, labels), (
         let(tokens, call(Flatten(), call(Patchify(size=4), images))),
-        let(net, call(Network(), tokens, labels)),
+        let(net, call(Network, target=labels)),
         update(net, Train(steps=steps), supervised_loss, call(Batches(size=64), tokens, labels)),
     ), call(Accuracy(), net(tokens), labels), "an image as a sequence of patches, read by a Transformer")
 
@@ -755,8 +755,8 @@ def clip(dim: int = 16, steps: int = 150) -> Script:
 
         def clip(images: Grid, texts: Temporal, *, dim: int = 16, steps: int = 150) -> Tensor:
             patches: Grid = Patchify(size=4)(images)
-            image: Model[Container, Value] = Encoder(dim=dim)(patches)
-            text: Model[Container, Value] = Encoder(dim=dim)(texts)
+            image: Model[Container, Value] = Encoder(dim=dim)
+            text: Model[Container, Value] = Encoder(dim=dim)
             pair: nn.ModuleDict = towers(image, text)
             Train(steps=steps)(pair, contrastive_loss, Batches(size=256)(patches, texts))
             return RetrievalAccuracy()(pair.image(patches), pair.text(texts))
@@ -764,8 +764,8 @@ def clip(dim: int = 16, steps: int = 150) -> Script:
     images, texts, patches, image, text, pair = inputs("images texts patches image text towers")
     return Script("CLIP", (images, texts), (
         let(patches, call(Patchify(size=4), images)),
-        let(image, call(Encoder(dim=dim), patches)),
-        let(text, call(Encoder(dim=dim), texts)),
+        let(image, call(Encoder, dim=dim)),
+        let(text, call(Encoder, dim=dim)),
         let(pair, call(towers, image, text)),
         update(pair, Train(steps=steps), contrastive_loss, call(Batches(size=256), patches, texts)),
     ), call(RetrievalAccuracy(), pair.image(patches), pair.text(texts)),
@@ -777,11 +777,11 @@ def stable_diffusion(latent: int = 4, steps: int = 150, w: float = 3.0) -> Scrip
 
         def stable_diffusion(images: Grid, labels: Value, *, latent: int = 4, steps: int = 150,
                              w: float = 3.0) -> Grid:
-            ae: Model[Container, Container] = Autoencoder(latent=latent)(images)
+            ae: Model[Container, Container] = Autoencoder(latent=latent)
             Train(steps=steps)(ae, autoencoding_loss, Batches(size=64)(images))
             z: Container = ae.encode(images)
             ex: Example = Noise()(z)
-            net: Predictor = Network()(ex.input.known, ex.target)
+            net: Predictor = Network(target=ex.target)
             velocity: Predictor = CFGDropout(p=0.1)(net)
             Train(steps=steps)(velocity, flow_matching_loss, Batches(size=64)(z, labels))
             sampler: Predictor = CFG(w=w)(Given()(velocity, labels), Given()(velocity, None))
@@ -791,10 +791,10 @@ def stable_diffusion(latent: int = 4, steps: int = 150, w: float = 3.0) -> Scrip
     ex = call(Noise(), z).named("ex")
     sampler = call(CFG(w=w), call(Given(), velocity, labels), call(Given(), velocity, None))
     return Script("Stable Diffusion", (images, labels), (
-        let(ae, call(Autoencoder(latent=latent), images)),
+        let(ae, call(Autoencoder, latent=latent)),
         update(ae, Train(steps=steps), autoencoding_loss, call(Batches(size=64), images)),
         let(z, ae.encode(images)),
-        let(net, call(Network(), ex.input.known, ex.target)),
+        let(net, call(Network, target=ex.target)),
         let(velocity, call(CFGDropout(p=0.1), net)),
         update(velocity, Train(steps=steps), flow_matching_loss, call(Batches(size=64), z, labels)),
     ), ae.decode(call(Fill(steps=10), call(Blank(), z), sampler, AllAtOnce())),
@@ -873,17 +873,17 @@ def diffusion_lm(steps: int = 600) -> Script:
     """The same thing in plain Python:
 
         def diffusion_lm(corpus: Dataset[Temporal], *, steps: int = 600) -> Temporal:
-            first: Temporal = Peek()(corpus)
+            first: Temporal = corpus.__domain__
             ex: Example = Mask()(first)
-            net: Predictor = Network()(ex.input.known, ex.target)
+            net: Predictor = Network(target=ex.target)
             Train(steps=steps)(net, masked_loss, corpus)
             return Fill(steps=8)(Blank()(first), net, MostConfident())
     """
     corpus, net, first = inputs("corpus network first")
     ex = call(Mask(), first).named("ex")
     return Script("Diffusion LLM", (corpus,), (
-        let(first, call(Peek(), corpus)),
-        let(net, call(Network(), ex.input.known, ex.target)),
+        let(first, Attr(corpus, "__domain__")),
+        let(net, call(Network, target=ex.target)),
         update(net, Train(steps=steps), masked_loss, corpus),
     ), call(Fill(steps=8), call(Blank(), first), net, MostConfident()),
         "masked prediction at every ratio; generation unmasks the surest holes first")
@@ -896,11 +896,11 @@ def pretrain_finetune(steps: int = 150) -> Script:
     """The same thing in plain Python:
 
         def pretrain_finetune(corpus: Dataset[Temporal], texts: Temporal, labels: Value, *, steps: int = 150) -> Predictor:
-            first: Temporal = Peek()(corpus)
+            first: Temporal = corpus.__domain__
             ex: Example = NextToken()(first)
-            lm: Predictor = Network()(ex.input.known, ex.target)
+            lm: Predictor = Network(target=ex.target)
             Train(steps=steps)(lm, next_token_loss, corpus)
-            clf: Predictor = Network()(texts, labels)
+            clf: Predictor = Network(target=labels)
             Transfer()(clf, lm)
             Freeze()(clf, head)
             Train(steps=steps)(clf, supervised_loss, Batches(size=32)(texts, labels))
@@ -909,10 +909,10 @@ def pretrain_finetune(steps: int = 150) -> Script:
     corpus, texts, labels, first, lm, clf = inputs("corpus texts labels first lm classifier")
     ex = call(NextToken(), first).named("ex")
     return Script("Pretrain → finetune", (corpus, texts, labels), (
-        let(first, call(Peek(), corpus)),
-        let(lm, call(Network(), ex.input.known, ex.target)),
+        let(first, Attr(corpus, "__domain__")),
+        let(lm, call(Network, target=ex.target)),
         update(lm, Train(steps=steps), next_token_loss, corpus),
-        let(clf, call(Network(), texts, labels)),
+        let(clf, call(Network, target=labels)),
         update(clf, Transfer(), lm),
         update(clf, Freeze(), head),
         update(clf, Train(steps=steps), supervised_loss, call(Batches(size=32), texts, labels)),
@@ -970,7 +970,7 @@ def world_model_planning(horizon: int = 20, steps: int = 300) -> Script:
             tree: PartialTree[Any, Tensor] = EnvTree()(env)
             batch: Value = Transitions()(Walk(steps=horizon)(tree, Sample()))
             ex: Example = Dynamics()(batch)
-            world: Predictor = Network()(ex.input.known, ex.target)
+            world: Predictor = Network(target=ex.target)
             Train(steps=steps)(world, dynamics_loss, Batches(size=64)(batch))
             plan = MPC(horizon=8, samples=32)(tree, WorldModel()(tree, world))
             return DiscountedReturn()(Walk(steps=horizon)(plan, Greedy()))
@@ -981,7 +981,7 @@ def world_model_planning(horizon: int = 20, steps: int = 300) -> Script:
     plan = call(MPC(horizon=8, samples=32), tree, call(WorldModel(), tree, world)).named("plan")
     return Script("Planning in a learned world model", (env,), (
         let(batch, call(Transitions(), call(Walk(steps=horizon), tree, Sample()))),
-        let(world, call(Network(), ex.input.known, ex.target)),
+        let(world, call(Network, target=ex.target)),
         update(world, Train(steps=steps), dynamics_loss, call(Batches(size=64), batch)),
     ), call(DiscountedReturn(), call(Walk(steps=horizon), plan, Greedy())),
         "explore at random, learn what follows each action, act by planning inside that model (Dreamer, MuZero)")
@@ -1027,7 +1027,7 @@ def early_stopping(rounds: int = 50, steps: int = 100, patience: int = 3) -> Scr
         def early_stopping(images: Grid, labels: Value, *, rounds: int = 50, steps: int = 100,
                            patience: int = 3) -> Tensor:
             splits: tuple[tuple[Subset[Any], ...], ...] = TrainTestSplit(fractions=(0.8, 0.1, 0.1))(Batches(size=64)(images, labels))
-            net: Predictor = Network()(images, labels)
+            net: Predictor = Network(target=labels)
             curve: tuple[Tensor, ...] = ()
             for _ in range(rounds):
                 if EarlyStop(patience=patience)(curve):
@@ -1042,7 +1042,7 @@ def early_stopping(rounds: int = 50, steps: int = 100, patience: int = 3) -> Scr
     train, validation, held_out = splits[0][0], splits[0][1], splits[0][2]
     return Script("Early stopping", (images, labels), (
         let(splits, call(TrainTestSplit(fractions=(0.8, 0.1, 0.1)), call(Batches(size=64), images, labels))),
-        let(net, call(Network(), images, labels)),
+        let(net, call(Network, target=labels)),
         let(curve, ()),
         repeat(rounds,
                update(net, Train(steps=steps), supervised_loss, train),
