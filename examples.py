@@ -4,7 +4,7 @@ examples.py: use cases written against the interface (catalog.py), each a config
 are implemented.
 
 The catalog's rule decides what kind each one is. A use case that trains or reads a whole dataset is a statement
-(Stmt); one that changes what it is given is an update, a Fit like Train, and returns None; one that only reads is
+(Stmt); one that changes what it is given is an update, a TrainCmd like Train, and returns None; one that only reads is
 an expression (Expr). The examples are not registered in the catalog: they have no title.
 """
 
@@ -23,7 +23,7 @@ from sklearn.preprocessing import StandardScaler
 from torch import Tensor, nn
 
 import catalog as C
-from catalog import Expr, Fit, Stmt
+from catalog import Expr, Stmt, TrainCmd
 from data import Codec, Container, Dataset, Environment, Example, Grid, Holes, Indexed, Model, Path, Predictor, Set, Subset, Temporal, Value
 
 # ═══ Statements that build a model, train it, and return it ═══════════════════════════════════════
@@ -125,7 +125,7 @@ class Curation(Stmt):
 
 
 @dataclass(frozen=True)
-class ReinforcementLearning(Fit[Predictor, [Environment]]):
+class ReinforcementLearning(TrainCmd[Predictor, [Environment]]):
     """Rounds of walking the environment's tree with the policy and learning from the paths (REINFORCE with a
     batch-mean baseline). The policy changes in place."""
 
@@ -142,7 +142,7 @@ class ReinforcementLearning(Fit[Predictor, [Environment]]):
 
 
 @dataclass(frozen=True)
-class Align(Fit[Predictor, [Temporal, Temporal]]):
+class Align(TrainCmd[Predictor, [Temporal, Temporal]]):
     """Preferences, without a reward model: DPO against a frozen copy of the policy as it was. The policy changes in
     place."""
 
@@ -156,7 +156,7 @@ class Align(Fit[Predictor, [Temporal, Temporal]]):
 
 
 @dataclass(frozen=True)
-class Finetune(Fit[nn.Module, [Dataset[Temporal]]]):
+class Finetune(TrainCmd[nn.Module, [Dataset[Temporal]]]):
     """A pretrained model, frozen, with a low-rank update trained on new data. The model changes in place: LoRA adds
     the update, Train fits it."""
 
@@ -305,7 +305,7 @@ class GPT(Stmt):
     def __call__(self, texts: Dataset[list[str]], prompt: list[str], /) -> list[str]:
         codec = C.Tokenizer(vocab=self.vocab)()
         C.FitCodec()(codec, texts)
-        corpus: Dataset[Temporal] = C.MapBatches()(codec.encode, texts)
+        corpus: Dataset[Temporal] = C.MapBatches()(texts, codec.encode)
         ex = C.NextToken()(corpus.__domain__)
         lm = C.Network(target=ex.target, d=256, depth=6)
         schedule = C.WarmupCosine(warmup=self.steps // 10, total=self.steps)
@@ -333,7 +333,7 @@ class BERT(Stmt):
 
 
 @dataclass(frozen=True)
-class InstructionTuning(Fit[Predictor, [Dataset[Temporal]]]):
+class InstructionTuning(TrainCmd[Predictor, [Dataset[Temporal]]]):
     """Instruction tuning with LoRA: a low-rank update on a frozen base, the loss on the response only (the prompt is
     read, never predicted). The model changes in place."""
 

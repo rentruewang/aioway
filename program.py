@@ -18,8 +18,8 @@ expressions call: net = Network(target=y), then Train(…)(net!, …), then net(
     repeat(n, *statements)                  for _ in range(n): …             the statements, n times
     repeat(n, *statements, until=stop)      … if stop: break                 …at most n times, until stop is true
 
-The catalog's statements (Fit, Assign, Alter, Store: they change their argument marked !; Source, Curate, Partition,
-ReduceCmd: they read a whole dataset) are lines of their own, never inside an expression, as a SQL write or CREATE INDEX sits
+The catalog's commands (TrainCmd, DeployCmd, IndexCmd, …: they change their argument marked !; CodecCmd, OpCmd,
+PartitionCmd: they make state or read a whole dataset) are lines of their own, never inside an expression, as a SQL write or CREATE INDEX sits
 at the top of a statement. A statement's arguments are expressions (on batches) or dataset statements, nested as
 a FROM nests: Train(net!, loss, Batches(x, y; size=64)). An update returns None and the name still names the same
 model, now changed. A statement evaluates its arguments first, then runs: data read from the model before is a
@@ -350,7 +350,7 @@ def update(name: Input, op: Any, *args: Any) -> Update:
     that makes one."""
     i = changes(op.op if isinstance(op, Call) else op)
     if i is None:
-        raise TypeError(f"{_name(op)} changes nothing; an update needs a statement that does (Fit, Assign, Alter, Store)")
+        raise TypeError(f"{_name(op)} changes nothing; an update needs a command that does (TrainCmd, DeployCmd, IndexCmd, …)")
     return Update(name, call(op, *args[:i], name, *args[i:]))
 
 

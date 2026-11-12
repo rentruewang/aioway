@@ -37,7 +37,7 @@ from typing import Any, Protocol
 from torch import Tensor, nn
 
 from catalog import (
-    Accuracy, Batches, Beam, KVCache, Choose, ColorJitter, ConvertOp, Fit, GaussianNoise, Greedy, LeftToRight, Intent,
+    Accuracy, Batches, Beam, KVCache, ChooseOp, ColorJitter, ConvertOp, TrainCmd, GaussianNoise, Greedy, LeftToRight, Intent,
     Layer, LayerOp, LMTree, Loss, Method, MostConfident, Network, Order, PerElement, RandomCrop, RandomFlip, Sample, SSM, Stmt,
     AllAtOnce, Train, Walk, short,
 )
@@ -57,7 +57,7 @@ class AugmentImage(Intent, ConvertOp[Grid, Grid]):
 
 
 @dataclass(frozen=True)
-class Decode(Intent, Choose):
+class Decode(Intent, ChooseOp):
     """Some way to walk an LM's tree: the likeliest token, a sample, a beam."""
     candidates = (Greedy(), Sample(), Beam(k=4))
 
@@ -75,7 +75,7 @@ class Mixer(Intent, LayerOp[Temporal, Temporal]):
 
 
 @dataclass(frozen=True)
-class TrainLength(Intent, Fit[nn.Module, [Callable[..., Tensor], Dataset[Any]]]):
+class TrainLength(Intent, TrainCmd[nn.Module, [Callable[..., Tensor], Dataset[Any]]]):
     """Some amount of training: how long to update the network."""
     candidates = (Train(steps=100), Train(steps=200), Train(steps=400))
 
