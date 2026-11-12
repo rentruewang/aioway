@@ -684,7 +684,7 @@ def grpo_loss(verify: Callable[..., Any], n: int = 8, length: int = 1) -> Progra
 
         def grpo_loss(policy: Predictor, prompts: Temporal, *, verify: Callable[[Any], Value], n: int = 8,
                       length: int = 1) -> Tensor:
-            path: Path = Walk(steps=length)(LMTree()(policy, prompts), Independent(n=n, choose=Sample()))
+            path: Path = Walk(steps=length)(LMTree()(policy, prompts), NPaths(n=n, choose=Sample()))
             return Reinforce()(path, GroupAdvantage(n=n)(verify(path.end)))
     """
     policy, prompts = inputs("policy prompts")
@@ -784,7 +784,7 @@ def stable_diffusion(latent: int = 4, steps: int = 150, w: float = 3.0) -> Scrip
             net: Predictor = Network()(ex.input.known, ex.target)
             velocity: Predictor = CFGDropout(p=0.1)(net)
             Train(steps=steps)(velocity, flow_matching_loss, Batches(size=64)(z, labels))
-            sampler: Predictor = Guided(w=w)(Given()(velocity, labels), Given()(velocity, None))
+            sampler: Predictor = CFG(w=w)(Given()(velocity, labels), Given()(velocity, None))
             return ae.decode(Fill(steps=10)(Blank()(z), sampler, AllAtOnce()))
     """
     images, labels, ae, z, net, velocity = inputs("images labels ae z network velocity")
@@ -972,7 +972,7 @@ def world_model_planning(horizon: int = 20, steps: int = 300) -> Script:
             ex: Example = Dynamics()(batch)
             world: Predictor = Network()(ex.input.known, ex.target)
             Train(steps=steps)(world, dynamics_loss, Batches(size=64)(batch))
-            plan = Planned(horizon=8, samples=32)(tree, Imagined()(tree, world))
+            plan = MPC(horizon=8, samples=32)(tree, WorldModel()(tree, world))
             return DiscountedReturn()(Walk(steps=horizon)(plan, Greedy()))
     """
     env, batch, world = inputs("env batch world")
@@ -993,7 +993,7 @@ def synthetic_data(n: int = 8, length: int = 4, threshold: float = 0.5) -> Progr
         def synthetic_data(generator: Predictor, prompts: Temporal, verify: Callable[[Any], Value], *, n: int = 8,
                            length: int = 4, threshold: float = 0.5) -> Temporal:
             tree = Temperature(t=1.5)(LMTree()(generator, prompts))
-            path: Path = Walk(steps=length)(tree, Independent(n=n, choose=Sample()))
+            path: Path = Walk(steps=length)(tree, NPaths(n=n, choose=Sample()))
             return QualityFilter(threshold=threshold)(Temporal(path.end), verify(path.end))
     """
     generator, prompts, verify = inputs("generator prompts verify")

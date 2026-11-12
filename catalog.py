@@ -4,7 +4,7 @@ are its settings, its __call__ takes the data, its docstring says what it does, 
 what kind of thing it is, with the group's type parameters filled in:
 
     @dataclass(frozen=True)
-    class Best(FoldOp[Path, Path, [Value]]):  # an expression: best-of-N is a fold, Paths in (and Values), a Path out
+    class BestOfN(FoldOp[Path, Path, [Value]]):  # an expression: best-of-N is a fold, Paths in (and Values), a Path out
         n: int                              # a setting
         def __call__(self, paths: Path, scores: Value, /) -> Path: ...
 
@@ -13,7 +13,7 @@ what kind of thing it is, with the group's type parameters filled in:
         steps: int
         def __call__(self, model: nn.Module, objective: Callable[..., Tensor], data: Dataset[Any] | None, /) -> None: ...
 
-    Best(n=16)(paths, scores)               # configure, then call: a value
+    BestOfN(n=16)(paths, scores)               # configure, then call: a value
     Train(steps=200)(net, loss, corpus)     # a line of its own: net changes in place, nothing is returned
 
 Expressions take batches (a Container, in memory), build values and change nothing: queries. Statements take
@@ -61,7 +61,7 @@ write or CREATE INDEX sits at the top of a statement. Update statements change t
 None; dataset statements change nothing but read every batch. Weights is the subtype of Module whose architecture an
 op leaves alone.
 
-So Best is a FoldOp[Path, Path, [Value]] (a Path in and a Path out, given the Values that score it), Network a
+So BestOfN is a FoldOp[Path, Path, [Value]] (a Path in and a Path out, given the Values that score it), Network a
 MapLayer[Container, Prediction, [Container, Container]] (a statement: it makes a new model from examples of its
 inputs and targets), Train a Fit[nn.Module, [Callable[..., Tensor], Dataset[Any] | None]] (it changes a module, reading an
 objective and a dataset). Sklearn is one method, and the group is that method.
@@ -338,7 +338,7 @@ def _render(cls: type[Method]) -> tuple[list[str], str, str]:
 
 
 def _parameters(cls: type, base: type) -> tuple[Any, ...]:
-    """The type parameters cls gives base: (Path, Path) for Best(FoldOp[Path, Path]); () when it gives none."""
+    """The type parameters cls gives base: (Path, Path) for BestOfN(FoldOp[Path, Path]); () when it gives none."""
     for k in cls.__mro__:
         for b in k.__dict__.get("__orig_bases__", ()):
             if get_origin(b) is base:
@@ -2761,7 +2761,7 @@ def _type_parameter(t: Any) -> str:
 
 
 def _header(cls: type) -> str:
-    """A class header as written in this file: Best(FoldOp[Path, Path, [Value]]), FoldOp[C, A, **R = []]."""
+    """A class header as written in this file: BestOfN(FoldOp[Path, Path, [Value]]), FoldOp[C, A, **R = []]."""
     if "group" in cls.__dict__:
         params = getattr(cls, "__type_params__", ())
         return cls.__name__ + (f"[{', '.join(map(_type_parameter, params))}]" if params else "")
