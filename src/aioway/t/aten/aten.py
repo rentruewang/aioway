@@ -141,7 +141,6 @@ def find_aten(dispatch: TorchDispThunk, /) -> Aten | None:
         return None
 
 
-@typing.no_type_check
 def all_aten_overrides():
     """
     Get the registry for the `Aten` overrides.

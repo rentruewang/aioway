@@ -18,7 +18,6 @@ from ._utils import AttrAdaptor, AttrRemains
 
 __all__ = [
     "CaptumAttrTask",
-    "build_attr_dcls",
     "BuildSaliency",
     "BuildIntegratedGradients",
     "BuildDeepLift",
@@ -28,8 +27,10 @@ __all__ = [
 
 
 @typing.dataclass_transform(frozen_default=True)
-def build_attr_dcls(cls):
-    return dcls.dataclass(frozen=True)(cls)
+class _AttrStratFrozenDclsMixin:
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        return dcls.dataclass(frozen=True)(cls)
 
 
 # The base class ====
@@ -43,8 +44,7 @@ class CaptumAttrTask(Task):
     Output is of shape `input.shape[1:]` (features).
     """
 
-    @build_attr_dcls
-    class Strategy(abc.ABC):
+    class Strategy(_AttrStratFrozenDclsMixin, abc.ABC):
         """
         Builds a `captum.attr.Attribution` for a module.
 
@@ -104,33 +104,28 @@ class CaptumAttrTask(Task):
 # The strategy implementations ====
 
 
-@build_attr_dcls
 class BuildSaliency(CaptumAttrTask.Strategy):
     _CAPTUM_CLASS = attr.Saliency
 
     abs: bool = False
 
 
-@build_attr_dcls
 class BuildIntegratedGradients(CaptumAttrTask.Strategy):
     _CAPTUM_CLASS = attr.IntegratedGradients
 
     n_steps: int = 32
 
 
-@build_attr_dcls
 class BuildDeepLift(CaptumAttrTask.Strategy):
     _CAPTUM_CLASS = attr.DeepLift
 
 
-@build_attr_dcls
 class BuildFeatureAblation(CaptumAttrTask.Strategy):
     _CAPTUM_CLASS = attr.FeatureAblation
 
     perturbations_per_eval: int = 8
 
 
-@build_attr_dcls
 class BuildKernelShap(CaptumAttrTask.Strategy):
     _CAPTUM_CLASS = attr.KernelShap
 

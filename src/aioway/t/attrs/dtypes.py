@@ -139,7 +139,6 @@ class DType(TorchAttrBase[torch.dtype]):
             raise ValueError from err
 
     @classmethod
-    @typing.no_type_check
     def _parse_torch(cls, dtype: torch.dtype, /) -> typing.Self:
         "Create a `Dtype` from a `torch.dtype`."
 
