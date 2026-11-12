@@ -37,8 +37,8 @@ from typing import Any, Protocol
 from torch import Tensor, nn
 
 from catalog import (
-    Accuracy, AggregateLayer, Attention, Batches, Beam, KVCache, Choose, ColorJitter, Fit, GaussianNoise, Greedy, LeftToRight, Intent,
-    LMTree, Loss, MapOp, Method, MostConfident, Network, Order, PerElement, RandomCrop, RandomFlip, RNN, Sample, SSM, Stmt,
+    Accuracy, AggregateLayer, Attention, Batches, Beam, KVCache, Choose, ColorJitter, Convert, Fit, GaussianNoise, Greedy, LeftToRight, Intent,
+    LMTree, Loss, Method, MostConfident, Network, Order, PerElement, RandomCrop, RandomFlip, RNN, Sample, SSM, Stmt,
     AllAtOnce, Train, Walk, short,
 )
 from data import Dataset, Grid, Temporal
@@ -51,7 +51,7 @@ type Choice = Mapping[Intent, Method]
 
 
 @dataclass(frozen=True)
-class AugmentImage(Intent, MapOp[Grid, Grid]):
+class AugmentImage(Intent, Convert[Grid, Grid]):
     """Some label-preserving random change of an image: a flip, a crop, colour jitter, noise."""
     candidates = (RandomFlip(), RandomCrop(), ColorJitter(), GaussianNoise())
 

@@ -61,7 +61,7 @@ from catalog import (
     EarlyStop, NewIndex, Encoder, EnvTree, EpsilonGreedy, Evaluate, Extend, Fill, Flatten, Freeze, FrozenCopy, Given, Greedy, GroupAdvantage, CFG, TrainTestSplit,
     WorldModel, NPaths, InfoNCE, Insert, KeepBest, Supervised, LMTree, LogProb, LoRA, Loss, Mask, MCTS, Method, Mix, MoE, MostConfident,
     Network, Noise, Patchify, Peek, MPC, PPO, QLearning, QualityFilter, Reconstruction, Reinforce, ReplayBuffer, RetrievalAccuracy,
-    Retrieve, ReturnsToGo, Sample, AlphaZeroTargets, SSM, NextToken, SplitOp, Temperature, AllAtOnce, Train, TrainIndex, Transfer,
+    Retrieve, ReturnsToGo, Sample, AlphaZeroTargets, SSM, NextToken, Split, Temperature, AllAtOnce, Train, TrainIndex, Transfer,
     Transitions, Walk, changes, group_class, Intent, is_statement, settings_of, short,
 )
 from data import Container, Predictor, Seq, Temporal
@@ -623,10 +623,10 @@ def append(xs: tuple[Any, ...], x: Any) -> tuple[Any, ...]:
 # ═══ Losses, as programs: a split, a model, a score ═══════════════════════════════════════════════
 
 
-def split_loss(name: str, split: SplitOp[Any], about: str) -> Program:
+def split_loss(name: str, split: Split[Any], about: str) -> Program:
     """A loss of (model, batch): split the batch, predict from the input, score with the loss the target picks.
 
-        def split_loss(net: Predictor, data: Container, *, split: SplitOp[Any]) -> Tensor:
+        def split_loss(net: Predictor, data: Container, *, split: Split[Any]) -> Tensor:
             ex: Example = split(data)
             return Loss()(net(ex.input), ex.target, ex.weight)
     """

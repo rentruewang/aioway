@@ -4,7 +4,7 @@ are its settings, its __call__ takes the data, its docstring says what it does, 
 what kind of thing it is, with the group's type parameters filled in:
 
     @dataclass(frozen=True)
-    class BestOfN(FoldOp[Path, Path, [Value]]):  # an expression: best-of-N is a fold, Paths in (and Values), a Path out
+    class BestOfN(Fold[Path, Path, [Value]]):  # an expression: best-of-N is a fold, a Path in (and Values), a Path out
         n: int                              # a setting
         def __call__(self, paths: Path, scores: Value, /) -> Path: ...
 
@@ -23,16 +23,25 @@ bodies are left to the implementation (torch, torchrl, your own).
 Each group is a base class, and its __call__ says what its methods do, in its type parameters. R is what else a
 method takes (nothing by default); pyright checks every method's own __call__ against its group's.
 
-EXPRESSIONS · on a batch: nothing changes, nothing new is made. Grouped by what they do to the container's type:
-  MapOp[A, B, **R]           (x: A, *R) -> B                C[T] → C[U]: the container stays (each method says which C)
-  FoldOp[C, A, **R]          (x: C, *R) -> A                C[T] → U: the container is gone
-  RestructureOp[A, B, **R]   (x: A, *R) -> B                C[T] → C′[T]: the container changes, the elements stay
-  UnfoldOp[C, **R]           (*R) -> C                      T → C[T]: a container grown from a seed
-  SplitOp[C, O, **R]         (x: C, *R) -> O (Example)      C → Example: hide a part, it becomes the target
-  FillOp[C, **R]             (holes: Holes[C], *R) -> C     Holes[C] → C: a split, undone
-  LiftOp[F, G, **R]          (f: F, *R) -> G                a model or function in, a model or function out
-First match wins: Lift, Split, Fill, Unfold, Fold, Restructure, else Map. Scan (a state along a Seq), Order (a fill's
-step), Choose (a walk's step) and Evolve (S → S) are kinds of MapOp, written once for the methods that share them.
+EXPRESSIONS · on a batch: nothing changes, nothing new is made
+  structure   Convert[A, B, **R]         (x: A, *R) -> B                change the container, keep the elements
+              Map[A, B, **R]             (x: A, *R) -> B                change each element on its own
+              Aggregate[C, **R]          (x: C, *R) -> C                each element reads the ones related to it
+              Select[C, **R]             (x: C, *R) -> C                keep, drop, reorder or reweight elements
+              Fold[C, A, **R]            (x: C, *R) -> A                reduce a container to one value
+              Scan[X, S, Y]              init, step; (xs: Seq) -> Seq   carry a state S along a sequence
+  learning    Split[C, **R]              (x: C, *R) -> Example          hide part of a container: the target
+              Score[P, O, **R]           (pred: P, *R) -> O             how bad a prediction is
+  partial     Start[P, **R]              (*R) -> P                      a partial container to grow
+              Fill                       (holes, model, order) -> C     fill the holes, an Order deciding which
+              Order                      (holes, pred) -> holes         a fill's step
+              Walk                       (tree, choose) -> Path         grow a tree, a Choose deciding which leaves
+              Choose                     (tree) -> tree                 a walk's step
+              Unroll                     (seq) -> list                  step a state until done
+              Evolve[S]                  (state: S) -> S                an unroll's step, without a gradient
+              Reshape[P, **R]            (p: P, *R) -> P                how a partial container goes on
+  lookup      Search[O, **R]             (index: Index, *R) -> O        what is built on index.search
+  models      Wrap[M, **R]               (model: M, *R) -> Module       a view of a model: no weights of its own
 
 STATEMENTS · making new state, changing it in place (!), or reading a whole dataset
   create      MapLayer[A, B, **R]        (*R) -> Model[A, B]            a new model: parameters of its own
@@ -54,17 +63,17 @@ STATEMENTS · making new state, changing it in place (!), or reading a whole dat
 A model is an Expr once made (data.Model is an nn.Module and an Expr): calling it reads its parameters and changes
 nothing. Making one is a statement whose result is that expression, bound to its name, like CREATE FUNCTION; it is
 a statement because each call makes a different one (new parameters), not because it returns a function: Given,
-Guided and the other LiftOps return functions too, but make nothing new, so they stay expressions.
+Guided and the views of Wrap return functions too, but make nothing new, so they stay expressions.
 
 A statement is never a value inside an expression: in a script (program.py) it is a line of its own, as a SQL
 write or CREATE INDEX sits at the top of a statement. Update statements change the argument marked ! and return
 None; dataset statements change nothing but read every batch. Weights is the subtype of Module whose architecture an
 op leaves alone.
 
-So BestOfN is a FoldOp[Path, Path, [Value]] (a Path in and a Path out, given the Values that score it), Network a
+So BestOfN is a Fold[Path, Path, [Value]] (a Path in and a Path out, given the Values that score it), Network a
 MapLayer[Container, Prediction, [Container, Container]] (a statement: it makes a new model from examples of its
 inputs and targets), Train a Fit[nn.Module, [Callable[..., Tensor], Dataset[Any] | None]] (it changes a module, reading an
-objective and a dataset). Sklearn is one method, and the group is that method.
+objective and a dataset). Fill, Walk, Unroll and Sklearn are each one method, and the group is that method.
 
 Supervised learning is a Supervised split and the Loss its target picks: classes make it classification, real values
 regression, for any model that predicts the target (Network, Linear, KNN, a boosted-trees estimator). Classical
@@ -151,7 +160,7 @@ class Stmt(Method):
 
 class Intent:
     """What is wanted, not which method: a config of its own class that subclasses the group it stands in for (an
-    AugmentImage is a MapOp[Grid, Grid]), so it type-checks wherever a method of that group goes, as a call, an
+    AugmentImage is a Convert[Grid, Grid]), so it type-checks wherever a method of that group goes, as a call, an
     argument or a setting. Its candidates are the configs it may become; the first is its default. A resolver lowers
     a program's intents to candidates (resolve.py); running one before then is an error."""
 
@@ -192,15 +201,13 @@ def _differs(value: Any, default: Any) -> bool:
 
 # ═══ Registry ═════════════════════════════════════════════════════════════════════════════════════
 
-FAMILIES = {"map": "MAP · C[T] → C[U]: the container stays", "fold": "FOLD · C[T] → U: the container is gone",
-            "restructure": "RESTRUCTURE · C[T] → C′[T]: the container changes, the elements stay",
-            "unfold": "UNFOLD · T → C[T]: a container grown from a seed",
-            "split": "SPLIT · C → Example: hide a part, it becomes the target", "fill": "FILL · Holes[C] → C: a split, undone",
-            "lift": "LIFT · a model or function in, a model or function out",
+FAMILIES = {"structure": "STRUCTURE · data → data", "learning": "LEARNING · data → a training signal",
+            "partial": "PARTIAL CONTAINERS · known in part, and how to get the rest",
+            "lookup": "LOOKUP · a set known by how to search it", "models": "MODELS · model → a new model",
             "create": "CREATE · new state from a config: a model, a codec, an empty index or buffer, a copy",
             "update": "UPDATE · a model, a codec, an index or a buffer, changed in place",
             "dataset": "DATASET · read every batch, change nothing"}
-FRAMEWORKS = {"expr": ("EXPRESSIONS · on a batch, nothing changes", ["map", "fold", "restructure", "unfold", "split", "fill", "lift"]),
+FRAMEWORKS = {"expr": ("EXPRESSIONS · on a batch, nothing changes", ["structure", "learning", "partial", "lookup", "models"]),
               "stmt": ("STATEMENTS · making new state, changing it in place (!), or reading a whole dataset", ["create", "update", "dataset"])}
 
 GROUPS: dict[str, list[type[Method]]] = {}   # name → its base classes (its ops, its layers), in the order defined
@@ -338,7 +345,7 @@ def _render(cls: type[Method]) -> tuple[list[str], str, str]:
 
 
 def _parameters(cls: type, base: type) -> tuple[Any, ...]:
-    """The type parameters cls gives base: (Path, Path) for BestOfN(FoldOp[Path, Path]); () when it gives none."""
+    """The type parameters cls gives base: (Path, Path) for BestOfN(Fold[Path, Path]); () when it gives none."""
     for k in cls.__mro__:
         for b in k.__dict__.get("__orig_bases__", ()):
             if get_origin(b) is base:
@@ -378,74 +385,51 @@ def meta(name: str, groups: tuple[type[Method], ...], explanation: str) -> None:
 
 
 # ═══ Expression groups ════════════════════════════════════════════════════════════════════════════
-# Each group's __call__ is what its methods do, in the group's own type parameters: FoldOp[C, A] takes a C and gives
-# an A. R is what else a method takes (none by default), so Best, a FoldOp[Path, Path, [Value]], takes a Path and a
-# Value. A method's own __call__ names its inputs; pyright checks it against its group's. The groups are told apart
-# by what they do to the container's type (data.py): kept, gone, changed, grown, split, filled, or a function lifted.
-# An expression makes no new state: building a model (or a codec, an index, a buffer) is a statement, CREATE.
+# Each group's __call__ is what its methods do, in the group's own type parameters: Fold[C, A] takes a C and gives
+# an A. R is what else a method takes (none by default), so Best, a Fold[Path, Path, [Value]], takes a Path and a
+# Value. A method's own __call__ names its inputs; pyright checks it against its group's. An expression makes no new
+# state: building a model (or a codec, an index, a buffer) is a statement, CREATE.
 
 
-class MapOp[A, B, **R = []](Expr):
-    """The container stays, C[T] → C[U]: each element changed on its own, or reading the elements related to it, or
-    some kept and others dropped. A method says which container it needs (Seq, Temporal, Spatial, Set, Graph,
-    PartialTree, Holes, or any), and runs on its subtypes too."""
-    group, family, form, side = "map", "map", "C[T] → C[U]", "agnostic"
+class Convert[A, B, **R = []](Expr):
+    """Change the container, keep what the elements are."""
+    group, family, form, side = "convert", "structure", "C[a] → C′[a]", "agnostic"
 
     def __call__(self, x: A, /, *rest: R.args, **named: R.kwargs) -> B: ...
 
 
-class FoldOp[C, A, **R = []](Expr):
-    """The container is gone, C[T] → U: a container reduced to one value (a loss, a metric, a return, a choice)."""
-    group, family, form, side = "fold", "fold", "C[T] → U", "agnostic"
+class Map[A, B, **R = []](Expr):
+    """Change each element on its own, keep the container."""
+    group, family, form, side = "map", "structure", "C[a] → C[b]", "agnostic"
+
+    def __call__(self, x: A, /, *rest: R.args, **named: R.kwargs) -> B: ...
+
+
+class Aggregate[C, **R = []](Expr):
+    """Each element reads the elements it is related to: a C in, a C out."""
+    group, family, form, side = "aggregate", "structure", "C[h] → C[h]", "agnostic"
+
+    def __call__(self, x: C, /, *rest: R.args, **named: R.kwargs) -> C: ...
+
+
+class Select[C, **R = []](Expr):
+    """Keep, drop, reorder or reweight elements: a C in, a C out."""
+    group, family, form, side = "select", "structure", "C[a] → C[a]", "agnostic"
+
+    def __call__(self, x: C, /, *rest: R.args, **named: R.kwargs) -> C: ...
+
+
+class Fold[C, A, **R = []](Expr):
+    """Reduce a container C to one value A."""
+    group, family, form, side = "fold", "structure", "C[a] → a", "agnostic"
 
     def __call__(self, x: C, /, *rest: R.args, **named: R.kwargs) -> A: ...
 
 
-class RestructureOp[A, B, **R = []](Expr):
-    """The container changes, the elements stay, C[T] → C′[T]: a tree read as a path, a grid as a sequence, sequences
-    joined."""
-    group, family, form, side = "restructure", "restructure", "C[T] → C′[T]", "agnostic"
-
-    def __call__(self, x: A, /, *rest: R.args, **named: R.kwargs) -> B: ...
-
-
-class UnfoldOp[C, **R = []](Expr):
-    """A container grown from a seed, T → C[T]: a tree from a prompt or an environment, a list from a state and a step.
-    (An empty index or buffer is new state: Empty, a statement.)"""
-    group, family, form, side = "unfold", "unfold", "T → C[T]", "agnostic"
-
-    def __call__(self, *args: R.args, **named: R.kwargs) -> C: ...
-
-
-class SplitOp[C, O = Example, **R = []](Expr):
-    """Hide part of a container C; what was hidden (or a teacher's answer) is the target. O is an Example, or the
-    Holes alone when there is no target (Blank)."""
-    group, family, form, side = "split", "split", "C → Example", "agnostic"
-
-    def __call__(self, x: C, /, *rest: R.args, **named: R.kwargs) -> O: ...
-
-
-class FillOp[C: Container, **R = []](Expr):
-    """Holes[C] → C: fill the holes, an order deciding which and how fast; a split, undone."""
-    group, family, form, side = "fill", "fill", "Holes[C] → C", "agnostic"
-
-    def __call__(self, holes: Holes[C], /, *rest: R.args, **named: R.kwargs) -> C: ...
-
-
-class LiftOp[F, G, **R = []](Expr):
-    """A model or function in, a model or function out, (A → B) → (A′ → B′): a view of a model that reads its
-    parameters and adds none, a condition fixed, a gradient. A copy with weights of its own is new state: Copy."""
-    group, family, form, side = "lift", "lift", "(A → B) → (A′ → B′)", "agnostic"
-
-    def __call__(self, f: F, /, *rest: R.args, **named: R.kwargs) -> G: ...
-
-
-# Kinds of MapOp that several methods share: written once, no group of their own.
-
-
-class Scan[X, S, Y](MapOp[Seq, Seq]):
+class Scan[X, S, Y](Expr):
     """Carry a state along a sequence: init gives the first state, step takes a state and an element to the next
     state and an output; calling it runs the steps along a sequence (from the end when reverse)."""
+    group, family, form, side = "scan", "structure", "Seq[X] → Seq[Y]", "agnostic"
     reverse: ClassVar[bool] = False
 
     def init(self) -> S: ...
@@ -455,29 +439,36 @@ class Scan[X, S, Y](MapOp[Seq, Seq]):
     def __call__(self, xs: Seq, /) -> Seq: ...
 
 
-class Order(MapOp[Holes[Any], Holes[Any], [Prediction]]):
-    """Which holes a fill fills next, and how far: a fill's schedule, from the holes and the model's prediction."""
+class Split[C, **R = []](Expr):
+    """Hide part of a container C; what was hidden (or a teacher's answer) is the target."""
+    group, family, form, side = "split", "learning", "C → Example", "agnostic"
 
-    def __call__(self, holes: Holes[Any], pred: Prediction, /) -> Holes[Any]: ...
-
-
-class Choose(MapOp[PartialTree[Any, Any], PartialTree[Any, Any]]):
-    """A walk's step: from the tree expanded so far, the next (which edges to follow, which leaves to keep)."""
-
-    def __call__(self, tree: PartialTree[Any, Any], /) -> PartialTree[Any, Any]: ...
+    def __call__(self, x: C, /, *rest: R.args, **named: R.kwargs) -> Example: ...
 
 
-class Evolve[S](MapOp[S, S]):
-    """An unroll's step, S → S, where there is no gradient to follow or the gradient is followed with noise."""
+class Score[P, O = Tensor, **R = []](Expr):
+    """How bad a prediction P is (against R: a target, a weight): every loss, every surrogate objective, every metric.
+    O is a number to minimize (a Tensor), or one per example (a Value)."""
+    group, family, form, side = "score", "learning", "Prediction × C → ℝ", "agnostic"
 
-    def __call__(self, state: S, /) -> S: ...
+    def __call__(self, pred: P, /, *rest: R.args, **named: R.kwargs) -> O: ...
+
+
+class Start[P, **R = []](Expr):
+    """A partial container P to grow, from R: a tree for a walk, holes for a fill. (An empty index or buffer is new
+    state: Empty, a statement.)"""
+    group, family, form, side = "start", "partial", "… → Partial", "agnostic"
+
+    def __call__(self, *args: R.args, **named: R.kwargs) -> P: ...
 
 
 @dataclass(frozen=True)
-class Fill(FillOp[Container, [Predictor, Schedule]]):
+class Fill(Expr):
     """Repeatedly predict the holes and lower their levels as the order decides (generation, inpainting,
     denoising), until every level is 0. With levels in (0, 1), what the model predicts is the flow back to the data.
     steps is how many predictions."""
+    group, family, form, side = "fill", "partial", "Holes[C] → C", "agnostic"
+    about = "fill the holes, an order deciding which and how fast: a split, undone"
     title = "Fill"
     state = "Holes[C] — the levels fall, as the order decides"
     steps: int
@@ -485,11 +476,20 @@ class Fill(FillOp[Container, [Predictor, Schedule]]):
     def __call__[C: Container](self, holes: Holes[C], model: Predictor, order: Schedule, /) -> C: ...
 
 
+class Order(Expr):
+    """Which holes a fill fills next, and how far: a fill's schedule, from the holes and the model's prediction."""
+    group, family, form, side = "order", "partial", "Holes × Prediction → Holes", "agnostic"
+
+    def __call__(self, holes: Holes[Any], pred: Prediction, /) -> Holes[Any]: ...
+
+
 @dataclass(frozen=True)
-class Walk(RestructureOp[PartialTree[Any, Any], Path, [Chooser]]):
+class Walk(Expr):
     """Grow the known part of a tree from its roots, steps times, a chooser deciding which edges to follow and
-    which leaves to keep; then the path to a kept leaf: a Tree read as a Temporal. Sampling, greedy decoding, beam
-    search, best-of-N and RL rollouts are walks with different choosers."""
+    which leaves to keep; then the path to a kept leaf. Sampling, greedy decoding, beam search, best-of-N and RL
+    rollouts are walks with different choosers."""
+    group, family, form, side = "walk", "partial", "PartialTree → Path", "agnostic"
+    about = "grow the known part of a tree, a chooser deciding which leaves to keep, then read a path"
     title = "Walk"
     state = "PartialTree — its known part, grown by the chooser"
     steps: int
@@ -497,14 +497,52 @@ class Walk(RestructureOp[PartialTree[Any, Any], Path, [Chooser]]):
     def __call__(self, tree: PartialTree[Any, Any], choose: Chooser, /) -> Path: ...
 
 
+class Choose(Expr):
+    """A walk's step: from the tree expanded so far, the next (which edges to follow, which leaves to keep)."""
+    group, family, form, side = "choose", "partial", "PartialTree → PartialTree", "agnostic"
+
+    def __call__(self, tree: PartialTree[Any, Any], /) -> PartialTree[Any, Any]: ...
+
+
 @dataclass(frozen=True)
-class Unroll(UnfoldOp[list[Any], [PartialSeq[Any]]]):
+class Unroll(Expr):
     """The list a PartialSeq stands for: start, step(start), step(step(start)), … steps of them."""
+    group, family, form, side = "unroll", "partial", "PartialSeq[S] → S", "agnostic"
+    about = "step a state until done"
     title = "Unroll"
     state = "S — any state"
     steps: int
 
     def __call__(self, seq: PartialSeq[Any], /) -> list[Any]: ...
+
+
+class Evolve[S](Expr):
+    """An unroll's step, S → S, where there is no gradient to follow or the gradient is followed with noise."""
+    group, family, form, side = "evolve", "partial", "S → S", "agnostic"
+
+    def __call__(self, state: S, /) -> S: ...
+
+
+class Reshape[P, **R = []](Expr):
+    """Change how a partial container (or a model) P goes on: its options, its model. A P in, a P out."""
+    group, family, form, side = "reshape", "partial", "Partial → Partial", "agnostic"
+
+    def __call__(self, p: P, /, *rest: R.args, **named: R.kwargs) -> P: ...
+
+
+class Search[O, **R = []](Expr):
+    """What is built on looking up an index (index.search): the k elements nearest each query, put to use as an O."""
+    group, family, form, side = "search", "lookup", "Index × Value → Set", "agnostic"
+
+    def __call__(self, index: Index, /, *rest: R.args, **named: R.kwargs) -> O: ...
+
+
+class Wrap[M, **R = []](Expr):
+    """A view of a model M: a module around it that reads its parameters (and adds none), M staying as it was. A copy
+    with weights of its own is new state: Copy, a statement."""
+    group, family, form, side = "wrap", "models", "Module → Module′", "agnostic"
+
+    def __call__(self, model: M, /, *rest: R.args, **named: R.kwargs) -> nn.Module: ...
 
 
 # ═══ Statement groups ═════════════════════════════════════════════════════════════════════════════
@@ -649,11 +687,11 @@ class Reduce[C, A, **R = []](Stmt):
 # EXPRESSIONS · on a batch, nothing changes, nothing new is made
 # ══════════════════════════════════════════════════════════════════════════════════════════════════
 
-# ═══ Containers: MapOp on a Grid, RestructureOp between containers ════════════════════════════════
+# ═══ Convert[A, B, **R = []]: C[a] → C′[a] ════════════════════════════════════════════════════════
 
 
 @dataclass(frozen=True)
-class Patchify(MapOp[Grid, Grid]):
+class Patchify(Convert[Grid, Grid]):
     """An image → a coarser grid of p×p patches, each one element (a reshape); a linear map after it is a patch
     embedding."""
     title = "Patching"
@@ -663,7 +701,7 @@ class Patchify(MapOp[Grid, Grid]):
 
 
 @dataclass(frozen=True)
-class Flatten(RestructureOp[Grid, Seq]):
+class Flatten(Convert[Grid, Seq]):
     """A grid → a sequence in raster order: the lattice is forgotten, learned positions say where each element was."""
     title = "Flattening"
 
@@ -671,7 +709,7 @@ class Flatten(RestructureOp[Grid, Seq]):
 
 
 @dataclass(frozen=True)
-class Concat(RestructureOp[Seq, Seq]):
+class Concat(Convert[Seq, Seq]):
     """Several sequences of the same width as one (image patches, then caption tokens): one network reads them all."""
     title = "Multimodal sequence"
 
@@ -679,7 +717,7 @@ class Concat(RestructureOp[Seq, Seq]):
 
 
 @dataclass(frozen=True)
-class RandomFlip(MapOp[Grid, Grid]):
+class RandomFlip(Convert[Grid, Grid]):
     """Mirror each image with probability p: its elements move, none changes."""
     title = "Data augmentation: random flip"
     p: float = 0.5
@@ -688,7 +726,7 @@ class RandomFlip(MapOp[Grid, Grid]):
 
 
 @dataclass(frozen=True)
-class RandomCrop(MapOp[Grid, Grid]):
+class RandomCrop(Convert[Grid, Grid]):
     """Pad, and cut back at a random offset: a random translation."""
     title = "Data augmentation: random crop"
     padding: int = 2
@@ -697,7 +735,7 @@ class RandomCrop(MapOp[Grid, Grid]):
 
 
 @dataclass(frozen=True)
-class Transitions(RestructureOp[Path, Value]):
+class Transitions(Convert[Path, Value]):
     """The steps of walked paths as a set of transitions (state, action, reward, next state, done, and the action's
     log-probability), their order dropped: what a replay buffer holds and RL losses read."""
     title = "Experience (transitions)"
@@ -706,7 +744,7 @@ class Transitions(RestructureOp[Path, Value]):
 
 
 @dataclass(frozen=True)
-class PathTo(RestructureOp[PartialTree[Any, Any], Path, [Tensor]]):
+class PathTo(Convert[PartialTree[Any, Any], Path, [Tensor]]):
     """The steps from the root to a leaf of a tree's known part: the result of a walk."""
     title = "A path from a tree"
 
@@ -714,17 +752,17 @@ class PathTo(RestructureOp[PartialTree[Any, Any], Path, [Tensor]]):
 
 
 @dataclass(frozen=True)
-class FewShot(RestructureOp[Seq, Seq]):
+class FewShot(Convert[Seq, Seq]):
     """Solved examples, then the query, as one prompt: the model adapts by reading them."""
     title = "In-context learning (few-shot prompts)"
     function, signature = "Concat", "Seq… → Seq"
 
 
-# ═══ MapOp: each element on its own ═══════════════════════════════════════════════════════════════
+# ═══ Map[A, B, **R = []]: C[a] → C[b] ═════════════════════════════════════════════════════════════
 
 
 @dataclass(frozen=True)
-class RoPE(MapOp[Tensor, Tensor, [Tensor]]):
+class RoPE(Map[Tensor, Tensor, [Tensor]]):
     """Rotate pairs of query and key features by angles proportional to the position, so that attention depends only
     on relative offsets."""
     title = "Positional encoding: rotary (RoPE)"
@@ -733,7 +771,7 @@ class RoPE(MapOp[Tensor, Tensor, [Tensor]]):
 
 
 @dataclass(frozen=True)
-class VectorQuantize(MapOp[Container, Container, [Tensor]]):
+class VectorQuantize(Map[Container, Container, [Tensor]]):
     """Each element → the id of its nearest codebook entry (real → classes), with a straight-through gradient."""
     title = "Vector quantization"
 
@@ -741,7 +779,7 @@ class VectorQuantize(MapOp[Container, Container, [Tensor]]):
 
 
 @dataclass(frozen=True)
-class StraightThrough(MapOp[Tensor, Tensor, [Tensor]]):
+class StraightThrough(Map[Tensor, Tensor, [Tensor]]):
     """Forward the hard value, backpropagate through the soft one: a gradient for a choice that has none."""
     title = "Straight-through estimator"
     side = "agnostic"
@@ -750,7 +788,7 @@ class StraightThrough(MapOp[Tensor, Tensor, [Tensor]]):
 
 
 @dataclass(frozen=True)
-class Condition(MapOp[Container, Container, [Value]]):
+class Condition(Map[Container, Container, [Value]]):
     """Attach a label to every element (its one-hot vector next to each element's values; a none label for guidance)."""
     title = "Conditioning"
     side = "agnostic"
@@ -759,7 +797,7 @@ class Condition(MapOp[Container, Container, [Value]]):
 
 
 @dataclass(frozen=True)
-class ColorJitter(MapOp[Grid, Grid]):
+class ColorJitter(Map[Grid, Grid]):
     """Scale each image's brightness and contrast by random factors."""
     title = "Data augmentation: color jitter"
     side = "agnostic"
@@ -769,7 +807,7 @@ class ColorJitter(MapOp[Grid, Grid]):
 
 
 @dataclass(frozen=True)
-class GaussianNoise(MapOp[Container, Container]):
+class GaussianNoise(Map[Container, Container]):
     """x + σ·ε at every element."""
     title = "Data augmentation: additive noise"
     side = "agnostic"
@@ -779,7 +817,7 @@ class GaussianNoise(MapOp[Container, Container]):
 
 
 @dataclass(frozen=True)
-class LabelSmoothing(MapOp[Value, Value]):
+class LabelSmoothing(Map[Value, Value]):
     """A class → a distribution over classes, (1 − ε)·one_hot + ε / n: never pushed to infinite confidence."""
     title = "Label smoothing"
     side = "agnostic"
@@ -789,7 +827,7 @@ class LabelSmoothing(MapOp[Value, Value]):
 
 
 @dataclass(frozen=True)
-class Attribution(MapOp[Container, Container, [Predictor]]):
+class Attribution(Map[Container, Container, [Predictor]]):
     """How much each input element pushed the output: the input times the output's gradient, on any differentiable
     model."""
     title = "Attribution (input × gradient)"
@@ -799,7 +837,7 @@ class Attribution(MapOp[Container, Container, [Predictor]]):
 
 
 @dataclass(frozen=True)
-class Chinchilla(MapOp[float, tuple[float, float]]):
+class Chinchilla(Map[float, tuple[float, float]]):
     """A compute budget → (parameters, tokens): C ≈ 6·N·D with D ≈ 20 tokens per parameter."""
     title = "Compute-optimal allocation (Chinchilla)"
     side = "agnostic"
@@ -807,11 +845,11 @@ class Chinchilla(MapOp[float, tuple[float, float]]):
     def __call__(self, compute: float, /) -> tuple[float, float]: ...
 
 
-# ═══ MapOp: each element reads the related ones ═══════════════════════════════════════════════════
+# ═══ Aggregate[C, **R = []]: C[h] → C[h] ══════════════════════════════════════════════════════════
 
 
 @dataclass(frozen=True)
-class Mixup(MapOp[tuple[Container, Value], tuple[Container, Value]]):
+class Mixup(Aggregate[tuple[Container, Value]]):
     """Each example blended with a random partner of the batch, labels by the same λ: the batch as a Set, paired at
     random."""
     title = "Data augmentation: mixup"
@@ -822,7 +860,7 @@ class Mixup(MapOp[tuple[Container, Value], tuple[Container, Value]]):
 
 
 @dataclass(frozen=True)
-class Cutmix(MapOp[tuple[Grid, Value], tuple[Grid, Value]]):
+class Cutmix(Aggregate[tuple[Grid, Value]]):
     """A random box pasted from a partner image; the labels mix by its area."""
     title = "Data augmentation: cutmix"
     side = "agnostic"
@@ -831,7 +869,7 @@ class Cutmix(MapOp[tuple[Grid, Value], tuple[Grid, Value]]):
 
 
 @dataclass(frozen=True)
-class MeanBaseline(MapOp[Value, Value]):
+class MeanBaseline(Aggregate[Value]):
     """Each return minus the batch's mean: an advantage with less variance and no bias."""
     title = "Baseline: the batch mean"
     side = "agnostic"
@@ -840,7 +878,7 @@ class MeanBaseline(MapOp[Value, Value]):
 
 
 @dataclass(frozen=True)
-class GroupAdvantage(MapOp[Value, Value]):
+class GroupAdvantage(Aggregate[Value]):
     """Each reward standardized within its group of n samples from one prompt: an advantage without a critic."""
     title = "GRPO (group-relative advantages)"
     side = "agnostic"
@@ -849,11 +887,11 @@ class GroupAdvantage(MapOp[Value, Value]):
     def __call__(self, rewards: Value, /) -> Value: ...
 
 
-# ═══ MapOp: some elements kept, others dropped ════════════════════════════════════════════════════
+# ═══ Select[C, **R = []]: C[a] → C[a] ═════════════════════════════════════════════════════════════
 
 
 @dataclass(frozen=True)
-class QualityFilter(MapOp[Container, Container, [Value]]):
+class QualityFilter(Select[Container, [Value]]):
     """Keep the examples of a batch scoring above a threshold (a classifier's, a verifier's, a perplexity). Keeping
     the best fraction needs every batch: KeepBest."""
     title = "Data filtering"
@@ -863,7 +901,7 @@ class QualityFilter(MapOp[Container, Container, [Value]]):
 
 
 @dataclass(frozen=True)
-class TokenDropout(MapOp[Seq, Seq]):
+class TokenDropout(Select[Seq]):
     """Drop a random fraction of the positions; the rest keep their order."""
     title = "Data augmentation: token dropout"
     p: float = 0.1
@@ -871,11 +909,11 @@ class TokenDropout(MapOp[Seq, Seq]):
     def __call__(self, x: Seq, /) -> Seq: ...
 
 
-# ═══ FoldOp: C[T] → U ═════════════════════════════════════════════════════════════════════════════
+# ═══ Fold[C, A, **R = []]: C[a] → a ═══════════════════════════════════════════════════════════════
 
 
 @dataclass(frozen=True)
-class DecayGroups(FoldOp[nn.Module, list[dict[str, Any]]]):
+class DecayGroups(Fold[nn.Module, list[dict[str, Any]]]):
     """The parameters to decay (the weight matrices) apart from the rest (norms, biases, embeddings)."""
     title = "Weight decay (parameter groups)"
     weight_decay: float = 0.1
@@ -884,7 +922,7 @@ class DecayGroups(FoldOp[nn.Module, list[dict[str, Any]]]):
 
 
 @dataclass(frozen=True)
-class MuP(FoldOp[nn.Module, list[dict[str, Any]]]):
+class MuP(Fold[nn.Module, list[dict[str, Any]]]):
     """Hidden matrices reweighted by base_width / width, so a learning rate tuned narrow carries over wide."""
     title = "Parameterization (μP)"
     width: int
@@ -894,7 +932,7 @@ class MuP(FoldOp[nn.Module, list[dict[str, Any]]]):
 
 
 @dataclass(frozen=True)
-class DiscountedReturn(FoldOp[Path, Value]):
+class DiscountedReturn(Fold[Path, Value]):
     """Σ γ^t·r_t along each path: what RL maximizes. A walk can't be differentiated through, so its gradient comes
     from scoring the path (reinforce)."""
     title = "Expected return (the RL objective)"
@@ -904,7 +942,7 @@ class DiscountedReturn(FoldOp[Path, Value]):
 
 
 @dataclass(frozen=True)
-class BestOfN(FoldOp[Path, Path, [Value]]):
+class BestOfN(Fold[Path, Path, [Value]]):
     """The best-scoring of each group of n paths (scored by a verifier or a reward model)."""
     title = "Best-of-N with a verifier"
     n: int
@@ -913,7 +951,7 @@ class BestOfN(FoldOp[Path, Path, [Value]]):
 
 
 @dataclass(frozen=True)
-class MajorityVote(FoldOp[Value, Value]):
+class MajorityVote(Fold[Value, Value]):
     """The most frequent answer of each group of n samples."""
     title = "Self-consistency (majority vote)"
     n: int
@@ -922,7 +960,7 @@ class MajorityVote(FoldOp[Value, Value]):
 
 
 @dataclass(frozen=True)
-class EarlyStop(FoldOp[Sequence[Tensor], bool]):
+class EarlyStop(Fold[Sequence[Tensor], bool]):
     """Whether the validation scores, lowest best, have not improved on their best for `patience` evaluations."""
     title = "Early stopping"
     patience: int = 3
@@ -931,14 +969,14 @@ class EarlyStop(FoldOp[Sequence[Tensor], bool]):
 
 
 @dataclass(frozen=True)
-class ScalingLaw(FoldOp[Seq, tuple[float, float], [Seq]]):
+class ScalingLaw(Fold[Seq, tuple[float, float], [Seq]]):
     """loss ≈ a·size^(−b), fitted on the logs."""
     title = "Scaling laws (power-law fit)"
 
     def __call__(self, sizes: Seq, losses: Seq, /) -> tuple[float, float]: ...
 
 
-# ═══ Scan (a MapOp on a Seq): Seq[X] → Seq[Y] ═════════════════════════════════════════════════════
+# ═══ Scan[X, S, Y]: Seq[X] → Seq[Y] ═══════════════════════════════════════════════════════════════
 
 
 @dataclass(frozen=True)
@@ -1026,11 +1064,11 @@ class ParallelScan(Scan[Tensor, Tensor, Tensor]):
     function = "torch.cumsum"
 
 
-# ═══ SplitOp: C → Example ═════════════════════════════════════════════════════════════════════════
+# ═══ Split[C, **R = []]: C → Example ══════════════════════════════════════════════════════════════
 
 
 @dataclass(frozen=True)
-class AutoSplit(SplitOp[Container]):
+class AutoSplit(Split[Container]):
     """The split a container's type picks: classes in order → NextToken · other classes → Mask · real values → Noise."""
     title = "Choosing the split from the data"
 
@@ -1038,7 +1076,7 @@ class AutoSplit(SplitOp[Container]):
 
 
 @dataclass(frozen=True)
-class Supervised(SplitOp[Container, Example, [Container]]):
+class Supervised(Split[Container, [Container]]):
     """The data comes split: the input with nothing hidden, the label as the target."""
     title = "Supervised"
 
@@ -1046,7 +1084,7 @@ class Supervised(SplitOp[Container, Example, [Container]]):
 
 
 @dataclass(frozen=True)
-class Classification(SplitOp[Container, Example, [Container]]):
+class Classification(Split[Container, [Container]]):
     """Supervised learning with classes as the target: Supervised, then Loss picks cross-entropy (a categorical's
     negative log-likelihood); Accuracy measures it. Any model that predicts the classes does it: Linear (logistic
     regression), Network, KNN, a boosted-trees estimator."""
@@ -1055,7 +1093,7 @@ class Classification(SplitOp[Container, Example, [Container]]):
 
 
 @dataclass(frozen=True)
-class Regression(SplitOp[Container, Example, [Container]]):
+class Regression(Split[Container, [Container]]):
     """Supervised learning with real values as the target: Supervised, then Loss picks squared error (a Gaussian's
     negative log-likelihood). Linear with LeastSquares is linear regression; Network, KNN and boosted trees do it too."""
     title = "Regression"
@@ -1063,7 +1101,7 @@ class Regression(SplitOp[Container, Example, [Container]]):
 
 
 @dataclass(frozen=True)
-class NextToken(SplitOp[Temporal]):
+class NextToken(Split[Temporal]):
     """Each element is predicted from the ones before it (a causal Temporal): the target at i is the element at i + 1."""
     title = "Self-supervised: next-token prediction"
 
@@ -1071,7 +1109,7 @@ class NextToken(SplitOp[Temporal]):
 
 
 @dataclass(frozen=True)
-class Mask(SplitOp[Container]):
+class Mask(Split[Container]):
     """Random elements at level 1 ([MASK] for classes, 0 for real values): 15% is BERT, 75% MAE, a random ratio per
     example MaskGIT and masked diffusion."""
     title = "Self-supervised: masked prediction (BERT, MAE, MaskGIT)"
@@ -1081,7 +1119,7 @@ class Mask(SplitOp[Container]):
 
 
 @dataclass(frozen=True)
-class Noise(SplitOp[Container]):
+class Noise(Split[Container]):
     """Every element at one random level t (x_t = (1 − t)·x + t·ε): the target is the velocity, the noise or the
     clean data, rescalings of one another."""
     title = "Diffusion / score matching / flow matching"
@@ -1090,7 +1128,7 @@ class Noise(SplitOp[Container]):
 
 
 @dataclass(frozen=True)
-class DiffusionForcing(SplitOp[Temporal]):
+class DiffusionForcing(Split[Temporal]):
     """A random level for each element: next-token prediction and diffusion are its two extremes."""
     title = "Diffusion forcing"
 
@@ -1098,7 +1136,7 @@ class DiffusionForcing(SplitOp[Temporal]):
 
 
 @dataclass(frozen=True)
-class NextFrame(SplitOp[Temporal[Grid]]):
+class NextFrame(Split[Temporal[Grid]]):
     """The frames up to t as the input, the frames from t + 1 as the target: shift, on the frames of a video."""
     title = "Self-supervised: future-frame prediction"
 
@@ -1106,7 +1144,7 @@ class NextFrame(SplitOp[Temporal[Grid]]):
 
 
 @dataclass(frozen=True)
-class Reconstruction(SplitOp[Container]):
+class Reconstruction(Split[Container]):
     """Nothing hidden; the target is the input itself, so the model's bottleneck is what makes it hard."""
     title = "Reconstruction (autoencoder)"
 
@@ -1114,7 +1152,7 @@ class Reconstruction(SplitOp[Container]):
 
 
 @dataclass(frozen=True)
-class Contrastive(SplitOp[Container, Example, [Callable[[Container], Container]]]):
+class Contrastive(Split[Container, [Callable[[Container], Container]]]):
     """Two random augmentations of the same examples, each the other's target (CLIP pairs an image with its caption)."""
     title = "Contrastive views"
 
@@ -1122,7 +1160,7 @@ class Contrastive(SplitOp[Container, Example, [Callable[[Container], Container]]
 
 
 @dataclass(frozen=True)
-class Distillation(SplitOp[Container, Example, [Predictor]]):
+class Distillation(Split[Container, [Predictor]]):
     """The target is a teacher's (softened) prediction on the same input."""
     title = "Knowledge distillation"
 
@@ -1130,7 +1168,7 @@ class Distillation(SplitOp[Container, Example, [Predictor]]):
 
 
 @dataclass(frozen=True)
-class SelfDistillation(SplitOp[Container, Example, [Predictor, Callable[[Container], Container]]]):
+class SelfDistillation(Split[Container, [Predictor, Callable[[Container], Container]]]):
     """One view as the input; the target is a slow (EMA) copy's embedding of another view: agree with an older self."""
     title = "Self-distillation (BYOL / DINO / JEPA)"
 
@@ -1138,7 +1176,7 @@ class SelfDistillation(SplitOp[Container, Example, [Predictor, Callable[[Contain
 
 
 @dataclass(frozen=True)
-class SFT(SplitOp[Temporal]):
+class SFT(Split[Temporal]):
     """shift, with only the response as targets: the prompt is read, never predicted."""
     title = "Instruction tuning / SFT"
     prompt_len: int
@@ -1147,7 +1185,7 @@ class SFT(SplitOp[Temporal]):
 
 
 @dataclass(frozen=True)
-class TD(SplitOp[Value, Example, [Predictor]]):
+class TD(Split[Value, [Predictor]]):
     """V(s) learns toward r + γ·V(s′): a target bootstrapped from the critic's own estimate."""
     title = "TD learning (value regression)"
     gamma: float = 0.99
@@ -1156,7 +1194,7 @@ class TD(SplitOp[Value, Example, [Predictor]]):
 
 
 @dataclass(frozen=True)
-class QLearning(SplitOp[Value, Example, [Predictor]]):
+class QLearning(Split[Value, [Predictor]]):
     """Q(s, a) learns toward r + γ·max Q(s′, ·) at the action taken (the weight picks it out)."""
     title = "Q-learning (DQN)"
     gamma: float = 0.99
@@ -1165,7 +1203,7 @@ class QLearning(SplitOp[Value, Example, [Predictor]]):
 
 
 @dataclass(frozen=True)
-class Dynamics(SplitOp[Value]):
+class Dynamics(Split[Value]):
     """From each transition, the input is the state and the action; the target what followed (next state, reward,
     done). A model of it is a learned follow (imagined)."""
     title = "World-model targets (dynamics)"
@@ -1174,28 +1212,28 @@ class Dynamics(SplitOp[Value]):
 
 
 @dataclass(frozen=True)
-class AlphaZeroTargets(SplitOp[Path, Example, [PartialTree[Any, Any]]]):
+class AlphaZeroTargets(Split[Path, [PartialTree[Any, Any]]]):
     """For each state a walk visited: what search made of it (its visit distribution) and what followed (the return)."""
     title = "Amortized search (AlphaZero targets)"
 
     def __call__(self, path: Path, search: PartialTree[Any, Any], /) -> Example: ...
 
 
-# ═══ FoldOp: scores (losses, objectives, metrics) ═════════════════════════════════════════════════
+# ═══ Score[P, O = Tensor, **R = []]: Prediction × C → ℝ ═══════════════════════════════════════════
 
 
 @dataclass(frozen=True)
-class Objective(FoldOp[nn.Module, Tensor, ...]):
+class Objective(Score[nn.Module, Tensor, ...]):
     """The loss of a model on a batch: split it into an Example, predict from the input, score with the loss the
     target picks (labelled data: split = Supervised())."""
     title = "Objective (a split, then its loss)"
-    split: SplitOp[Any, Example, ...]
+    split: Split[Any, ...]
 
     def __call__(self, model: nn.Module, /, *batch: Any) -> Tensor: ...
 
 
 @dataclass(frozen=True)
-class Loss(FoldOp[Prediction, Tensor, [Container]]):
+class Loss(Score[Prediction, Tensor, [Container]]):
     """−log p(target), chosen by what the target holds: classes → cross-entropy · bits → BCE · real → squared error ·
     distribution → KL · record → the sum of its fields' losses."""
     title = "Loss = negative log-likelihood of the target"
@@ -1204,7 +1242,7 @@ class Loss(FoldOp[Prediction, Tensor, [Container]]):
 
 
 @dataclass(frozen=True)
-class CrossEntropy(FoldOp[Tensor, Tensor, [Container]]):
+class CrossEntropy(Score[Tensor, Tensor, [Container]]):
     """Classes, or a distribution over them (soft labels)."""
     title = "Cross-entropy"
 
@@ -1212,7 +1250,7 @@ class CrossEntropy(FoldOp[Tensor, Tensor, [Container]]):
 
 
 @dataclass(frozen=True)
-class BinaryCrossEntropy(FoldOp[Tensor, Tensor, [Container]]):
+class BinaryCrossEntropy(Score[Tensor, Tensor, [Container]]):
     """Bits."""
     title = "Binary cross-entropy"
 
@@ -1220,7 +1258,7 @@ class BinaryCrossEntropy(FoldOp[Tensor, Tensor, [Container]]):
 
 
 @dataclass(frozen=True)
-class Hinge(FoldOp[Tensor, Tensor, [Value]]):
+class Hinge(Score[Tensor, Tensor, [Value]]):
     """max(0, margin − y·f(x)) for labels ±1 (for classes: the margin over the best wrong class): a support vector
     machine is a Linear trained with it (on RandomFourierFeatures for a kernel SVM)."""
     title = "Hinge loss (SVM)"
@@ -1230,7 +1268,7 @@ class Hinge(FoldOp[Tensor, Tensor, [Value]]):
 
 
 @dataclass(frozen=True)
-class MSE(FoldOp[Tensor, Tensor, [Container]]):
+class MSE(Score[Tensor, Tensor, [Container]]):
     """Real values: a unit Gaussian's negative log-likelihood, up to a constant."""
     title = "Squared error"
 
@@ -1238,7 +1276,7 @@ class MSE(FoldOp[Tensor, Tensor, [Container]]):
 
 
 @dataclass(frozen=True)
-class KL(FoldOp[Dist, Tensor, [Dist]]):
+class KL(Score[Dist, Tensor, [Dist]]):
     """A distribution against a reference (a prior, a reference policy)."""
     title = "KL divergence"
 
@@ -1246,7 +1284,7 @@ class KL(FoldOp[Dist, Tensor, [Dist]]):
 
 
 @dataclass(frozen=True)
-class MultiTaskLoss(FoldOp[Prediction, Tensor, [Container]]):
+class MultiTaskLoss(Score[Prediction, Tensor, [Container]]):
     """A record: one loss per field, each chosen by what the field holds, summed."""
     title = "Multi-task training"
 
@@ -1254,7 +1292,7 @@ class MultiTaskLoss(FoldOp[Prediction, Tensor, [Container]]):
 
 
 @dataclass(frozen=True)
-class LogProb(MapOp[Prediction, Value, [Container]]):
+class LogProb(Score[Prediction, Value, [Container]]):
     """log p(x) for each element under a prediction, unreduced: what losses and estimators are built from."""
     title = "Log-probability"
 
@@ -1262,7 +1300,7 @@ class LogProb(MapOp[Prediction, Value, [Container]]):
 
 
 @dataclass(frozen=True)
-class PathLogProb(FoldOp[PartialTree[Any, Any], Value, [Path]]):
+class PathLogProb(Score[PartialTree[Any, Any], Value, [Path]]):
     """Σ log options(node)(edge) along a path; on the data's own path, −1/length of it is the next-token loss."""
     title = "Teacher forcing (the log-probability of a path)"
 
@@ -1270,7 +1308,7 @@ class PathLogProb(FoldOp[PartialTree[Any, Any], Value, [Path]]):
 
 
 @dataclass(frozen=True)
-class SequenceLogProb(FoldOp[Predictor, Value, [Temporal]]):
+class SequenceLogProb(Score[Predictor, Value, [Temporal]]):
     """log p(x[start:] | the rest before it), per sequence: teacher forcing on whole sequences, in one pass."""
     title = "Sequence log-probability"
     start: int = 1
@@ -1279,7 +1317,7 @@ class SequenceLogProb(FoldOp[Predictor, Value, [Temporal]]):
 
 
 @dataclass(frozen=True)
-class InfoNCE(FoldOp[Value, Tensor, [Value]]):
+class InfoNCE(Score[Value, Tensor, [Value]]):
     """Which b goes with each a, among the batch: cross-entropy over similarities, the matching pair as the class."""
     title = "Contrastive (InfoNCE / CLIP)"
     temperature: float = 0.07
@@ -1288,7 +1326,7 @@ class InfoNCE(FoldOp[Value, Tensor, [Value]]):
 
 
 @dataclass(frozen=True)
-class BradleyTerry(FoldOp[Value, Tensor, [Value]]):
+class BradleyTerry(Score[Value, Tensor, [Value]]):
     """−log σ(r(chosen) − r(rejected)): the likelihood that the preferred answer wins."""
     title = "Reward models (Bradley–Terry)"
 
@@ -1296,7 +1334,7 @@ class BradleyTerry(FoldOp[Value, Tensor, [Value]]):
 
 
 @dataclass(frozen=True)
-class DPO(FoldOp[nn.Module, Tensor, ...]):
+class DPO(Score[nn.Module, Tensor, ...]):
     """The loss of (policy, chosen, rejected): Bradley–Terry on β·(the policy's log-ratio to the reference, chosen
     minus rejected). Preferences as classification: no reward model, no walk."""
     title = "Preferences (DPO)"
@@ -1307,7 +1345,7 @@ class DPO(FoldOp[nn.Module, Tensor, ...]):
 
 
 @dataclass(frozen=True)
-class KLPenalty(MapOp[Value, Value, [Value, Value]]):
+class KLPenalty(Score[Value, Value, [Value, Value]]):
     """The reward, minus how far the policy has moved from a reference: use it as the return."""
     title = "KL-regularized reward (RLHF)"
     beta: float = 0.1
@@ -1316,7 +1354,7 @@ class KLPenalty(MapOp[Value, Value, [Value, Value]]):
 
 
 @dataclass(frozen=True)
-class ELBO(FoldOp[Model[Container, Dist], Tensor, [Model[Tensor, Prediction], Container]]):
+class ELBO(Score[Model[Container, Dist], Tensor, [Model[Tensor, Prediction], Container]]):
     """The reconstruction from a latent drawn from the posterior (rsample: reparameterization), plus KL(posterior ‖ prior)."""
     title = "VAE (evidence lower bound)"
 
@@ -1324,7 +1362,7 @@ class ELBO(FoldOp[Model[Container, Dist], Tensor, [Model[Tensor, Prediction], Co
 
 
 @dataclass(frozen=True)
-class GAN(FoldOp[Model[Tensor, Container], tuple[Tensor, Tensor], [Predictor, Container, Tensor]]):
+class GAN(Score[Model[Tensor, Container], tuple[Tensor, Tensor], [Predictor, Container, Tensor]]):
     """The discriminator tells real from generated; the generator wants its samples called real. Two scores, for two
     players (alternate their steps)."""
     title = "GAN (two players)"
@@ -1333,7 +1371,7 @@ class GAN(FoldOp[Model[Tensor, Container], tuple[Tensor, Tensor], [Predictor, Co
 
 
 @dataclass(frozen=True)
-class FlowLogProb(FoldOp[Container, Value, [list[Any]]]):
+class FlowLogProb(Score[Container, Value, [list[Any]]]):
     """The exact log-likelihood through invertible maps (change of variables)."""
     title = "Normalizing flows"
     side = "model"
@@ -1342,7 +1380,7 @@ class FlowLogProb(FoldOp[Container, Value, [list[Any]]]):
 
 
 @dataclass(frozen=True)
-class Reinforce(FoldOp[Path, Tensor, [Value]]):
+class Reinforce(Score[Path, Tensor, [Value]]):
     """−E[log p(path)·A]: a walked path's log-probability, weighted by how much better than usual it went."""
     title = "Policy gradients (REINFORCE)"
 
@@ -1350,7 +1388,7 @@ class Reinforce(FoldOp[Path, Tensor, [Value]]):
 
 
 @dataclass(frozen=True)
-class PPO(FoldOp[Value, Tensor, [Value, Value]]):
+class PPO(Score[Value, Tensor, [Value, Value]]):
     """The policy gradient with the ratio π / π_old clipped: it stops pushing once the policy has moved far."""
     title = "PPO clipped surrogate"
     clip: float = 0.2
@@ -1359,7 +1397,7 @@ class PPO(FoldOp[Value, Tensor, [Value, Value]]):
 
 
 @dataclass(frozen=True)
-class Pathwise(FoldOp[Dist, Tensor, [Model[Tensor, Tensor]]]):
+class Pathwise(Score[Dist, Tensor, [Model[Tensor, Tensor]]]):
     """−E[Q(a)] with a = rsample(): differentiated through the sample into a learned critic (DDPG, SAC)."""
     title = "Pathwise estimator (through a critic)"
 
@@ -1367,7 +1405,7 @@ class Pathwise(FoldOp[Dist, Tensor, [Model[Tensor, Tensor]]]):
 
 
 @dataclass(frozen=True)
-class EntropyBonus(FoldOp[Dist, Tensor]):
+class EntropyBonus(Score[Dist]):
     """−α·H(options): keeps the policy exploring."""
     title = "Maximum-entropy RL (entropy bonus)"
     alpha: float = 0.01
@@ -1376,7 +1414,7 @@ class EntropyBonus(FoldOp[Dist, Tensor]):
 
 
 @dataclass(frozen=True)
-class MAML(FoldOp[nn.Module, Tensor, [Callable[..., Tensor], Container, Container]]):
+class MAML(Score[nn.Module, Tensor, [Callable[..., Tensor], Container, Container]]):
     """Bilevel: the query loss of the weights after an inner step (an unroll) on the support set, differentiated through."""
     title = "Meta-learning (MAML)"
 
@@ -1384,7 +1422,7 @@ class MAML(FoldOp[nn.Module, Tensor, [Callable[..., Tensor], Container, Containe
 
 
 @dataclass(frozen=True)
-class Accuracy(FoldOp[Tensor, Tensor, [Container]]):
+class Accuracy(Score[Tensor, Tensor, [Container]]):
     """Reported and selected on, never differentiated: a loss stands in for it in training."""
     title = "Metrics (accuracy)"
 
@@ -1392,7 +1430,7 @@ class Accuracy(FoldOp[Tensor, Tensor, [Container]]):
 
 
 @dataclass(frozen=True)
-class RetrievalAccuracy(FoldOp[Value, Tensor, [Value]]):
+class RetrievalAccuracy(Score[Value, Tensor, [Value]]):
     """How often each a is closest to its own b among the batch (matching images to captions)."""
     title = "Retrieval accuracy"
 
@@ -1400,17 +1438,17 @@ class RetrievalAccuracy(FoldOp[Value, Tensor, [Value]]):
 
 
 @dataclass(frozen=True)
-class Grad(LiftOp[Callable[..., Tensor], Callable[..., Any]]):
+class Grad(Score[Tensor, Tensor]):
     """The gradient of any score."""
     title = "Backpropagation / autodiff"
-    function, signature = "torch.autograd", "f → ∇f"
+    function, signature = "torch.autograd", "ℝ → ∇"
 
 
-# ═══ Where a fill or a walk starts: SplitOp (Blank), UnfoldOp (trees) ═════════════════════════════
+# ═══ Start[P, **R = []]: … → Partial ══════════════════════════════════════════════════════════════
 
 
 @dataclass(frozen=True)
-class Blank(SplitOp[Container, Holes[Container]]):
+class Blank(Start[Holes[Container], [Container]]):
     """Every element unknown: all [MASK] for classes, pure noise for real values."""
     title = "Blank (where generation starts)"
 
@@ -1418,7 +1456,7 @@ class Blank(SplitOp[Container, Holes[Container]]):
 
 
 @dataclass(frozen=True)
-class LMTree(UnfoldOp[PartialTree[Temporal, Tensor], [Predictor, Temporal]]):
+class LMTree(Start[PartialTree[Temporal, Tensor], [Predictor, Temporal]]):
     """A node is a sequence (Holes: known up to its end), its options the next-token distribution, an edge appends."""
     title = "An LM as a tree"
 
@@ -1426,7 +1464,7 @@ class LMTree(UnfoldOp[PartialTree[Temporal, Tensor], [Predictor, Temporal]]):
 
 
 @dataclass(frozen=True)
-class EnvTree(UnfoldOp[PartialTree[Any, Tensor], [Environment]]):
+class EnvTree(Start[PartialTree[Any, Tensor], [Environment]]):
     """A node is a state, its options the policy's actions (uniform with none), an edge leads where the environment
     steps to, with a reward and whether it ended."""
     title = "MDP (an environment as a tree)"
@@ -1434,7 +1472,7 @@ class EnvTree(UnfoldOp[PartialTree[Any, Tensor], [Environment]]):
     def __call__(self, env: Environment, policy: Predictor | None = None, /) -> PartialTree[Any, Tensor]: ...
 
 
-# ═══ Order (a MapOp on Holes): a fill's step ══════════════════════════════════════════════════════
+# ═══ Order: Holes × Prediction → Holes ════════════════════════════════════════════════════════════
 
 
 @dataclass(frozen=True)
@@ -1473,7 +1511,7 @@ class PerElement(Order):
     def __call__(self, holes: Holes[Any], pred: Prediction, /) -> Holes[Any]: ...
 
 
-# ═══ RestructureOp: PartialTree → Path ════════════════════════════════════════════════════════════
+# ═══ Walk: PartialTree → Path ═════════════════════════════════════════════════════════════════════
 
 
 @dataclass(frozen=True)
@@ -1483,7 +1521,7 @@ class ChainOfThought(Walk):
     function = "Walk"
 
 
-# ═══ Choose (a MapOp on a PartialTree): a walk's step ═════════════════════════════════════════════
+# ═══ Choose: PartialTree → PartialTree ════════════════════════════════════════════════════════════
 
 
 @dataclass(frozen=True)
@@ -1547,7 +1585,7 @@ class Speculative(Choose):
     def __call__(self, tree: PartialTree[Any, Any], /) -> PartialTree[Any, Any]: ...
 
 
-# ═══ UnfoldOp: PartialSeq[S] → list ═══════════════════════════════════════════════════════════════
+# ═══ Unroll: PartialSeq[S] → S ════════════════════════════════════════════════════════════════════
 
 
 @dataclass(frozen=True)
@@ -1558,7 +1596,7 @@ class Iteration(Unroll):
     function = "repeat"
 
 
-# ═══ Evolve (a MapOp, S → S) ══════════════════════════════════════════════════════════════════════
+# ═══ Evolve[S]: S → S ═════════════════════════════════════════════════════════════════════════════
 
 
 @dataclass(frozen=True)
@@ -1584,11 +1622,11 @@ class EvolutionStrategy(Evolve[Dist]):
     def __call__(self, state: Dist, /) -> Dist: ...
 
 
-# ═══ MapOp on a PartialTree (its options), LiftOp on a model ══════════════════════════════════════
+# ═══ Reshape[P, **R = []]: Partial → Partial ══════════════════════════════════════════════════════
 
 
 @dataclass(frozen=True)
-class Temperature(MapOp[PartialTree[Any, Any], PartialTree[Any, Any]]):
+class Temperature(Reshape[PartialTree[Any, Any]]):
     """The options' logits divided by t: below 1 sharper (toward greedy), above 1 flatter."""
     title = "Sampling temperature"
     t: float
@@ -1597,7 +1635,7 @@ class Temperature(MapOp[PartialTree[Any, Any], PartialTree[Any, Any]]):
 
 
 @dataclass(frozen=True)
-class TopK(MapOp[PartialTree[Any, Any], PartialTree[Any, Any]]):
+class TopK(Reshape[PartialTree[Any, Any]]):
     """Only the k likeliest edges stay possible."""
     title = "Top-k sampling"
     k: int
@@ -1606,7 +1644,7 @@ class TopK(MapOp[PartialTree[Any, Any], PartialTree[Any, Any]]):
 
 
 @dataclass(frozen=True)
-class TopP(MapOp[PartialTree[Any, Any], PartialTree[Any, Any]]):
+class TopP(Reshape[PartialTree[Any, Any]]):
     """Only the likeliest edges whose probabilities add up to p stay possible."""
     title = "Top-p (nucleus) sampling"
     p: float
@@ -1615,7 +1653,7 @@ class TopP(MapOp[PartialTree[Any, Any], PartialTree[Any, Any]]):
 
 
 @dataclass(frozen=True)
-class Given(LiftOp[Predictor, Predictor, [Value | None]]):
+class Given(Reshape[Predictor, [Value | None]]):
     """A conditional model with its condition fixed (None: no condition): the two models guidance mixes."""
     title = "A condition, fixed"
 
@@ -1623,7 +1661,7 @@ class Given(LiftOp[Predictor, Predictor, [Value | None]]):
 
 
 @dataclass(frozen=True)
-class CFG(LiftOp[Predictor, Predictor, [Predictor]]):
+class CFG(Reshape[Predictor, [Predictor]]):
     """u + w·(c − u): extrapolate from the unconditional prediction toward the conditional one, for a tree's options or
     a fill's model."""
     title = "Classifier-free guidance"
@@ -1633,7 +1671,7 @@ class CFG(LiftOp[Predictor, Predictor, [Predictor]]):
 
 
 @dataclass(frozen=True)
-class EpsilonGreedy(MapOp[PartialTree[Any, Any], PartialTree[Any, Any]]):
+class EpsilonGreedy(Reshape[PartialTree[Any, Any]]):
     """With probability ε a uniform edge, else the likeliest."""
     title = "Exploration vs exploitation (ε-greedy)"
     eps: float
@@ -1642,7 +1680,7 @@ class EpsilonGreedy(MapOp[PartialTree[Any, Any], PartialTree[Any, Any]]):
 
 
 @dataclass(frozen=True)
-class ToolUse(MapOp[PartialTree[Any, Any], PartialTree[Any, Any], [Callable[[Any], Tensor]]]):
+class ToolUse(Reshape[PartialTree[Any, Any], [Callable[[Any], Tensor]]]):
     """When a walk emits the call token, follow writes the tool's answer (a calculator, a search, an interpreter)."""
     title = "Tool use"
     call: int
@@ -1651,7 +1689,7 @@ class ToolUse(MapOp[PartialTree[Any, Any], PartialTree[Any, Any], [Callable[[Any
 
 
 @dataclass(frozen=True)
-class KVCache(MapOp[PartialTree[Any, Any], PartialTree[Any, Any]]):
+class KVCache(Reshape[PartialTree[Any, Any]]):
     """The tree's known nodes keep what the model computed for them, so expanding a node costs one position."""
     title = "KV caching"
     state = "each known node keeps its keys and values"
@@ -1660,7 +1698,7 @@ class KVCache(MapOp[PartialTree[Any, Any], PartialTree[Any, Any]]):
 
 
 @dataclass(frozen=True)
-class WorldModel(MapOp[PartialTree[Any, Any], PartialTree[Any, Any], [Model[Container, Container]]]):
+class WorldModel(Reshape[PartialTree[Any, Any], [Model[Container, Container]]]):
     """The environment's follow (and reward, done) replaced by a learned model of them: walks, searches and plans in
     imagination (Dreamer, MuZero)."""
     title = "World models (a learned follow)"
@@ -1669,7 +1707,7 @@ class WorldModel(MapOp[PartialTree[Any, Any], PartialTree[Any, Any], [Model[Cont
 
 
 @dataclass(frozen=True)
-class MPC(MapOp[PartialTree[Any, Any], PartialTree[Any, Any]]):
+class MPC(Reshape[PartialTree[Any, Any]]):
     """Options that look ahead: random action sequences simulated in a world, all the probability on the first action
     of the best."""
     title = "Planning (random shooting / MPC)"
@@ -1681,7 +1719,7 @@ class MPC(MapOp[PartialTree[Any, Any], PartialTree[Any, Any]]):
 
 
 @dataclass(frozen=True)
-class MCTS(MapOp[PartialTree[Any, Any], PartialTree[Any, Any]]):
+class MCTS(Reshape[PartialTree[Any, Any]]):
     """Options improved by search: grow a tree by PUCT (the options as priors), back up rewards and values, return the
     visit counts. Walk it to search; train toward it to amortize the search (AlphaZero)."""
     title = "MCTS (tree search)"
@@ -1693,7 +1731,7 @@ class MCTS(MapOp[PartialTree[Any, Any], PartialTree[Any, Any]]):
 
 
 @dataclass(frozen=True)
-class CFGDropout(LiftOp[Predictor, Predictor]):
+class CFGDropout(Reshape[Predictor]):
     """The condition dropped with probability p while training, so one model is both conditional and unconditional."""
     title = "Classifier-free guidance training"
     p: float = 0.1
@@ -1702,7 +1740,7 @@ class CFGDropout(LiftOp[Predictor, Predictor]):
 
 
 @dataclass(frozen=True)
-class KNNLM(MapOp[PartialTree[Any, Any], PartialTree[Any, Any], [Index, Predictor]]):
+class KNNLM(Reshape[PartialTree[Any, Any], [Index, Predictor]]):
     """Options mixed with the next tokens of the k nearest stored contexts: an LM that can look things up."""
     title = "kNN-LM (a memory of contexts)"
     weight: float = 0.25
@@ -1710,11 +1748,11 @@ class KNNLM(MapOp[PartialTree[Any, Any], PartialTree[Any, Any], [Index, Predicto
     def __call__(self, tree: PartialTree[Any, Any], memory: Index, embed: Predictor, /) -> PartialTree[Any, Any]: ...
 
 
-# ═══ MapOp with an Index: what is built on index.search ═══════════════════════════════════════════
+# ═══ Search[O, **R = []]: Index × Value → Set ═════════════════════════════════════════════════════
 
 
 @dataclass(frozen=True)
-class Retrieve(MapOp[Index, Temporal, [Set, Temporal, Predictor]]):
+class Retrieve(Search[Temporal, [Set, Temporal, Predictor]]):
     """The k documents nearest the query's embedding, put in front of it as one prompt (then walk the LM's tree)."""
     title = "Retrieval-augmented generation (retrieve)"
     k: int = 4
@@ -1723,7 +1761,7 @@ class Retrieve(MapOp[Index, Temporal, [Set, Temporal, Predictor]]):
 
 
 @dataclass(frozen=True)
-class HardNegatives(MapOp[Index, Set, [Value, Value]]):
+class HardNegatives(Search[Set, [Value, Value]]):
     """The nearest elements that are not the match: harder negatives for a contrastive loss."""
     title = "Hard-negative mining"
     k: int = 8
@@ -1732,7 +1770,7 @@ class HardNegatives(MapOp[Index, Set, [Value, Value]]):
 
 
 @dataclass(frozen=True)
-class KNN(MapOp[Index, Prediction, [Value, Value]]):
+class KNN(Search[Prediction, [Value, Value]]):
     """k-nearest-neighbour prediction: each query's k nearest stored examples (index.search), their labels voted
     (classes) or averaged (real values), weighted by distance. Nothing to fit: Insert the examples, then ask."""
     title = "k-nearest neighbours (classification, regression)"
@@ -1741,11 +1779,11 @@ class KNN(MapOp[Index, Prediction, [Value, Value]]):
     def __call__(self, index: Index, queries: Value, labels: Value, /) -> Prediction: ...
 
 
-# ═══ LiftOp: Module → Module′ ═════════════════════════════════════════════════════════════════════
+# ═══ Wrap[M, **R = []]: Module → Module′ ══════════════════════════════════════════════════════════
 
 
 @dataclass(frozen=True)
-class Observe(LiftOp[nn.Module, nn.Module, [nn.Module]]):
+class Observe(Wrap[nn.Module, [nn.Module]]):
     """A model that returns what one of its modules computed: the activations probes, SAEs and circuits study."""
     title = "Reading activations"
 
@@ -1753,7 +1791,7 @@ class Observe(LiftOp[nn.Module, nn.Module, [nn.Module]]):
 
 
 @dataclass(frozen=True)
-class Patch(LiftOp[nn.Module, nn.Module, [nn.Module, Callable[[Tensor], Tensor]]]):
+class Patch(Wrap[nn.Module, [nn.Module, Callable[[Tensor], Tensor]]]):
     """A model with one module's output replaced (by another input's activations): which components carry a behaviour?"""
     title = "Activation patching (circuits)"
 
@@ -1761,7 +1799,7 @@ class Patch(LiftOp[nn.Module, nn.Module, [nn.Module, Callable[[Tensor], Tensor]]
 
 
 @dataclass(frozen=True)
-class Steer(LiftOp[nn.Module, nn.Module, [nn.Module, Tensor]]):
+class Steer(Wrap[nn.Module, [nn.Module, Tensor]]):
     """α·direction added to one module's output: features are directions, and moving along one changes the behaviour."""
     title = "Steering along a direction"
     alpha: float = 1.0
@@ -1770,14 +1808,14 @@ class Steer(LiftOp[nn.Module, nn.Module, [nn.Module, Tensor]]):
 
 
 @dataclass(frozen=True)
-class Autocast(LiftOp[nn.Module, nn.Module]):
+class Autocast(Wrap[nn.Module]):
     """bf16 (or fp8) compute, float32 master weights."""
     title = "Low precision: training"
     function = "torch.autocast"
 
 
 @dataclass(frozen=True)
-class Compile(LiftOp[nn.Module, nn.Module]):
+class Compile(Wrap[nn.Module]):
     """torch.compile(module) fuses its ops; attention picks flash kernels by itself."""
     title = "Hardware-aware kernels"
     side = "model"
@@ -2656,16 +2694,16 @@ phenomenon("General methods + scale beat hand-engineering", "an empirical lesson
 
 # ═══ Meta-primitives: each is a property of some groups ═══════════════════════════════════════════
 
-meta("Bake in symmetry by sharing weights", (MapOp,), "the same weights wherever the container relates elements: conv on a grid, attention on a set, messages on a graph")
-meta("Let the input decide the computation", (MapOp,), "attention weights, scan coefficients and expert choices computed from the data")
-meta("Predict the hidden part from the visible part", (SplitOp, FillOp), "every self-supervised signal is a split into Holes; generation fills them back")
-meta("Turn one hard step into many easy ones", (FillOp, RestructureOp, UnfoldOp), "a token, a denoising step, an update at a time: a state, stepped")
-meta("Learning is compression", (MapOp, SplitOp), "bottlenecks, codebooks and students: the target, from a smaller description")
-meta("Bootstrap from yourself", (SplitOp,), "targets made by your own (older) model: TD, self-distillation, self-play, AlphaZero")
-meta("Amortize, or search", (MapOp, RestructureOp), "one forward pass that answers at once, or a tree grown by search")
-meta("Every loss is a likelihood", (FoldOp,), "Loss()(pred, target): what the target holds picks which")
-meta("Not every objective is a loss", (FoldOp,), "a return is a fold of a path; its gradient comes from scoring the path, or there is none")
-meta("Structure decides the computation", (MapOp,), "the container picks what each element reads")
+meta("Bake in symmetry by sharing weights", (Aggregate,), "the same weights wherever the container relates elements: conv on a grid, attention on a set, messages on a graph")
+meta("Let the input decide the computation", (Aggregate, Map), "attention weights, scan coefficients and expert choices computed from the data")
+meta("Predict the hidden part from the visible part", (Split, Fill), "every self-supervised signal is a split into Holes; generation fills them back")
+meta("Turn one hard step into many easy ones", (Fill, Walk, Unroll), "a token, a denoising step, an update at a time: a state, stepped")
+meta("Learning is compression", (Map, Split), "bottlenecks, codebooks and students: the target, from a smaller description")
+meta("Bootstrap from yourself", (Split,), "targets made by your own (older) model: TD, self-distillation, self-play, AlphaZero")
+meta("Amortize, or search", (Map, Walk, Reshape, Search), "one forward pass that answers at once, or a tree grown by search")
+meta("Every loss is a likelihood", (Score,), "Loss()(pred, target): what the target holds picks which")
+meta("Not every objective is a loss", (Fold, Score), "a return is a fold of a path; its gradient comes from scoring the path, or there is none")
+meta("Structure decides the computation", (Aggregate,), "the container picks what each element reads")
 
 # ═══ Printing ═════════════════════════════════════════════════════════════════════════════════════
 
@@ -2761,7 +2799,7 @@ def _type_parameter(t: Any) -> str:
 
 
 def _header(cls: type) -> str:
-    """A class header as written in this file: BestOfN(FoldOp[Path, Path, [Value]]), FoldOp[C, A, **R = []]."""
+    """A class header as written in this file: BestOfN(Fold[Path, Path, [Value]]), Fold[C, A, **R = []]."""
     if "group" in cls.__dict__:
         params = getattr(cls, "__type_params__", ())
         return cls.__name__ + (f"[{', '.join(map(_type_parameter, params))}]" if params else "")
@@ -2780,7 +2818,7 @@ def _settings_text(cls: type) -> str:
 
 
 def _members(base: type[Method]) -> list[Entry]:
-    """The methods whose group is base: base itself (Sklearn is its own group), then its subclasses."""
+    """The methods whose group is base: base itself (Fill, Walk, Unroll are their own group), then its subclasses."""
     return [e for e in ENTRIES if e.cls is not None and group_class(e.cls) is base]
 
 
