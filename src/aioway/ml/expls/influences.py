@@ -16,7 +16,6 @@ from aioway.ml.tasks import Task
 
 __all__ = [
     "CaptumInfluenceTask",
-    "build_influence_dcls",
     "BuildTracInCP",
     "BuildTracInCPFast",
     "BuildNaiveInfluenceFunction",
@@ -24,8 +23,10 @@ __all__ = [
 
 
 @typing.dataclass_transform(frozen_default=True, kw_only_default=True)
-def build_influence_dcls(cls):
-    return dcls.dataclass(frozen=True, kw_only=True)(cls)
+class _InfluenceStratFrozenDclsMixin:
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        return dcls.dataclass(frozen=True, kw_only=True)(cls)
 
 
 # The base class ====
@@ -39,8 +40,7 @@ class CaptumInfluenceTask(Task):
     Output: tensor of `[len(corpus)]`, corpus's rankings.
     """
 
-    @build_influence_dcls
-    class Strategy(abc.ABC):
+    class Strategy(_InfluenceStratFrozenDclsMixin, abc.ABC):
         """
         Strategy for building a `captum.influence.DataInfluence`
         for a module and a training corpus.
@@ -121,7 +121,6 @@ def _keep_weights(module: nn.Module, checkpoint: str) -> float:
     return 1.0
 
 
-@build_influence_dcls
 class BuildTracInCP(CaptumInfluenceTask.Strategy):
     _CAPTUM_CLASS = influence.TracInCP
 
@@ -140,7 +139,6 @@ class BuildTracInCP(CaptumInfluenceTask.Strategy):
         return method.influence(loader, aggregate=True)[0]
 
 
-@build_influence_dcls
 class BuildTracInCPFast(CaptumInfluenceTask.Strategy):
     _CAPTUM_CLASS = influence.TracInCPFast
 
@@ -153,7 +151,6 @@ class BuildTracInCPFast(CaptumInfluenceTask.Strategy):
     "Reduction `sum` or `mean`."
 
 
-@build_influence_dcls
 class BuildNaiveInfluenceFunction(CaptumInfluenceTask.Strategy):
     _CAPTUM_CLASS = influence.NaiveInfluenceFunction
     _CHECKPOINTS = {"checkpoint": "current"}

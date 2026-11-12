@@ -46,8 +46,7 @@ def is_any_type_hint(typ) -> bool:
     return isinstance(typ, type) and typ in _ANY_TYPE
 
 
-@typing.no_type_check
-def _iter_check[T](seq: type, typ: type[T]):
+def _iter_check[T](seq: type, typ: type[T]) -> cabc.Callable:
     if not isinstance(typ, type):
         raise TypeError(f"The given typ: `{typ}` should be a type.")
 
@@ -57,8 +56,7 @@ def _iter_check[T](seq: type, typ: type[T]):
     return check
 
 
-@typing.no_type_check
-def _mapping_check[K, V](mapping: type, key: type[K], val: type[V]):
+def _mapping_check[K, V](mapping: type, key: type[K], val: type[V]) -> cabc.Callable:
     if not issubclass(mapping, cabc.Mapping):
         raise TypeError(
             f"The given mapping: `{mapping}` should be subclass of `cabc.Mapping`."

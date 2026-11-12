@@ -11,7 +11,7 @@ from torch import ops
 
 from aioway.t.sessions import Cost
 
-from .aten import Aten, aten_dcls
+from .aten import Aten
 
 __all__ = [
     "Matmul",
@@ -43,7 +43,6 @@ Scalar = int | float | bool
 
 
 @typing.final
-@aten_dcls
 class Matmul(Aten):
     "`torch.ops` implementation for `torch.mm`."
 
@@ -70,7 +69,6 @@ class Matmul(Aten):
 
 
 @typing.final
-@aten_dcls
 class BatchMatmul(Aten):
     "`torch.ops` implementation for `torch.bmm`."
 
@@ -97,7 +95,6 @@ class BatchMatmul(Aten):
         )
 
 
-@aten_dcls
 class _BinaryUFunc(Aten, abc.ABC):
     BINARY: typing.ClassVar[cabc.Callable[..., typing.Any]]
 
@@ -138,127 +135,106 @@ class _BinaryUFunc(Aten, abc.ABC):
                 raise RuntimeError("Not happening.")
 
 
-@aten_dcls
 class AddTensor(_BinaryUFunc):
     KEY = ops.aten.add.Tensor
     BINARY = operator.add
 
 
-@aten_dcls
 class AddScalar(_BinaryUFunc):
     KEY = ops.aten.add.Scalar
     BINARY = operator.add
 
 
-@aten_dcls
 class SubTensor(_BinaryUFunc):
     KEY = ops.aten.sub.Tensor
     BINARY = operator.sub
 
 
-@aten_dcls
 class SubScalar(_BinaryUFunc):
     KEY = ops.aten.sub.Scalar
     BINARY = operator.sub
 
 
-@aten_dcls
 class MulTensor(_BinaryUFunc):
     KEY = ops.aten.mul.Tensor
     BINARY = operator.mul
 
 
-@aten_dcls
 class MulScalar(_BinaryUFunc):
     KEY = ops.aten.mul.Scalar
     BINARY = operator.mul
 
 
-@aten_dcls
 class TrueDivTensor(_BinaryUFunc):
     KEY = ops.aten.div.Tensor
     BINARY = operator.truediv
 
 
-@aten_dcls
 class TrueDivScalar(_BinaryUFunc):
     KEY = ops.aten.div.Scalar
     BINARY = operator.truediv
 
 
-@aten_dcls
 class FloorDiv(_BinaryUFunc):
     KEY = ops.aten.floor_divide.default
     BINARY = operator.floordiv
 
 
-@aten_dcls
 class EqTensor(_BinaryUFunc):
     KEY = ops.aten.eq.Tensor
     BINARY = operator.eq
 
 
-@aten_dcls
 class EqScalar(_BinaryUFunc):
     KEY = ops.aten.eq.Scalar
     BINARY = operator.eq
 
 
-@aten_dcls
 class NeTensor(_BinaryUFunc):
     KEY = ops.aten.ne.Tensor
     BINARY = operator.ne
 
 
-@aten_dcls
 class NeScalar(_BinaryUFunc):
     KEY = ops.aten.ne.Scalar
     BINARY = operator.ne
 
 
-@aten_dcls
 class GeTensor(_BinaryUFunc):
     KEY = ops.aten.ge.Tensor
     BINARY = operator.ge
 
 
-@aten_dcls
 class GeScalar(_BinaryUFunc):
     KEY = ops.aten.ge.Scalar
     BINARY = operator.ge
 
 
-@aten_dcls
 class GtTensor(_BinaryUFunc):
     KEY = ops.aten.gt.Tensor
     BINARY = operator.gt
 
 
-@aten_dcls
 class GtScalar(_BinaryUFunc):
     KEY = ops.aten.gt.Scalar
     BINARY = operator.gt
 
 
-@aten_dcls
 class LeTensor(_BinaryUFunc):
     KEY = ops.aten.le.Tensor
     BINARY = operator.le
 
 
-@aten_dcls
 class LeScalar(_BinaryUFunc):
     KEY = ops.aten.le.Scalar
     BINARY = operator.le
 
 
-@aten_dcls
 class LtTensor(_BinaryUFunc):
     KEY = ops.aten.lt.Tensor
     BINARY = operator.lt
 
 
-@aten_dcls
 class LtScalar(_BinaryUFunc):
     KEY = ops.aten.lt.Scalar
     BINARY = operator.lt

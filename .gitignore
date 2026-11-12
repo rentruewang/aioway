@@ -2,6 +2,7 @@
 /.vscode/
 .DS_Store
 /.testmondata*
+/*.patch
 
 ######################
 ## Python gitignore ##

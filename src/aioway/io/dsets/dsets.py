@@ -85,7 +85,6 @@ class DatasetIdxDset[T](IdxDset[T]):
     def __len__(self) -> int:
         return len(self._dataset)
 
-    @typing.no_type_check
     def __getitem__(self, idx):
         return self._dataset[idx]
 
