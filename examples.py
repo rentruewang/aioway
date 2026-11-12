@@ -24,7 +24,7 @@ from torch import Tensor, nn
 
 import catalog as C
 from catalog import Expr, Fit, Stmt
-from data import Codec, Container, Dataset, Environment, Grid, Holes, Indexed, Model, Path, Predictor, Set, Subset, Temporal, Value
+from data import Codec, Container, Dataset, Environment, Example, Grid, Holes, Indexed, Model, Path, Predictor, Set, Subset, Temporal, Value
 
 # ═══ Statements that build a model, train it, and return it ═══════════════════════════════════════
 
@@ -39,21 +39,22 @@ class Classify(Stmt):
 
     def __call__(self, x: Container, labels: Value, /) -> Predictor:
         model = C.Network(target=labels)
-        C.Train(steps=self.steps)(model, C.Objective(split=C.Supervised()), C.Batches(size=self.batch)(x, labels))
+        C.Train(steps=self.steps)(model, C.Objective(), C.Batches(size=self.batch)(x, labels))
         return model
 
 
 @dataclass(frozen=True)
 class Generate(Stmt):
-    """Learn any container by hiding parts of it, then generate n by filling the holes back in. The type picks the
-    split (NextToken, Mask or Noise); AllAtOnce fills every hole at once."""
+    """Learn any container by hiding parts of it, then generate n by filling the holes back in. split says how
+    (Noise by default; Mask, NextToken); AllAtOnce fills every hole at once."""
 
     steps: int = 1000
     fill_steps: int = 16
     n: int = 8
+    split: Callable[[Container], Example] = C.Noise()
 
     def __call__(self, data: Container, /) -> Container:
-        split = C.AutoSplit()
+        split = self.split
         ex = split(data)
         model = C.Network(target=ex.target)
         C.Train(steps=self.steps)(model, C.Objective(split=split), C.Batches(size=64)(data))
@@ -84,9 +85,10 @@ class Plan(Stmt):
 
     def __call__(self, env: Environment, experience: Path, /) -> Path:
         batch = C.Transitions()(experience)
-        ex = C.Dynamics()(batch)
-        world = C.Network(target=ex.target)
-        C.Train(steps=self.steps)(world, C.Objective(split=C.Dynamics()), C.Batches(size=64)(batch))
+        before = C.Condition()(Value(batch.data["state"]), Value(batch.data["action"]))
+        after = Value(batch.data["next_state"])
+        world = C.Network(target=after)
+        C.Train(steps=self.steps)(world, C.Objective(), C.Batches(size=64)(before, after))
         tree = C.EnvTree()(env)
         return C.Walk(steps=self.horizon)(C.MPC()(tree, C.WorldModel()(tree, world)), C.Greedy())
 
@@ -133,12 +135,10 @@ class ReinforcementLearning(Fit[Predictor, [Environment]]):
     gamma: float = 0.99
 
     def __call__(self, policy: Predictor, env: Environment, /) -> None:
-        def objective(policy: Predictor) -> Tensor:
-            path = C.Walk(steps=self.horizon)(C.EnvTree()(env, policy), C.Sample())
+        def objective(policy: Predictor, path: Path) -> Tensor:
             return C.Reinforce()(path, C.MeanBaseline()(C.DiscountedReturn(gamma=self.gamma)(path)))
 
-        for _ in range(self.rounds):
-            C.Train(steps=self.steps)(policy, objective, None)
+        C.TrainRL(steps=self.rounds * self.steps, horizon=self.horizon)(policy, env, objective)
 
 
 @dataclass(frozen=True)
@@ -247,7 +247,7 @@ class Tabular(Stmt):
         boosted = C.Trees(HistGradientBoostingClassifier(max_iter=self.trees))()
         C.FitEstimator()(boosted, data)
         linear = C.Layer(nn.LazyLinear(int(y.data.max()) + 1))
-        C.Train(steps=500)(linear, C.Objective(split=C.Supervised()), data)
+        C.Train(steps=500)(linear, C.Objective(), data)
         memory = C.NewIndex()(x)
         C.Insert()(memory, C.Batches(size=1024, shuffle=False)(x))
         return {"boosted trees": C.Accuracy()(boosted.predict(test_x).data, test_y), "linear": C.Accuracy()(linear(test_x), test_y),
@@ -280,7 +280,7 @@ class CrossValidate(Stmt):
     steps: int = 500
 
     def __call__(self, x: Container, labels: Value, /) -> dict[str, Any]:
-        loss = C.Objective(split=C.Supervised())
+        loss = C.Objective()
         folds = C.KFold(StratifiedKFold(n_splits=self.k, shuffle=True), label=lambda batch: batch[1].data)
         scores: list[Tensor] = []
         for train, test in folds(C.Batches(size=64)(x, labels)):
@@ -328,7 +328,7 @@ class BERT(Stmt):
         C.Train(steps=self.steps)(encoder, C.Objective(split=C.Mask(ratio=self.ratio)), corpus)
         classifier = C.Network(target=labels, d=256, depth=6)
         C.Transfer()(classifier, encoder)
-        C.Train(steps=self.steps // 10)(classifier, C.Objective(split=C.Supervised()), C.Batches(size=32)(texts, labels))
+        C.Train(steps=self.steps // 10)(classifier, C.Objective(), C.Batches(size=32)(texts, labels))
         return classifier
 
 
@@ -356,8 +356,7 @@ class Distill(Stmt):
         student = C.Network(target=y, d=64, depth=2)
 
         def objective(model: Predictor, batch: Container) -> Tensor:
-            ex = C.Distillation()(batch, teacher)
-            return C.Loss()(model(ex.input.known), ex.target)
+            return C.Loss()(model(batch), Value(teacher(batch)))
 
         C.Train(steps=self.steps)(student, objective, C.Batches(size=64)(x))
         return student
@@ -420,8 +419,7 @@ class SimCLR(Stmt):
         encoder = C.Encoder(dim=self.dim)
 
         def objective(model: Model[Container, Value], x: Grid) -> Tensor:
-            ex = C.Contrastive()(x, augment)
-            return C.InfoNCE()(model(ex.input.known), model(ex.target))
+            return C.InfoNCE()(model(augment(x)), model(augment(x)))
 
         C.Train(steps=self.steps)(encoder, objective, C.Batches(size=256)(images))
         return encoder

@@ -75,7 +75,7 @@ class Mixer(Intent, LayerOp[Temporal, Temporal]):
 
 
 @dataclass(frozen=True)
-class TrainLength(Intent, Fit[nn.Module, [Callable[..., Tensor], Dataset[Any] | None]]):
+class TrainLength(Intent, Fit[nn.Module, [Callable[..., Tensor], Dataset[Any]]]):
     """Some amount of training: how long to update the network."""
     candidates = (Train(steps=100), Train(steps=200), Train(steps=400))
 

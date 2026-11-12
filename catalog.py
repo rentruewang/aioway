@@ -9,9 +9,9 @@ what kind of thing it is, with the group's type parameters filled in:
         def __call__(self, paths: Path, scores: Value, /) -> Path: ...
 
     @dataclass(frozen=True)
-    class Train(Fit[nn.Module, [Callable[..., Tensor], Dataset[Any] | None]]):   # a statement: it changes a module (!)
+    class Train(Fit[nn.Module, [Callable[..., Tensor], Dataset[Any]]]):   # a statement: it changes a module (!)
         steps: int
-        def __call__(self, model: nn.Module, objective: Callable[..., Tensor], data: Dataset[Any] | None, /) -> None: ...
+        def __call__(self, model: nn.Module, objective: Callable[..., Tensor], data: Dataset[Any], /) -> None: ...
 
     BestOfN(n=16)(paths, scores)               # configure, then call: a value
     Train(steps=200)(net, loss, corpus)     # a line of its own: net changes in place, nothing is returned
@@ -31,8 +31,7 @@ EXPRESSIONS · on a batch: nothing changes, nothing new is made
               Select[C, **R]             (x: C, *R) -> C                keep, drop, reorder or reweight elements
               Fold[C, A, **R]            (x: C, *R) -> A                reduce a container to one value
               Scan[X, S, Y]              init, step; (xs: Seq) -> Seq   carry a state S along a sequence
-  learning    Split[C, **R]              (x: C, *R) -> Example          hide part of a container: the target
-              ScoreOp[P, O, **R]         (pred: P, *R) -> O             how bad a prediction is
+  learning    ScoreOp[P, O, **R]         (pred: P, *R) -> O             how bad a prediction is
                 LossOp[P, T]             (pred: P, target: T) -> ℝ      …to minimize, differentiable
                 MetricOp[P, T]           (pred: P, target: T) -> ℝ      …to report, never differentiated
   partial     Start[P, **R]              (*R) -> P                      a partial container to grow
@@ -71,10 +70,10 @@ None; dataset statements change nothing but read every batch. Weights is the sub
 op leaves alone.
 
 So BestOfN is a Fold[Path, Path, [Value]] (a Path in and a Path out, given the Values that score it), Network a
-LayerOp[Container, Prediction] (a layer: the target's type picks its readout, the first input sizes the rest), Train a Fit[nn.Module, [Callable[..., Tensor], Dataset[Any] | None]] (it changes a module, reading an
+LayerOp[Container, Prediction] (a layer: the target's type picks its readout, the first input sizes the rest), Train a Fit[nn.Module, [Callable[..., Tensor], Dataset[Any]]] (it changes a module, reading an
 objective and a dataset). Fill, Walk, Unroll and Sklearn are each one method, and the group is that method.
 
-Supervised learning is a Supervised split and the Loss its target picks: classes make it classification, real values
+Supervised learning is Train on (input, target) batches with the Loss its target picks: classes make it classification, real values
 regression, for any model that predicts the target (Network, a linear layer, KNN, a boosted-trees estimator). Classical
 methods are scikit-learn's, whose API comes in a few kinds, each one of ours: an estimator is made (Sklearn) and
 fitted (FitEstimator), its predict and transform are expressions, fit_predict and fit_transform read a whole dataset
@@ -439,12 +438,6 @@ class Scan[X, S, Y](Expr):
 
     def __call__(self, xs: Seq, /) -> Seq: ...
 
-
-class Split[C, **R = []](Expr):
-    """Hide part of a container C; what was hidden (or a teacher's answer) is the target."""
-    group, family, form, side = "split", "learning", "C → Example", "agnostic"
-
-    def __call__(self, x: C, /, *rest: R.args, **named: R.kwargs) -> Example: ...
 
 
 class ScoreOp[P, O = Tensor, **R = []](Expr):
@@ -1074,44 +1067,15 @@ class ParallelScan(Scan[Tensor, Tensor, Tensor]):
     function = "torch.cumsum"
 
 
-# ═══ Split[C, **R = []]: C → Example ══════════════════════════════════════════════════════════════
+# ═══ Setting up a task: a shift (ConvertOp), elements hidden or noised (ElementwiseOp) ════════════
+
+
+
+
 
 
 @dataclass(frozen=True)
-class AutoSplit(Split[Container]):
-    """The split a container's type picks: classes in order → NextToken · other classes → Mask · real values → Noise."""
-    title = "Choosing the split from the data"
-
-    def __call__(self, x: Container, /) -> Example: ...
-
-
-@dataclass(frozen=True)
-class Supervised(Split[Container, [Container]]):
-    """The data comes split: the input with nothing hidden, the label as the target."""
-    title = "Supervised"
-
-    def __call__(self, x: Container, y: Container, /) -> Example: ...
-
-
-@dataclass(frozen=True)
-class Classification(Split[Container, [Container]]):
-    """Supervised learning with classes as the target: Supervised, then Loss picks cross-entropy (a categorical's
-    negative log-likelihood); Accuracy measures it. Any model that predicts the classes does it: a linear layer (logistic
-    regression), Network, KNN, a boosted-trees estimator."""
-    title = "Classification"
-    function = "Supervised, Loss"
-
-
-@dataclass(frozen=True)
-class Regression(Split[Container, [Container]]):
-    """Supervised learning with real values as the target: Supervised, then Loss picks squared error (a Gaussian's
-    negative log-likelihood). A linear layer with LeastSquares is linear regression; Network, KNN and boosted trees do it too."""
-    title = "Regression"
-    function = "Supervised, Loss"
-
-
-@dataclass(frozen=True)
-class NextToken(Split[Temporal]):
+class NextToken(ConvertOp[Temporal, Example]):
     """Each element is predicted from the ones before it (a causal Temporal): the target at i is the element at i + 1."""
     title = "Self-supervised: next-token prediction"
 
@@ -1119,7 +1083,7 @@ class NextToken(Split[Temporal]):
 
 
 @dataclass(frozen=True)
-class Mask(Split[Container]):
+class Mask(ElementwiseOp[Container, Example]):
     """Random elements at level 1 ([MASK] for classes, 0 for real values): 15% is BERT, 75% MAE, a random ratio per
     example MaskGIT and masked diffusion."""
     title = "Self-supervised: masked prediction (BERT, MAE, MaskGIT)"
@@ -1129,7 +1093,7 @@ class Mask(Split[Container]):
 
 
 @dataclass(frozen=True)
-class Noise(Split[Container]):
+class Noise(ElementwiseOp[Container, Example]):
     """Every element at one random level t (x_t = (1 − t)·x + t·ε): the target is the velocity, the noise or the
     clean data, rescalings of one another."""
     title = "Diffusion / score matching / flow matching"
@@ -1138,7 +1102,7 @@ class Noise(Split[Container]):
 
 
 @dataclass(frozen=True)
-class DiffusionForcing(Split[Temporal]):
+class DiffusionForcing(ElementwiseOp[Temporal, Example]):
     """A random level for each element: next-token prediction and diffusion are its two extremes."""
     title = "Diffusion forcing"
 
@@ -1146,7 +1110,7 @@ class DiffusionForcing(Split[Temporal]):
 
 
 @dataclass(frozen=True)
-class NextFrame(Split[Temporal[Grid]]):
+class NextFrame(ConvertOp[Temporal[Grid], Example]):
     """The frames up to t as the input, the frames from t + 1 as the target: shift, on the frames of a video."""
     title = "Self-supervised: future-frame prediction"
 
@@ -1154,39 +1118,18 @@ class NextFrame(Split[Temporal[Grid]]):
 
 
 @dataclass(frozen=True)
-class Reconstruction(Split[Container]):
+class Reconstruction(ElementwiseOp[Container, Example]):
     """Nothing hidden; the target is the input itself, so the model's bottleneck is what makes it hard."""
     title = "Reconstruction (autoencoder)"
 
     def __call__(self, x: Container, /) -> Example: ...
 
 
-@dataclass(frozen=True)
-class Contrastive(Split[Container, [Callable[[Container], Container]]]):
-    """Two random augmentations of the same examples, each the other's target (CLIP pairs an image with its caption)."""
-    title = "Contrastive views"
 
-    def __call__(self, x: Container, augment: Callable[[Container], Container], /) -> Example: ...
 
 
 @dataclass(frozen=True)
-class Distillation(Split[Container, [Predictor]]):
-    """The target is a teacher's (softened) prediction on the same input."""
-    title = "Knowledge distillation"
-
-    def __call__(self, x: Container, teacher: Predictor, /) -> Example: ...
-
-
-@dataclass(frozen=True)
-class SelfDistillation(Split[Container, [Predictor, Callable[[Container], Container]]]):
-    """One view as the input; the target is a slow (EMA) copy's embedding of another view: agree with an older self."""
-    title = "Self-distillation (BYOL / DINO / JEPA)"
-
-    def __call__(self, x: Container, teacher: Predictor, augment: Callable[[Container], Container], /) -> Example: ...
-
-
-@dataclass(frozen=True)
-class SFT(Split[Temporal]):
+class SFT(ConvertOp[Temporal, Example]):
     """shift, with only the response as targets: the prompt is read, never predicted."""
     title = "Instruction tuning / SFT"
     prompt_len: int
@@ -1194,39 +1137,8 @@ class SFT(Split[Temporal]):
     def __call__(self, x: Temporal, /) -> Example: ...
 
 
-@dataclass(frozen=True)
-class TD(Split[Value, [Predictor]]):
-    """V(s) learns toward r + γ·V(s′): a target bootstrapped from the critic's own estimate."""
-    title = "TD learning (value regression)"
-    gamma: float = 0.99
-
-    def __call__(self, batch: Value, critic: Predictor, /) -> Example: ...
 
 
-@dataclass(frozen=True)
-class QLearning(Split[Value, [Predictor]]):
-    """Q(s, a) learns toward r + γ·max Q(s′, ·) at the action taken (the weight picks it out)."""
-    title = "Q-learning (DQN)"
-    gamma: float = 0.99
-
-    def __call__(self, batch: Value, q: Predictor, /) -> Example: ...
-
-
-@dataclass(frozen=True)
-class Dynamics(Split[Value]):
-    """From each transition, the input is the state and the action; the target what followed (next state, reward,
-    done). A model of it is a learned follow (imagined)."""
-    title = "World-model targets (dynamics)"
-
-    def __call__(self, batch: Value, /) -> Example: ...
-
-
-@dataclass(frozen=True)
-class AlphaZeroTargets(Split[Path, [PartialTree[Any, Any]]]):
-    """For each state a walk visited: what search made of it (its visit distribution) and what followed (the return)."""
-    title = "Amortized search (AlphaZero targets)"
-
-    def __call__(self, path: Path, search: PartialTree[Any, Any], /) -> Example: ...
 
 
 # ═══ ScoreOp[P, O = Tensor, **R = []]: Prediction × C → ℝ ═══════════════════════════════════════════
@@ -1234,10 +1146,10 @@ class AlphaZeroTargets(Split[Path, [PartialTree[Any, Any]]]):
 
 @dataclass(frozen=True)
 class Objective(ScoreOp[nn.Module, Tensor, ...]):
-    """The loss of a model on a batch: split it into an Example, predict from the input, score with the loss the
-    target picks (labelled data: split = Supervised())."""
+    """The loss of a model on a batch: split it into an Example with a data op (NextToken, Mask, Noise, …), predict
+    from the input, score with the loss the target picks. With no split, the batch is (input, target) already."""
     title = "Objective (a split, then its loss)"
-    split: Split[Any, ...]
+    split: Callable[..., Example] | None = None
 
     def __call__(self, model: nn.Module, /, *batch: Any) -> Tensor: ...
 
@@ -2175,11 +2087,11 @@ class Standardize(Sklearn[Estimator]):
 
 
 @dataclass(frozen=True)
-class Train(Fit[nn.Module, [Callable[..., Tensor], Dataset[Any] | None]]):
+class Train(Fit[nn.Module, [Callable[..., Tensor], Dataset[Any]]]):
     """Descend the objective over the dataset's batches: each step, objective(model, *batch) (under autocast to
     precision), its gradient (clipped to max_grad_norm), the optimizer's update of the parameters, in place, at the
     schedule's rate. In training mode only here, so a forward's own effects (BatchNorm statistics) are training's
-    too. With no data, the objective makes its own each step (it walks the model: RL, self-play)."""
+    too. Reinforcement learning has a loop of its own: TrainRL."""
     title = "Training"
     steps: int
     optimizer: Scan[Tensor, Any, Tensor] = Optimizer()
@@ -2187,7 +2099,24 @@ class Train(Fit[nn.Module, [Callable[..., Tensor], Dataset[Any] | None]]):
     max_grad_norm: float | None = 1.0
     precision: torch.dtype | None = None
 
-    def __call__(self, model: nn.Module, objective: Callable[..., Tensor], data: Dataset[Any] | None, /) -> None: ...
+    def __call__(self, model: nn.Module, objective: Callable[..., Tensor], data: Dataset[Any], /) -> None: ...
+
+
+@dataclass(frozen=True)
+class TrainRL(Fit[nn.Module, [Environment, Callable[..., Tensor]]]):
+    """Reinforcement learning's loop: each step, walk the environment with the policy as it is now (a collector), keep
+    the walks for one update (on-policy) or in a replay buffer of at most buffer transitions (off-policy), then a
+    gradient step on objective(policy, batch). Not Train: its data is made by the model being trained, and lives as
+    long as the collector or the buffer keeps it, not as long as a fixed dataset."""
+    title = "Training (reinforcement learning)"
+    steps: int
+    horizon: int = 200
+    walks: int = 16
+    buffer: int | None = None
+    optimizer: Scan[Tensor, Any, Tensor] = Optimizer()
+    max_grad_norm: float | None = 1.0
+
+    def __call__(self, policy: nn.Module, env: Environment, objective: Callable[..., Tensor], /) -> None: ...
 
 
 @dataclass(frozen=True)
@@ -2625,10 +2554,10 @@ phenomenon("General methods + scale beat hand-engineering", "an empirical lesson
 
 meta("Bake in symmetry by sharing weights", (Aggregate,), "the same weights wherever the container relates elements: conv on a grid, attention on a set, messages on a graph")
 meta("Let the input decide the computation", (Aggregate, ElementwiseOp), "attention weights, scan coefficients and expert choices computed from the data")
-meta("Predict the hidden part from the visible part", (Split, Fill), "every self-supervised signal is a split into Holes; generation fills them back")
+meta("Predict the hidden part from the visible part", (ElementwiseOp, Fill), "every self-supervised signal is a split into Holes; generation fills them back")
 meta("Turn one hard step into many easy ones", (Fill, Walk, Unroll), "a token, a denoising step, an update at a time: a state, stepped")
-meta("Learning is compression", (ElementwiseOp, Split), "bottlenecks, codebooks and students: the target, from a smaller description")
-meta("Bootstrap from yourself", (Split,), "targets made by your own (older) model: TD, self-distillation, self-play, AlphaZero")
+meta("Learning is compression", (ElementwiseOp,), "bottlenecks, codebooks and students: the target, from a smaller description")
+meta("Bootstrap from yourself", (Fit,), "targets made by your own (older) model: TD, self-distillation, self-play, AlphaZero")
 meta("Amortize, or search", (ElementwiseOp, Walk, Reshape, Search), "one forward pass that answers at once, or a tree grown by search")
 meta("Every loss is a likelihood", (ScoreOp,), "Loss()(pred, target): what the target holds picks which")
 meta("Not every objective is a loss", (Fold, ScoreOp), "a return is a fold of a path; its gradient comes from scoring the path, or there is none")
@@ -2643,7 +2572,7 @@ NEW = {"Tokenization (BPE, SentencePiece, bytes)", "Image tokenizer (VQ-VAE, VQG
        "kNN-LM (a memory of contexts)", "Near-duplicate removal (MinHash / LSH)", "Hard-negative mining", "Fill", "Autoregressive order",
        "Unmasking (MaskGIT, masked diffusion)", "Sampling a flow (diffusion)", "Diffusion forcing", "Diffusion forcing sampling", "Training",
        "Optimizers (SGD, momentum, Adam, Muon)", "KV caching", "A path from a tree", "Sampling", "Several paths per root (best-of-N, groups)",
-       "Teacher forcing (walking the data's path)", "Supervised", "Log-probability", "Retrieval accuracy", "Blank (where generation starts)",
+       "Teacher forcing (walking the data's path)", "Training (reinforcement learning)", "Log-probability", "Retrieval accuracy", "Blank (where generation starts)",
        "A condition, fixed", "Objective (a split, then its loss)", "Minibatches", "Classifier-free guidance training", "Recurrence (RNN / LSTM / GRU)",
        "State-space models / linear recurrences", "Walk", "Classification", "Regression", "Linear models (linear and logistic regression)",
        "Kernel methods (random features)", "k-nearest neighbours (classification, regression)", "Hinge loss (SVM)",

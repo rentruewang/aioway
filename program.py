@@ -57,14 +57,14 @@ from typing import Any, Self
 from torch import nn
 
 from catalog import (
-    Accuracy, Autoencoder, Batches, Blank, Curriculum, Dedup, DiscountedReturn, DPO, CFGDropout, NearDedup, Dynamics,
+    Accuracy, Autoencoder, Batches, Blank, Condition, Curriculum, Dedup, DiscountedReturn, DPO, CFGDropout, NearDedup,
     EarlyStop, NewIndex, Encoder, EnvTree, EpsilonGreedy, Evaluate, Extend, Fill, Flatten, Freeze, FrozenCopy, Given, Greedy, GroupAdvantage, CFG, TrainTestSplit,
-    WorldModel, NPaths, InfoNCE, Insert, KeepBest, Supervised, LMTree, LogProb, LoRA, Loss, Mask, MCTS, Method, Mix, MoE, MostConfident,
-    LayerOp, Network, Noise, Patchify, MPC, PPO, QLearning, QualityFilter, Reconstruction, Reinforce, ReplayBuffer, RetrievalAccuracy,
-    Retrieve, ReturnsToGo, Sample, AlphaZeroTargets, SSM, NextToken, Split, Temperature, AllAtOnce, Train, TrainIndex, Transfer,
+    WorldModel, NPaths, InfoNCE, Insert, KeepBest, LMTree, LogProb, LoRA, Loss, Mask, MCTS, Method, Mix, MoE, MostConfident,
+    LayerOp, Network, Noise, Patchify, MPC, PPO, QualityFilter, Reconstruction, Reinforce, ReplayBuffer, RetrievalAccuracy,
+    Retrieve, ReturnsToGo, Sample, SSM, NextToken, Temperature, AllAtOnce, Train, TrainIndex, Transfer,
     Transitions, Walk, changes, group_class, Intent, is_statement, settings_of, short,
 )
-from data import Container, Predictor, Seq, Temporal
+from data import Container, Example, PartialTree, Path, Predictor, Seq, Temporal
 
 # ═══ Nodes ════════════════════════════════════════════════════════════════════════════════════════
 
@@ -615,6 +615,22 @@ def head(name: str) -> bool:
     return name.startswith("readout")
 
 
+def taken(values: Any, action: Any) -> Any:
+    """The value of the action taken, out of one per action."""
+    return values.gather(-1, action.unsqueeze(-1)).squeeze(-1)
+
+
+def q_target(q: Callable[[Any], Any], batch: Any, gamma: float = 0.99) -> Any:
+    """r + γ·max Q(s′), nothing past the end: what the action taken learns toward (no gradient through it)."""
+    return (batch.reward + gamma * (1 - batch.done.float()) * q(batch.next_state).max(-1).values).detach()
+
+
+def search_targets(path: Path, search: PartialTree[Any, Any]) -> tuple[Any, Any]:
+    """AlphaZero's: for each state a walk visited, what search made of it (its visit distribution) and what followed (the
+    return)."""
+    ...
+
+
 def append(xs: tuple[Any, ...], x: Any) -> tuple[Any, ...]:
     """xs with x at the end: a learning curve, one score longer."""
     return (*xs, x)
@@ -623,10 +639,10 @@ def append(xs: tuple[Any, ...], x: Any) -> tuple[Any, ...]:
 # ═══ Losses, as programs: a split, a model, a score ═══════════════════════════════════════════════
 
 
-def split_loss(name: str, split: Split[Any], about: str) -> Program:
+def split_loss(name: str, split: Callable[..., Example], about: str) -> Program:
     """A loss of (model, batch): split the batch, predict from the input, score with the loss the target picks.
 
-        def split_loss(net: Predictor, data: Container, *, split: Split[Any]) -> Tensor:
+        def split_loss(net: Predictor, data: Container, *, split: Callable[..., Example]) -> Tensor:
             ex: Example = split(data)
             return Loss()(net(ex.input), ex.target, ex.weight)
     """
@@ -638,13 +654,17 @@ def split_loss(name: str, split: Split[Any], about: str) -> Program:
 next_token_loss = split_loss("next-token loss", NextToken(), "each token predicted from the ones before it")
 masked_loss = split_loss("masked loss", Mask(), "random holes, predicted")
 autoencoding_loss = split_loss("reconstruction loss", Reconstruction(), "the input as its own target, through the bottleneck")
-dynamics_loss = split_loss("dynamics loss", Dynamics(), "from a state and an action, what follows")
 
 
 def _supervised_loss() -> Program:
     model, x, y = inputs("network x y")
-    ex = call(Supervised(), x, y).named("ex")
-    return Program("supervised loss", (model, x, y), call(Loss(), model(ex.input), ex.target), "the label as the target")
+    return Program("supervised loss", (model, x, y), call(Loss(), model(x), y), "the label as the target")
+
+
+def _dynamics_loss() -> Program:
+    world, batch = inputs("world batch")
+    return Program("dynamics loss", (world, batch), call(Loss(), world(call(Condition(), batch.state, batch.action)), batch.next_state),
+                   "from a state and an action, what follows")
 
 
 def _flow_matching_loss() -> Program:
@@ -671,12 +691,12 @@ def _ppo_loss() -> Program:
 
 def _q_learning_loss() -> Program:
     q, batch = inputs("q batch")
-    ex = call(QLearning(), batch, q).named("ex")
-    return Program("Q-learning loss", (q, batch), call(Loss(), q(ex.input), ex.target, ex.weight), "the action taken learns toward r + γ·max Q(s′)")
+    return Program("Q-learning loss", (q, batch), call(Loss(), call(taken, q(batch.state), batch.action), call(q_target, q, batch)),
+                   "the action taken learns toward r + γ·max Q(s′)")
 
 
-supervised_loss, flow_matching_loss, contrastive_loss, ppo_loss, q_learning_loss = (
-    _supervised_loss(), _flow_matching_loss(), _contrastive_loss(), _ppo_loss(), _q_learning_loss())
+supervised_loss, dynamics_loss, flow_matching_loss, contrastive_loss, ppo_loss, q_learning_loss = (
+    _supervised_loss(), _dynamics_loss(), _flow_matching_loss(), _contrastive_loss(), _ppo_loss(), _q_learning_loss())
 
 
 def grpo_loss(verify: Callable[..., Any], n: int = 8, length: int = 1) -> Program:
@@ -840,16 +860,16 @@ def alphazero(rounds: int = 8, simulations: int = 32, steps: int = 30, length: i
                       simulations: int = 32, steps: int = 30, length: int = 16) -> Path:
             for _ in range(rounds):
                 search = MCTS(simulations=simulations, two_player=True)(game(net))
-                ex: Example = AlphaZeroTargets()(Walk(steps=length)(search, Sample()), search)
-                Train(steps=steps)(net, supervised_loss, Batches(size=64)(ex.input.known, ex.target))
+                states, targets = search_targets(Walk(steps=length)(search, Sample()), search)
+                Train(steps=steps)(net, supervised_loss, Batches(size=64)(states, targets))
             return Walk(steps=length)(game(net), Greedy())
     """
-    net, game, ex = inputs("network game ex")
+    net, game, ex = inputs("network game targets")
     search = call(MCTS(simulations=simulations, two_player=True), game(net)).named("search")
     return Script("AlphaZero", (net, game), (
         repeat(rounds,
-               let(ex, call(AlphaZeroTargets(), call(Walk(steps=length), search, Sample()), search)),
-               update(net, Train(steps=steps), supervised_loss, call(Batches(size=64), ex.input.known, ex.target))),
+               let(ex, call(search_targets, call(Walk(steps=length), search, Sample()), search)),
+               update(net, Train(steps=steps), supervised_loss, call(Batches(size=64), ex[0], ex[1]))),
     ), call(Walk(steps=length), game(net), Greedy()),
         "a policy-value network that amortizes MCTS: each round plays itself with search, then learns the search's choices")
 
@@ -969,19 +989,17 @@ def world_model_planning(horizon: int = 20, steps: int = 300) -> Script:
         def world_model_planning(env: Environment, *, horizon: int = 20, steps: int = 300) -> Value:
             tree: PartialTree[Any, Tensor] = EnvTree()(env)
             batch: Value = Transitions()(Walk(steps=horizon)(tree, Sample()))
-            ex: Example = Dynamics()(batch)
-            world: Predictor = Network(target=ex.target)
+            world: Predictor = Network(target=batch.next_state)
             Train(steps=steps)(world, dynamics_loss, Batches(size=64)(batch))
             plan = MPC(horizon=8, samples=32)(tree, WorldModel()(tree, world))
             return DiscountedReturn()(Walk(steps=horizon)(plan, Greedy()))
     """
     env, batch, world = inputs("env batch world")
     tree = call(EnvTree(), env).named("tree")
-    ex = call(Dynamics(), batch).named("ex")
     plan = call(MPC(horizon=8, samples=32), tree, call(WorldModel(), tree, world)).named("plan")
     return Script("Planning in a learned world model", (env,), (
         let(batch, call(Transitions(), call(Walk(steps=horizon), tree, Sample()))),
-        let(world, call(Network, target=ex.target)),
+        let(world, call(Network, target=batch.next_state)),
         update(world, Train(steps=steps), dynamics_loss, call(Batches(size=64), batch)),
     ), call(DiscountedReturn(), call(Walk(steps=horizon), plan, Greedy())),
         "explore at random, learn what follows each action, act by planning inside that model (Dreamer, MuZero)")
