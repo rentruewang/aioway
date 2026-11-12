@@ -37,16 +37,17 @@ __all__ = [
 
 
 @typing.dataclass_transform(frozen_default=True, kw_only_default=True)
-def init_dcls(cls):
-    return dcls.dataclass(frozen=True, kw_only=True)(cls)
+class _InitDclsMixin:
+    def __init_subclass__(cls, **kwargs) -> None:
+        super().__init_subclass__(**kwargs)
+        _ = dcls.dataclass(frozen=True, kw_only=True)(cls)
 
 
 class InitError(Exception):
     "An `Init` failed on one of the module's tensors."
 
 
-@init_dcls
-class Init(abc.ABC):
+class Init(_InitDclsMixin, abc.ABC):
     "Initializes a tensor in place."
 
     allow_failure: bool = False
@@ -66,7 +67,6 @@ class Init(abc.ABC):
         raise NotImplementedError
 
 
-@init_dcls
 class NoInit(Init):
     "Leave the tensor as allocated (uninitialized memory)."
 
@@ -144,7 +144,6 @@ class ModuleRebuilder:
 # Constant inits ====
 
 
-@init_dcls
 class ConstantInit(Init):
     "Wraps `torch.nn.init.constant_`."
 
@@ -155,7 +154,6 @@ class ConstantInit(Init):
         nn.init.constant_(tensor, self.val)
 
 
-@init_dcls
 class ZerosInit(Init):
     "Wraps `torch.nn.init.zeros_`."
 
@@ -163,7 +161,6 @@ class ZerosInit(Init):
         nn.init.zeros_(tensor)
 
 
-@init_dcls
 class OnesInit(Init):
     "Wraps `torch.nn.init.ones_`."
 
@@ -174,7 +171,6 @@ class OnesInit(Init):
 # Random inits ====
 
 
-@init_dcls
 class UniformInit(Init):
     "Wraps `torch.nn.init.uniform_`."
 
@@ -188,7 +184,6 @@ class UniformInit(Init):
         nn.init.uniform_(tensor, a=self.a, b=self.b)
 
 
-@init_dcls
 class NormalInit(Init):
     "Wraps `torch.nn.init.normal_`."
 
@@ -202,7 +197,6 @@ class NormalInit(Init):
         nn.init.normal_(tensor, mean=self.mean, std=self.std)
 
 
-@init_dcls
 class TruncNormalInit(Init):
     "Wraps `torch.nn.init.trunc_normal_`."
 
@@ -225,7 +219,6 @@ class TruncNormalInit(Init):
 # Fan-scaled inits (at least 2 dims, so no biases nor norms) ====
 
 
-@init_dcls
 class XavierUniformInit(Init):
     "Wraps `torch.nn.init.xavier_uniform_`."
 
@@ -236,7 +229,6 @@ class XavierUniformInit(Init):
         nn.init.xavier_uniform_(tensor, gain=self.gain)
 
 
-@init_dcls
 class XavierNormalInit(Init):
     "Wraps `torch.nn.init.xavier_normal_`."
 
@@ -247,7 +239,6 @@ class XavierNormalInit(Init):
         nn.init.xavier_normal_(tensor, gain=self.gain)
 
 
-@init_dcls
 class KaimingUniformInit(Init):
     "Wraps `torch.nn.init.kaiming_uniform_`."
 
@@ -267,7 +258,6 @@ class KaimingUniformInit(Init):
         )
 
 
-@init_dcls
 class KaimingNormalInit(Init):
     "Wraps `torch.nn.init.kaiming_normal_`."
 
@@ -287,7 +277,6 @@ class KaimingNormalInit(Init):
         )
 
 
-@init_dcls
 class OrthogonalInit(Init):
     "Wraps `torch.nn.init.orthogonal_`."
 
