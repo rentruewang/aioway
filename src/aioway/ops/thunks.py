@@ -6,7 +6,6 @@ from collections import abc as cabc
 
 from torch import nn
 
-from aioway._pytrees import tree_leaves
 from aioway._signs import Sign
 
 from .ops import Op, exec_op
@@ -40,15 +39,6 @@ class CallOp[F: cabc.Callable](Op):
         kwargs = {key: exec_op(val) for key, val in self.kwargs.items()}
 
         return self.func(*args, **kwargs)
-
-    @property
-    @typing.override
-    def __deps__(self):
-        for expr in tree_leaves(
-            [self.args, self.kwargs], is_leaf=lambda e: isinstance(e, Op)
-        ):
-            if isinstance(expr, Op):
-                yield expr
 
     @property
     def sign(self) -> Sign:

@@ -33,8 +33,8 @@ class PyTreeMixin(abc.ABC):
     since implementing this should work with all pytree operations.
     """
 
-    def __init_subclass__(cls) -> None:
-        super().__init_subclass__()
+    def __init_subclass__(cls, **kwargs) -> None:
+        super().__init_subclass__(**kwargs)
 
         register_pytree_node(
             cls,

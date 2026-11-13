@@ -13,9 +13,8 @@ __all__ = ["Op", "exec_op", "OpReplacer"]
 
 @typing.dataclass_transform()
 class _OpDclsMixin:
-
-    def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__()
+    def __init_subclass__(cls, **kwargs) -> None:
+        super().__init_subclass__(**kwargs)
         _ = dcls.dataclass()(cls)
 
 
@@ -38,19 +37,23 @@ class Op[T = object](_OpDclsMixin, abc.ABC):
 
         return executor()(self)
 
+    @property
+    def __deps__(self) -> tuple[Op, ...]:
+        """
+        The `Op`s that this current expression depends on.
+        This is found automatically by default.
+        """
+
+        def gen():
+            for fo in _field_ops(self):
+                yield from fo.ops
+
+        return tuple(gen())
+
     @abc.abstractmethod
     def execute(self) -> T:
         """
         Evaluate and compute the result of this expression.
-        """
-
-        raise NotImplementedError
-
-    @property
-    @abc.abstractmethod
-    def __deps__(self) -> cabc.Iterable[Op]:
-        """
-        The expressions that this current expression depends on.
         """
 
         raise NotImplementedError
@@ -95,18 +98,14 @@ class OpReplacer:
             return self.mapping[op]
 
         changes: dict[str, typing.Any] = {}
-        for field in dcls.fields(op):
-            old = getattr(op, field.name)
-
+        for old in _field_ops(op):
             # Convert also nested `Op`s in containers.
-            new = tree_map_only(Op, self, old)
+            new = _FieldOps(old.name, tree_map_only(Op, self, old.value))
 
             # Replacement has happened.
-            olds = list(_op_leaves(old))
-            news = list(_op_leaves(new))
-
+            olds, news = old.ops, new.ops
             if len(olds) != len(news) or any(o is not n for o, n in zip(olds, news)):
-                changes[field.name] = new
+                changes[new.name] = new.value
 
         # All children unchanged, and `op` itself is not replaced.
         if not changes:
@@ -115,11 +114,31 @@ class OpReplacer:
         return dcls.replace(op, **changes)
 
 
-def _op_leaves(tree) -> cabc.Generator[Op]:
-    is_op = lambda f: isinstance(f, Op)
-    for leaf in tree_leaves(tree, is_leaf=is_op):
-        if isinstance(leaf, Op):
-            yield leaf
+@dcls.dataclass(frozen=True)
+class _FieldOps:
+    name: str
+    "The field name."
+
+    value: typing.Any
+    "The field value."
+
+    @property
+    def ops(self) -> list[Op]:
+        "The `Op`s nested in `value`, found by pytree."
+
+        def leaves():
+            is_op = lambda f: isinstance(f, Op)
+            for leaf in tree_leaves(self.value, is_leaf=is_op):
+                if isinstance(leaf, Op):
+                    yield leaf
+
+        return list(leaves())
+
+
+def _field_ops(op: Op) -> cabc.Iterator[_FieldOps]:
+    for field in dcls.fields(op):
+        value = getattr(op, field.name)
+        yield _FieldOps(field.name, value)
 
 
 def exec_op(obj):

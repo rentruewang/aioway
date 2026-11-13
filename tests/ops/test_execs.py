@@ -37,11 +37,6 @@ class SumCountOp(Op):
         self.calls += 1
         return self.value + sum(exec_op(c) for c in self.children)
 
-    @property
-    @typing.override
-    def __deps__(self):
-        return self.children
-
 
 type CachedExec = LazyCacheOpExec | DagOpExec
 

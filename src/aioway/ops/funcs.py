@@ -175,16 +175,16 @@ class FuncInputOp[T](Op[T]):
     typ: type[T]
     "The type that is accepted."
 
+    @property
+    @typing.override
+    def __deps__(self) -> tuple[()]:
+        return ()
+
     @typing.override
     def execute(self) -> T:
         raise RuntimeError(
             "`FuncInputOp` is a placeholder, and never supposed to be called."
         )
-
-    @property
-    @typing.override
-    def __deps__(self) -> tuple[()]:
-        return ()
 
     @property
     def name(self) -> str:
