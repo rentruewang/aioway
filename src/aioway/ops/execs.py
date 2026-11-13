@@ -167,13 +167,13 @@ def _topo_sort(op: Op) -> list[Op]:
             return
 
         ops[id(node)] = node
-        for dep in node.deps():
+        for dep in node.__deps__:
             collect(dep)
 
     collect(op)
 
     # Build the dependency graph on the ids.
-    graph = {i: [id(dep) for dep in node.deps()] for i, node in ops.items()}
+    graph = {i: [id(dep) for dep in node.__deps__] for i, node in ops.items()}
 
     # Sort.
     return [ops[i] for i in graphlib.TopologicalSorter(graph).static_order()]
@@ -207,7 +207,7 @@ class DagOpExec(OpExec):
 
         # Each `Op` is looked up once per consumer.
         for node in order:
-            for dep in node.deps():
+            for dep in node.__deps__:
                 self._consumers[dep] = self._consumers.get(dep, 0) + 1
 
         try:
