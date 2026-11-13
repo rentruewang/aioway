@@ -3,6 +3,7 @@
 "Domains of lists: lists, temporal, spatial, grids, images, videos."
 
 import dataclasses as dcls
+from collections import abc as cabc
 
 import torch
 
@@ -28,8 +29,11 @@ __all__ = [
 class TensorDomain(Domain[torch.Tensor]):
     "Any tensor."
 
+    @property
+    def __parents__(self) -> cabc.Sequence[Domain]:
+        return [AnyDomain()]
+
     def check_type(self, obj: torch.Tensor, /) -> None:
-        super().check_type(obj)
         if not isinstance(obj, torch.Tensor):
             raise InvalidDomain(f"expected a tensor, got {type(obj).__name__}")
 
@@ -37,27 +41,24 @@ class TensorDomain(Domain[torch.Tensor]):
 # Lists ====
 
 
-class ListDomain(Domain):
-    """
-    `inner` values in order. Either a tensor `[B, L, ...]`,
-    or a sequence of `L` tensors, each `[B, ...]` (not contiguous).
-    """
+class ListDomain(TensorDomain):
+    "`inner` values in order, `[B, L, ...]`."
 
     inner: Domain = AnyDomain()
 
     @property
-    def __parents__(self) -> list[Domain]:
-        return [ListDomain(p) for p in self.inner.__parents__] or [AnyDomain()]
+    def __parents__(self) -> cabc.Sequence[Domain]:
+        return [ListDomain(p) for p in self.inner.__parents__] or [TensorDomain()]
 
-    def check_type(self, obj, /) -> None:
+    def check_type(self, obj: torch.Tensor, /) -> None:
         super().check_type(obj)
-        for item in _items(obj):
-            self.inner.check_type(item)
+        if obj.ndim < 2:
+            raise InvalidDomain(f"a list is [B, L, ...], got {obj.ndim} dims")
+        self.inner.check_type(obj.flatten(0, 1))
 
-    def check_data(self, obj, /) -> None:
+    def check_data(self, obj: torch.Tensor, /) -> None:
         super().check_data(obj)
-        for item in _items(obj):
-            self.inner.check_data(item)
+        self.inner.check_data(obj.flatten(0, 1))
 
 
 class TemporalDomain(ListDomain):
@@ -79,7 +80,7 @@ class SpatialDomain(ListDomain):
 # Grids ====
 
 
-class GridDomain(Domain):
+class GridDomain(TensorDomain):
     "Spatial[Spatial[inner]], `[B, H, W, ...]`."
 
     inner: Domain = dcls.field(default=AnyDomain(), kw_only=True)
@@ -88,13 +89,15 @@ class GridDomain(Domain):
     def __parents__(self) -> list[Domain]:
         return [SpatialDomain(SpatialDomain(self.inner))]
 
-    def check_type(self, obj, /) -> None:
+    def check_type(self, obj: torch.Tensor, /) -> None:
         super().check_type(obj)
-        SpatialDomain(SpatialDomain(self.inner)).check_type(obj)
+        if obj.ndim < 3:
+            raise InvalidDomain(f"a grid is [B, H, W, ...], got {obj.ndim} dims")
+        self.inner.check_type(obj.flatten(0, 2))
 
-    def check_data(self, obj, /) -> None:
+    def check_data(self, obj: torch.Tensor, /) -> None:
         super().check_data(obj)
-        SpatialDomain(SpatialDomain(self.inner)).check_data(obj)
+        self.inner.check_data(obj.flatten(0, 2))
 
 
 class SizedGridDomain(GridDomain):
@@ -142,22 +145,24 @@ class SizedImageDomain(ImageDomain, SizedGridDomain):
 # Videos ====
 
 
-class VideoDomain(Domain):
+class VideoDomain(TensorDomain):
     "Temporal[Image], `[B, T, H, W, C]`."
 
     inner: Domain = dcls.field(default=ImageDomain(), kw_only=True)
 
     @property
-    def __parents__(self) -> list[Domain]:
+    def __parents__(self) -> cabc.Sequence[Domain]:
         return [TemporalDomain(self.inner)]
 
-    def check_type(self, obj, /) -> None:
+    def check_type(self, obj: torch.Tensor, /) -> None:
         super().check_type(obj)
-        TemporalDomain(self.inner).check_type(obj)
+        if obj.ndim < 2:
+            raise InvalidDomain(f"a video is [B, T, ...], got {obj.ndim} dims")
+        self.inner.check_type(obj.flatten(0, 1))
 
-    def check_data(self, obj, /) -> None:
+    def check_data(self, obj: torch.Tensor, /) -> None:
         super().check_data(obj)
-        TemporalDomain(self.inner).check_data(obj)
+        self.inner.check_data(obj.flatten(0, 1))
 
 
 class SizedVideoDomain(VideoDomain):
@@ -169,23 +174,7 @@ class SizedVideoDomain(VideoDomain):
     def __parents__(self) -> list[Domain]:
         return [VideoDomain(inner=self.inner)]
 
-    def check_type(self, obj, /) -> None:
+    def check_type(self, obj: torch.Tensor, /) -> None:
         super().check_type(obj)
-        length = len(obj) if isinstance(obj, list | tuple) else obj.shape[1]
-        if length != self.frames:
-            raise InvalidDomain(f"{length} frames, expected {self.frames}")
-
-
-# Utilities ====
-
-
-def _items(obj) -> list:
-    "The positions of a list, folded into the batch."
-
-    if isinstance(obj, list | tuple):
-        return list(obj)
-
-    if len(getattr(obj, "shape", ())) < 2:
-        raise InvalidDomain(f"a list is [B, L, ...], got {type(obj).__name__}")
-
-    return [obj.flatten(0, 1)]
+        if obj.shape[1] != self.frames:
+            raise InvalidDomain(f"{obj.shape[1]} frames, expected {self.frames}")

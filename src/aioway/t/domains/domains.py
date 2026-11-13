@@ -5,6 +5,7 @@
 import abc
 import dataclasses as dcls
 import typing
+from collections import abc as cabc
 
 from aioway.t.overrides import has_real
 
@@ -43,7 +44,7 @@ class Domain[T = typing.Any](_DomainDclsMixin, abc.ABC):
             return True
 
     @property
-    def __parents__(self) -> list[Domain[T]]:
+    def __parents__(self) -> cabc.Sequence[Domain]:
         """
         The immediate base types that this base `Domain` is based on.
 
