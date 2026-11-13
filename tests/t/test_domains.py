@@ -10,7 +10,7 @@ from torchvision import tv_tensors as tvt
 from aioway.t import (
     GridDomain,
     ImageDomain,
-    InvalidDomainValue,
+    InvalidDomain,
     Pair,
     PairDomain,
     SizedGridDomain,
@@ -80,7 +80,7 @@ def test_accepts_real_values():
     ],
 )
 def test_rejects_real_values(domain, value):
-    with pytest.raises(InvalidDomainValue):
+    with pytest.raises(InvalidDomain):
         domain.check(value)
 
 
@@ -94,10 +94,10 @@ def test_fakes_skip_data_checks():
 
 
 def test_fakes_still_check_shapes():
-    with pytest.raises(InvalidDomainValue):
+    with pytest.raises(InvalidDomain):
         GridDomain().check(fake(4, 5))
 
-    with pytest.raises(InvalidDomainValue):
+    with pytest.raises(InvalidDomain):
         SizedImageDomain(4, 5).check(fake(3, 5, 4))
 
 
@@ -109,6 +109,6 @@ def test_pair_domain():
         Pair(input=torch.rand(2, 3), target=torch.rand(2), batch_size=[2])
     )
 
-    with pytest.raises(InvalidDomainValue):
+    with pytest.raises(InvalidDomain):
         tensor: typing.Any = torch.randn(2, 3)
         PairDomain().check(tensor)

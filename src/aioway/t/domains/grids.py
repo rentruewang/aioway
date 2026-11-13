@@ -5,7 +5,7 @@
 import torch
 from torchvision import tv_tensors as tvt
 
-from .domains import Domain, InvalidDomainValue
+from .domains import Domain, InvalidDomain
 
 __all__ = [
     "TensorDomain",
@@ -27,7 +27,7 @@ class TensorDomain(Domain[torch.Tensor]):
     def check_type(self, obj: torch.Tensor, /) -> None:
         super().check_type(obj)
         if not isinstance(obj, torch.Tensor):
-            raise InvalidDomainValue(f"expected a tensor, got {type(obj).__name__}")
+            raise InvalidDomain(f"expected a tensor, got {type(obj).__name__}")
 
 
 class GridDomain(TensorDomain):
@@ -40,7 +40,7 @@ class GridDomain(TensorDomain):
     def check_type(self, obj: torch.Tensor, /) -> None:
         super().check_type(obj)
         if obj.ndim < 3:
-            raise InvalidDomainValue(f"a grid is [..., C, H, W], got {obj.ndim} dims")
+            raise InvalidDomain(f"a grid is [..., C, H, W], got {obj.ndim} dims")
 
 
 class SizedGridDomain(GridDomain):
@@ -64,7 +64,7 @@ class SizedGridDomain(GridDomain):
         super().check_type(obj)
         hw = tuple(obj.shape[-2:])
         if hw != (self.height, self.width):
-            raise InvalidDomainValue(f"size {hw}, expected {(self.height, self.width)}")
+            raise InvalidDomain(f"size {hw}, expected {(self.height, self.width)}")
 
 
 class ImageDomain(GridDomain):
@@ -77,9 +77,9 @@ class ImageDomain(GridDomain):
     def check_data(self, obj: torch.Tensor) -> None:
         super().check_data(obj)
         if not isinstance(obj, tvt.Image):
-            raise InvalidDomainValue("expected a torchvision Image")
+            raise InvalidDomain("expected a torchvision Image")
         if not _in_unit(obj):
-            raise InvalidDomainValue("float pixels must be in [0, 1]")
+            raise InvalidDomain("float pixels must be in [0, 1]")
 
 
 class SizedImageDomain(ImageDomain, SizedGridDomain):
@@ -100,18 +100,16 @@ class VideoDomain(TensorDomain):
     def check_type(self, obj: torch.Tensor, /) -> None:
         super().check_type(obj)
         if obj.ndim < 4:
-            raise InvalidDomainValue(
-                f"a video is [..., T, C, H, W], got {obj.ndim} dims"
-            )
+            raise InvalidDomain(f"a video is [..., T, C, H, W], got {obj.ndim} dims")
         GridDomain().check_type(obj.select(-4, 0))
 
     def check_data(self, obj: torch.Tensor) -> None:
         super().check_data(obj)
 
         if not isinstance(obj, tvt.Video):
-            raise InvalidDomainValue("expected a torchvision Video")
+            raise InvalidDomain("expected a torchvision Video")
         if not _in_unit(obj):
-            raise InvalidDomainValue("float pixels must be in [0, 1]")
+            raise InvalidDomain("float pixels must be in [0, 1]")
 
 
 class SizedVideoDomain(VideoDomain):
@@ -130,7 +128,7 @@ class SizedVideoDomain(VideoDomain):
         super().check_type(obj)
 
         if obj.shape[-4] != self.frames:
-            raise InvalidDomainValue(f"{obj.shape[-4]} frames, expected {self.frames}")
+            raise InvalidDomain(f"{obj.shape[-4]} frames, expected {self.frames}")
 
 
 # Utilities ====

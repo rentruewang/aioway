@@ -5,7 +5,7 @@
 import tensordict as td
 import torch
 
-from .domains import Domain, InvalidDomainValue
+from .domains import Domain, InvalidDomain
 
 __all__ = ["Pair", "PairDomain"]
 
@@ -30,4 +30,4 @@ class PairDomain(Domain[Pair]):
     def check_type(self, obj: Pair, /) -> None:
         super().check_type(obj)
         if not isinstance(obj, Pair):
-            raise InvalidDomainValue(f"expected a Pair, got {type(obj).__name__}")
+            raise InvalidDomain(f"expected a Pair, got {type(obj).__name__}")
