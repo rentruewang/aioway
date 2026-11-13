@@ -5,19 +5,20 @@
 import abc
 import dataclasses as dcls
 import typing
+from collections import abc as cabc
 
 from aioway.t.overrides import has_real
 
-__all__ = ["Domain", "InvalidDomainValue"]
+__all__ = ["Domain", "InvalidDomain", "AnyDomain"]
 
 
-class InvalidDomainValue(ValueError):
+class InvalidDomain(ValueError):
     """
     This error is raised if the value is not accepted.
     """
 
 
-@typing.dataclass_transform(frozen_default=True)
+@typing.dataclass_transform(frozen_default=True, field_specifiers=(dcls.field,))
 class _DomainDclsMixin:
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
@@ -34,8 +35,16 @@ class Domain[T = typing.Any](_DomainDclsMixin, abc.ABC):
     For instance, images, videos, texts, trees etc.
     """
 
+    def __contains__(self, value: T) -> bool:
+        try:
+            self.check(value)
+        except InvalidDomain:
+            return False
+        else:
+            return True
+
     @property
-    def __parents__(self) -> list[Domain[T]]:
+    def __parents__(self) -> cabc.Sequence[Domain]:
         """
         The immediate base types that this base `Domain` is based on.
 
@@ -92,3 +101,12 @@ class Domain[T = typing.Any](_DomainDclsMixin, abc.ABC):
         """
         Checks that should be run on real values.
         """
+
+
+class AnyDomain(Domain):
+    """
+    Accepts any value. The top of the `Domain` hierarchy.
+    """
+
+    def __str__(self) -> str:
+        return "ANY"
