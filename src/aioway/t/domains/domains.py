@@ -39,7 +39,8 @@ class Domain[T = typing.Any](_DomainDclsMixin, abc.ABC):
             self.check(value)
         except InvalidDomainValue:
             return False
-        return True
+        else:
+            return True
 
     @property
     def __parents__(self) -> list[Domain[T]]:
@@ -99,3 +100,12 @@ class Domain[T = typing.Any](_DomainDclsMixin, abc.ABC):
         """
         Checks that should be run on real values.
         """
+
+
+class AnyDomain(Domain):
+    """
+    Accepts any value. The top of the `Domain` hierarchy.
+    """
+
+    def __str__(self) -> str:
+        return "ANY"
