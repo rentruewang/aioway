@@ -17,7 +17,7 @@ class InvalidDomain(ValueError):
     """
 
 
-@typing.dataclass_transform(frozen_default=True)
+@typing.dataclass_transform(frozen_default=True, field_specifiers=(dcls.field,))
 class _DomainDclsMixin:
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
