@@ -34,6 +34,13 @@ class Domain[T = typing.Any](_DomainDclsMixin, abc.ABC):
     For instance, images, videos, texts, trees etc.
     """
 
+    def __contains__(self, value: T) -> bool:
+        try:
+            self.check(value)
+        except InvalidDomainValue:
+            return False
+        return True
+
     @property
     def __parents__(self) -> list[Domain[T]]:
         """
