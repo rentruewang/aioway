@@ -41,8 +41,9 @@ class CallOp[F: cabc.Callable](Op):
 
         return self.func(*args, **kwargs)
 
+    @property
     @typing.override
-    def deps(self):
+    def __deps__(self):
         for expr in tree_leaves(
             [self.args, self.kwargs], is_leaf=lambda e: isinstance(e, Op)
         ):

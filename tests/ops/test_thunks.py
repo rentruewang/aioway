@@ -117,7 +117,7 @@ def test_module_call(module_expr: ModuleThunkOp):
 def test_inputs_nested(call_expr: CallOp):
     outer = CallOp(func=lambda x: x, args=(call_expr,), kwargs={})
 
-    found = list(outer.deps())
+    found = list(outer.__deps__)
     assert len(found) == 1
     assert found[0] is call_expr
 

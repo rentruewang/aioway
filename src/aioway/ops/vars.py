@@ -20,8 +20,9 @@ class ValueOp[T](Op[T]):
     def execute(self) -> T:
         return self.value
 
+    @property
     @typing.override
-    def deps(self) -> tuple[()]:
+    def __deps__(self) -> tuple[()]:
         return ()
 
 
@@ -39,6 +40,7 @@ class TensorOp(Op):
     def execute(self) -> torch.Tensor:
         return self.tensor
 
+    @property
     @typing.override
-    def deps(self) -> tuple[()]:
+    def __deps__(self) -> tuple[()]:
         return ()

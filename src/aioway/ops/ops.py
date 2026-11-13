@@ -46,8 +46,9 @@ class Op[T = object](_OpDclsMixin, abc.ABC):
 
         raise NotImplementedError
 
+    @property
     @abc.abstractmethod
-    def deps(self) -> cabc.Iterable[Op]:
+    def __deps__(self) -> cabc.Iterable[Op]:
         """
         The expressions that this current expression depends on.
         """
@@ -62,7 +63,7 @@ class Op[T = object](_OpDclsMixin, abc.ABC):
         Get the post order traversal of `Op`.
         """
 
-        for dep in self.deps():
+        for dep in self.__deps__:
             yield from dep.post_order()
 
         yield self

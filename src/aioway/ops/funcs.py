@@ -181,8 +181,9 @@ class FuncInputOp[T](Op[T]):
             "`FuncInputOp` is a placeholder, and never supposed to be called."
         )
 
+    @property
     @typing.override
-    def deps(self):
+    def __deps__(self) -> tuple[()]:
         return ()
 
     @property
