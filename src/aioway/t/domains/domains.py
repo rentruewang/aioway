@@ -53,6 +53,16 @@ class Domain[T = typing.Any](_DomainDclsMixin, abc.ABC):
 
         return []
 
+    @property
+    def __inners__(self) -> cabc.Sequence[Domain]:
+        """
+        The inner type if this `Domain` is a container.
+
+        This is to ensure `Domain` containers are covariant.
+        """
+
+        return []
+
     def sub_domain_of(self, domain: Domain[T]) -> bool:
         """
         Check if `self` can be considered a `domain`.
