@@ -60,7 +60,11 @@ class Domain[T = typing.Any](_DomainDclsMixin, abc.ABC):
         This is to ensure `Domain` containers are covariant.
         """
 
-        return {}
+        return {
+            f.name: v
+            for f in dcls.fields(self)
+            if isinstance(v := getattr(self, f.name), Domain)
+        }
 
     def __gt__(self, domain: Domain[T]) -> bool:
         return domain.__lt__(self)
