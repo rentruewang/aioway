@@ -3,7 +3,6 @@
 "Domains of lists: lists, temporal, spatial, grids, images, videos."
 
 import dataclasses as dcls
-from collections import abc as cabc
 
 import torch
 
@@ -30,7 +29,7 @@ class TensorDomain(Domain[torch.Tensor]):
     "Any tensor."
 
     @property
-    def __extends__(self) -> cabc.Sequence[Domain]:
+    def __extends__(self) -> list[Domain]:
         return [AnyDomain()]
 
     def check_type(self, obj: torch.Tensor, /) -> None:
@@ -47,7 +46,7 @@ class ListDomain(TensorDomain):
     inner: Domain = AnyDomain()
 
     @property
-    def __extends__(self) -> cabc.Sequence[Domain]:
+    def __extends__(self) -> list[Domain]:
         return [TensorDomain()]
 
     @property
@@ -159,7 +158,7 @@ class VideoDomain(TensorDomain):
     inner: Domain = dcls.field(default=ImageDomain(), kw_only=True)
 
     @property
-    def __extends__(self) -> cabc.Sequence[Domain]:
+    def __extends__(self) -> list[Domain]:
         return [TemporalDomain(self.inner)]
 
     @property

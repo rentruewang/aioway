@@ -63,10 +63,10 @@ class Domain[T = typing.Any](_DomainDclsMixin, abc.ABC):
         return {}
 
     def __gt__(self, domain: Domain[T]) -> bool:
-        return domain < self
+        return domain.__lt__(self)
 
     def __ge__(self, domain: Domain[T]) -> bool:
-        return domain <= self
+        return domain.__le__(self)
 
     def __le__(self, domain: Domain[T]) -> bool:
         return self == domain or self < domain
