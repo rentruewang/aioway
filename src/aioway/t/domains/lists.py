@@ -48,7 +48,11 @@ class ListDomain(TensorDomain):
 
     @property
     def __extends__(self) -> cabc.Sequence[Domain]:
-        return [ListDomain(p) for p in self.inner.__extends__] or [TensorDomain()]
+        return [TensorDomain()]
+
+    @property
+    def __inners__(self) -> dict[str, Domain]:
+        return {"inner": self.inner}
 
     def check_type(self, obj: torch.Tensor, /) -> None:
         super().check_type(obj)
@@ -88,6 +92,10 @@ class GridDomain(TensorDomain):
     @property
     def __extends__(self) -> list[Domain]:
         return [SpatialDomain(SpatialDomain(self.inner))]
+
+    @property
+    def __inners__(self) -> dict[str, Domain]:
+        return {"inner": self.inner}
 
     def check_type(self, obj: torch.Tensor, /) -> None:
         super().check_type(obj)
@@ -153,6 +161,10 @@ class VideoDomain(TensorDomain):
     @property
     def __extends__(self) -> cabc.Sequence[Domain]:
         return [TemporalDomain(self.inner)]
+
+    @property
+    def __inners__(self) -> dict[str, Domain]:
+        return {"inner": self.inner}
 
     def check_type(self, obj: torch.Tensor, /) -> None:
         super().check_type(obj)
