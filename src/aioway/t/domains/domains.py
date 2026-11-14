@@ -2,7 +2,6 @@
 
 "Domain are a set of common 'type's we support."
 
-from tracemalloc import DomainFilter
 import abc
 import dataclasses as dcls
 import typing
@@ -53,20 +52,6 @@ class Domain[T = typing.Any](_DomainDclsMixin, abc.ABC):
 
         return []
 
-    @property
-    def __inners__(self) -> dict[str, Domain]:
-        """
-        The inner type if this `Domain` is a container.
-
-        This is to ensure `Domain` containers are covariant.
-        """
-
-        return {
-            f.name: v
-            for f in dcls.fields(self)
-            if isinstance(v := getattr(self, f.name), Domain)
-        }
-
     def __gt__(self, domain: Domain[T]) -> bool:
         return domain.__lt__(self)
 
@@ -97,16 +82,19 @@ class Domain[T = typing.Any](_DomainDclsMixin, abc.ABC):
             ours = getattr(self, field.name)
             theirs = getattr(domain, field.name)
 
-            if isinstance(ours, Domain):
-                assert isinstance(theirs, Domain)
-                if not (ours <= theirs):
-                    return False
+            match ours, theirs:
+                case Domain(), Domain():
+                    if not (ours <= theirs):
+                        return False
+                case [Domain(), _] | [_, Domain()]:
+                    raise AssertionError(
+                        f"Both must be domains or both not be. {ours=}, {theirs=}"
+                    )
+                case _, _:
+                    if ours != theirs:
+                        return False
 
-            else:
-                if ours != theirs:
-                    return False
-        else:
-            return True
+        return True
 
     @typing.final
     def check(self, obj: T, /) -> None:
