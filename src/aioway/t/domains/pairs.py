@@ -5,7 +5,7 @@
 import tensordict as td
 import torch
 
-from .domains import Domain, InvalidDomain
+from .domains import AnyDomain, Domain, InvalidDomain
 
 __all__ = ["Pair", "PairDomain"]
 
@@ -26,6 +26,10 @@ class Pair(td.TensorClass):
 
 class PairDomain(Domain[Pair]):
     "Any `Pair`."
+
+    @property
+    def __extends__(self) -> list[Domain]:
+        return [AnyDomain()]
 
     def check_type(self, obj: Pair, /) -> None:
         super().check_type(obj)

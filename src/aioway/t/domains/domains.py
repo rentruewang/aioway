@@ -5,7 +5,6 @@
 import abc
 import dataclasses as dcls
 import typing
-from collections import abc as cabc
 
 from aioway.t.overrides import has_real
 
@@ -44,40 +43,46 @@ class Domain[T = typing.Any](_DomainDclsMixin, abc.ABC):
             return True
 
     @property
-    def __parents__(self) -> cabc.Sequence[Domain]:
+    def __extends__(self) -> list[Domain]:
         """
-        The immediate base types that this base `Domain` is based on.
+        The immediate base types that this base `Domain` extends.
 
         For example, an `Image` is a `Grid`.
         """
 
         return []
 
-    def sub_domain_of(self, domain: Domain[T]) -> bool:
+    def __gt__(self, domain: Domain[T]) -> bool:
+        return domain.__lt__(self)
+
+    def __ge__(self, domain: Domain[T]) -> bool:
+        return domain.__le__(self)
+
+    def __le__(self, domain: Domain[T]) -> bool:
+        return self == domain or self < domain
+
+    def __lt__(self, domain: Domain[T]) -> bool:
         """
-        Check if `self` can be considered a `domain`.
+        Check if `self` is a strict sub domain of `domain`.
         """
 
-        return domain in self.ancestors()
+        if self == domain:
+            return False
 
-    def ancestors(self) -> set[Domain[T]]:
-        """
-        Find all the ancesotrs of the `Domain`.
+        if isinstance(domain, AnyDomain):
+            return True
 
-        This is useful for `sub_domain_of` checks.
-        """
+        # If type is not equal, must be a super type.
+        if type(self) is not type(domain):
+            return any(base <= domain for base in self.__extends__)
 
-        def visit_ancestors(domain: Domain[T]) -> None:
-            if domain in visited:
-                return
-
-            visited.add(domain)
-            for parent in domain.__parents__:
-                visit_ancestors(parent)
-
-        visited = set()
-        visit_ancestors(self)
-        return visited
+        # Type is equal. E.g. `list[Image] <= list[Any]`.
+        # Drop the container, compare if `Image <= Any`.
+        # Any field that are non `Domain`s should be equal.
+        return all(
+            _field_is_covariant(getattr(self, f.name), getattr(domain, f.name))
+            for f in dcls.fields(self)
+        )
 
     @typing.final
     def check(self, obj: T, /) -> None:
@@ -101,6 +106,24 @@ class Domain[T = typing.Any](_DomainDclsMixin, abc.ABC):
         """
         Checks that should be run on real values.
         """
+
+
+# Util function ====
+
+
+def _field_is_covariant(ours, theirs) -> bool:
+    """
+    `Domain` fields must be sub domains, other fields must be equal.
+    """
+
+    if isinstance(ours, Domain) != isinstance(theirs, Domain):
+        raise AssertionError(f"Both must be domains or both not be. {ours=}, {theirs=}")
+
+    if isinstance(ours, Domain):
+        return ours <= theirs
+
+    # For normal field, they must be equal.
+    return ours == theirs
 
 
 class AnyDomain(Domain):

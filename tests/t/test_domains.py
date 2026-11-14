@@ -51,10 +51,15 @@ class TestHierarchy:
             (VideoDomain(), TemporalDomain(ImageDomain())),
             (VideoDomain(), ListDomain(GridDomain())),
             (VideoDomain(), AnyDomain()),
+            (GridDomain(inner=ImageDomain()), GridDomain()),
+            (TemporalDomain(ImageDomain()), TemporalDomain(GridDomain())),
+            (GridDomain(inner=ImageDomain()), ListDomain(ListDomain(GridDomain()))),
+            (SizedGridDomain(4, 5, inner=ImageDomain()), SizedGridDomain(4, 5)),
+            (ListDomain(PairDomain()), ListDomain()),
         ],
     )
     def test_sub_domain(self, domain, ancestor):
-        assert domain.sub_domain_of(ancestor)
+        assert domain <= ancestor
 
     @pytest.mark.parametrize(
         "domain, other",
@@ -66,10 +71,15 @@ class TestHierarchy:
             (TemporalDomain(), SpatialDomain()),
             (ListDomain(), TemporalDomain()),
             (ListDomain(GridDomain()), ListDomain(ImageDomain())),
+            (GridDomain(), GridDomain(inner=ImageDomain())),
+            (ListDomain(ListDomain()), GridDomain()),
+            (SizedGridDomain(4, 5, inner=ImageDomain()), SizedGridDomain(5, 4)),
+            (ListDomain(ImageDomain()), ListDomain(VideoDomain())),
+            (TensorDomain(), ListDomain()),
         ],
     )
     def test_not_sub_domain(self, domain, other):
-        assert not domain.sub_domain_of(other)
+        assert not (domain <= other)
 
 
 class TestRealValues:
