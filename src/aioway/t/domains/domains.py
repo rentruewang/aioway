@@ -78,21 +78,9 @@ class Domain[T = typing.Any](_DomainDclsMixin, abc.ABC):
 
         # Type is equal. E.g. list[Image] vs list[Any].
         # Check covariance (field equal, domain are sub domains).
-        for field in dcls.fields(self):
-            ours = getattr(self, field.name)
-            theirs = getattr(domain, field.name)
-
-            match ours, theirs:
-                case Domain(), Domain():
-                    if not (ours <= theirs):
-                        return False
-                case [Domain(), _] | [_, Domain()]:
-                    raise AssertionError(
-                        f"Both must be domains or both not be. {ours=}, {theirs=}"
-                    )
-                case _, _:
-                    if ours != theirs:
-                        return False
+        for f in dcls.fields(self):
+            if not _covar_field(getattr(self, f.name), getattr(domain, f.name)):
+                return False
 
         return True
 
@@ -118,6 +106,33 @@ class Domain[T = typing.Any](_DomainDclsMixin, abc.ABC):
         """
         Checks that should be run on real values.
         """
+
+
+# Util function ====
+
+
+def _covar_field(ours, theirs) -> bool:
+    """
+    A covariant field:
+
+    If the type is `Domain`, check `ours <= theirs`.
+    """
+    match ours, theirs:
+        # For domain types, they must be subclasses.
+        case Domain(), Domain():
+            if not (ours <= theirs):
+                return False
+
+        case [Domain(), _] | [_, Domain()]:
+            raise AssertionError(
+                f"Both must be domains or both not be. {ours=}, {theirs=}"
+            )
+
+        # For normal field, they must be equal.
+        case _ if ours != theirs:
+            return False
+
+    return True
 
 
 class AnyDomain(Domain):
