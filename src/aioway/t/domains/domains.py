@@ -2,6 +2,7 @@
 
 "Domain are a set of common 'type's we support."
 
+from tracemalloc import DomainFilter
 import abc
 import dataclasses as dcls
 import typing
@@ -91,21 +92,21 @@ class Domain[T = typing.Any](_DomainDclsMixin, abc.ABC):
             return any(base <= domain for base in self.__extends__)
 
         # Type is equal. E.g. list[Image] vs list[Any].
-        # Check covariance.
-        self_inner = self.__inners__
-        domain_inner = domain.__inners__
+        # Check covariance (field equal, domain are sub domains).
+        for field in dcls.fields(self):
+            ours = getattr(self, field.name)
+            theirs = getattr(domain, field.name)
 
-        for key, inner in self_inner.items():
-            param = domain_inner[key]
+            if isinstance(ours, Domain):
+                assert isinstance(theirs, Domain)
+                if not (ours <= theirs):
+                    return False
 
-            # Not `>` because they may be unrelated.
-            # `<` here means `issubclass` so `>` means is super class,
-            # both require the 2 domains to be in the same lineage.
-            if not (inner <= param):
-                return False
-
-        # Check the rest of fields.
-        return dcls.replace(self, **domain_inner) == domain
+            else:
+                if ours != theirs:
+                    return False
+        else:
+            return True
 
     @typing.final
     def check(self, obj: T, /) -> None:
