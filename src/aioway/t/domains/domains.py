@@ -5,7 +5,6 @@
 import abc
 import dataclasses as dcls
 import typing
-from collections import abc as cabc
 
 from aioway.t.overrides import has_real
 
@@ -44,9 +43,9 @@ class Domain[T = typing.Any](_DomainDclsMixin, abc.ABC):
             return True
 
     @property
-    def __extends__(self) -> cabc.Sequence[Domain]:
+    def __extends__(self) -> list[Domain]:
         """
-        The immediate base types that this base `Domain` is-a.
+        The immediate base types that this base `Domain` extends.
 
         For example, an `Image` is a `Grid`.
         """
@@ -54,40 +53,55 @@ class Domain[T = typing.Any](_DomainDclsMixin, abc.ABC):
         return []
 
     @property
-    def __inners__(self) -> cabc.Sequence[Domain]:
+    def __inners__(self) -> dict[str, Domain]:
         """
         The inner type if this `Domain` is a container.
 
         This is to ensure `Domain` containers are covariant.
         """
 
-        return []
+        return {}
 
-    def sub_domain_of(self, domain: Domain[T]) -> bool:
+    def __gt__(self, domain: Domain[T]) -> bool:
+        return domain < self
+
+    def __ge__(self, domain: Domain[T]) -> bool:
+        return domain <= self
+
+    def __le__(self, domain: Domain[T]) -> bool:
+        return self == domain or self < domain
+
+    def __lt__(self, domain: Domain[T]) -> bool:
         """
-        Check if `self` can be considered a `domain`.
+        Check if `self` is a strict sub domain of `domain`.
         """
 
-        return domain in self.ancestors()
+        if self == domain:
+            return False
 
-    def ancestors(self) -> set[Domain[T]]:
-        """
-        Find all the ancesotrs of the `Domain`.
+        if isinstance(domain, AnyDomain):
+            return True
 
-        This is useful for `sub_domain_of` checks.
-        """
+        # If type is not equal, must be a super type.
+        if type(self) is not type(domain):
+            return any(base <= domain for base in self.__extends__)
 
-        def visit_ancestors(domain: Domain[T]) -> None:
-            if domain in visited:
-                return
+        # Type is equal. E.g. list[Image] vs list[Any].
+        # Check covariance.
+        self_inner = self.__inners__
+        domain_inner = domain.__inners__
 
-            visited.add(domain)
-            for parent in domain.__extends__:
-                visit_ancestors(parent)
+        for key, inner in self_inner.items():
+            param = domain_inner[key]
 
-        visited = set()
-        visit_ancestors(self)
-        return visited
+            # Not `>` because they may be unrelated.
+            # `<` here means `issubclass` so `>` means is super class,
+            # both require the 2 domains to be in the same lineage.
+            if not (inner <= param):
+                return False
+
+        # Check the rest of fields.
+        return dcls.replace(self, **domain_inner) == domain
 
     @typing.final
     def check(self, obj: T, /) -> None:
