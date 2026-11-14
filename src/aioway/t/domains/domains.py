@@ -44,9 +44,9 @@ class Domain[T = typing.Any](_DomainDclsMixin, abc.ABC):
             return True
 
     @property
-    def __parents__(self) -> cabc.Sequence[Domain]:
+    def __isa__(self) -> cabc.Sequence[Domain]:
         """
-        The immediate base types that this base `Domain` is based on.
+        The immediate base types that this base `Domain` is-a.
 
         For example, an `Image` is a `Grid`.
         """
@@ -72,7 +72,7 @@ class Domain[T = typing.Any](_DomainDclsMixin, abc.ABC):
                 return
 
             visited.add(domain)
-            for parent in domain.__parents__:
+            for parent in domain.__isa__:
                 visit_ancestors(parent)
 
         visited = set()
