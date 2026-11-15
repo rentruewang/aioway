@@ -51,13 +51,13 @@ make pytest
 To format the codebase, run:
 
 ```bash
-make autoflake isort black
+make isort black
 ```
 
 To just check the formatting (no modification), run:
 
 ```bash
-make autoflake isort black CHECK=1
+make isort black CHECK=1
 ```
 
 To run type checking with `mypy`, run:

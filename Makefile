@@ -20,7 +20,7 @@ else
 endif
 
 
-ci: autoflake isort black pyrefly pytest
+ci: isort black pyrefly pytest
 
 setup: cleanup deps
 
@@ -53,9 +53,6 @@ sync:
 
 pytest:
 	@$(SH) pdm run pytest $(PYTEST_FLAGS)
-
-autoflake:
-	@$(SH) pdm run autoflake . $(CHECK_FLAG)
 
 black:
 	@$(SH) pdm run black . $(CHECK_FLAG)

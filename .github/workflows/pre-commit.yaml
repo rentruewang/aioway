@@ -19,7 +19,7 @@ jobs:
           cache: true
 
       - name: 🪄 Formatting
-        run: make setup install autoflake isort black CHECK=1
+        run: make setup install isort black CHECK=1
 
   type:
     name: 👨‍⚕️ Type Checking
