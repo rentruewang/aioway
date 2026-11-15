@@ -5,7 +5,7 @@
 groups = ["default", "api", "build", "checks", "debugging", "docs", "gym", "networkx", "sklearn", "tests"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.1"
-content_hash = "sha256:78430c31a20a7db76947786178a5668e63a55edcc2cb4817e192150dcc73c423"
+content_hash = "sha256:5fda7cf6086702ee300b52506c9f4816d89cd7bd4f0fa5506c3c07b221b32a04"
 
 [[metadata.targets]]
 requires_python = ">=3.14,<3.15"
@@ -144,7 +144,7 @@ name = "annotated-doc"
 version = "0.0.6"
 requires_python = ">=3.10"
 summary = "Document parameters, class attributes, return types, and variables inline, with Annotated."
-groups = ["default", "api", "checks"]
+groups = ["default", "api"]
 files = [
     {file = "annotated_doc-0.0.6-py3-none-any.whl", hash = "sha256:361ca0950cc7082f53fa69e9328409f40a62c61e57e0a47e1825a08078a58a53"},
     {file = "annotated_doc-0.0.6.tar.gz", hash = "sha256:7969bb69912085b2285849c0dcac0b4b374fd180c13cf10a87f284ffcf347bbf"},
@@ -155,7 +155,7 @@ name = "annotated-types"
 version = "0.8.0"
 requires_python = ">=3.10"
 summary = "Reusable constraint types to use with typing.Annotated"
-groups = ["default", "api", "checks"]
+groups = ["default", "api"]
 files = [
     {file = "annotated_types-0.8.0-py3-none-any.whl", hash = "sha256:f072f4d804ea359e4eaf198b1af7a8b0943881a87f31bb764f8bf219bb9419e0"},
     {file = "annotated_types-0.8.0.tar.gz", hash = "sha256:13b2beaad985e05e2d6407ee4c4f35590b11f8d693a258a561055cac8f64cab7"},
@@ -639,7 +639,7 @@ name = "colorama"
 version = "0.4.6"
 requires_python = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,>=2.7"
 summary = "Cross-platform colored terminal text."
-groups = ["default", "build", "checks", "debugging", "docs", "tests"]
+groups = ["default", "build", "debugging", "docs", "tests"]
 marker = "os_name == \"nt\" or sys_platform == \"win32\" or platform_system == \"Windows\""
 files = [
     {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
@@ -2174,36 +2174,6 @@ files = [
 ]
 
 [[package]]
-name = "libcst"
-version = "1.9.0"
-requires_python = ">=3.9"
-summary = "A concrete syntax tree with AST-like properties for Python 3.0 through 3.15 programs."
-groups = ["checks"]
-dependencies = [
-    "pyyaml-ft>=8.0.0; python_version == \"3.13\"",
-    "pyyaml>=5.2; python_version < \"3.13\"",
-    "pyyaml>=6.0.3; python_version >= \"3.14\"",
-    "typing-extensions; python_version < \"3.10\"",
-]
-files = [
-    {file = "libcst-1.9.0-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:eccf4c57d273cdd3fe1c67b72cf9bb1bbd4547aa011824e96ccf5b7136057aa4"},
-    {file = "libcst-1.9.0-cp314-cp314-manylinux_2_28_aarch64.whl", hash = "sha256:32395244edfe6538e0ea2bf82051d60103d3f54861274805c4fb3745efb70a85"},
-    {file = "libcst-1.9.0-cp314-cp314-manylinux_2_28_x86_64.whl", hash = "sha256:444e84c76cd035cd2fe136838c1a524d34b08216521f6f5093df8a6f6cfa5799"},
-    {file = "libcst-1.9.0-cp314-cp314-musllinux_1_2_aarch64.whl", hash = "sha256:bb5d0946f2b4c6711b5d69fe4f833b364f9e7a1a2b08f88b98619dc18975099a"},
-    {file = "libcst-1.9.0-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:45808c03528b3ad40b14095348a918e08d98c47b4a125d631cb78e817c0a5b16"},
-    {file = "libcst-1.9.0-cp314-cp314-win_amd64.whl", hash = "sha256:568288cdbfe3b4ca3ae4852cb0a439ff053dd54c841bc4995bf2b71238b5de40"},
-    {file = "libcst-1.9.0-cp314-cp314-win_arm64.whl", hash = "sha256:107593af46945593e7825821793393262bc4fa1d3ea24c3ed487b61269bbbdf8"},
-    {file = "libcst-1.9.0-cp314-cp314t-macosx_11_0_arm64.whl", hash = "sha256:f6248cb07444ab9a6733a855737a9febed8b9adca51347019348b09a3ac7dfe9"},
-    {file = "libcst-1.9.0-cp314-cp314t-manylinux_2_28_aarch64.whl", hash = "sha256:496c24e0d3240bc7da45dae543aff3f5b6509978c39262d6b84ed2fb999dded2"},
-    {file = "libcst-1.9.0-cp314-cp314t-manylinux_2_28_x86_64.whl", hash = "sha256:ea490fa8540503db5f321f0268becab46eb50f710e8cec8041e241fd66f6874f"},
-    {file = "libcst-1.9.0-cp314-cp314t-musllinux_1_2_aarch64.whl", hash = "sha256:50ab94bb2524b419056d4003032b8c67102ac800f8d85b3c4260a01746d94dbb"},
-    {file = "libcst-1.9.0-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:a2faaf92500d0226358125630f5aab4758e8aad3f2d70a10892ec3c700781a54"},
-    {file = "libcst-1.9.0-cp314-cp314t-win_amd64.whl", hash = "sha256:0c7b548512db25af9c2997a95fa731bd6b6928ecbad6c0915d7482d8bb42d34f"},
-    {file = "libcst-1.9.0-cp314-cp314t-win_arm64.whl", hash = "sha256:497d5329345f1f5df84e41b0bbd00204b64a2fd30dfe3cfaeaebca633a31e877"},
-    {file = "libcst-1.9.0.tar.gz", hash = "sha256:087b58a9afe076bb08e2d726478e1f16cb928d67ffa9092817e033c335de522a"},
-]
-
-[[package]]
 name = "lightning"
 version = "2.6.6"
 requires_python = ">=3.10"
@@ -2261,7 +2231,7 @@ name = "markdown-it-py"
 version = "4.3.0"
 requires_python = ">=3.10"
 summary = "Python port of markdown-it. Markdown parsing, done right!"
-groups = ["default", "api", "checks", "debugging", "docs"]
+groups = ["default", "api", "debugging", "docs"]
 dependencies = [
     "mdurl~=0.1",
 ]
@@ -2427,7 +2397,7 @@ name = "mdurl"
 version = "0.1.2"
 requires_python = ">=3.7"
 summary = "Markdown URL utilities"
-groups = ["default", "api", "checks", "debugging", "docs"]
+groups = ["default", "api", "debugging", "docs"]
 files = [
     {file = "mdurl-0.1.2-py3-none-any.whl", hash = "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8"},
     {file = "mdurl-0.1.2.tar.gz", hash = "sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba"},
@@ -3356,24 +3326,6 @@ files = [
 ]
 
 [[package]]
-name = "pycln"
-version = "2.6.1"
-requires_python = "<4,>=3.9"
-summary = "A formatter for finding and removing unused import statements."
-groups = ["checks"]
-dependencies = [
-    "libcst>=0.3.10",
-    "pathspec>=0.9.0",
-    "pyyaml>=5.3.1",
-    "tomlkit>=0.11.1",
-    "typer>=0.4.1",
-]
-files = [
-    {file = "pycln-2.6.1-py3-none-any.whl", hash = "sha256:eae5e0d663a8c01a904e49d5bed6f1b3a7ec8253c5ff9de5fdfccb614db89fdb"},
-    {file = "pycln-2.6.1.tar.gz", hash = "sha256:23e2ce1cba4df31e692c63cf23ee8e126072c55ce027e1c78dd09240aba069ea"},
-]
-
-[[package]]
 name = "pycparser"
 version = "3.12"
 requires_python = ">=3.11"
@@ -3390,7 +3342,7 @@ name = "pydantic"
 version = "2.14.3"
 requires_python = ">=3.10"
 summary = "Data validation using Python type hints"
-groups = ["default", "api", "checks"]
+groups = ["default", "api"]
 dependencies = [
     "annotated-types>=0.6.0",
     "pydantic-core==2.50.4",
@@ -3407,7 +3359,7 @@ name = "pydantic-core"
 version = "2.50.4"
 requires_python = ">=3.10"
 summary = "Core functionality for Pydantic validation and serialization"
-groups = ["default", "api", "checks"]
+groups = ["default", "api"]
 dependencies = [
     "typing-extensions>=4.16.0",
 ]
@@ -3484,7 +3436,7 @@ name = "pygments"
 version = "2.21.0"
 requires_python = ">=3.9"
 summary = "Pygments is a syntax highlighting package written in Python."
-groups = ["default", "api", "checks", "debugging", "docs", "tests"]
+groups = ["default", "api", "debugging", "docs", "tests"]
 files = [
     {file = "pygments-2.21.0-py3-none-any.whl", hash = "sha256:2363c69b61c4a97c838da3b130dcd6468f4848992b21a82f2a63ec34377137d9"},
     {file = "pygments-2.21.0.tar.gz", hash = "sha256:610ca751c9bc2492b38eb9a38a7fbc93edbbb2d7182edaf34e66ae493dee5c8c"},
@@ -3800,7 +3752,7 @@ name = "pyyaml"
 version = "6.0.3"
 requires_python = ">=3.8"
 summary = "YAML parser and emitter for Python"
-groups = ["default", "api", "checks", "debugging", "docs"]
+groups = ["default", "api", "debugging", "docs"]
 files = [
     {file = "pyyaml-6.0.3-cp314-cp314-macosx_10_13_x86_64.whl", hash = "sha256:8d1fab6bb153a416f9aeb4b8763bc0f22a5586065f86f7664fc23339fc1c1fac"},
     {file = "pyyaml-6.0.3-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:34d5fcd24b8445fadc33f9cf348c1047101756fd760b4dacb5c3e99755703310"},
@@ -3978,7 +3930,7 @@ name = "rich"
 version = "15.0.0"
 requires_python = ">=3.9.0"
 summary = "Render rich text, tables, progress bars, syntax highlighting, markdown and more to the terminal"
-groups = ["default", "api", "checks"]
+groups = ["default", "api"]
 dependencies = [
     "markdown-it-py>=2.2.0",
     "pygments<3.0.0,>=2.13.0",
@@ -4185,7 +4137,7 @@ name = "shellingham"
 version = "1.5.4"
 requires_python = ">=3.7"
 summary = "Tool to Detect Surrounding Shell"
-groups = ["default", "checks"]
+groups = ["default"]
 files = [
     {file = "shellingham-1.5.4-py2.py3-none-any.whl", hash = "sha256:7ecfff8f2fd72616f7481040475a65b2bf8af90a56c89140852d1120324e8686"},
     {file = "shellingham-1.5.4.tar.gz", hash = "sha256:8dbca0739d487e5bd35ab3ca4b36e11c4078f3a234bfce294b0a0291363404de"},
@@ -4508,17 +4460,6 @@ files = [
 ]
 
 [[package]]
-name = "tomlkit"
-version = "0.15.2"
-requires_python = ">=3.9"
-summary = "Style preserving TOML library"
-groups = ["checks"]
-files = [
-    {file = "tomlkit-0.15.2-py3-none-any.whl", hash = "sha256:05562412163a3037b94497385fb7f9204c637bc605af7a48199e41cf2272f437"},
-    {file = "tomlkit-0.15.2.tar.gz", hash = "sha256:83e32755ba1d20d9340bd069ee97e9f6232ba2346b63ffcba425de01f7e327a6"},
-]
-
-[[package]]
 name = "torch"
 version = "2.10.0"
 requires_python = ">=3.10"
@@ -4743,7 +4684,7 @@ name = "typer"
 version = "0.29.1"
 requires_python = ">=3.10"
 summary = "Typer, build great CLIs. Easy to code. Based on Python type hints."
-groups = ["default", "checks"]
+groups = ["default"]
 dependencies = [
     "annotated-doc>=0.0.2",
     "colorama; platform_system == \"Windows\"",
@@ -4761,7 +4702,7 @@ name = "typing-extensions"
 version = "4.16.0"
 requires_python = ">=3.9"
 summary = "Backported and Experimental Type Hints for Python 3.9+"
-groups = ["default", "api", "checks", "debugging", "docs", "gym"]
+groups = ["default", "api", "debugging", "docs", "gym"]
 files = [
     {file = "typing_extensions-4.16.0-py3-none-any.whl", hash = "sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8"},
     {file = "typing_extensions-4.16.0.tar.gz", hash = "sha256:dc983d19a509c94dba722ee6abd33940f7c05a89e243c47e907eb4db6f1a43e5"},
@@ -4772,7 +4713,7 @@ name = "typing-inspection"
 version = "0.4.5"
 requires_python = ">=3.10"
 summary = "Runtime typing introspection tools"
-groups = ["default", "api", "checks"]
+groups = ["default", "api"]
 dependencies = [
     "typing-extensions>=4.15.0",
 ]

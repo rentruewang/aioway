@@ -52,7 +52,6 @@ build-backend = "setuptools.build_meta"
 
 [dependency-groups]
 checks = [
-    "pycln>=2",
     "black>=26",
     "isort>=8",
     "pyrefly>=1",
@@ -86,11 +85,6 @@ docs = [
     "furo>=2025.12.19",
     "myst-parser>=5",
 ]
-
-[tool.pycln]
-all = true
-extend_exclude = "__init__\\.py$"
-expand_stars = true
 
 [tool.black]
 line-length = 88
