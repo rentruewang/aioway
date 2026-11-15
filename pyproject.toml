@@ -52,7 +52,7 @@ build-backend = "setuptools.build_meta"
 
 [dependency-groups]
 checks = [
-    "autoflake>=2",
+    "pycln>=2",
     "black>=26",
     "isort>=8",
     "pyrefly>=1",
@@ -87,13 +87,10 @@ docs = [
     "myst-parser>=5",
 ]
 
-[tool.autoflake]
-in-place = true
-recursive = true
-exclude = "__init__.py"
-expand-star-imports = true
-remove-all-unused-imports = true
-remove-duplicate-keys = true
+[tool.pycln]
+all = true
+extend_exclude = "__init__\\.py$"
+expand_stars = true
 
 [tool.black]
 line-length = 88
