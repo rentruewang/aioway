@@ -24,7 +24,7 @@ def require_specific_domain(cls):
     return cls
 
 
-class _UnaryModuleOpMixin[M: nn.Module](ModuleOp, abc.ABC):
+class _UnaryModuleOpMixin[M: nn.Module](ModuleOp, Op[torch.Tensor], abc.ABC):
     """
     A `nn.Module` applied to one input: `(input: tensor) -> tensor`.
     """
