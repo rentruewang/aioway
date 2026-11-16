@@ -4,10 +4,10 @@
 
 import dataclasses as dcls
 
+import torch
 from torch import nn
 
 from aioway._utils import any_dict
-from aioway.ml.rewrites.morphing import identity_init_linear
 from aioway.ops import ModuleOp, Op
 
 from .rewrites import OpRewriteRule
@@ -100,3 +100,16 @@ def _with_module(op: ModuleOp, module: nn.Module) -> ModuleOp:
     "`op` with its module replaced by `module`."
     (name,) = [f.name for f in dcls.fields(op) if getattr(op, f.name) is op.nn]
     return dcls.replace(op, **{name: module})
+
+
+@torch.no_grad()
+def identity_init_linear(layer: nn.Module) -> nn.Linear:
+    assert isinstance(layer, nn.Linear)
+    out_features = layer.out_features
+    linear = nn.Linear(out_features, out_features)
+
+    # In fake mode, these are automatically no-op.
+    linear.weight.copy_(torch.eye(out_features))
+    linear.bias.zero_()
+
+    return linear
