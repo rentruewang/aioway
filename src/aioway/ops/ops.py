@@ -33,7 +33,12 @@ class Op[T = object](_OpDclsMixin, abc.ABC):
 
     __match_args__: typing.ClassVar[tuple[str, ...]]
 
+    def __post_init__(self) -> None:
+        # Instantiate the domain, also performs checks.
+        _ = self.__domain__
+
     @property
+    @abc.abstractmethod
     def __domain__(self) -> Domain:
         raise NotImplementedError
 

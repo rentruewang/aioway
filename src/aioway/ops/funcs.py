@@ -10,6 +10,7 @@ from torch import nn
 
 from aioway._signs import BoundArgs, Param, Sign
 from aioway._utils import AnyDict, any_dict
+from aioway.t import AnyDomain, Domain
 
 from .execs import OpExec, executor, set_executor
 from .ops import Op
@@ -174,6 +175,14 @@ class FuncInputOp[T](Op[T]):
 
     typ: type[T]
     "The type that is accepted."
+
+    domain: Domain = dcls.field(default_factory=AnyDomain)
+    "The domain field."
+
+    @property
+    @typing.override
+    def __domain__(self) -> Domain:
+        return self.domain
 
     @property
     @typing.override

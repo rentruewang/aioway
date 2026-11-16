@@ -7,9 +7,9 @@ import dataclasses as dcls
 import torch
 
 from .domains import AnyDomain, Domain, InvalidDomain
+from .units import TensorDomain
 
 __all__ = [
-    "TensorDomain",
     "ListDomain",
     "TemporalDomain",
     "SpatialDomain",
@@ -20,21 +20,6 @@ __all__ = [
     "VideoDomain",
     "SizedVideoDomain",
 ]
-
-
-# Tensors ====
-
-
-class TensorDomain(Domain[torch.Tensor]):
-    "Any tensor."
-
-    @property
-    def __extends__(self) -> list[Domain]:
-        return [AnyDomain()]
-
-    def check_type(self, obj: torch.Tensor, /) -> None:
-        if not isinstance(obj, torch.Tensor):
-            raise InvalidDomain(f"expected a tensor, got {type(obj).__name__}")
 
 
 # Lists ====

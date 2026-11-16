@@ -23,6 +23,7 @@ from aioway.ops import (
     executor,
     set_executor,
 )
+from aioway.t import AnyDomain
 
 
 class SumCountOp(Op):
@@ -31,6 +32,11 @@ class SumCountOp(Op):
     value: int = 0
     children: list = dcls.field(default_factory=list)
     calls: int = 0
+
+    @property
+    @typing.override
+    def __domain__(self):
+        return AnyDomain()
 
     @typing.override
     def execute(self):

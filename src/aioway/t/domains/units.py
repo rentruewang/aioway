@@ -7,7 +7,19 @@ import torch
 
 from .domains import AnyDomain, Domain, InvalidDomain
 
-__all__ = ["Pair", "PairDomain"]
+__all__ = ["TensorDomain", "Pair", "PairDomain"]
+
+
+class TensorDomain(Domain[torch.Tensor]):
+    "Any tensor."
+
+    @property
+    def __extends__(self) -> list[Domain]:
+        return [AnyDomain()]
+
+    def check_type(self, obj: torch.Tensor, /) -> None:
+        if not isinstance(obj, torch.Tensor):
+            raise InvalidDomain(f"expected a tensor, got {type(obj).__name__}")
 
 
 class Pair(td.TensorClass):
