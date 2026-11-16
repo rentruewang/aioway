@@ -45,6 +45,7 @@ class FloatTensorDomain(TensorDomain):
 
 class ScoreTensorDomain(TensorDomain):
     def check_type(self, obj: torch.Tensor, /) -> None:
+        super().check_type(obj)
         if obj.numel() != 1:
             raise InvalidValueForDomain("Not a score.")
 
