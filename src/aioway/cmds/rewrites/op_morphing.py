@@ -7,10 +7,10 @@ import dataclasses as dcls
 from torch import nn
 
 from aioway._utils import any_dict
+from aioway.ml.rewrites.morphing import identity_init_linear
 from aioway.ops import Op
 from aioway.ops.thunks import ModuleOp
 
-from .morphing import identity_init_linear
 from .op_rewrites import OpRewriteRule
 
 __all__ = ["NetMorphLinearOpDeeper", "OpTypeChain"]

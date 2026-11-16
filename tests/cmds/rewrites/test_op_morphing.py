@@ -5,7 +5,7 @@ import torch
 from torch import nn
 from torch import testing as tt
 
-from aioway.ml import NetMorphLinearOpDeeper, OpRewriter, OpTypeChain
+from aioway.cmds.rewrites import NetMorphLinearOpDeeper, OpRewriter, OpTypeChain
 from aioway.ops import CallOp, LayerOp, ModuleThunkOp, Op, SameShapeOp, TensorOp
 from aioway.ops.thunks import ModuleOp
 
