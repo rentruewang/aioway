@@ -94,7 +94,7 @@ class OpHist:
     def __getitem__(self, idx: int) -> CallOp:
         return self.history[idx]
 
-    def lift[O: CallOp](
+    def thunk[O: CallOp](
         self,
         cls: type[O],
         func: cabc.Callable,
@@ -192,7 +192,7 @@ class _TorchCallOpDag(OpHist, abc.ABC):
 
         # Only track the function if it is point of interest.
         if self._track_thunk(thunk.func):
-            thunk_op = self.lift(CallOp, thunk.func, thunk.args, thunk.kwargs)
+            thunk_op = self.thunk(CallOp, thunk.func, thunk.args, thunk.kwargs)
             self.append(thunk_op, result)
 
         return result
@@ -263,7 +263,7 @@ class ModuleOpHist(OpHist):
     def module_forward_hook(
         self, module: nn.Module, input: tuple[torch.Tensor, ...], output: torch.Tensor
     ) -> None:
-        thunk = self.lift(ModuleThunkOp, module, input, {})
+        thunk = self.thunk(ModuleThunkOp, module, input, {})
         self.append(thunk, output)
 
 
@@ -308,7 +308,7 @@ class ModuleOpTracker:
         if not _is_leaf_module(module):
             return
 
-        call = self.hist.lift(ModuleThunkOp, module, input, {})
+        call = self.hist.thunk(ModuleThunkOp, module, input, {})
 
         self.hist.append(call, output)
 

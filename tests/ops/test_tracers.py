@@ -312,7 +312,7 @@ class Wrapped(nn.Module):
 def _append_thunk(
     hist: ModuleOpHist, module: nn.Module, *args: torch.Tensor
 ) -> ModuleThunkOp:
-    thunk = hist.lift(ModuleThunkOp, module, args, {})
+    thunk = hist.thunk(ModuleThunkOp, module, args, {})
     hist.append(thunk, module(*args))
     return thunk
 
@@ -353,7 +353,7 @@ def test_append_stores_thunk(hist: ModuleOpHist, module: nn.Module) -> None:
 def test_thunk_looks_up(hist: ModuleOpHist, module: nn.Module) -> None:
     x = torch.ones(3)
     y = module(x)
-    thunk = hist.lift(ModuleThunkOp, module, (x,), {})
+    thunk = hist.thunk(ModuleThunkOp, module, (x,), {})
 
     hist.append(thunk, y)
 
@@ -373,7 +373,7 @@ def test_append_index_all_outputs(hist: ModuleOpHist) -> None:
 def test_append_fail_dups(hist: ModuleOpHist, module: nn.Module) -> None:
     x = torch.ones(3)
     y = module(x)
-    thunk = hist.lift(ModuleThunkOp, module, (x,), {})
+    thunk = hist.thunk(ModuleThunkOp, module, (x,), {})
     hist.append(thunk, y)
 
     with pytest.raises(KeyError):
