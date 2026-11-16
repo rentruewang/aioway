@@ -5,5 +5,6 @@ from .funcs import *
 from .layers import *
 from .ops import *
 from .rebuilds import *
+from .scores import *
 from .thunks import *
 from .vars import *

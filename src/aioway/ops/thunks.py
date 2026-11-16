@@ -51,7 +51,7 @@ class CallOp[F: cabc.Callable](Op):
         return Sign.from_callable(self.func)
 
 
-class ModuleOp(Op, abc.ABC):
+class ModuleOp(Op[typing.Any], abc.ABC):
     """
     A marker that the `Op` is an `nn.Module`.
     """

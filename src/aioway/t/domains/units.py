@@ -9,7 +9,14 @@ from aioway.t import Attr, parse_attr
 
 from .domains import AnyDomain, Domain, InvalidValueForDomain
 
-__all__ = ["TensorDomain", "IntTensorDomain", "FloatTensorDomain", "Pair", "PairDomain"]
+__all__ = [
+    "TensorDomain",
+    "IntTensorDomain",
+    "FloatTensorDomain",
+    "ScoreTensorDomain",
+    "Pair",
+    "PairDomain",
+]
 
 
 class TensorDomain(Domain[torch.Tensor]):
@@ -36,10 +43,11 @@ class FloatTensorDomain(TensorDomain):
             raise InvalidValueForDomain("Must be a float tensor.")
 
 
-class IntTensorDomain(TensorDomain):
+class ScoreTensorDomain(TensorDomain):
     def check_type(self, obj: torch.Tensor, /) -> None:
-        if parse_attr(obj).dtype.family != "float":
-            raise InvalidValueForDomain("Must be an int tensor.")
+        super().check_type(obj)
+        if obj.numel() != 1:
+            raise InvalidValueForDomain("Not a score.")
 
 
 class Pair(td.TensorClass):
