@@ -9,7 +9,11 @@ from aioway._pytrees import tree_leaves, tree_map_only
 from aioway._utils import AnyDict, any_dict
 from aioway.t import Domain
 
-__all__ = ["Op", "exec_op", "OpReplacer"]
+__all__ = ["Op", "exec_op", "OpDomainMismatch", "OpReplacer"]
+
+
+class OpDomainMismatch(ValueError):
+    "The exception is raised by `__domain__` to signal `Op` is invalid."
 
 
 @typing.dataclass_transform()

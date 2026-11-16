@@ -9,7 +9,7 @@ from aioway.t import (
     AnyDomain,
     GridDomain,
     ImageDomain,
-    InvalidDomain,
+    InvalidValueForDomain,
     ListDomain,
     Pair,
     PairDomain,
@@ -114,7 +114,7 @@ class TestRealValues:
         ],
     )
     def test_rejects(self, domain, value):
-        with pytest.raises(InvalidDomain):
+        with pytest.raises(InvalidValueForDomain):
             domain.check(value)
         assert value not in domain
 
@@ -126,10 +126,10 @@ class TestFakeValues:
         VideoDomain().check(_fake(1, 2, 4, 5, 3))
 
     def test_still_check_shapes(self):
-        with pytest.raises(InvalidDomain):
+        with pytest.raises(InvalidValueForDomain):
             GridDomain().check(_fake(4, 5))
 
-        with pytest.raises(InvalidDomain):
+        with pytest.raises(InvalidValueForDomain):
             SizedImageDomain(4, 5).check(_fake(2, 5, 4, 3))
 
 
@@ -141,6 +141,6 @@ def test_pair_domain():
         Pair(input=torch.rand(2, 3), target=torch.rand(2), batch_size=[2])
     )
 
-    with pytest.raises(InvalidDomain):
+    with pytest.raises(InvalidValueForDomain):
         tensor: typing.Any = torch.randn(2, 3)
         PairDomain().check(tensor)

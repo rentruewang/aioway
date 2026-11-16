@@ -8,10 +8,10 @@ import typing
 
 from aioway.t.overrides import has_real
 
-__all__ = ["Domain", "InvalidDomain", "AnyDomain"]
+__all__ = ["Domain", "InvalidValueForDomain", "AnyDomain"]
 
 
-class InvalidDomain(ValueError):
+class InvalidValueForDomain(ValueError):
     """
     This error is raised if the value is not accepted.
     """
@@ -37,7 +37,7 @@ class Domain[T = typing.Any](_DomainDclsMixin, abc.ABC):
     def __contains__(self, value: T) -> bool:
         try:
             self.check(value)
-        except InvalidDomain:
+        except InvalidValueForDomain:
             return False
         else:
             return True
@@ -89,7 +89,7 @@ class Domain[T = typing.Any](_DomainDclsMixin, abc.ABC):
         """
         Check if `obj` is valid.
 
-        Raises `InvalidDomainValue` if not.
+        Raises `InvalidValueForDomain` if not.
         """
 
         self.check_type(obj)
