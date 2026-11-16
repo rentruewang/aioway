@@ -3,3 +3,4 @@
 
 from .morphing import *
 from .rewrites import *
+from .seqs import *
