@@ -42,6 +42,8 @@ class ScoreOp(Op[torch.Tensor], abc.ABC):
     def _check_domains(self) -> None:
         "Checks on the input domains, on top of being tensors."
 
+        ...
+
 
 class _LossOpMixin[M: nn.Module](ScoreOp, ModuleOp, abc.ABC):
     """
