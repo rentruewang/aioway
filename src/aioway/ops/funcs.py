@@ -17,10 +17,10 @@ from .ops import Op
 from .thunks import ModuleOp
 from .vars import ValueOp
 
-__all__ = ["OpFunc", "OpFuncEnv", "FuncInputOp"]
+__all__ = ["OpFunc", "OpFuncModule", "OpFuncEnv", "FuncInputOp"]
 
 
-class OpFunc(nn.Module):
+class OpFunc:
     """
     The function kind for `Op`.
 
@@ -32,16 +32,12 @@ class OpFunc(nn.Module):
 
     On `__call__`, that signature is bound to the `__call__(*args, **kwargs)`
     to produce the input, which is then fed to `OpFuncEnv` to execute.
+
+    Use `module` for the `nn.Module` view (parameters, `state_dict`, etc.).
     """
 
     def __init__(self, output: Op) -> None:
-        super().__init__()
-
         self._output = output
-
-        # Register the sub modules.
-        modules = [op.nn for op in self._all_ops() if isinstance(op, ModuleOp)]
-        self.module_list = nn.ModuleList(modules)
 
         # Compute signature, may also raise errors.
         _ = self.signature
@@ -128,8 +124,32 @@ class OpFunc(nn.Module):
     def output(self) -> Op:
         return self._output
 
+    @property
+    def module(self) -> "OpFuncModule":
+        "The `nn.Module` view, built from the current graph."
+        return OpFuncModule(self)
+
     def _all_ops(self):
         yield from self.output.post_order()
+
+
+class OpFuncModule(nn.Module):
+    """
+    The `nn.Module` view of `OpFunc`, for parameter visibility.
+
+    Cheap to construct, registers the `nn.Module`s in the graph at construction.
+    """
+
+    def __init__(self, func: OpFunc) -> None:
+        super().__init__()
+
+        self.func = func
+        self.module_list = nn.ModuleList(
+            op.nn for op in func._all_ops() if isinstance(op, ModuleOp)
+        )
+
+    def forward(self, *args, **kwargs) -> typing.Any:
+        return self.func(*args, **kwargs)
 
 
 @dcls.dataclass(frozen=True)
