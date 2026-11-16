@@ -3,14 +3,15 @@
 import pytest
 import torch
 from torch import nn
+from torch import testing as tt
 
-from aioway.ops import TensorOp
-from aioway.ops.layers import (
+from aioway.ops import (
     EmbeddingOp,
     GridOp,
     LayerOp,
     SameShapeOp,
     SoftmaxOp,
+    TensorOp,
     ViewOp,
 )
 
@@ -39,7 +40,7 @@ def softmax_op() -> SoftmaxOp:
 
 
 def test_call(op):
-    torch.testing.assert_close(op(), op.module(op.input()))
+    tt.assert_close(op(), op.module(op.input()))
 
 
 def test_nn(op):

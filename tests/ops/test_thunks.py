@@ -8,6 +8,7 @@ from collections import abc as cabc
 import pytest
 import torch
 from torch import nn
+from torch import testing as tt
 
 from aioway._signs import Sign
 from aioway.ops import CallOp, ModuleThunkOp, TensorOp, exec_op
@@ -105,11 +106,11 @@ def any_expr(any_case: Case) -> CallOp:
 
 
 def test_call(any_expr: CallOp, any_case: Case):
-    torch.testing.assert_close(any_expr(), any_case.expected)
+    tt.assert_close(any_expr(), any_case.expected)
 
 
 def test_module_call(module_expr: ModuleThunkOp):
-    torch.testing.assert_close(
+    tt.assert_close(
         module_expr(), module_expr.func(*[exec_op(a) for a in module_expr.args])
     )
 
