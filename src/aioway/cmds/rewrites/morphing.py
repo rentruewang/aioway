@@ -8,10 +8,9 @@ from torch import nn
 
 from aioway._utils import any_dict
 from aioway.ml.rewrites.morphing import identity_init_linear
-from aioway.ops import Op
-from aioway.ops.thunks import ModuleOp
+from aioway.ops import ModuleOp, Op
 
-from .op_rewrites import OpRewriteRule
+from .rewrites import OpRewriteRule
 
 __all__ = ["NetMorphLinearOpDeeper", "OpTypeChain"]
 

@@ -5,9 +5,16 @@ import torch
 from torch import nn
 from torch import testing as tt
 
-from aioway.cmds.rewrites import NetMorphLinearOpDeeper, OpRewriter, OpTypeChain
-from aioway.ops import CallOp, LayerOp, ModuleThunkOp, Op, SameShapeOp, TensorOp
-from aioway.ops.thunks import ModuleOp
+from aioway.cmds import NetMorphLinearOpDeeper, OpRewriter, OpTypeChain
+from aioway.ops import (
+    CallOp,
+    LayerOp,
+    ModuleOp,
+    ModuleThunkOp,
+    Op,
+    SameShapeOp,
+    TensorOp,
+)
 
 
 def x() -> TensorOp:

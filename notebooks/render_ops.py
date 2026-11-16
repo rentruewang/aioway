@@ -74,8 +74,7 @@ func(torch.ones(3), torch.full((3,), 2.0))
 # %%
 from torch import nn
 
-from aioway.ops import ModuleThunkOp
-from aioway.ops.codes import render_op_module
+from aioway.ops import ModuleThunkOp, render_op_module
 
 linear = nn.Linear(3, 3)
 norm = nn.LayerNorm(3)

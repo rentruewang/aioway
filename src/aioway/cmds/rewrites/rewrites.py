@@ -8,8 +8,7 @@ import typing
 from collections import abc as cabc
 
 from aioway._utils import any_dict
-from aioway.ops import Op
-from aioway.ops.thunks import ModuleOp
+from aioway.ops import ModuleOp, Op
 
 __all__ = ["OpRewriter", "OpRewriteRule"]
 
