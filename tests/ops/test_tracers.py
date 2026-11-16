@@ -5,13 +5,22 @@ import torch
 from torch import nn
 from torch import testing as tt
 
-from aioway.ops import TorchFuncOpDag, fake_aten_op_dag, track_module_ops
-from aioway.t import fake_mode
+from aioway.ops import (
+    TensorOp,
+    TorchFuncOpDag,
+    ValueOp,
+    fake_aten_op_dag,
+    track_module_ops,
+)
+from aioway.ops._utils import exec_nested_ops
+from aioway.t import fake_mode, is_aten_op
 
 
 @pytest.fixture(params=["func", "aten"])
 def tracer(request):
-    return TorchFuncOpDag().activate() if request.param == "func" else fake_aten_op_dag()
+    return (
+        TorchFuncOpDag().activate() if request.param == "func" else fake_aten_op_dag()
+    )
 
 
 @pytest.fixture(
@@ -25,22 +34,55 @@ def fn(request):
     return request.param
 
 
-def test_traced_matches_eager(tracer, fn):
+@pytest.fixture
+def model():
+    return nn.Sequential(nn.Linear(4, 8), nn.Sequential(nn.ReLU(), nn.Linear(8, 2)))
+
+
+def trace(tracer, fn):
     with fake_mode():
         x, y = torch.zeros(3), torch.zeros(3)
 
         with tracer as dag:
             fn(x, y)
 
+    return dag
+
+
+def test_traced_matches_eager(tracer, fn):
+    dag = trace(tracer, fn)
     x, y = torch.randn(3), torch.randn(3)
+
     tt.assert_close(dag.exec(x, y), fn(x, y))
 
 
-def test_module_traced_matches_eager():
-    model = nn.Sequential(nn.Linear(4, 8), nn.Sequential(nn.ReLU(), nn.Linear(8, 2)))
+def test_aten_records_only_aten_ops(fn):
+    dag = trace(fake_aten_op_dag(), fn)
 
+    assert all(is_aten_op(thunk.func) for thunk in dag.history)
+
+
+def test_module_traced_matches_eager(model):
     with track_module_ops() as hist:
         model(torch.zeros(3, 4))
 
     x = torch.randn(5, 4)
     tt.assert_close(hist.exec(x), model(x))
+
+
+def test_module_records_only_leaves(model):
+    with track_module_ops() as hist:
+        model(torch.zeros(3, 4))
+
+    leaves = [m for m in model.modules() if not list(m.children())]
+    assert [thunk.func for thunk in hist.history] == leaves
+
+
+def test_exec_nested_ops_nested():
+    tree = ([TensorOp(torch.ones(2)), 3], {"key": ValueOp("value")})
+
+    [tensor, num], mapping = exec_nested_ops(tree)
+
+    tt.assert_close(tensor, torch.ones(2))
+    assert num == 3
+    assert mapping == {"key": "value"}
