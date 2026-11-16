@@ -11,7 +11,7 @@ from aioway.t import AnyDomain, Domain
 
 from .ops import Op, exec_op
 
-__all__ = ["CallOp", "ModuleThunkOp"]
+__all__ = ["CallOp", "ModuleThunkOp", "ModuleOp"]
 
 
 class CallOp[F: cabc.Callable](Op):

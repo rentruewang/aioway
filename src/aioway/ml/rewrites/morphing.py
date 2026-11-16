@@ -48,7 +48,7 @@ class NetMorphLinearSeqDeeper(RewriteRule):
 
     def _build_deeper_net(self, sub: NnProc) -> NnProc:
         first, middle, last = _modules(sub)
-        inserted = _identity_linear(first.out_features)
+        inserted = identity_init_linear(first)
 
         (x,) = sub.inputs.values()
         assert sub.inputs.tensors.all_fake
@@ -107,11 +107,13 @@ def _modules(proc: Proc[ModuleCall]) -> _SequentialDecomosed:
 
 
 @torch.no_grad()
-def _identity_linear(features: int) -> nn.Linear:
-    linear = nn.Linear(features, features)
+def identity_init_linear(layer: nn.Module) -> nn.Linear:
+    assert isinstance(layer, nn.Linear)
+    out_features = layer.out_features
+    linear = nn.Linear(out_features, out_features)
 
     # In fake mode, these are automatically no-op.
-    linear.weight.copy_(torch.eye(features))
+    linear.weight.copy_(torch.eye(out_features))
     linear.bias.zero_()
 
     return linear
