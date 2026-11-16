@@ -110,7 +110,7 @@ class OpHist:
         )
 
     def append(self, thunk: CallOp, result: typing.Any) -> None:
-        outputs = _result_ops(thunk, result)
+        outputs = _build_result_ops(thunk, result)
 
         # Check if the keys already exists,
         # should be unique due to cloning in fake mode.
@@ -329,7 +329,7 @@ def _is_leaf_module(module: nn.Module) -> bool:
 # Helper functions for the graph ====
 
 
-def _result_ops(thunk: CallOp, result: typing.Any) -> AnyDict[torch.Tensor, Op]:
+def _build_result_ops(thunk: CallOp, result: typing.Any) -> AnyDict[torch.Tensor, Op]:
     """
     The `Op` of each tensor in `result`.
 
