@@ -35,7 +35,7 @@ class NetMorphLinearOpDeeper(OpRewriteRule):
         inserted = identity_init_linear(first.nn)
 
         # Stack the identity and the middles again on the kept part.
-        (x,) = last.__deps__
+        [x] = last.__deps__
         x = _rebase(_with_module(first, inserted), x)
         for op in middle:
             x = _rebase(op, x)
@@ -79,11 +79,12 @@ class OpTypeChain:
             if not isinstance(op, ModuleOp) or not isinstance(op.nn, typ):
                 return None
 
-            if len(op.__deps__) != 1:
+            deps = op.__deps__
+            if len(deps) != 1:
                 return None
 
             reverse_chain.append(op)
-            (op,) = op.__deps__
+            [op] = deps
 
         return reverse_chain[::-1]
 

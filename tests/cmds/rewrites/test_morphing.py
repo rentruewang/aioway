@@ -62,7 +62,7 @@ def test_query_no_match():
         OpTypeChain((nn.Linear, nn.ReLU, nn.Linear))(block(x(), nn.Tanh()))
 
 
-def test_query_needs_single_dependency():
+def test_query_single_dep():
     # `join` reads both branches, so no chain runs through it.
     left = LayerOp(nn.Linear(4, 4), x())
     join = ModuleThunkOp(func=nn.Bilinear(4, 4, 4), args=(left, x()), kwargs={})

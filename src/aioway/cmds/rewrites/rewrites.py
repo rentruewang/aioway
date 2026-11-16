@@ -17,12 +17,12 @@ class OpRewriteRule(typing.Protocol):
     @abc.abstractmethod
     def map(self, chain: list[ModuleOp], /) -> Op:
         "Transforms a matched chain into the replacement of its last `Op`."
-        ...
+        raise NotImplementedError
 
     @property
     def query(self) -> cabc.Callable[[Op], list[ModuleOp]]:
         "The query that matches the chain to rewrite, innermost first."
-        ...
+        raise NotImplementedError
 
 
 @typing.final
