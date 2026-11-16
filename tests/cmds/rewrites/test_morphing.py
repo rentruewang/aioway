@@ -15,6 +15,7 @@ from aioway.ops import (
     SameShapeOp,
     TensorOp,
 )
+from aioway.t import fake_mode
 
 
 def x() -> TensorOp:
@@ -75,6 +76,27 @@ def test_rewrite_deepens():
     assert types(result) == [nn.Linear, nn.ReLU, nn.Linear, nn.ReLU, nn.Linear]
 
 
+def test_rewrite_inside_chain():
+    # A `Linear` before the block, a `Tanh` after it.
+    stem = LayerOp(nn.Linear(3, 4), TensorOp(torch.randn(2, 3)))
+    root = SameShapeOp(nn.Tanh(), block(stem))
+
+    result = deeper(root)
+
+    assert types(result) == [
+        nn.Linear,
+        nn.Linear,
+        nn.ReLU,
+        nn.Linear,
+        nn.ReLU,
+        nn.Linear,
+        nn.Tanh,
+    ]
+
+    inserted = [o.nn for o in result.post_order() if isinstance(o, ModuleOp)][3]
+    assert (inserted.in_features, inserted.out_features) == (8, 8)
+
+
 def test_rewrite_longer_middle():
     result = deeper(block(x(), nn.LayerNorm(8), nn.ReLU()), nn.LayerNorm, nn.ReLU)
 
@@ -113,6 +135,23 @@ def test_rewrite_keeps_original():
     deeper(root)
 
     assert types(root) == before
+
+
+def test_rewrite_keeps_input():
+    root = block(x())
+
+    result = deeper(root)
+
+    [before] = [o for o in root.post_order() if isinstance(o, TensorOp)]
+    [after] = [o for o in result.post_order() if isinstance(o, TensorOp)]
+    assert after is before
+
+
+def test_rewrite_fake_mode():
+    with fake_mode():
+        result = deeper(block(x()))
+
+    assert types(result) == [nn.Linear, nn.ReLU, nn.Linear, nn.ReLU, nn.Linear]
 
 
 def test_rewrite_keeps_other_branch():
