@@ -351,19 +351,21 @@ def _build_result_ops(thunk: CallOp, result: typing.Any) -> AnyDict[torch.Tensor
 def _getter(op: Op, path: KeyPath) -> CallOp:
     "The `CallOp` extracting the element at `path` of `op`'s result."
 
-    if len(path) == 1:
-        [key] = path
+    if len(path) != 1:
+        return CallOp(func=key_get, args=(op, path), kwargs={})
 
-        if isinstance(key, SequenceKey):
-            return CallOp(func=operator.getitem, args=(op, key.idx), kwargs={})
+    [key] = path
 
-        if isinstance(key, MappingKey):
-            return CallOp(func=operator.getitem, args=(op, key.key), kwargs={})
+    if isinstance(key, SequenceKey):
+        return CallOp(func=operator.getitem, args=(op, key.idx), kwargs={})
 
-        if isinstance(key, GetAttrKey):
-            return CallOp(func=getattr, args=(op, key.name), kwargs={})
+    if isinstance(key, MappingKey):
+        return CallOp(func=operator.getitem, args=(op, key.key), kwargs={})
 
-    return CallOp(func=key_get, args=(op, path), kwargs={})
+    if isinstance(key, GetAttrKey):
+        return CallOp(func=getattr, args=(op, key.name), kwargs={})
+
+    raise NotImplementedError(f"Unknown key function {key=}")
 
 
 def _unique_post_order(op: Op) -> cabc.Iterator[Op]:
