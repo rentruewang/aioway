@@ -71,6 +71,8 @@ def _exec_op(obj):
 def exec_nested_ops(tree):
     """
     Replace every `Op` in `tree` (at any depth) with its evaluated value.
+
+    This uses `tree_map_only`, but ignore the decomposition on `Op`.
     """
 
     is_op = lambda obj: isinstance(obj, Op)
