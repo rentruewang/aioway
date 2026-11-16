@@ -47,7 +47,7 @@ def test_query_innermost_first():
     chain = OpTypeChain((nn.Linear, nn.ReLU, nn.Linear))(root)
 
     assert chain[-1] is root
-    assert [type(op.module) for op in chain] == [nn.Linear, nn.ReLU, nn.Linear]
+    assert [type(op.nn) for op in chain] == [nn.Linear, nn.ReLU, nn.Linear]
 
 
 def test_query_no_match():

@@ -10,7 +10,7 @@ from aioway._utils import any_dict
 from aioway.ops import Op
 from aioway.ops.thunks import ModuleOp
 
-from .morphing import _identity_linear
+from .morphing import identity_init_linear
 from .op_rewrites import OpRewriteRule
 
 __all__ = ["NetMorphLinearOpDeeper", "OpTypeChain"]
@@ -33,7 +33,7 @@ class NetMorphLinearOpDeeper(OpRewriteRule):
         "The deeper replacement of the chain's last `Op`."
 
         first, *middle, last = chain
-        inserted = _identity_linear(first.nn.out_features)
+        inserted = identity_init_linear(first.nn)
 
         # Stack the identity and the middles again on the kept part.
         (x,) = last.__deps__
