@@ -4,9 +4,10 @@ import abc
 import dataclasses as dcls
 import typing
 from collections import abc as cabc
-from aioway.t import Domain
+
 from aioway._pytrees import tree_leaves, tree_map_only
 from aioway._utils import AnyDict, any_dict
+from aioway.t import Domain
 
 __all__ = ["Op", "exec_op", "OpReplacer"]
 
