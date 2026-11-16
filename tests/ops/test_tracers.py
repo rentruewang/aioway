@@ -1,5 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import typing
+
 import pytest
 import torch
 from torch import nn
@@ -56,6 +58,17 @@ def test_traced_matches_eager(tracer, fn):
     tt.assert_close(dag.exec(x, y), fn(x, y))
 
 
+def test_captures_input_tensors(tracer, fn):
+    with fake_mode():
+        x, y = torch.zeros(3), torch.zeros(3)
+
+        with tracer as dag:
+            fn(x, y)
+
+    assert len(dag.inputs) == 2
+    assert dag.inputs[0] is x and dag.inputs[1] is y
+
+
 def test_aten_records_only_aten_ops(fn):
     dag = trace(fake_aten_op_dag(), fn)
 
@@ -76,6 +89,55 @@ def test_module_records_only_leaves(model):
 
     leaves = [m for m in model.modules() if not list(m.children())]
     assert [thunk.func for thunk in hist.history] == leaves
+
+
+class Pair(typing.NamedTuple):
+    a: torch.Tensor
+    b: torch.Tensor
+
+
+class Split(nn.Module):
+    def __init__(self, pack):
+        super().__init__()
+        self.pack = pack
+
+    def forward(self, x):
+        return self.pack(x * 2, x + 1)
+
+
+class Add(nn.Module):
+    def forward(self, a, b):
+        return a + b
+
+
+class SplitAdd(nn.Module):
+    "A module returning a structure, consumed by the next module."
+
+    def __init__(self, pack, unpack):
+        super().__init__()
+        self.split, self.add, self.unpack = Split(pack), Add(), unpack
+
+    def forward(self, x):
+        return self.add(*self.unpack(self.split(x)))
+
+
+@pytest.mark.parametrize(
+    "pack, unpack",
+    [
+        (lambda a, b: {"a": a, "b": b}, lambda out: (out["a"], out["b"])),
+        (Pair, lambda out: (out.a, out.b)),
+        (lambda a, b: ((a,), b), lambda out: (out[0][0], out[1])),
+    ],
+    ids=["dict", "namedtuple", "nested"],
+)
+def test_module_structured_outputs(pack, unpack):
+    model = SplitAdd(pack, unpack)
+
+    with track_module_ops() as hist:
+        model(torch.zeros(3))
+
+    x = torch.randn(3)
+    tt.assert_close(hist.exec(x), model(x))
 
 
 def test_exec_nested_ops_nested():
