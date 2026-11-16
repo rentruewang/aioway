@@ -3,36 +3,53 @@
 import pytest
 import torch
 from torch import nn
+from torch import testing as tt
 
 from aioway.ops import (
     EmbeddingOp,
     GridOp,
     LayerOp,
-    OpDomainMismatch,
     SameShapeOp,
     SoftmaxOp,
-    ValueOp,
+    TensorOp,
     ViewOp,
 )
 
 
-def _layers():
-    yield LayerOp, nn.Linear(4, 3)
-    yield SameShapeOp, nn.ReLU()
-    yield ViewOp, nn.Flatten()
-    yield EmbeddingOp, nn.Embedding(10, 4)
-    yield SoftmaxOp, nn.Softmax(dim=1)
-    yield GridOp, nn.Conv1d(3, 5, kernel_size=3)
+def _floats(*shape: int) -> TensorOp:
+    return TensorOp(torch.randn(*shape))
 
 
-@pytest.fixture(params=_layers(), ids=lambda layer: layer[0].__name__)
-def layer(request: pytest.FixtureRequest):
+def _ops():
+    yield LayerOp(nn.Linear(4, 3), _floats(8, 4))
+    yield SameShapeOp(nn.ReLU(), _floats(8, 4))
+    yield ViewOp(nn.Flatten(), _floats(8, 2, 3))
+    yield EmbeddingOp(nn.Embedding(10, 4), TensorOp(torch.randint(0, 10, (8,))))
+    yield SoftmaxOp(nn.Softmax(dim=1), _floats(8, 4))
+    yield GridOp(nn.Conv1d(3, 5, kernel_size=3), _floats(8, 3, 16))
+
+
+@pytest.fixture(params=_ops(), ids=lambda op: type(op).__name__)
+def op(request: pytest.FixtureRequest):
     return request.param
 
 
-def test_domain_check_tensor(layer):
-    cls, module = layer
+@pytest.fixture
+def softmax_op() -> SoftmaxOp:
+    return SoftmaxOp(nn.Softmax(dim=1), _floats(8, 4))
 
-    # A tensor in `ValueOp` is still `AnyDomain`, the domain comes from the input `Op`.
-    with pytest.raises(OpDomainMismatch):
-        cls(module, ValueOp(torch.randn(8, 4)))
+
+def test_call(op):
+    tt.assert_close(op(), op.module(op.input()))
+
+
+def test_nn(op):
+    assert op.nn is op.module
+
+
+def test_deps(op):
+    assert op.__deps__ == (op.input,)
+
+
+def test_softmax_dim(softmax_op: SoftmaxOp):
+    assert softmax_op.dim == 1
