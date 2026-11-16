@@ -7,8 +7,13 @@ from collections import abc as cabc
 
 from aioway._pytrees import tree_leaves, tree_map_only
 from aioway._utils import AnyDict, any_dict
+from aioway.t import Domain
 
-__all__ = ["Op", "exec_op", "OpReplacer"]
+__all__ = ["Op", "exec_op", "OpDomainMismatch", "OpReplacer"]
+
+
+class OpDomainMismatch(ValueError):
+    "The exception is raised by `__domain__` to signal `Op` is invalid."
 
 
 @typing.dataclass_transform()
@@ -32,10 +37,22 @@ class Op[T = object](_OpDclsMixin, abc.ABC):
 
     __match_args__: typing.ClassVar[tuple[str, ...]]
 
+    def __post_init__(self) -> None:
+        # Instantiate the domain, also performs checks.
+        _ = self.__domain__
+
+    @property
+    @abc.abstractmethod
+    def __domain__(self) -> Domain:
+        raise NotImplementedError
+
     def __call__(self) -> T:
         from .execs import executor
 
-        return executor()(self)
+        result = executor()(self)
+        domain = self.__domain__
+        domain.check(result)
+        return result
 
     @property
     def __deps__(self) -> tuple[Op, ...]:

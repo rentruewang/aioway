@@ -4,6 +4,8 @@ import typing
 
 import torch
 
+from aioway.t import AnyDomain, Domain, TensorDomain
+
 from .ops import Op
 
 __all__ = ["ValueOp", "TensorOp"]
@@ -17,6 +19,12 @@ class ValueOp[T](Op[T]):
     value: T
     "Any value that is wrapped."
 
+    @property
+    @typing.override
+    def __domain__(self) -> AnyDomain:
+        return AnyDomain()
+
+    @typing.override
     def execute(self) -> T:
         return self.value
 
@@ -35,6 +43,11 @@ class TensorOp(Op[torch.Tensor]):
     """
     The tensor that this `Op` holds.
     """
+
+    @property
+    @typing.override
+    def __domain__(self) -> TensorDomain:
+        return TensorDomain()
 
     @typing.override
     def execute(self) -> torch.Tensor:

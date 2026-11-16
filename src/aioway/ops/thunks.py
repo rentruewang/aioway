@@ -7,6 +7,7 @@ from collections import abc as cabc
 from torch import nn
 
 from aioway._signs import Sign
+from aioway.t import AnyDomain, Domain
 
 from .ops import Op, exec_op
 
@@ -32,6 +33,11 @@ class CallOp[F: cabc.Callable](Op):
     """
     The mapping storing kwargs.
     """
+
+    @property
+    @typing.override
+    def __domain__(self) -> Domain:
+        return AnyDomain()
 
     @typing.override
     def execute(self):
