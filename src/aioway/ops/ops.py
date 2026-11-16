@@ -45,7 +45,10 @@ class Op[T = object](_OpDclsMixin, abc.ABC):
     def __call__(self) -> T:
         from .execs import executor
 
-        return executor()(self)
+        result = executor()(self)
+        domain = self.__domain__
+        domain.check(result)
+        return result
 
     @property
     def __deps__(self) -> tuple[Op, ...]:
