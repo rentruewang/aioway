@@ -6,7 +6,6 @@ import abc
 import dataclasses as dcls
 import typing
 
-from aioway._utils import any_dict
 from aioway.ops import Op
 
 __all__ = ["OpRewriter", "OpRewriteRule"]
@@ -14,8 +13,8 @@ __all__ = ["OpRewriter", "OpRewriteRule"]
 
 class OpRewriteRule(typing.Protocol):
     @abc.abstractmethod
-    def __call__(self, op: Op, /) -> Op:
-        "The replacement of `op`, or `NotImplemented` if the rule doesn't apply."
+    def __call__(self, root: Op, /) -> Op:
+        "The rewritten tree, or `NotImplemented` if the rule applies nowhere."
         raise NotImplementedError
 
 
@@ -23,9 +22,9 @@ class OpRewriteRule(typing.Protocol):
 @dcls.dataclass(frozen=True)
 class OpRewriter:
     """
-    The rewriter rewrites the first `Op` (in post order) the rule applies to.
+    The rewriter rewrites an `Op` tree with the rule.
 
-    Only the `Op`s depending on it are rebuilt, the input tree is kept.
+    The rule decides where (and how) to look in the tree.
     """
 
     rule: OpRewriteRule
@@ -33,13 +32,12 @@ class OpRewriter:
 
     def __call__(self, root: Op, /) -> Op:
         """
-        Rewrite the first `Op` the rule applies to.
+        Rewrite the tree with the rule given.
 
         A `LookupError` would be raised if the rule applies nowhere.
         """
 
-        for op in root.post_order():
-            if (replaced := self.rule(op)) is not NotImplemented:
-                return root.replace(any_dict((op, replaced)))
+        if (result := self.rule(root)) is NotImplemented:
+            raise LookupError(f"{self.rule} applies nowhere.")
 
-        raise LookupError(f"{self.rule} applies nowhere.")
+        return result

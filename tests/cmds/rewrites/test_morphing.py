@@ -48,20 +48,6 @@ def deeper(root: Op, *middle: type[nn.Module]) -> Op:
 # Rule ====
 
 
-def test_rule_applies_at_chain_end():
-    root = block(x())
-
-    assert NetMorphLinearOpDeeper()(root) is not NotImplemented
-
-
-def test_rule_not_at_chain_end():
-    root = block(x())
-
-    # Only looks down from the `Op` given, not into its parent or children.
-    assert isinstance(root, LayerOp)
-    assert NetMorphLinearOpDeeper()(root.input) is NotImplemented
-
-
 def test_rule_no_match():
     assert NetMorphLinearOpDeeper()(block(x(), nn.Tanh())) is NotImplemented
 

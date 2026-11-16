@@ -28,13 +28,14 @@ class NetMorphLinearOpDeeper(OpRewriteRule):
     middle: tuple[type[nn.Module], ...] = (nn.ReLU,)
     "Types of the modules between the two `nn.Linear`, in order."
 
-    def __call__(self, op: Op, /) -> Op:
-        "The deeper replacement of `op`, if a chain ends at `op`."
+    def __call__(self, root: Op, /) -> Op:
+        "`root` with the first chain (in post order) deepened."
 
-        if (chain := self._query(op)) is None:
-            return NotImplemented
+        for op in root.post_order():
+            if (chain := self._query(op)) is not None:
+                return root.replace(any_dict((op, self._map(chain))))
 
-        return self._map(chain)
+        return NotImplemented
 
     def _query(self, op: Op) -> list[ModuleOp] | None:
         "The chain ending at `op`, innermost first."
