@@ -26,7 +26,7 @@ class ValueOp[T](Op[T]):
         return ()
 
 
-class TensorOp(Op):
+class TensorOp(Op[torch.Tensor]):
     """
     The `Op` that just holds a `torch.Tensor`.
     """

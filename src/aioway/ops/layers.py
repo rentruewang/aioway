@@ -1,5 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import abc
 import typing
 
 import torch
@@ -11,7 +12,7 @@ from .thunks import ModuleOp
 __all__ = ["LayerOp", "SameShapeOp", "ViewOp", "EmbeddingOp", "SoftmaxOp", "GridOp"]
 
 
-class _UnaryModuleOp[M: nn.Module](ModuleOp):
+class _UnaryModuleOpMixin[M: nn.Module](ModuleOp, abc.ABC):
     """
     A `nn.Module` applied to one input: `(input: tensor) -> tensor`.
     """
@@ -32,7 +33,7 @@ class _UnaryModuleOp[M: nn.Module](ModuleOp):
         return self.module
 
 
-class LayerOp(_UnaryModuleOp[nn.Module]):
+class LayerOp(_UnaryModuleOpMixin[nn.Module]):
     """
     A `torch.nn` layer: `(input: float tensor) -> float tensor`.
 
@@ -40,7 +41,7 @@ class LayerOp(_UnaryModuleOp[nn.Module]):
     """
 
 
-class SameShapeOp(_UnaryModuleOp[nn.Module]):
+class SameShapeOp(_UnaryModuleOpMixin[nn.Module]):
     """
     A `torch.nn` layer whose output has the input's shape:
     `(input: float tensor) -> float tensor`.
@@ -49,7 +50,7 @@ class SameShapeOp(_UnaryModuleOp[nn.Module]):
     """
 
 
-class ViewOp(_UnaryModuleOp[nn.Module]):
+class ViewOp(_UnaryModuleOpMixin[nn.Module]):
     """
     A `torch.nn` layer that views the input in another shape, values unchanged:
     `(input: tensor) -> tensor`.
@@ -58,13 +59,13 @@ class ViewOp(_UnaryModuleOp[nn.Module]):
     """
 
 
-class EmbeddingOp(_UnaryModuleOp[nn.Embedding]):
+class EmbeddingOp(_UnaryModuleOpMixin[nn.Embedding]):
     """
     A `nn.Embedding`: `(input: int tensor) -> float tensor`.
     """
 
 
-class SoftmaxOp(_UnaryModuleOp[nn.Softmax | nn.Softmin]):
+class SoftmaxOp(_UnaryModuleOpMixin[nn.Softmax | nn.Softmin]):
     """
     A `nn.Softmax` or `nn.Softmin`: `(input: float tensor) -> float tensor`,
     where the output sums to 1 along `dim`.
@@ -76,7 +77,7 @@ class SoftmaxOp(_UnaryModuleOp[nn.Softmax | nn.Softmin]):
         return self.module.dim
 
 
-class GridOp(_UnaryModuleOp[nn.Module]):
+class GridOp(_UnaryModuleOpMixin[nn.Module]):
     """
     A convolution, pooling, padding or upsampling layer:
     `(input: float grid) -> float grid`.
