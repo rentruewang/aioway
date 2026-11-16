@@ -12,7 +12,7 @@ from aioway.ops import ModuleOp, Op
 
 from .rewrites import OpRewriteRule
 
-__all__ = ["NetMorphLinearOpDeeper", "OpTypeChain"]
+__all__ = ["NetMorphLinearOpDeeper"]
 
 
 @dcls.dataclass(frozen=True)
@@ -28,7 +28,20 @@ class NetMorphLinearOpDeeper(OpRewriteRule):
     middle: tuple[type[nn.Module], ...] = (nn.ReLU,)
     "Types of the modules between the two `nn.Linear`, in order."
 
-    def map(self, chain: list[ModuleOp]) -> Op:
+    def __call__(self, op: Op, /) -> Op:
+        "The deeper replacement of `op`, if a chain ends at `op`."
+
+        if (chain := self._query(op)) is None:
+            return NotImplemented
+
+        return self._map(chain)
+
+    def _query(self, op: Op) -> list[ModuleOp] | None:
+        "The chain ending at `op`, innermost first."
+
+        return _TypeChain((nn.Linear, *self.middle, nn.Linear))(op)
+
+    def _map(self, chain: list[ModuleOp]) -> Op:
         "The deeper replacement of the chain's last `Op`."
 
         first, *middle, last = chain
@@ -42,35 +55,21 @@ class NetMorphLinearOpDeeper(OpRewriteRule):
 
         return _rebase(last, x)
 
-    @property
-    def query(self) -> OpTypeChain:
-        return OpTypeChain((nn.Linear, *self.middle, nn.Linear))
-
 
 @dcls.dataclass(frozen=True)
-class OpTypeChain:
+class _TypeChain:
     """
-    Search for a chain of `ModuleOp`s `a(b(c(...)))`, like `nn.Sequential`.
+    Match a chain of `ModuleOp`s `a(b(c(...)))`, like `nn.Sequential`.
 
     Modules are matched with `isinstance`, e.g. `(nn.Linear, nn.ReLU)`.
     Each `Op` in the chain must have a single dependency.
-    The chain can sit anywhere in the tree, the first one in post order is found.
     """
 
     pattern: tuple[type[nn.Module], ...]
     "The module types of the chain, from the innermost (applied first)."
 
-    def __call__(self, root: Op, /) -> list[ModuleOp]:
-        "The matched chain, innermost first."
-
-        for op in root.post_order():
-            if (chain := self._chain(op)) is not None:
-                return chain
-
-        raise LookupError(f"No match for {self.pattern}.")
-
-    def _chain(self, end: Op) -> list[ModuleOp] | None:
-        "The chain ending at `end`, or `None` if it doesn't match."
+    def __call__(self, end: Op, /) -> list[ModuleOp] | None:
+        "The chain ending at `end`, innermost first, `None` if no match."
 
         reverse_chain: list[ModuleOp] = []
         op = end

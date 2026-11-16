@@ -5,23 +5,17 @@
 import abc
 import dataclasses as dcls
 import typing
-from collections import abc as cabc
 
 from aioway._utils import any_dict
-from aioway.ops import ModuleOp, Op
+from aioway.ops import Op
 
 __all__ = ["OpRewriter", "OpRewriteRule"]
 
 
 class OpRewriteRule(typing.Protocol):
     @abc.abstractmethod
-    def map(self, chain: list[ModuleOp], /) -> Op:
-        "Transforms a matched chain into the replacement of its last `Op`."
-        raise NotImplementedError
-
-    @property
-    def query(self) -> cabc.Callable[[Op], list[ModuleOp]]:
-        "The query that matches the chain to rewrite, innermost first."
+    def __call__(self, op: Op, /) -> Op:
+        "The replacement of `op`, or `NotImplemented` if the rule doesn't apply."
         raise NotImplementedError
 
 
@@ -29,9 +23,9 @@ class OpRewriteRule(typing.Protocol):
 @dcls.dataclass(frozen=True)
 class OpRewriter:
     """
-    The rewriter rewrites a chain in an `Op` tree to another.
+    The rewriter rewrites the first `Op` (in post order) the rule applies to.
 
-    Only the `Op`s depending on the chain are rebuilt, the input tree is kept.
+    Only the `Op`s depending on it are rebuilt, the input tree is kept.
     """
 
     rule: OpRewriteRule
@@ -39,11 +33,13 @@ class OpRewriter:
 
     def __call__(self, root: Op, /) -> Op:
         """
-        Match the chain, then rewrite it with the rule given.
+        Rewrite the first `Op` the rule applies to.
 
-        A `LookupError` would be raised if querying failed.
+        A `LookupError` would be raised if the rule applies nowhere.
         """
 
-        chain = self.rule.query(root)
-        replaced = self.rule.map(chain)
-        return root.replace(any_dict((chain[-1], replaced)))
+        for op in root.post_order():
+            if (replaced := self.rule(op)) is not NotImplemented:
+                return root.replace(any_dict((op, replaced)))
+
+        raise LookupError(f"{self.rule} applies nowhere.")

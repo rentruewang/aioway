@@ -5,7 +5,7 @@ import torch
 from torch import nn
 from torch import testing as tt
 
-from aioway.cmds import NetMorphLinearOpDeeper, OpRewriter, OpTypeChain
+from aioway.cmds import NetMorphLinearOpDeeper, OpRewriter
 from aioway.ops import (
     CallOp,
     LayerOp,
@@ -45,32 +45,39 @@ def deeper(root: Op, *middle: type[nn.Module]) -> Op:
     return OpRewriter(rule)(root)
 
 
-# Querying ====
+# Rule ====
 
 
-def test_query_innermost_first():
+def test_rule_applies_at_chain_end():
     root = block(x())
 
-    chain = OpTypeChain((nn.Linear, nn.ReLU, nn.Linear))(root)
-
-    assert chain[-1] is root
-    assert [type(op.nn) for op in chain] == [nn.Linear, nn.ReLU, nn.Linear]
+    assert NetMorphLinearOpDeeper()(root) is not NotImplemented
 
 
-def test_query_no_match():
-    with pytest.raises(LookupError):
-        OpTypeChain((nn.Linear, nn.ReLU, nn.Linear))(block(x(), nn.Tanh()))
+def test_rule_not_at_chain_end():
+    root = block(x())
+
+    # Only looks down from the `Op` given, not into its parent or children.
+    assert isinstance(root, LayerOp)
+    assert NetMorphLinearOpDeeper()(root.input) is NotImplemented
 
 
-def test_query_single_dep():
+def test_rule_no_match():
+    assert NetMorphLinearOpDeeper()(block(x(), nn.Tanh())) is NotImplemented
+
+
+def test_rule_single_dep():
     # `join` reads both branches, so no chain runs through it.
-    left = LayerOp(nn.Linear(4, 4), x())
-    join = ModuleThunkOp(func=nn.Bilinear(4, 4, 4), args=(left, x()), kwargs={})
+    first = ModuleThunkOp(func=nn.Linear(4, 4), args=(x(),), kwargs={})
+    join = ModuleThunkOp(func=nn.Bilinear(4, 4, 4), args=(first, x()), kwargs={})
+    root = ModuleThunkOp(func=nn.Linear(4, 4), args=(join,), kwargs={})
 
-    assert OpTypeChain((nn.Linear,))(join) == [left]
+    assert NetMorphLinearOpDeeper(middle=(nn.Bilinear,))(root) is NotImplemented
 
+
+def test_rewriter_no_match():
     with pytest.raises(LookupError):
-        OpTypeChain((nn.Linear, nn.Bilinear))(join)
+        deeper(block(x(), nn.Tanh()))
 
 
 # Rewriting ====
