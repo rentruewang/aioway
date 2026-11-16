@@ -209,10 +209,10 @@ class AccuracyOp(ScoreOp):
 
 
 def _require_float_op(op: Op) -> None:
-    if isinstance(op.__domain__, IntTensorDomain):
+    if not isinstance(op.__domain__, FloatTensorDomain):
         raise OpDomainMismatch(f"expected a float tensor, got {op.__domain__}")
 
 
 def _require_int_op(op: Op) -> None:
-    if isinstance(op.__domain__, FloatTensorDomain):
+    if not isinstance(op.__domain__, IntTensorDomain):
         raise OpDomainMismatch(f"expected an int tensor, got {op.__domain__}")

@@ -49,12 +49,6 @@ class ScoreTensorDomain(TensorDomain):
             raise InvalidValueForDomain("Not a score.")
 
 
-class IntTensorDomain(TensorDomain):
-    def check_type(self, obj: torch.Tensor, /) -> None:
-        if parse_attr(obj).dtype.family != "float":
-            raise InvalidValueForDomain("Must be an int tensor.")
-
-
 class Pair(td.TensorClass):
     "An input and its target: what a split gives."
 

@@ -6,7 +6,7 @@ import typing
 import torch
 from torch import nn
 
-from aioway.t import Domain, IntTensorDomain, TensorDomain
+from aioway.t import Domain, FloatTensorDomain, TensorDomain, IntTensorDomain
 
 from .ops import Op, OpDomainMismatch
 from .thunks import ModuleOp
@@ -106,7 +106,8 @@ class EmbeddingOp(_UnaryModuleOpMixin[nn.Embedding]):
 
     @typing.override
     def _layer_domain(self, input: TensorDomain) -> TensorDomain:
-        return IntTensorDomain()
+        assert isinstance(input, IntTensorDomain), type(input)
+        return FloatTensorDomain()
 
 
 @require_specific_domain
