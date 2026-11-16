@@ -27,7 +27,7 @@ def test_unroll_signature():
     assert list(inspect.signature(func).parameters) == ["input"]
 
 
-def test_unroll_nested():
+def test_unroll_flatten():
     seq = nn.Sequential(nn.Linear(4, 8), nn.Sequential(nn.ReLU(), nn.Linear(8, 4)))
 
     func = unroll_sequential(seq)
