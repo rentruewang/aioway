@@ -6,7 +6,7 @@ import typing
 import torch
 from torch import nn
 
-from aioway.t import AnyDomain, Domain
+from aioway.t import Domain, TensorDomain
 
 from .ops import Op
 from .thunks import ModuleOp
@@ -28,7 +28,7 @@ class _UnaryModuleOpMixin[M: nn.Module](ModuleOp, abc.ABC):
     @property
     @typing.override
     def __domain__(self) -> Domain:
-        return AnyDomain()
+        return TensorDomain()
 
     @typing.override
     def execute(self) -> torch.Tensor:
