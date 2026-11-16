@@ -75,8 +75,8 @@ class RegressionLossOp(_LossOpMixin[nn.Module]):
 
     @typing.override
     def _check_domains(self) -> None:
-        _require_float(self.pred)
-        _require_float(self.target)
+        _require_float_op(self.pred)
+        _require_float_op(self.target)
 
     @typing.override
     def execute(self) -> torch.Tensor:
@@ -99,7 +99,7 @@ class BinaryLossOp(_LossOpMixin[nn.Module]):
 
     @typing.override
     def _check_domains(self) -> None:
-        _require_float(self.pred)
+        _require_float_op(self.pred)
 
     @typing.override
     def execute(self) -> torch.Tensor:
@@ -121,7 +121,7 @@ class ClassLossOp(_LossOpMixin[nn.Module]):
 
     @typing.override
     def _check_domains(self) -> None:
-        _require_float(self.logits)
+        _require_float_op(self.logits)
 
     @typing.override
     def execute(self) -> torch.Tensor:
@@ -146,8 +146,8 @@ class PairLossOp(_LossOpMixin[nn.Module]):
 
     @typing.override
     def _check_domains(self) -> None:
-        _require_float(self.a)
-        _require_float(self.b)
+        _require_float_op(self.a)
+        _require_float_op(self.b)
 
     @typing.override
     def execute(self) -> torch.Tensor:
@@ -172,9 +172,9 @@ class TripletLossOp(_LossOpMixin[nn.Module]):
 
     @typing.override
     def _check_domains(self) -> None:
-        _require_float(self.anchor)
-        _require_float(self.positive)
-        _require_float(self.negative)
+        _require_float_op(self.anchor)
+        _require_float_op(self.positive)
+        _require_float_op(self.negative)
 
     @typing.override
     def execute(self) -> torch.Tensor:
@@ -196,8 +196,8 @@ class AccuracyOp(ScoreOp):
 
     @typing.override
     def _check_domains(self) -> None:
-        _require_float(self.logits)
-        _require_int(self.target)
+        _require_float_op(self.logits)
+        _require_int_op(self.target)
 
     @typing.override
     def execute(self) -> torch.Tensor:
@@ -208,11 +208,11 @@ class AccuracyOp(ScoreOp):
 # Utils ====
 
 
-def _require_float(op: Op) -> None:
+def _require_float_op(op: Op) -> None:
     if isinstance(op.__domain__, IntTensorDomain):
         raise OpDomainMismatch(f"expected a float tensor, got {op.__domain__}")
 
 
-def _require_int(op: Op) -> None:
+def _require_int_op(op: Op) -> None:
     if isinstance(op.__domain__, FloatTensorDomain):
         raise OpDomainMismatch(f"expected an int tensor, got {op.__domain__}")
