@@ -32,18 +32,30 @@ class TensorDomain(Domain[torch.Tensor]):
 
 
 class IntTensorDomain(TensorDomain):
+    @property
+    def __extends__(self) -> list[Domain]:
+        return [TensorDomain()]
+
     def check_type(self, obj: torch.Tensor, /) -> None:
         if parse_attr(obj).dtype.is_floating_point:
             raise InvalidValueForDomain("Must be an int tensor.")
 
 
 class FloatTensorDomain(TensorDomain):
+    @property
+    def __extends__(self) -> list[Domain]:
+        return [TensorDomain()]
+
     def check_type(self, obj: torch.Tensor, /) -> None:
         if not parse_attr(obj).dtype.is_floating_point:
             raise InvalidValueForDomain("Must be a float tensor.")
 
 
 class ScoreTensorDomain(TensorDomain):
+    @property
+    def __extends__(self) -> list[Domain]:
+        return [TensorDomain()]
+
     def check_type(self, obj: torch.Tensor, /) -> None:
         super().check_type(obj)
         if obj.numel() != 1:

@@ -8,8 +8,8 @@ from torch import nn
 
 from aioway.t import Domain, FloatTensorDomain, TensorDomain
 
-from ._utils import require_int_op
-from .ops import Op, OpDomainMismatch
+from ._utils import require_int_op, require_tensor_op
+from .ops import Op
 from .thunks import ModuleOp
 
 __all__ = ["LayerOp", "SameShapeOp", "ViewOp", "EmbeddingOp", "SoftmaxOp", "GridOp"]
@@ -38,12 +38,14 @@ class _UnaryModuleOpMixin[M: nn.Module](ModuleOp, Op[torch.Tensor], abc.ABC):
     @property
     @typing.override
     def __domain__(self) -> TensorDomain:
-        try:
-            domain = self.input.__domain__
-            assert isinstance(domain, TensorDomain)
-            return self._layer_domain(domain)
-        except AssertionError as ae:
-            raise OpDomainMismatch from ae
+        require_tensor_op(self.input)
+        domain = self.input.__domain__
+
+        # A super domain (e.g. `ANY`) is narrowed.
+        if not isinstance(domain, TensorDomain):
+            domain = TensorDomain()
+
+        return self._layer_domain(domain)
 
     @typing.override
     def execute(self) -> torch.Tensor:

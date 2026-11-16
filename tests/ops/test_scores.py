@@ -106,9 +106,9 @@ def test_score_is_a_number(score: ScoreOp):
     assert score().shape == ()
 
 
-def test_non_tensor_input(score: ScoreOp):
-    with pytest.raises(OpDomainMismatch):
-        _replace_first_input(score, ValueOp(torch.randn(8, 4)))
+def test_any_input(score: ScoreOp):
+    # `ANY` is a super domain: accepted.
+    _replace_first_input(score, ValueOp(torch.randn(8, 4)))
 
 
 def test_generic_tensor_input(score: ScoreOp):

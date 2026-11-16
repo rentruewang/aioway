@@ -2,6 +2,7 @@
 
 "Checks shared by `Op`s."
 
+import functools as ft
 from collections import abc as cabc
 
 from aioway.t import Domain, FloatTensorDomain, IntTensorDomain, TensorDomain
@@ -11,42 +12,38 @@ from .ops import Op, OpDomainMismatch
 __all__ = ["require_op", "require_tensor_op", "require_float_op", "require_int_op"]
 
 
-def require_op(op: Op, domains: cabc.Sequence[type[Domain]], /) -> type[Domain]:
+def require_op(
+    op: Op, domain: Domain, check: cabc.Callable[[Op], None] = lambda _: None
+) -> None:
     """
-    Check `op`'s domain against `domains`, in order, and return the one matched.
+    Check `op`'s domain against `domain`.
 
-    Like `isinstance(op.__domain__, tuple(domains))`, except only the first is matched
-    with its subclasses. The rest are fallbacks, matched exactly:
-    placeholders (e.g. `TensorDomain` from `TensorOp`) until the domain is inferred.
+    A sub domain is a match, `check` is then performed on `op`.
+    A super domain (e.g. `ANY`) may match, not known yet, so nothing is done.
 
     Raises:
-        OpDomainMismatch: if nothing matches.
+        OpDomainMismatch: if neither a sub domain nor a super domain.
     """
 
-    domain = op.__domain__
-    first, *fallbacks = domains
+    actual = op.__domain__
 
-    if isinstance(domain, first):
-        return first
+    # Checks are run if the domain is what we wanted.
+    if actual <= domain:
+        check(op)
+        return
 
-    for fallback in fallbacks:
-        if type(domain) is fallback:
-            return fallback
+    # Super type is broader, give it a pass.
+    if actual > domain:
+        return
 
-    names = ", ".join(d.__name__ for d in domains)
-    raise OpDomainMismatch(f"expected one of [{names}], got {domain}")
-
-
-def require_tensor_op(op: Op, /) -> None:
-    "Any tensor."
-    require_op(op, [TensorDomain])
+    raise OpDomainMismatch(f"expected {domain}, got {actual}")
 
 
-def require_float_op(op: Op, /) -> None:
-    "A float tensor, or a tensor not inferred yet."
-    require_op(op, [FloatTensorDomain, TensorDomain])
+require_tensor_op = ft.partial(require_op, domain=TensorDomain())
+"Any tensor."
 
+require_float_op = ft.partial(require_op, domain=FloatTensorDomain())
+"A float tensor."
 
-def require_int_op(op: Op, /) -> None:
-    "An int tensor, or a tensor not inferred yet."
-    require_op(op, [IntTensorDomain, TensorDomain])
+require_int_op = ft.partial(require_op, domain=IntTensorDomain())
+"An int tensor."

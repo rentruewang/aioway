@@ -23,7 +23,7 @@ class _OpDclsMixin:
         _ = dcls.dataclass()(cls)
 
 
-class Op[T = object](_OpDclsMixin, abc.ABC):
+class Op[T = typing.Any](_OpDclsMixin, abc.ABC):
     """
     The base class for expressions.
 
