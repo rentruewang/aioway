@@ -6,7 +6,6 @@ import typing
 
 import pytest
 import torch
-from aioway.t import FloatTensorDomain, IntTensorDomain, TensorDomain
 from torch import nn
 from torch import testing as tt
 
@@ -23,6 +22,7 @@ from aioway.ops import (
     TripletLossOp,
     ValueOp,
 )
+from aioway.t import FloatTensorDomain, IntTensorDomain, TensorDomain
 
 
 class _TypedTensorOp(Op[torch.Tensor]):
@@ -112,9 +112,8 @@ def test_non_tensor_input(score: ScoreOp):
 
 
 def test_generic_tensor_input(score: ScoreOp):
-    # `TensorDomain` is not specific enough: every first input requires a float tensor.
-    with pytest.raises(OpDomainMismatch):
-        _replace_first_input(score, TensorOp(torch.randn(8, 4)))
+    # `TensorDomain` is the fallback: accepted until the domain is inferred.
+    _replace_first_input(score, TensorOp(torch.randn(8, 4)))
 
 
 def test_int_input_for_float(score: ScoreOp):

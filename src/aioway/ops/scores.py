@@ -8,9 +8,10 @@ import typing
 import torch
 from torch import nn
 
-from aioway.t import FloatTensorDomain, IntTensorDomain, ScoreTensorDomain, TensorDomain
+from aioway.t import ScoreTensorDomain
 
-from .ops import Op, OpDomainMismatch
+from ._utils import require_float_op, require_int_op, require_tensor_op
+from .ops import Op
 from .thunks import ModuleOp
 
 __all__ = [
@@ -33,8 +34,7 @@ class ScoreOp(Op[torch.Tensor], abc.ABC):
     @typing.override
     def __domain__(self) -> ScoreTensorDomain:
         for dep in self.__deps__:
-            if not isinstance(dep.__domain__, TensorDomain):
-                raise OpDomainMismatch(f"expected a tensor, got {dep.__domain__}")
+            require_tensor_op(dep)
 
         self._check_domains()
         return ScoreTensorDomain()
@@ -75,8 +75,8 @@ class RegressionLossOp(_LossOpMixin[nn.Module]):
 
     @typing.override
     def _check_domains(self) -> None:
-        _require_float_op(self.pred)
-        _require_float_op(self.target)
+        require_float_op(self.pred)
+        require_float_op(self.target)
 
     @typing.override
     def execute(self) -> torch.Tensor:
@@ -99,7 +99,7 @@ class BinaryLossOp(_LossOpMixin[nn.Module]):
 
     @typing.override
     def _check_domains(self) -> None:
-        _require_float_op(self.pred)
+        require_float_op(self.pred)
 
     @typing.override
     def execute(self) -> torch.Tensor:
@@ -121,7 +121,7 @@ class ClassLossOp(_LossOpMixin[nn.Module]):
 
     @typing.override
     def _check_domains(self) -> None:
-        _require_float_op(self.logits)
+        require_float_op(self.logits)
 
     @typing.override
     def execute(self) -> torch.Tensor:
@@ -146,8 +146,8 @@ class PairLossOp(_LossOpMixin[nn.Module]):
 
     @typing.override
     def _check_domains(self) -> None:
-        _require_float_op(self.a)
-        _require_float_op(self.b)
+        require_float_op(self.a)
+        require_float_op(self.b)
 
     @typing.override
     def execute(self) -> torch.Tensor:
@@ -172,9 +172,9 @@ class TripletLossOp(_LossOpMixin[nn.Module]):
 
     @typing.override
     def _check_domains(self) -> None:
-        _require_float_op(self.anchor)
-        _require_float_op(self.positive)
-        _require_float_op(self.negative)
+        require_float_op(self.anchor)
+        require_float_op(self.positive)
+        require_float_op(self.negative)
 
     @typing.override
     def execute(self) -> torch.Tensor:
@@ -196,23 +196,10 @@ class AccuracyOp(ScoreOp):
 
     @typing.override
     def _check_domains(self) -> None:
-        _require_float_op(self.logits)
-        _require_int_op(self.target)
+        require_float_op(self.logits)
+        require_int_op(self.target)
 
     @typing.override
     def execute(self) -> torch.Tensor:
         correct = self.logits().argmax(dim=1) == self.target()
         return correct.float().mean()
-
-
-# Utils ====
-
-
-def _require_float_op(op: Op) -> None:
-    if not isinstance(op.__domain__, FloatTensorDomain):
-        raise OpDomainMismatch(f"expected a float tensor, got {op.__domain__}")
-
-
-def _require_int_op(op: Op) -> None:
-    if not isinstance(op.__domain__, IntTensorDomain):
-        raise OpDomainMismatch(f"expected an int tensor, got {op.__domain__}")
