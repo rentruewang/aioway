@@ -5,11 +5,12 @@
 import functools
 
 import torch
+from torch import nn
+from torchrl.data import tensor_specs as tspecs
+
 from aioway._utils import is_list_of
 from aioway.io.tspecs import TSpec
 from aioway.ops import GridOp, OpFunc, SameShapeOp
-from torch import nn
-from torchrl.data import tensor_specs as tspecs
 
 from ._utils import Activation, linear_tree, observ_op
 from .emitters import Emitter, emitter_dcls

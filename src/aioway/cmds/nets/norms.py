@@ -4,10 +4,11 @@
 
 import typing
 
-from aioway.io.tspecs import TSpec
-from aioway.ops import OpFunc, SameShapeOp
 from torch import nn
 from torchrl.data import tensor_specs as tspecs
+
+from aioway.io.tspecs import TSpec
+from aioway.ops import OpFunc, SameShapeOp
 
 from ._utils import observ_op
 from .emitters import Emitter, emitter_dcls, emitter_function

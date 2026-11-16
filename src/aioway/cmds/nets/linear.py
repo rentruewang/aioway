@@ -1,10 +1,11 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-from aioway.io.tspecs import TSpec
-from aioway.ops import LayerOp, OpFunc, SameShapeOp, ViewOp
 from torch import nn
 from torchrl import modules as rlmods
 from torchrl.data import tensor_specs as tspecs
+
+from aioway.io.tspecs import TSpec
+from aioway.ops import LayerOp, OpFunc, SameShapeOp, ViewOp
 
 from ._utils import Activation, linear_tree, observ_op
 from .emitters import Emitter, emitter_dcls, emitter_function

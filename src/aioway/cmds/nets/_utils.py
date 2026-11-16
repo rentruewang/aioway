@@ -3,10 +3,11 @@
 import enum
 
 import torch
+from torch import nn
+
 from aioway._signs import Param
 from aioway.ops import FuncInputOp, LayerOp, Op, ViewOp
 from aioway.t import FloatTensorDomain
-from torch import nn
 
 __all__ = ["observ_op", "linear_tree", "Activation"]
 
@@ -19,7 +20,9 @@ def observ_op() -> FuncInputOp[torch.Tensor]:
     )
 
 
-def linear_tree(input: Op, in_shape: torch.Size, out_shape: torch.Size) -> Op:
+def linear_tree(
+    input: Op[torch.Tensor], in_shape: torch.Size, out_shape: torch.Size
+) -> Op:
     """
     `Linear` from `in_shape` to `out_shape`, both without the batch dimension.
 

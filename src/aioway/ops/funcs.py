@@ -121,7 +121,7 @@ class OpFunc:
         return Sign.from_params(params.values())
 
     @property
-    def output(self) -> Op:
+    def output(self) -> Op[typing.Any]:
         return self._output
 
     @property
