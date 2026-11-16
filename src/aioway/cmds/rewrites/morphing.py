@@ -31,6 +31,7 @@ class NetMorphLinearOpDeeper(OpRewriteRule):
     def __call__(self, root: Op, /) -> Op:
         "`root` with the first chain (in post order) deepened."
 
+        # Right now this is 2 pass, because it's adapted from the old version.
         for op in root.post_order():
             if (chain := self._query(op)) is not None:
                 return root.replace(any_dict((op, self._map(chain))))
