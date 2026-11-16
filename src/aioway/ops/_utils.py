@@ -2,8 +2,6 @@
 
 "Checks shared by `Op`s."
 
-from collections import abc as cabc
-
 from aioway.t import Domain, FloatTensorDomain, IntTensorDomain, TensorDomain
 
 from .ops import Op, OpDomainMismatch
@@ -11,42 +9,37 @@ from .ops import Op, OpDomainMismatch
 __all__ = ["require_op", "require_tensor_op", "require_float_op", "require_int_op"]
 
 
-def require_op(op: Op, domains: cabc.Sequence[type[Domain]], /) -> type[Domain]:
+def require_op(op: Op, domain: Domain, /) -> None:
     """
-    Check `op`'s domain against `domains`, in order, and return the one matched.
-
-    Like `isinstance(op.__domain__, tuple(domains))`, except only the first is matched
-    with its subclasses. The rest are fallbacks, matched exactly:
-    placeholders (e.g. `TensorDomain` from `TensorOp`) until the domain is inferred.
+    Check `op`'s domain is a sub domain or a super domain of `domain`.
 
     Raises:
-        OpDomainMismatch: if nothing matches.
+        OpDomainMismatch: if neither.
     """
 
-    domain = op.__domain__
-    first, *fallbacks = domains
+    actual = op.__domain__
 
-    if isinstance(domain, first):
-        return first
+    # A sub domain, e.g. a float tensor for a tensor.
+    if actual <= domain:
+        return
 
-    for fallback in fallbacks:
-        if type(domain) is fallback:
-            return fallback
+    # A super domain, e.g. `ANY` or a tensor not inferred yet, may still hold it.
+    if actual >= domain:
+        return
 
-    names = ", ".join(d.__name__ for d in domains)
-    raise OpDomainMismatch(f"expected one of [{names}], got {domain}")
+    raise OpDomainMismatch(f"expected {domain}, got {actual}")
 
 
 def require_tensor_op(op: Op, /) -> None:
     "Any tensor."
-    require_op(op, [TensorDomain])
+    require_op(op, TensorDomain())
 
 
 def require_float_op(op: Op, /) -> None:
     "A float tensor, or a tensor not inferred yet."
-    require_op(op, [FloatTensorDomain, TensorDomain])
+    require_op(op, FloatTensorDomain())
 
 
 def require_int_op(op: Op, /) -> None:
     "An int tensor, or a tensor not inferred yet."
-    require_op(op, [IntTensorDomain, TensorDomain])
+    require_op(op, IntTensorDomain())
