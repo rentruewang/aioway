@@ -11,6 +11,7 @@ from torchrl.data import tensor_specs as tspecs
 from aioway._utils import is_list_of
 from aioway.io.tspecs import TSpec
 from aioway.ops import GridOp, OpFunc, SameShapeOp
+from aioway.t import fake_mode
 
 from ._utils import Activation, linear_tree, observ_op
 from .emitters import Emitter, emitter_dcls
@@ -59,7 +60,6 @@ class ImageRegressorEmitter(Emitter):
         strides = self._as_list(self.strides)
 
         op = observ_op()
-        _, height, width = observ.shape
 
         for i in range(len(self)):
             conv = nn.Conv2d(
@@ -70,13 +70,12 @@ class ImageRegressorEmitter(Emitter):
             )
             op = SameShapeOp(activation(), GridOp(conv, op))
 
-            # No padding, no dilation.
-            height = (height - kernels[i]) // strides[i] + 1
-            width = (width - kernels[i]) // strides[i] + 1
+        # Run a fake sample through the convs, for their output shape.
+        with fake_mode():
+            sim_out = OpFunc(op)(torch.zeros(1, *observ.shape))
 
         # Flattens, then a linear final layer.
-        conv_shape = torch.Size([out_channels[-1], height, width])
-        return OpFunc(linear_tree(op, conv_shape, action.shape))
+        return OpFunc(linear_tree(op, sim_out.shape[1:], action.shape))
 
     @functools.cached_property
     def _size(self) -> int:

@@ -1,15 +1,22 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"Checks shared by `Op`s."
+"Utilities shared by `Op`s."
 
 import functools as ft
 from collections import abc as cabc
 
+from aioway._pytrees import tree_map_only
 from aioway.t import Domain, FloatTensorDomain, IntTensorDomain, TensorDomain
 
 from .ops import Op, OpDomainMismatch
 
-__all__ = ["require_op", "require_tensor_op", "require_float_op", "require_int_op"]
+__all__ = [
+    "require_op",
+    "require_tensor_op",
+    "require_float_op",
+    "require_int_op",
+    "exec_nested_ops",
+]
 
 
 def require_op(
@@ -47,3 +54,14 @@ require_float_op = ft.partial(require_op, domain=FloatTensorDomain())
 
 require_int_op = ft.partial(require_op, domain=IntTensorDomain())
 "An int tensor."
+
+
+def exec_nested_ops(tree):
+    """
+    Replace every `Op` in `tree` (at any depth) with its evaluated value.
+
+    This uses `tree_map_only`, but ignore the decomposition on `Op`.
+    """
+
+    is_op = lambda obj: isinstance(obj, Op)
+    return tree_map_only(Op, lambda op: op(), tree, is_leaf=is_op)

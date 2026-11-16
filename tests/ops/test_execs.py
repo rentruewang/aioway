@@ -19,10 +19,10 @@ from aioway.ops import (
     OpFunc,
     ValueOp,
     default_op_exec,
-    exec_op,
     executor,
     set_executor,
 )
+from aioway.ops._utils import exec_nested_ops
 from aioway.t import AnyDomain
 
 
@@ -41,7 +41,7 @@ class SumCountOp(Op):
     @typing.override
     def execute(self):
         self.calls += 1
-        return self.value + sum(exec_op(c) for c in self.children)
+        return self.value + sum(exec_nested_ops(self.children))
 
 
 type CachedExec = LazyCacheOpExec | DagOpExec

@@ -11,7 +11,8 @@ from torch import nn
 from torch import testing as tt
 
 from aioway._signs import Sign
-from aioway.ops import CallOp, ModuleThunkOp, TensorOp, exec_op
+from aioway.ops import CallOp, ModuleThunkOp, TensorOp
+from aioway.ops._utils import exec_nested_ops
 
 
 @dcls.dataclass
@@ -110,9 +111,7 @@ def test_call(any_expr: CallOp, any_case: Case):
 
 
 def test_module_call(module_expr: ModuleThunkOp):
-    tt.assert_close(
-        module_expr(), module_expr.func(*[exec_op(a) for a in module_expr.args])
-    )
+    tt.assert_close(module_expr(), module_expr.func(*exec_nested_ops(module_expr.args)))
 
 
 def test_inputs_nested(call_expr: CallOp):
