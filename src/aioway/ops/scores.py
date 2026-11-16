@@ -8,7 +8,7 @@ import typing
 import torch
 from torch import nn
 
-from aioway.t import FloatTensorDomain, IntTensorDomain, TensorDomain
+from aioway.t import FloatTensorDomain, IntTensorDomain, ScoreTensorDomain, TensorDomain
 
 from .ops import Op, OpDomainMismatch
 from .thunks import ModuleOp
@@ -31,13 +31,13 @@ class ScoreOp(Op[torch.Tensor], abc.ABC):
 
     @property
     @typing.override
-    def __domain__(self) -> TensorDomain:
+    def __domain__(self) -> ScoreTensorDomain:
         for dep in self.__deps__:
             if not isinstance(dep.__domain__, TensorDomain):
                 raise OpDomainMismatch(f"expected a tensor, got {dep.__domain__}")
 
         self._check_domains()
-        return TensorDomain()
+        return ScoreTensorDomain()
 
     def _check_domains(self) -> None:
         "Checks on the input domains, on top of being tensors."
