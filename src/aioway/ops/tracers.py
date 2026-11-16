@@ -336,19 +336,22 @@ def _build_result_ops(thunk: CallOp, result: typing.Any) -> AnyDict[torch.Tensor
     Nested tensors are extracted from `thunk` by their own `CallOp`.
     """
 
+    ops: AnyDict[torch.Tensor, Op] = any_dict()
+
     if isinstance(result, torch.Tensor):
-        return any_dict((result, thunk))
+        ops[result] = thunk
+        return ops
 
-    return any_dict(
-        *[
-            (leaf, _getter(thunk, path))
-            for path, leaf in tree_leaves_with_path(result)
-            if isinstance(leaf, torch.Tensor)
-        ]
-    )
+    # This is not a tensor, but must be a tensor container.
+    # Register every tensor leaf so we can get them when we want.
+    for path, leaf in tree_leaves_with_path(result):
+        if isinstance(leaf, torch.Tensor):
+            ops[leaf] = _getter_op(thunk, path)
+
+    return ops
 
 
-def _getter(op: Op, path: KeyPath) -> CallOp:
+def _getter_op(op: Op, path: KeyPath) -> CallOp:
     "The `CallOp` extracting the element at `path` of `op`'s result."
 
     if len(path) != 1:
