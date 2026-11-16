@@ -56,18 +56,6 @@ require_int_op = ft.partial(require_op, domain=IntTensorDomain())
 "An int tensor."
 
 
-def _exec_op(obj):
-    """
-    Execute `obj` if it is `Op`, else return identity.
-    """
-
-    if isinstance(obj, Op):
-        return obj()
-
-    else:
-        return obj
-
-
 def exec_nested_ops(tree):
     """
     Replace every `Op` in `tree` (at any depth) with its evaluated value.
@@ -76,4 +64,4 @@ def exec_nested_ops(tree):
     """
 
     is_op = lambda obj: isinstance(obj, Op)
-    return tree_map_only(Op, _exec_op, tree, is_leaf=is_op)
+    return tree_map_only(Op, lambda op: op(), tree, is_leaf=is_op)
