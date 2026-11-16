@@ -9,7 +9,7 @@ from aioway._pytrees import tree_leaves, tree_map_only
 from aioway._utils import AnyDict, any_dict
 from aioway.t import Domain
 
-__all__ = ["Op", "exec_op", "OpDomainMismatch", "OpReplacer"]
+__all__ = ["Op", "OpDomainMismatch", "OpReplacer"]
 
 
 class OpDomainMismatch(ValueError):
@@ -156,15 +156,3 @@ def _field_ops(op: Op) -> cabc.Iterator[_FieldOps]:
     for field in dcls.fields(op):
         value = getattr(op, field.name)
         yield _FieldOps(field.name, value)
-
-
-def exec_op(obj):
-    """
-    Execute `obj` if it is `Op`, else return identity.
-    """
-
-    if isinstance(obj, Op):
-        return obj()
-
-    else:
-        return obj

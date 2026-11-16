@@ -9,7 +9,8 @@ from torch import nn
 from aioway._signs import Sign
 from aioway.t import AnyDomain, Domain
 
-from .ops import Op, exec_op
+from ._utils import exec_nested_ops
+from .ops import Op
 
 __all__ = ["CallOp", "ModuleThunkOp", "ModuleOp"]
 
@@ -41,8 +42,8 @@ class CallOp[F: cabc.Callable](Op):
 
     @typing.override
     def execute(self):
-        args = [exec_op(arg) for arg in self.args]
-        kwargs = {key: exec_op(val) for key, val in self.kwargs.items()}
+        args = exec_nested_ops(self.args)
+        kwargs = exec_nested_ops(self.kwargs)
 
         return self.func(*args, **kwargs)
 

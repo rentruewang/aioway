@@ -8,4 +8,5 @@ from .ops import *
 from .rebuilds import *
 from .scores import *
 from .thunks import *
+from .tracers import *
 from .vars import *
