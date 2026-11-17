@@ -15,9 +15,7 @@ __all__ = ["observ_op", "linear_tree", "Activation"]
 def observ_op() -> FuncInputOp[torch.Tensor]:
     "The placeholder for the observation, the input of the emitted `OpFunc`."
 
-    return FuncInputOp(
-        param=Param.build("observ"), typ=torch.Tensor, domain=FloatTensorDomain()
-    )
+    return FuncInputOp(param=Param.build("observ"), domain=FloatTensorDomain())
 
 
 def linear_tree(

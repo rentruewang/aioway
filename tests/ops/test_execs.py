@@ -23,7 +23,7 @@ from aioway.ops import (
     set_executor,
 )
 from aioway.ops._utils import exec_nested_ops
-from aioway.t import AnyDomain
+from aioway.t import AnyDomain, FloatTensorDomain, ScalarDomain
 
 
 class SumCountOp(Op):
@@ -148,7 +148,7 @@ def test_dag_error_cleans_up():
 
 
 def inp(name: str) -> FuncInputOp:
-    return FuncInputOp(param=Param.build(name), typ=int)
+    return FuncInputOp(param=Param.build(name), domain=ScalarDomain(int))
 
 
 def test_func_signature():
@@ -175,13 +175,15 @@ def test_func_input_mismatch():
 
     # Same name, different param.
     diff_param = SumCountOp(
-        0, [x, FuncInputOp(param=Param.build("x", default=0), typ=int)]
+        0, [x, FuncInputOp(param=Param.build("x", default=0), domain=ScalarDomain(int))]
     )
     with pytest.raises(TypeError, match="same name"):
         OpFunc(diff_param)
 
     # Same name, different typ.
-    diff_typ = SumCountOp(0, [x, FuncInputOp(param=Param.build("x"), typ=float)])
+    diff_typ = SumCountOp(
+        0, [x, FuncInputOp(param=Param.build("x")), ScalarDomain(float)]
+    )
     with pytest.raises(TypeError, match="same name"):
         OpFunc(diff_typ)
 
@@ -209,7 +211,13 @@ def test_func_input_without_exec():
 def test_func_module():
     layer = nn.Linear(2, 3)
     x = torch.randn(1, 2)
-    f = OpFunc(ModuleThunkOp(func=layer, args=(inp("x"),), kwargs={}))
+    f = OpFunc(
+        ModuleThunkOp(
+            func=layer,
+            args=(FuncInputOp(Param.build("x"), domain=FloatTensorDomain()),),
+            kwargs={},
+        )
+    )
 
     f_params = set(f.module.parameters())
     layer_params = set(layer.parameters())
