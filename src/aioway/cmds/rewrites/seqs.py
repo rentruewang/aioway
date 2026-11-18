@@ -19,9 +19,7 @@ def unroll_sequential(seq: nn.Sequential, /) -> OpFunc:
     Nested `nn.Sequential`s are unrolled too. Modules are shared with `seq`, not copied.
     """
 
-    input = FuncInputOp(
-        param=Param.build("input"), typ=torch.Tensor, domain=TensorDomain()
-    )
+    input = FuncInputOp(param=Param.build("input"), domain=TensorDomain())
     return OpFunc(_unroll(seq, input))
 
 
