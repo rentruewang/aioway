@@ -89,7 +89,7 @@ class Op[T = typing.Any](_OpDclsMixin, abc.ABC):
 
         raise NotImplementedError
 
-    def _input(self, dep: Op) -> typing.Any:
+    def _get_dep_value(self, dep: Op) -> typing.Any:
         """
         Execute `dep`, one of `__deps__`.
 
@@ -100,8 +100,11 @@ class Op[T = typing.Any](_OpDclsMixin, abc.ABC):
         value = dep()
 
         # By identity, as `==` on `Op`s compares fields.
-        idx = next(i for i, d in enumerate(self.__deps__) if d is dep)
-        req = self.__domain_deps__[idx]
+        req = next(
+            domain
+            for domain, op in zip(self.__domain_deps__, self.__deps__)
+            if op is dep
+        )
 
         if dep.__domain__ > req:
             req.check(value)

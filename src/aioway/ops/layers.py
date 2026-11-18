@@ -51,7 +51,7 @@ class _UnaryModuleOpMixin[M: nn.Module](ModuleOp, Op[torch.Tensor], abc.ABC):
 
     @typing.override
     def execute(self) -> torch.Tensor:
-        return self.module(self._input(self.input))
+        return self.module(self._get_dep_value(self.input))
 
     @property
     @typing.override
