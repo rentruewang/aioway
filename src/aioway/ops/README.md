@@ -35,7 +35,10 @@ On creation, `_static_check_domain` compares each dependency's `__domain__` to t
 
 Case 2 is checked on run time, in 2 passes:
 
-1. `domain_requirements` collects, for each producer `Op`,
+1. `domain_reqs` collects, for each producer `Op`,
    what its consumers require of it (case 2 only).
 2. `check_result` checks a producer's result against its own `__domain__`,
    and every requirement collected for it, right after it's executed.
+
+`DomainCheckOpExec` does both, and is the default executor.
+Use `disable_domain_checks` to execute without them.

@@ -17,7 +17,8 @@ __all__ = [
     "OpExec",
     "executor",
     "set_executor",
-    "default_op_exec",
+    "direct_op_exec",
+    "disable_domain_checks",
     "check_result",
     "DomainCheckOpExec",
 ]
@@ -53,15 +54,23 @@ class OpExec[T = typing.Any](typing.Protocol):
     def __call__(self, op: Op[T]) -> T: ...
 
 
-def default_op_exec(op: Op) -> typing.Any:
-    "The default execution strategy. Only calls `.execute()`."
+def direct_op_exec(op: Op) -> typing.Any:
+    "Executes `op` directly, only calls `.execute()`."
     return op.execute()
+
+
+@ctxl.contextmanager
+def disable_domain_checks() -> cabc.Generator[None]:
+    "Temporarily execute with `direct_op_exec`, without the run time domain checks."
+
+    with set_executor(direct_op_exec):
+        yield
 
 
 def check_result(op: Op, result, reqs: AnyDict[Op, list[Domain]]) -> None:
     """
     Check `result` of `op` against its domain,
-    and what its consumers require of it (from `domain_requirements`).
+    and what its consumers require of it (from `domain_reqs`).
     """
 
     op.__domain__.check(result)
@@ -87,7 +96,7 @@ class DomainCheckOpExec(OpExec):
     reqs: AnyDict[Op, list[Domain]] = dcls.field(
         default_factory=any_dict, init=False, repr=False
     )
-    "The requirements, from `domain_requirements`, during an evaluation."
+    "The requirements, from `domain_reqs`, during an evaluation."
 
     def __call__(self, op: Op) -> typing.Any:
         # `.reqs` is set when it's nested.
@@ -110,4 +119,4 @@ class DomainCheckOpExec(OpExec):
         return result
 
 
-_op_exec: OpExec = default_op_exec
+_op_exec: OpExec = DomainCheckOpExec(fallback=direct_op_exec)
