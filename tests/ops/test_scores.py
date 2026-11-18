@@ -41,7 +41,7 @@ class _TypedTensorOp(Op[torch.Tensor]):
         return self.domain
 
     @typing.override
-    def execute(self) -> torch.Tensor:
+    def _execute(self) -> torch.Tensor:
         return self.tensor
 
     @property
