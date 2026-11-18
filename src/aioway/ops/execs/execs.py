@@ -11,7 +11,7 @@ from aioway._utils import AnyDict, any_dict
 from aioway.ops.ops import Op
 from aioway.t import Domain
 
-from .reqs import domain_requirements
+from .reqs import domain_reqs
 
 __all__ = [
     "OpExec",
@@ -90,18 +90,15 @@ class DomainCheckOpExec(OpExec):
     "The requirements, from `domain_requirements`, during an evaluation."
 
     def __call__(self, op: Op) -> typing.Any:
-        # Nested, already collected.
-        if self.reqs:
-            ctx = ctxl.nullcontext()
-        else:
-            ctx = self.set_domain_reqs(op)
+        # `.reqs` is set when it's nested.
+        ctx = ctxl.nullcontext() if self.reqs else self.set_domain_reqs(op)
 
         with ctx:
             return self._checked(op)
 
     @ctxl.contextmanager
     def set_domain_reqs(self, op: Op):
-        self.reqs = domain_requirements(op)
+        self.reqs = domain_reqs(op)
         try:
             yield
         finally:

@@ -4,10 +4,10 @@ from aioway._utils import AnyDict, any_dict, any_set
 from aioway.ops.ops import Op
 from aioway.t import Domain
 
-__all__ = ["domain_requirements"]
+__all__ = ["domain_reqs"]
 
 
-def domain_requirements(root: Op) -> AnyDict[Op, list[Domain]]:
+def domain_reqs(root: Op) -> AnyDict[Op, list[Domain]]:
     "Producer -> what its consumers require of it, where only a run time check can tell."
 
     reqs: AnyDict[Op, list[Domain]] = any_dict()
