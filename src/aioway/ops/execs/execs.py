@@ -6,13 +6,16 @@ import contextlib as ctxl
 import typing
 from collections import abc as cabc
 
+from aioway._utils import AnyDict
 from aioway.ops.ops import Op
+from aioway.t import Domain
 
 __all__ = [
     "OpExec",
     "executor",
     "set_executor",
     "default_op_exec",
+    "check_result",
 ]
 
 
@@ -49,6 +52,21 @@ class OpExec[T = typing.Any](typing.Protocol):
 def default_op_exec(op: Op) -> typing.Any:
     "The default execution strategy. Only calls `.execute()`."
     return op.execute()
+
+
+def check_result(op: Op, result, reqs: AnyDict[Op, list[Domain]]) -> None:
+    """
+    Check `result` of `op` against its domain,
+    and what its consumers require of it (from `domain_requirements`).
+    """
+
+    op.__domain__.check(result)
+
+    if op not in reqs:
+        return
+
+    for req in reqs[op]:
+        req.check(result)
 
 
 _op_exec: OpExec = default_op_exec

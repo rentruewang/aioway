@@ -6,14 +6,10 @@ import typing
 from collections import abc as cabc
 
 from aioway._pytrees import tree_leaves, tree_map_only
-from aioway._utils import AnyDict, Stack, any_dict
+from aioway._utils import AnyDict, any_dict
 from aioway.t import Domain
 
 __all__ = ["Op", "OpDomainMismatch", "OpReplacer"]
-
-
-_callers: Stack[Op] = Stack()
-"The `Op`s whose `__call__` is running, the last is the current `Op`."
 
 
 class OpDomainMismatch(ValueError):
@@ -48,11 +44,7 @@ class Op[T = typing.Any](_OpDclsMixin, abc.ABC):
     def __call__(self) -> T:
         from .execs import executor
 
-        with _callers.hold(self):
-            result = executor()(self)
-
-        self._dynamic_check_domains(result)
-        return result
+        return executor()(self)
 
     @property
     def __domain__(self) -> Domain:
@@ -73,7 +65,7 @@ class Op[T = typing.Any](_OpDclsMixin, abc.ABC):
         Check the domains of `__deps__` against `__domain_deps__`.
 
         A sub domain is a match.
-        A super domain (e.g. `ANY`) may match, checked by `_dynamic_check_domains` on run time.
+        A super domain (e.g. `ANY`) may match, checked by `check_result` on run time.
 
         Raises:
             OpDomainMismatch: if neither a sub domain nor a super domain.
@@ -101,41 +93,6 @@ class Op[T = typing.Any](_OpDclsMixin, abc.ABC):
         """
 
         raise NotImplementedError
-
-    def _dynamic_check_domains(self, result) -> None:
-        """
-        Check `result` against `__domain__`, and against what the caller requires,
-        if `__domain__` is too broad for the static check to decide.
-        """
-
-        # Check output.
-        domain = self.__domain__
-        domain.check(result)
-
-        # No caller of `self`.
-        if not _callers:
-            return
-
-        caller = _callers.top()
-
-        # No check needed.
-        if domain <= (required := self._get_domain_in_caller(caller)):
-            return
-
-        # `Domain` of `self` is too broad, runtime assert needed.
-        if domain > required:
-            required.check(result)
-            return
-
-        raise OpDomainMismatch("Incompatible domains.")
-
-    def _get_domain_in_caller(self, caller: Op) -> Domain:
-        # Get `self` in the `caller`'s `__deps__` and corresponding `Domain`.
-        for dom, op in zip(caller.__domain_deps__, caller.__deps__):
-            if op is self:
-                return dom
-
-        raise RuntimeError("Cannot find `self` in `caller`, impossible.")
 
     @property
     def __deps__(self) -> tuple[Op, ...]:

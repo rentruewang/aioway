@@ -33,6 +33,9 @@ On creation, `_static_check_domain` compares each dependency's `__domain__` to t
 2. A super domain (`>`) may be valid, so it's checked on run time.
 3. Otherwise, `OpDomainMismatch` is raised.
 
-On run time, `__call__` pushes the `Op` onto a stack of callers while executing,
-so a dependency knows which `Op` called it,
-and checks its result against what the caller requires (case 2).
+Case 2 is checked on run time, in 2 passes:
+
+1. `domain_requirements` collects, for each producer `Op`,
+   what its consumers require of it (case 2 only).
+2. `check_result` checks a producer's result against its own `__domain__`,
+   and every requirement collected for it, right after it's executed.
