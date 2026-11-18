@@ -43,7 +43,7 @@ class Op[T = typing.Any](_OpDclsMixin, abc.ABC):
 
     @property
     def __domain__(self) -> Domain:
-        self._check_domain()
+        self._static_check_domain()
         return self._infer_domain()
 
     @property
@@ -55,7 +55,7 @@ class Op[T = typing.Any](_OpDclsMixin, abc.ABC):
 
         raise NotImplementedError
 
-    def _check_domain(self) -> None:
+    def _static_check_domain(self) -> None:
         """
         Check the domains of `__deps__` against `__domain_deps__`.
 
@@ -74,6 +74,8 @@ class Op[T = typing.Any](_OpDclsMixin, abc.ABC):
         for dep, req in zip(deps, required):
             actual = dep.__domain__
 
+            # For `<=` case, it's legal.
+            # For `>` case, need a run time check, so, not now.
             if actual <= req or actual > req:
                 continue
 
@@ -82,7 +84,7 @@ class Op[T = typing.Any](_OpDclsMixin, abc.ABC):
     @abc.abstractmethod
     def _infer_domain(self) -> Domain:
         """
-        The output domain, given that `_check_domain` passed.
+        The output domain, given that `_static_check_domain` passed.
         """
 
         raise NotImplementedError

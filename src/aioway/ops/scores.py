@@ -148,7 +148,9 @@ class PairLossOp(_LossOpMixin[nn.Module]):
 
     @typing.override
     def execute(self) -> torch.Tensor:
-        return self.module(self._input(self.a), self._input(self.b), self._input(self.y))
+        return self.module(
+            self._input(self.a), self._input(self.b), self._input(self.y)
+        )
 
 
 class TripletLossOp(_LossOpMixin[nn.Module]):
