@@ -1,6 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"The package reponsible for executing the `Op`s."
+"The executors that execute each `Op` in a DAG at most once."
 
 import contextlib as ctxl
 import dataclasses as dcls
@@ -9,53 +9,12 @@ import typing
 from collections import abc as cabc
 
 from aioway._utils import AnyDict, any_dict
+from aioway.ops.ops import Op
 
-from .ops import Op
+from .execs import OpExec, set_executor
+from .reqs import DomainReqs
 
-__all__ = [
-    "OpExec",
-    "executor",
-    "set_executor",
-    "default_op_exec",
-    "LazyCacheOpExec",
-    "DagSchedule",
-    "DagOpExec",
-]
-
-
-def executor() -> OpExec:
-    """
-    The global executor that `Op` uses to execute itself.
-
-    It's a function s.t. it stays unchanged until rebind during use.
-    """
-
-    return _op_exec
-
-
-@ctxl.contextmanager
-def set_executor[O: OpExec](executor: O) -> cabc.Generator[O]:
-    global _op_exec
-
-    before, _op_exec = _op_exec, executor
-    try:
-        yield executor
-    finally:
-        _op_exec = before
-
-
-class OpExec[T = typing.Any](typing.Protocol):
-    """
-    This is the executor responsible for executing an `Op`.
-    It does so by recursively executing its dependencies.
-    """
-
-    def __call__(self, op: Op[T]) -> T: ...
-
-
-def default_op_exec(op: Op) -> typing.Any:
-    "The default execution strategy. Only calls `.execute()`."
-    return op.execute()
+__all__ = ["LazyCacheOpExec", "DagSchedule", "DagOpExec"]
 
 
 class _ExceptionWrapper(typing.NamedTuple):
@@ -96,13 +55,13 @@ class LazyCacheOpExec(OpExec):
 
     def __call__(self, op: Op) -> typing.Any:
         with self._cleanup_on_finish():
-            return self._execute(op)
+            return self.execute(op)
 
     @property
     def is_active(self) -> bool:
         return self._nested_count != 0
 
-    def _execute(self, op: Op) -> typing.Any:
+    def execute(self, op: Op) -> typing.Any:
         if op not in self:
             try:
                 result = op.execute()
@@ -217,10 +176,16 @@ class DagOpExec(OpExec):
             self._consumers = any_dict()
 
     def _execute_in_order(self, order: list[Op], op: Op) -> typing.Any:
+        reqs = DomainReqs.collect(op)
+
         # Only need to look up because it's in order already with dag.
         with set_executor(self.lookup):
             for node in order:
-                self._results[node] = node.execute()
+                result = node.execute()
+
+                # Checked once, against every consumer's requirement.
+                reqs.check(node, result)
+                self._results[node] = result
 
         return self._results[op]
 
@@ -251,6 +216,3 @@ class DagOpExec(OpExec):
 
         with set_executor(dag):
             yield dag
-
-
-_op_exec: OpExec = default_op_exec

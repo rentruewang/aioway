@@ -41,6 +41,11 @@ class Op[T = typing.Any](_OpDclsMixin, abc.ABC):
         # Instantiate the domain, also performs checks.
         _ = self.__domain__
 
+    def __call__(self) -> T:
+        from .execs import executor
+
+        return executor()(self)
+
     @property
     def __domain__(self) -> Domain:
         self._static_check_domain()
@@ -60,7 +65,7 @@ class Op[T = typing.Any](_OpDclsMixin, abc.ABC):
         Check the domains of `__deps__` against `__domain_deps__`.
 
         A sub domain is a match.
-        A super domain (e.g. `ANY`) may match, checked by `_input` on run time.
+        A super domain (e.g. `ANY`) may match, checked by `DomainReqs.check` on run time.
 
         Raises:
             OpDomainMismatch: if neither a sub domain nor a super domain.
@@ -89,41 +94,10 @@ class Op[T = typing.Any](_OpDclsMixin, abc.ABC):
 
         raise NotImplementedError
 
-    def _get_dep_value(self, dep: Op) -> typing.Any:
-        """
-        Execute `dep`, one of `__deps__`.
-
-        If its domain is a super domain of the requirement,
-        the result is checked here, on run time.
-        """
-
-        value = dep()
-
-        # By identity, as `==` on `Op`s compares fields.
-        req = next(
-            domain
-            for domain, op in zip(self.__domain_deps__, self.__deps__)
-            if op is dep
-        )
-
-        # Requested type is a subtype of the type given, check.
-        if dep.__domain__ > req:
-            req.check(value)
-
-        return value
-
-    def __call__(self) -> T:
-        from .execs import executor
-
-        result = executor()(self)
-        domain = self.__domain__
-        domain.check(result)
-        return result
-
     @property
     def __deps__(self) -> tuple[Op, ...]:
         """
-        The `Op`s that this current expression depends on.
+        The `Op`s that this current expression depends on, each appears once.
         This is found automatically by default.
         """
 

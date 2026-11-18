@@ -22,3 +22,23 @@ I have thought about whether to split into plain `.execute` and `.lookup`,
 but since there is no way we know statically if this is the first call without a scheduler,
 as the graph can be reassembled quickly and not all the executors use schedulers,
 it's best to keep a signle entry point `__call__` and keep the lookup part dynamic.
+
+# Domain checks
+
+Each `Op` declares `__domain_deps__`, the `Domain` it requires of each of `__deps__`.
+
+On creation, `_static_check_domain` compares each dependency's `__domain__` to the requirement:
+
+1. A sub domain (`<=`) is valid.
+2. A super domain (`>`) may be valid, so it's checked on run time.
+3. Otherwise, `OpDomainMismatch` is raised.
+
+Case 2 is checked on run time, in 2 passes:
+
+1. `DomainReqs.collect` collects, for each producer `Op`,
+   what its consumers require of it (case 2 only).
+2. `DomainReqs.check` checks a producer's result against its own `__domain__`,
+   and every requirement collected for it, right after it's executed.
+
+`DomainCheckOpExec` does both, and is the default executor.
+Use `disable_domain_checks` to execute without them.

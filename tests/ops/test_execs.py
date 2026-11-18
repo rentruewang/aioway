@@ -12,18 +12,22 @@ from torch import testing as tt
 from aioway._signs import Param, Sign
 from aioway.ops import (
     DagOpExec,
+    DomainCheckOpExec,
     FuncInputOp,
     LazyCacheOpExec,
     ModuleThunkOp,
     Op,
     OpFunc,
     ValueOp,
-    default_op_exec,
+    direct_op_exec,
     executor,
     set_executor,
 )
 from aioway.ops._utils import exec_nested_ops
 from aioway.t import AnyDomain, Domain, FloatTensorDomain, ScalarDomain
+
+_DEFAULT_EXEC = executor()
+"The default executor, to check it's restored."
 
 
 class SumCountOp(Op):
@@ -58,7 +62,9 @@ def exec_cls(request: pytest.FixtureRequest) -> type[CachedExec]:
 
 
 def test_default_executor():
-    assert executor() is default_op_exec
+    default = executor()
+    assert isinstance(default, DomainCheckOpExec)
+    assert default.fallback is direct_op_exec
 
 
 def test_default_no_cache():
@@ -73,14 +79,14 @@ def test_set_executor(exec_cls: type[CachedExec]):
     with set_executor(cache) as got:
         assert got is cache
         assert executor() is cache
-    assert executor() is default_op_exec
+    assert executor() == _DEFAULT_EXEC
 
 
 def test_set_executor_error(exec_cls: type[CachedExec]):
     cache = exec_cls()
     with pytest.raises(RuntimeError), set_executor(cache):
         raise RuntimeError
-    assert executor() is default_op_exec
+    assert executor() == _DEFAULT_EXEC
 
 
 def test_cached_per_evaluation(exec_cls: type[CachedExec]):
@@ -112,7 +118,7 @@ def test_cache_op(exec_cls: type[CachedExec]):
     with exec_cls.enable() as cache:
         assert executor() is cache
         assert root() == 2
-    assert executor() is default_op_exec
+    assert executor() == _DEFAULT_EXEC
     assert shared.calls == 1
 
 

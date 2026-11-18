@@ -75,9 +75,7 @@ class RegressionLossOp(_LossOpMixin[nn.Module]):
 
     @typing.override
     def execute(self) -> torch.Tensor:
-        return self.module(
-            self._get_dep_value(self.pred), self._get_dep_value(self.target)
-        )
+        return self.module(self.pred(), self.target())
 
 
 class BinaryLossOp(_LossOpMixin[nn.Module]):
@@ -101,9 +99,7 @@ class BinaryLossOp(_LossOpMixin[nn.Module]):
 
     @typing.override
     def execute(self) -> torch.Tensor:
-        return self.module(
-            self._get_dep_value(self.pred), self._get_dep_value(self.target)
-        )
+        return self.module(self.pred(), self.target())
 
 
 class ClassLossOp(_LossOpMixin[nn.Module]):
@@ -126,9 +122,7 @@ class ClassLossOp(_LossOpMixin[nn.Module]):
 
     @typing.override
     def execute(self) -> torch.Tensor:
-        return self.module(
-            self._get_dep_value(self.logits), self._get_dep_value(self.target)
-        )
+        return self.module(self.logits(), self.target())
 
 
 class PairLossOp(_LossOpMixin[nn.Module]):
@@ -155,9 +149,9 @@ class PairLossOp(_LossOpMixin[nn.Module]):
     @typing.override
     def execute(self) -> torch.Tensor:
         return self.module(
-            self._get_dep_value(self.a),
-            self._get_dep_value(self.b),
-            self._get_dep_value(self.y),
+            self.a(),
+            self.b(),
+            self.y(),
         )
 
 
@@ -185,9 +179,9 @@ class TripletLossOp(_LossOpMixin[nn.Module]):
     @typing.override
     def execute(self) -> torch.Tensor:
         return self.module(
-            self._get_dep_value(self.anchor),
-            self._get_dep_value(self.positive),
-            self._get_dep_value(self.negative),
+            self.anchor(),
+            self.positive(),
+            self.negative(),
         )
 
 
@@ -211,7 +205,5 @@ class AccuracyOp(ScoreOp):
 
     @typing.override
     def execute(self) -> torch.Tensor:
-        correct = self._get_dep_value(self.logits).argmax(dim=1) == self._get_dep_value(
-            self.target
-        )
+        correct = self.logits().argmax(dim=1) == self.target()
         return correct.float().mean()
