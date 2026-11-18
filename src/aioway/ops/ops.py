@@ -45,6 +45,15 @@ class Op[T = typing.Any](_OpDclsMixin, abc.ABC):
         # Instantiate the domain, also performs checks.
         _ = self.__domain__
 
+    def __call__(self) -> T:
+        from .execs import executor
+
+        with _callers.hold(self):
+            result = executor()(self)
+
+        self._dynamic_check_domains(result)
+        return result
+
     @property
     def __domain__(self) -> Domain:
         self._static_check_domain()
@@ -93,39 +102,12 @@ class Op[T = typing.Any](_OpDclsMixin, abc.ABC):
 
         raise NotImplementedError
 
-    def _get_dep_value(self, dep: Op) -> typing.Any:
-        """
-        Execute `dep`, one of `__deps__`.
-
-        If its domain is a super domain of the requirement,
-        the result is checked here, on run time.
-        """
-
-        value = dep()
-
-        # By identity, as `==` on `Op`s compares fields.
-        req = next(
-            domain
-            for domain, op in zip(self.__domain_deps__, self.__deps__)
-            if op is dep
-        )
-
-        # Requested type is a subtype of the type given, check.
-        if dep.__domain__ > req:
-            req.check(value)
-
-        return value
-
-    def __call__(self) -> T:
-        from .execs import executor
-
-        with _callers.hold(self):
-            result = executor()(self)
-
-        self._dynamic_check_domains(result)
-        return result
-
     def _dynamic_check_domains(self, result) -> None:
+        """
+        Check `result` against `__domain__`, and against what the caller requires,
+        if `__domain__` is too broad for the static check to decide.
+        """
+
         # Check output.
         domain = self.__domain__
         domain.check(result)
