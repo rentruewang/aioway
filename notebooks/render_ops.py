@@ -23,6 +23,7 @@ from aioway._signs import Param
 
 # %%
 from aioway.ops import CallOp, FuncInputOp, OpFunc
+from aioway.t import Domain, TensorDomain
 
 pretty.install()
 
@@ -37,8 +38,8 @@ pretty.install()
 # step 3: activated = relu(difference)
 
 # %%
-x = FuncInputOp(param=Param.build("x"), typ=torch.Tensor)
-y = FuncInputOp(param=Param.build("y"), typ=torch.Tensor)
+x = FuncInputOp(param=Param.build("x"), domain=TensorDomain())
+y = FuncInputOp(param=Param.build("y"), domain=TensorDomain())
 
 summed = CallOp(func=torch.add, args=(x, y), kwargs={})
 product = CallOp(func=torch.mul, args=(summed, x), kwargs={})
@@ -79,8 +80,8 @@ from aioway.ops import ModuleThunkOp, render_op_module
 linear = nn.Linear(3, 3)
 norm = nn.LayerNorm(3)
 
-x = FuncInputOp(param=Param.build("x"), typ=torch.Tensor)
-y = FuncInputOp(param=Param.build("y"), typ=torch.Tensor)
+x = FuncInputOp(param=Param.build("x"), domain=TensorDomain())
+y = FuncInputOp(param=Param.build("y"), domain=TensorDomain())
 
 hidden = ModuleThunkOp(func=linear, args=(x,), kwargs={})
 activated = CallOp(func=torch.relu, args=(hidden,), kwargs={})

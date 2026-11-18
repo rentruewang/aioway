@@ -151,9 +151,7 @@ class OpHist:
         mapping: AnyDict[Op, Op] = any_dict()
         for idx, placeholder in enumerate(self._signature_inputs()):
             mapping[placeholder] = FuncInputOp(
-                param=Param.build(f"t{idx}"),
-                typ=torch.Tensor,
-                domain=TensorDomain(),
+                param=Param.build(f"t{idx}"), domain=TensorDomain()
             )
 
         return OpFunc(self.output.replace(mapping))

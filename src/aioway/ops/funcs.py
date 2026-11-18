@@ -168,10 +168,15 @@ class OpFuncEnv(OpExec):
     """
 
     def __call__(self, op: Op) -> typing.Any:
+        # Mapping from `FuncInputOp` to a `ValueOp`.
         input_mapping: AnyDict[Op, Op] = any_dict()
         for sub_op in op.post_order():
-            if isinstance(sub_op, FuncInputOp):
-                input_mapping[sub_op] = ValueOp(self.bounded[sub_op.name])
+            if not isinstance(sub_op, FuncInputOp):
+                continue
+
+            # Perform checks here.
+            sub_op.domain.check(value := self.bounded[sub_op.name])
+            input_mapping[sub_op] = ValueOp(value)
 
         # Replace placeholder with concrete values.
         replaced = op.replace(input_mapping)
@@ -192,9 +197,6 @@ class OpFuncEnv(OpExec):
 class FuncInputOp[T](Op[T]):
     param: Param
     "The parameter that is associated with the input."
-
-    typ: type[T]
-    "The type that is accepted."
 
     domain: Domain = dcls.field(default_factory=AnyDomain)
     "The domain field."

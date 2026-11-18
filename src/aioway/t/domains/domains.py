@@ -5,10 +5,11 @@
 import abc
 import dataclasses as dcls
 import typing
+from collections import abc as cabc
 
 from aioway.t.overrides import has_real
 
-__all__ = ["Domain", "InvalidValueForDomain", "AnyDomain"]
+__all__ = ["Domain", "InvalidValueForDomain", "AnyDomain", "JointDomain"]
 
 
 class InvalidValueForDomain(ValueError):
@@ -126,6 +127,9 @@ def _field_is_covariant(ours, theirs) -> bool:
     return ours == theirs
 
 
+# Some other domain implementations ====
+
+
 class AnyDomain(Domain):
     """
     Accepts any value. The top of the `Domain` hierarchy.
@@ -133,3 +137,38 @@ class AnyDomain(Domain):
 
     def __str__(self) -> str:
         return "ANY"
+
+
+class JointDomain(Domain):
+    """
+    Accepts any of those domain that is valid.
+    """
+
+    domains: tuple[Domain, ...]
+    "The domains that this `JointDomain` can take."
+
+    @property
+    def __extends__(self) -> list[Domain]:
+        return list(self.domains)
+
+    def __str__(self) -> str:
+        return " | ".join(str(d) for d in self.domains)
+
+    def check_type(self, obj):
+        invoke = lambda d: d.check_type(obj)
+        self._check(invoke)
+
+    def check_data(self, obj):
+        invoke = lambda d: d.check_data(obj)
+        self._check(invoke)
+
+    def _check(self, invoke: cabc.Callable[[Domain], None]) -> None:
+        for domain in self.domains:
+            try:
+                invoke(domain)
+            except InvalidValueForDomain:
+                continue
+            else:
+                return
+
+        raise InvalidValueForDomain(self)
