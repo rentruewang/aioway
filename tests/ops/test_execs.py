@@ -23,7 +23,7 @@ from aioway.ops import (
     set_executor,
 )
 from aioway.ops._utils import exec_nested_ops
-from aioway.t import AnyDomain, FloatTensorDomain, ScalarDomain
+from aioway.t import AnyDomain, Domain, FloatTensorDomain, ScalarDomain
 
 
 class SumCountOp(Op):
@@ -35,7 +35,11 @@ class SumCountOp(Op):
 
     @property
     @typing.override
-    def __domain__(self):
+    def __domain_deps__(self) -> list[Domain]:
+        return [AnyDomain() for _ in self.__deps__]
+
+    @typing.override
+    def _infer_domain(self):
         return AnyDomain()
 
     @typing.override

@@ -21,7 +21,11 @@ class ValueOp[T](Op[T]):
 
     @property
     @typing.override
-    def __domain__(self) -> AnyDomain:
+    def __domain_deps__(self) -> list[Domain]:
+        return []
+
+    @typing.override
+    def _infer_domain(self) -> AnyDomain:
         return AnyDomain()
 
     @typing.override
@@ -46,7 +50,11 @@ class TensorOp(Op[torch.Tensor]):
 
     @property
     @typing.override
-    def __domain__(self) -> TensorDomain:
+    def __domain_deps__(self) -> list[Domain]:
+        return []
+
+    @typing.override
+    def _infer_domain(self) -> TensorDomain:
         return TensorDomain()
 
     @typing.override

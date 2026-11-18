@@ -42,9 +42,75 @@ class Op[T = typing.Any](_OpDclsMixin, abc.ABC):
         _ = self.__domain__
 
     @property
-    @abc.abstractmethod
     def __domain__(self) -> Domain:
+        self._static_check_domain()
+        return self._infer_domain()
+
+    @property
+    @abc.abstractmethod
+    def __domain_deps__(self) -> list[Domain]:
+        """
+        The domains required of `__deps__`, the same length and order.
+        """
+
         raise NotImplementedError
+
+    def _static_check_domain(self) -> None:
+        """
+        Check the domains of `__deps__` against `__domain_deps__`.
+
+        A sub domain is a match.
+        A super domain (e.g. `ANY`) may match, checked by `_input` on run time.
+
+        Raises:
+            OpDomainMismatch: if neither a sub domain nor a super domain.
+        """
+
+        deps, required = self.__deps__, self.__domain_deps__
+
+        if len(deps) != len(required):
+            raise OpDomainMismatch(f"{len(deps)=} != {len(required)=}")
+
+        for dep, req in zip(deps, required):
+            actual = dep.__domain__
+
+            # For `<=` case, it's legal.
+            # For `>` case, need a run time check, so, not now.
+            if actual <= req or actual > req:
+                continue
+
+            raise OpDomainMismatch(f"expected {req}, got {actual}")
+
+    @abc.abstractmethod
+    def _infer_domain(self) -> Domain:
+        """
+        The output domain, given that `_static_check_domain` passed.
+        """
+
+        raise NotImplementedError
+
+    def _get_dep_value(self, dep: Op) -> typing.Any:
+        """
+        Execute `dep`, one of `__deps__`.
+
+        If its domain is a super domain of the requirement,
+        the result is checked here, on run time.
+        """
+
+        value = dep()
+
+        # By identity, as `==` on `Op`s compares fields.
+        req = next(
+            domain
+            for domain, op in zip(self.__domain_deps__, self.__deps__)
+            if op is dep
+        )
+
+        # Requested type is a subtype of the type given, check.
+        if dep.__domain__ > req:
+            req.check(value)
+
+        return value
 
     def __call__(self) -> T:
         from .execs import executor
