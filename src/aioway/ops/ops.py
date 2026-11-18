@@ -64,7 +64,7 @@ class Op[T = typing.Any](_OpDclsMixin, abc.ABC):
         Check the domains of `__deps__` against `__domain_deps__`.
 
         A sub domain is a match.
-        A super domain (e.g. `ANY`) may match, checked by `_input` on run time.
+        A super domain (e.g. `ANY`) may match, checked by `_dynamic_check_domains` on run time.
 
         Raises:
             OpDomainMismatch: if neither a sub domain nor a super domain.
@@ -119,16 +119,13 @@ class Op[T = typing.Any](_OpDclsMixin, abc.ABC):
     def __call__(self) -> T:
         from .execs import executor
 
-        _callers.append(self)
-        try:
+        with _callers.hold(self):
             result = executor()(self)
-        finally:
-            _callers.pop()
 
-        self._domain_checks(result)
+        self._dynamic_check_domains(result)
         return result
 
-    def _domain_checks(self, result) -> None:
+    def _dynamic_check_domains(self, result) -> None:
         # Check output.
         domain = self.__domain__
         domain.check(result)
@@ -161,7 +158,7 @@ class Op[T = typing.Any](_OpDclsMixin, abc.ABC):
     @property
     def __deps__(self) -> tuple[Op, ...]:
         """
-        The `Op`s that this current expression depends on.
+        The `Op`s that this current expression depends on, each appears once.
         This is found automatically by default.
         """
 
