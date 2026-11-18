@@ -75,9 +75,7 @@ class RegressionLossOp(_LossOpMixin[nn.Module]):
 
     @typing.override
     def execute(self) -> torch.Tensor:
-        return self.module(
-            self.pred(), self.target()
-        )
+        return self.module(self.pred(), self.target())
 
 
 class BinaryLossOp(_LossOpMixin[nn.Module]):
@@ -101,9 +99,7 @@ class BinaryLossOp(_LossOpMixin[nn.Module]):
 
     @typing.override
     def execute(self) -> torch.Tensor:
-        return self.module(
-            self.pred(), self.target()
-        )
+        return self.module(self.pred(), self.target())
 
 
 class ClassLossOp(_LossOpMixin[nn.Module]):
@@ -126,9 +122,7 @@ class ClassLossOp(_LossOpMixin[nn.Module]):
 
     @typing.override
     def execute(self) -> torch.Tensor:
-        return self.module(
-            self.logits(), self.target()
-        )
+        return self.module(self.logits(), self.target())
 
 
 class PairLossOp(_LossOpMixin[nn.Module]):

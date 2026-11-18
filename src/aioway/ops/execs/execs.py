@@ -9,8 +9,7 @@ import typing
 from collections import abc as cabc
 
 from aioway._utils import AnyDict, any_dict
-
-from .ops import Op
+from aioway.ops.ops import Op
 
 __all__ = [
     "OpExec",
