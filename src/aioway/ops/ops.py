@@ -106,6 +106,7 @@ class Op[T = typing.Any](_OpDclsMixin, abc.ABC):
             if op is dep
         )
 
+        # Requested type is a subtype of the type given, check.
         if dep.__domain__ > req:
             req.check(value)
 
