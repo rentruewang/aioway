@@ -12,6 +12,7 @@ from aioway._utils import AnyDict, any_dict
 from aioway.ops.ops import Op
 
 from .execs import OpExec, set_executor
+from .reqs import DomainReqs
 
 __all__ = ["LazyCacheOpExec", "DagSchedule", "DagOpExec"]
 
@@ -175,10 +176,16 @@ class DagOpExec(OpExec):
             self._consumers = any_dict()
 
     def _execute_in_order(self, order: list[Op], op: Op) -> typing.Any:
+        reqs = DomainReqs.collect(op)
+
         # Only need to look up because it's in order already with dag.
         with set_executor(self.lookup):
             for node in order:
-                self._results[node] = node.execute()
+                result = node.execute()
+
+                # Checked once, against every consumer's requirement.
+                reqs.check(node, result)
+                self._results[node] = result
 
         return self._results[op]
 
