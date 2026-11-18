@@ -29,7 +29,7 @@ class ValueOp[T](Op[T]):
         return AnyDomain()
 
     @typing.override
-    def _execute(self) -> T:
+    def execute(self) -> T:
         return self.value
 
     @property
@@ -58,7 +58,7 @@ class TensorOp(Op[torch.Tensor]):
         return TensorDomain()
 
     @typing.override
-    def _execute(self) -> torch.Tensor:
+    def execute(self) -> torch.Tensor:
         return self.tensor
 
     @property

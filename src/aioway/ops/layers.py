@@ -50,7 +50,7 @@ class _UnaryModuleOpMixin[M: nn.Module](ModuleOp, Op[torch.Tensor], abc.ABC):
         return self._layer_domain(domain)
 
     @typing.override
-    def _execute(self) -> torch.Tensor:
+    def execute(self) -> torch.Tensor:
         return self.module(self._get_dep_value(self.input))
 
     @property

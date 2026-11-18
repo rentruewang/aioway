@@ -169,7 +169,7 @@ class Op[T = typing.Any](_OpDclsMixin, abc.ABC):
         return tuple(gen())
 
     @abc.abstractmethod
-    def _execute(self) -> T:
+    def execute(self) -> T:
         """
         Evaluate and compute the result of this expression.
         """

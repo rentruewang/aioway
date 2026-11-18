@@ -43,7 +43,7 @@ class SumCountOp(Op):
         return AnyDomain()
 
     @typing.override
-    def _execute(self):
+    def execute(self):
         self.calls += 1
         return self.value + sum(exec_nested_ops(self.children))
 
@@ -121,9 +121,9 @@ def test_dag_frees_results():
     alive: list[int] = []
 
     class SpyOp(SumCountOp):
-        def _execute(self):
+        def execute(self):
             alive.append(len(dag._results))
-            return super()._execute()
+            return super().execute()
 
     op = SpyOp(1)
     for _ in range(10):
@@ -141,7 +141,7 @@ def test_dag_error_cleans_up():
     dag = DagOpExec()
 
     class FailOp(SumCountOp):
-        def _execute(self):
+        def execute(self):
             raise RuntimeError
 
     op = SumCountOp(0, [SumCountOp(1), FailOp()])

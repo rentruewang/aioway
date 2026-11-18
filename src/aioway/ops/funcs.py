@@ -216,7 +216,7 @@ class FuncInputOp[T](Op[T]):
         return ()
 
     @typing.override
-    def _execute(self) -> T:
+    def execute(self) -> T:
         raise RuntimeError(
             "`FuncInputOp` is a placeholder, and never supposed to be called."
         )

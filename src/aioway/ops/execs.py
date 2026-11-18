@@ -54,8 +54,8 @@ class OpExec[T = typing.Any](typing.Protocol):
 
 
 def default_op_exec(op: Op) -> typing.Any:
-    "The default execution strategy. Only calls `._execute()`."
-    return op._execute()
+    "The default execution strategy. Only calls `.execute()`."
+    return op.execute()
 
 
 class _ExceptionWrapper(typing.NamedTuple):
@@ -96,16 +96,16 @@ class LazyCacheOpExec(OpExec):
 
     def __call__(self, op: Op) -> typing.Any:
         with self._cleanup_on_finish():
-            return self._execute(op)
+            return self.execute(op)
 
     @property
     def is_active(self) -> bool:
         return self._nested_count != 0
 
-    def _execute(self, op: Op) -> typing.Any:
+    def execute(self, op: Op) -> typing.Any:
         if op not in self:
             try:
-                result = op._execute()
+                result = op.execute()
             except Exception as e:
                 self[op] = _ExceptionWrapper(e)
             else:
@@ -184,7 +184,7 @@ class DagOpExec(OpExec):
     """
     Executes the DAG under an `Op` in the order given by `schedule`.
 
-    Each `Op._execute` is called exactly once, in order.
+    Each `Op.execute` is called exactly once, in order.
 
     A result is freed once its last consumer is done.
     """
@@ -220,7 +220,7 @@ class DagOpExec(OpExec):
         # Only need to look up because it's in order already with dag.
         with set_executor(self.lookup):
             for node in order:
-                self._results[node] = node._execute()
+                self._results[node] = node.execute()
 
         return self._results[op]
 

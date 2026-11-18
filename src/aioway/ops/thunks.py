@@ -45,7 +45,7 @@ class CallOp[F: cabc.Callable](Op):
         return AnyDomain()
 
     @typing.override
-    def _execute(self):
+    def execute(self):
         args = exec_nested_ops(self.args)
         kwargs = exec_nested_ops(self.kwargs)
 
