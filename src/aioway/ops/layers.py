@@ -6,9 +6,8 @@ import typing
 import torch
 from torch import nn
 
-from aioway.t import Domain, FloatTensorDomain, TensorDomain
+from aioway.t import Domain, FloatTensorDomain, IntTensorDomain, TensorDomain
 
-from ._utils import require_int_op, require_tensor_op
 from .ops import Op
 from .thunks import ModuleOp
 
@@ -37,8 +36,11 @@ class _UnaryModuleOpMixin[M: nn.Module](ModuleOp, Op[torch.Tensor], abc.ABC):
 
     @property
     @typing.override
-    def __domain__(self) -> TensorDomain:
-        require_tensor_op(self.input)
+    def __domain_deps__(self) -> list[Domain]:
+        return [TensorDomain()]
+
+    @typing.override
+    def _infer_domain(self) -> TensorDomain:
         domain = self.input.__domain__
 
         # A super domain (e.g. `ANY`) is narrowed.
@@ -49,7 +51,7 @@ class _UnaryModuleOpMixin[M: nn.Module](ModuleOp, Op[torch.Tensor], abc.ABC):
 
     @typing.override
     def execute(self) -> torch.Tensor:
-        return self.module(self.input())
+        return self.module(self._input(self.input))
 
     @property
     @typing.override
@@ -107,9 +109,13 @@ class EmbeddingOp(_UnaryModuleOpMixin[nn.Embedding]):
     A `nn.Embedding`: `(input: int tensor) -> float tensor`.
     """
 
+    @property
+    @typing.override
+    def __domain_deps__(self) -> list[Domain]:
+        return [IntTensorDomain()]
+
     @typing.override
     def _layer_domain(self, input: TensorDomain) -> TensorDomain:
-        require_int_op(self.input)
         return FloatTensorDomain()
 
 

@@ -33,7 +33,11 @@ class _TypedTensorOp(Op[torch.Tensor]):
 
     @property
     @typing.override
-    def __domain__(self) -> TensorDomain:
+    def __domain_deps__(self) -> list:
+        return []
+
+    @typing.override
+    def _infer_domain(self) -> TensorDomain:
         return self.domain
 
     @typing.override

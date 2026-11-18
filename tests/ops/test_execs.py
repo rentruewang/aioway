@@ -35,7 +35,11 @@ class SumCountOp(Op):
 
     @property
     @typing.override
-    def __domain__(self):
+    def __domain_deps__(self):
+        return [AnyDomain() for _ in self.__deps__]
+
+    @typing.override
+    def _infer_domain(self):
         return AnyDomain()
 
     @typing.override

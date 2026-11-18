@@ -201,7 +201,11 @@ class FuncInputOp[T](Op[T]):
 
     @property
     @typing.override
-    def __domain__(self) -> Domain:
+    def __domain_deps__(self) -> list[Domain]:
+        return []
+
+    @typing.override
+    def _infer_domain(self) -> Domain:
         return self.domain
 
     @property

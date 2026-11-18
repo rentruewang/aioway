@@ -8,9 +8,14 @@ import typing
 import torch
 from torch import nn
 
-from aioway.t import ScoreTensorDomain
+from aioway.t import (
+    Domain,
+    FloatTensorDomain,
+    IntTensorDomain,
+    ScoreTensorDomain,
+    TensorDomain,
+)
 
-from ._utils import require_float_op, require_int_op, require_tensor_op
 from .ops import Op
 from .thunks import ModuleOp
 
@@ -30,19 +35,9 @@ class ScoreOp(Op[torch.Tensor], abc.ABC):
     How bad a prediction is (a loss), or how good (a metric): tensors in, a number out.
     """
 
-    @property
     @typing.override
-    def __domain__(self) -> ScoreTensorDomain:
-        for dep in self.__deps__:
-            require_tensor_op(dep)
-
-        self._check_domains()
+    def _infer_domain(self) -> ScoreTensorDomain:
         return ScoreTensorDomain()
-
-    def _check_domains(self) -> None:
-        "Checks on the input domains, on top of being tensors."
-
-        ...
 
 
 class _LossOpMixin[M: nn.Module](ScoreOp, ModuleOp, abc.ABC):
@@ -73,14 +68,14 @@ class RegressionLossOp(_LossOpMixin[nn.Module]):
     target: Op[torch.Tensor]
     "The target."
 
+    @property
     @typing.override
-    def _check_domains(self) -> None:
-        require_float_op(self.pred)
-        require_float_op(self.target)
+    def __domain_deps__(self) -> list[Domain]:
+        return [FloatTensorDomain(), FloatTensorDomain()]
 
     @typing.override
     def execute(self) -> torch.Tensor:
-        return self.module(self.pred(), self.target())
+        return self.module(self._input(self.pred), self._input(self.target))
 
 
 class BinaryLossOp(_LossOpMixin[nn.Module]):
@@ -97,13 +92,14 @@ class BinaryLossOp(_LossOpMixin[nn.Module]):
     target: Op[torch.Tensor]
     "The target bits, or ±1."
 
+    @property
     @typing.override
-    def _check_domains(self) -> None:
-        require_float_op(self.pred)
+    def __domain_deps__(self) -> list[Domain]:
+        return [FloatTensorDomain(), TensorDomain()]
 
     @typing.override
     def execute(self) -> torch.Tensor:
-        return self.module(self.pred(), self.target())
+        return self.module(self._input(self.pred), self._input(self.target))
 
 
 class ClassLossOp(_LossOpMixin[nn.Module]):
@@ -119,13 +115,14 @@ class ClassLossOp(_LossOpMixin[nn.Module]):
     target: Op[torch.Tensor]
     "The classes, or a distribution over them (soft labels, `nn.CrossEntropyLoss` only)."
 
+    @property
     @typing.override
-    def _check_domains(self) -> None:
-        require_float_op(self.logits)
+    def __domain_deps__(self) -> list[Domain]:
+        return [FloatTensorDomain(), TensorDomain()]
 
     @typing.override
     def execute(self) -> torch.Tensor:
-        return self.module(self.logits(), self.target())
+        return self.module(self._input(self.logits), self._input(self.target))
 
 
 class PairLossOp(_LossOpMixin[nn.Module]):
@@ -144,14 +141,14 @@ class PairLossOp(_LossOpMixin[nn.Module]):
     y: Op[torch.Tensor]
     "1 if `a` should rank higher (or be similar), -1 otherwise."
 
+    @property
     @typing.override
-    def _check_domains(self) -> None:
-        require_float_op(self.a)
-        require_float_op(self.b)
+    def __domain_deps__(self) -> list[Domain]:
+        return [FloatTensorDomain(), FloatTensorDomain(), TensorDomain()]
 
     @typing.override
     def execute(self) -> torch.Tensor:
-        return self.module(self.a(), self.b(), self.y())
+        return self.module(self._input(self.a), self._input(self.b), self._input(self.y))
 
 
 class TripletLossOp(_LossOpMixin[nn.Module]):
@@ -170,15 +167,18 @@ class TripletLossOp(_LossOpMixin[nn.Module]):
     negative: Op[torch.Tensor]
     "What should be far from `anchor`."
 
+    @property
     @typing.override
-    def _check_domains(self) -> None:
-        require_float_op(self.anchor)
-        require_float_op(self.positive)
-        require_float_op(self.negative)
+    def __domain_deps__(self) -> list[Domain]:
+        return [FloatTensorDomain(), FloatTensorDomain(), FloatTensorDomain()]
 
     @typing.override
     def execute(self) -> torch.Tensor:
-        return self.module(self.anchor(), self.positive(), self.negative())
+        return self.module(
+            self._input(self.anchor),
+            self._input(self.positive),
+            self._input(self.negative),
+        )
 
 
 class AccuracyOp(ScoreOp):
@@ -194,12 +194,12 @@ class AccuracyOp(ScoreOp):
     target: Op[torch.Tensor]
     "The classes."
 
+    @property
     @typing.override
-    def _check_domains(self) -> None:
-        require_float_op(self.logits)
-        require_int_op(self.target)
+    def __domain_deps__(self) -> list[Domain]:
+        return [FloatTensorDomain(), IntTensorDomain()]
 
     @typing.override
     def execute(self) -> torch.Tensor:
-        correct = self.logits().argmax(dim=1) == self.target()
+        correct = self._input(self.logits).argmax(dim=1) == self._input(self.target)
         return correct.float().mean()

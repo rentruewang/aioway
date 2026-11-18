@@ -37,7 +37,11 @@ class CallOp[F: cabc.Callable](Op):
 
     @property
     @typing.override
-    def __domain__(self) -> Domain:
+    def __domain_deps__(self) -> list[Domain]:
+        return [AnyDomain() for _ in self.__deps__]
+
+    @typing.override
+    def _infer_domain(self) -> Domain:
         return AnyDomain()
 
     @typing.override
