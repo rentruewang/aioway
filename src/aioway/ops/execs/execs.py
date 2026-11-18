@@ -92,9 +92,11 @@ class DomainCheckOpExec(OpExec):
     def __call__(self, op: Op) -> typing.Any:
         # Nested, already collected.
         if self.reqs:
-            return self._checked(op)
+            ctx = ctxl.nullcontext()
+        else:
+            ctx = self.set_domain_reqs(op)
 
-        with self.set_domain_reqs(op):
+        with ctx:
             return self._checked(op)
 
     @ctxl.contextmanager
