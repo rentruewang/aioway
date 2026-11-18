@@ -65,7 +65,7 @@ class Op[T = typing.Any](_OpDclsMixin, abc.ABC):
         Check the domains of `__deps__` against `__domain_deps__`.
 
         A sub domain is a match.
-        A super domain (e.g. `ANY`) may match, checked by `check_result` on run time.
+        A super domain (e.g. `ANY`) may match, checked by `DomainReqs.check` on run time.
 
         Raises:
             OpDomainMismatch: if neither a sub domain nor a super domain.

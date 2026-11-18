@@ -7,11 +7,9 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
-from aioway._utils import AnyDict, any_dict
 from aioway.ops.ops import Op
-from aioway.t import Domain
 
-from .reqs import domain_reqs
+from .reqs import DomainReqs
 
 __all__ = [
     "OpExec",
@@ -19,7 +17,6 @@ __all__ = [
     "set_executor",
     "direct_op_exec",
     "disable_domain_checks",
-    "check_result",
     "DomainCheckOpExec",
 ]
 
@@ -67,21 +64,6 @@ def disable_domain_checks() -> cabc.Generator[None]:
         yield
 
 
-def check_result(op: Op, result, reqs: AnyDict[Op, list[Domain]]) -> None:
-    """
-    Check `result` of `op` against its domain,
-    and what its consumers require of it (from `domain_reqs`).
-    """
-
-    op.__domain__.check(result)
-
-    if op not in reqs:
-        return
-
-    for req in reqs[op]:
-        req.check(result)
-
-
 @dcls.dataclass
 class DomainCheckOpExec(OpExec):
     """
@@ -93,29 +75,27 @@ class DomainCheckOpExec(OpExec):
     fallback: OpExec = dcls.field(default_factory=executor)
     "Executes the `Op`s."
 
-    reqs: AnyDict[Op, list[Domain]] = dcls.field(
-        default_factory=any_dict, init=False, repr=False
-    )
-    "The requirements, from `domain_reqs`, during an evaluation."
+    reqs: DomainReqs = dcls.field(default_factory=DomainReqs, init=False, repr=False)
+    "The requirements during an evaluation."
 
     def __call__(self, op: Op) -> typing.Any:
         # `.reqs` is set when it's nested.
-        ctx = ctxl.nullcontext() if self.reqs else self.set_domain_reqs(op)
+        ctx = ctxl.nullcontext() if self.reqs else self.collect_reqs(op)
 
         with ctx:
             return self._checked(op)
 
     @ctxl.contextmanager
-    def set_domain_reqs(self, op: Op):
-        self.reqs = domain_reqs(op)
+    def collect_reqs(self, op: Op):
+        self.reqs = DomainReqs.collect(op)
         try:
             yield
         finally:
-            self.reqs = any_dict()
+            self.reqs = DomainReqs()
 
     def _checked(self, op: Op) -> typing.Any:
         result = self.fallback(op)
-        check_result(op, result, self.reqs)
+        self.reqs.check(op, result)
         return result
 
 
