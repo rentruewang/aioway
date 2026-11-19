@@ -51,10 +51,10 @@ class NetMorphLinearOpDeeper(OpRewriteRule):
 
         # Stack the identity and the middles again on the kept part.
         [x] = last.__deps__
+
         x = _rebase(_with_module(first, inserted), x)
         for op in middle:
             x = _rebase(op, x)
-
         return _rebase(last, x)
 
 
@@ -92,7 +92,7 @@ class _TypeChain:
 
 def _rebase(op: Op, dep: Op) -> Op:
     "`op` with its single dependency replaced by `dep`."
-    (old,) = op.__deps__
+    [old] = op.__deps__
     return op.replace(any_dict((old, dep)))
 
 
