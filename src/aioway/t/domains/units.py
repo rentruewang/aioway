@@ -7,16 +7,12 @@ import dataclasses as dcls
 import tensordict as td
 import torch
 
-from aioway.t import parse_attr, tcol_to_tdict
+from aioway.t import Attr, parse_attr, tcol_to_tdict
 
 from .domains import AnyDomain, Domain, InvalidValueForDomain
-from .tensors import TensorDomain
 
 __all__ = [
     "ScalarDomain",
-    "IntTensorDomain",
-    "FloatTensorDomain",
-    "ScoreTensorDomain",
     "Pair",
     "PairDomain",
     "TDictDomain",
@@ -36,37 +32,6 @@ class ScalarDomain[T](Domain[T]):
     def check_type(self, obj) -> None:
         if not isinstance(obj, self.base):
             raise InvalidValueForDomain(f"Expected {self.base}, got {type(obj)=}.")
-
-
-class IntTensorDomain(TensorDomain):
-    @property
-    def __extends__(self) -> list[Domain]:
-        return [TensorDomain()]
-
-    def check_type(self, obj: torch.Tensor, /) -> None:
-        if parse_attr(obj).dtype.is_floating_point:
-            raise InvalidValueForDomain("Must be an int tensor.")
-
-
-class FloatTensorDomain(TensorDomain):
-    @property
-    def __extends__(self) -> list[Domain]:
-        return [TensorDomain()]
-
-    def check_type(self, obj: torch.Tensor, /) -> None:
-        if not parse_attr(obj).dtype.is_floating_point:
-            raise InvalidValueForDomain("Must be a float tensor.")
-
-
-class ScoreTensorDomain(TensorDomain):
-    @property
-    def __extends__(self) -> list[Domain]:
-        return [TensorDomain()]
-
-    def check_type(self, obj: torch.Tensor, /) -> None:
-        super().check_type(obj)
-        if obj.numel() != 1:
-            raise InvalidValueForDomain("Not a score.")
 
 
 class Pair(td.TensorClass):
