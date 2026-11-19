@@ -30,8 +30,8 @@ class CompositeDset(Dset, abc.ABC):
 
     if typing.TYPE_CHECKING:
 
-        @typing.override
         @property
+        @typing.override
         @abc.abstractmethod
         def __domain__(self) -> TDictDomain:
             raise NotImplementedError
@@ -41,8 +41,8 @@ class ComposedDset(CompositeDset):
     def __init__(self, **dsets: Dset) -> None:
         self._dsets = dsets
 
-    @typing.override
     @property
+    @typing.override
     def __domain__(self) -> TDictDomain:
         "The composed domain, one entry per `Dset`."
 
@@ -106,6 +106,9 @@ class InputTargetDset(InputTargetLikeDset):
     def __init__(self, input: IdxDset, target: IdxDset):
         self._input = input
         self._target = target
+
+    def __len__(self) -> int:
+        return len(self.input)
 
     def __getitem__(self, idx):
         return InputTarget(input=self.input[idx], target=self.target[idx])
