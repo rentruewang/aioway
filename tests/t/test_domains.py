@@ -6,6 +6,9 @@ import pytest
 import torch
 
 from aioway.t import (
+    FloatTensorDomain,
+    IntTensorDomain,
+    ScoreTensorDomain,
     DTypeFamilyMixin,
     RangeMixin,
     RequiresGradMixin,
@@ -192,6 +195,32 @@ class TestTensorMixins:
 
     def test_range_fake_skipped(self):
         RangeMixin(low=0, high=1).check(_fake(2))
+
+
+class TestDtypes:
+    def test_int_float(self):
+        IntTensorDomain().check(torch.arange(2))
+        FloatTensorDomain().check(torch.rand(2))
+
+        with pytest.raises(InvalidValueForDomain):
+            IntTensorDomain().check(torch.rand(2))
+
+        with pytest.raises(InvalidValueForDomain):
+            FloatTensorDomain().check(torch.arange(2))
+
+    def test_score(self):
+        ScoreTensorDomain().check(torch.tensor(1.0))
+
+        with pytest.raises(InvalidValueForDomain):
+            ScoreTensorDomain().check(torch.rand(1))
+
+        with pytest.raises(InvalidValueForDomain):
+            ScoreTensorDomain().check(torch.tensor(1))
+
+    def test_hierarchy(self):
+        assert ScoreTensorDomain() <= FloatTensorDomain()
+        assert FloatTensorDomain() <= TensorDomain()
+        assert not (FloatTensorDomain() <= IntTensorDomain())
 
 
 # Pairs ====

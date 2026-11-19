@@ -23,6 +23,9 @@ __all__ = [
     "DTypeFamilyMixin",
     "RequiresGradMixin",
     "RangeMixin",
+    "IntTensorDomain",
+    "FloatTensorDomain",
+    "ScoreTensorDomain",
     "SizedMixin",
     "ListDomain",
     "BatchDomain",
@@ -100,6 +103,45 @@ class RangeMixin(TensorDomain):
 
         if not ((obj >= self.low) & (obj <= self.high)).all():
             raise InvalidValueForDomain(f"values not in [{self.low}, {self.high}]")
+
+
+# Dtypes ====
+
+
+class IntTensorDomain(DTypeFamilyMixin):
+    "An int tensor."
+
+    family: DTypeFamily = dcls.field(default="int", init=False)
+    "Always int."
+
+    @property
+    def __extends__(self) -> list[Domain]:
+        return [TensorDomain()]
+
+
+class FloatTensorDomain(DTypeFamilyMixin):
+    "A float tensor."
+
+    family: DTypeFamily = dcls.field(default="float", init=False)
+    "Always float."
+
+    @property
+    def __extends__(self) -> list[Domain]:
+        return [TensorDomain()]
+
+
+class ScoreTensorDomain(FloatTensorDomain):
+    "A float tensor of shape `()`, e.g. a reduced loss."
+
+    @property
+    def __extends__(self) -> list[Domain]:
+        return [FloatTensorDomain()]
+
+    def check_type(self, obj: torch.Tensor, /) -> None:
+        super().check_type(obj)
+
+        if shape := parse_attr(obj).shape:
+            raise InvalidValueForDomain(f"a score has shape (), got {shape=}")
 
 
 # Lists ====
