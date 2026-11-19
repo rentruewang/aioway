@@ -6,6 +6,9 @@ import pytest
 import torch
 
 from aioway.t import (
+    DTypeMixin,
+    RangeMixin,
+    RequiresGradMixin,
     AnyDomain,
     BatchDomain,
     InvalidValueForDomain,
@@ -144,6 +147,51 @@ class TestFakeValues:
 
         with pytest.raises(InvalidValueForDomain):
             sized_image(3, 4, 5).check(_fake(2, 3, 5, 4))
+
+
+# Tensor mixins ====
+
+
+class _FloatBatch(DTypeMixin, BatchDomain):
+    "A float batch, to check the mixin composes with lists."
+
+
+class TestTensorMixins:
+    def test_dtype(self):
+        DTypeMixin(family="float").check(torch.rand(2))
+        DTypeMixin(family="int").check(torch.arange(2))
+
+        with pytest.raises(InvalidValueForDomain):
+            DTypeMixin(family="float").check(torch.arange(2))
+
+    def test_dtype_fake(self):
+        DTypeMixin(family="float").check(_fake(2))
+
+    def test_dtype_with_list(self):
+        domain = _FloatBatch(SizedListDomain(length=3), family="float")
+        domain.check(torch.rand(2, 3))
+
+        with pytest.raises(InvalidValueForDomain):
+            domain.check(torch.arange(6).view(2, 3))
+
+        with pytest.raises(InvalidValueForDomain):
+            domain.check(torch.rand(2, 4))
+
+    def test_requires_grad(self):
+        RequiresGradMixin(requires_grad=True).check(torch.rand(2, requires_grad=True))
+        RequiresGradMixin(requires_grad=False).check(torch.rand(2))
+
+        with pytest.raises(InvalidValueForDomain):
+            RequiresGradMixin(requires_grad=True).check(torch.rand(2))
+
+    def test_range(self):
+        RangeMixin(low=0, high=1).check(torch.rand(2))
+
+        with pytest.raises(InvalidValueForDomain):
+            RangeMixin(low=0, high=1).check(torch.full((2,), 2.0))
+
+    def test_range_fake_skipped(self):
+        RangeMixin(low=0, high=1).check(_fake(2))
 
 
 # Pairs ====
