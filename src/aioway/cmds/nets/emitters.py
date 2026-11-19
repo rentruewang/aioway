@@ -76,12 +76,27 @@ class Emitter[O: Domain, A: Domain](EmitterLike, abc.ABC):
 
     @typing.final
     def __call__(self, observ: Domain, action: Domain, /) -> OpFunc:
-        observ_type, action_type = self._sign().args_annot().values()
+        if not isinstance(observ, self.observ_type):
+            return NotImplemented
 
-        if not isinstance(observ, observ_type) or not isinstance(action, action_type):
+        if not isinstance(action, self.action_type):
             return NotImplemented
 
         return self.emit(typing.cast(O, observ), typing.cast(A, action))
+
+    @property
+    def observ_type(self) -> type[O]:
+        "The observation domain taken, from the annotation."
+
+        observ_type, _ = self._sign().args_annot().values()
+        return observ_type
+
+    @property
+    def action_type(self) -> type[A]:
+        "The action domain taken, from the annotation."
+
+        _, action_type = self._sign().args_annot().values()
+        return action_type
 
     @abc.abstractmethod
     def emit(self, observ: O, action: A, /) -> OpFunc:
