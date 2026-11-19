@@ -42,9 +42,7 @@ class ImageRegressorEmitter(Emitter[FloatRangeListDomain, FloatListDomain]):
     def __len__(self) -> int:
         return self._size
 
-    def emit(
-        self, observ: FloatRangeListDomain, action: FloatListDomain, /
-    ) -> OpFunc:
+    def emit(self, observ: FloatRangeListDomain, action: FloatListDomain, /) -> OpFunc:
         shape = observ.shape.torch()
         assert len(shape) == 3, f"Observation should be [C, H, W]. Got {shape=}."
 
