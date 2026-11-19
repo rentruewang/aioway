@@ -3,8 +3,9 @@
 """
 Domains of tensors whose dimensions are tagged: lists, batches, temporal, spatial.
 
-Each list peels the first dimension and checks `inner` on the rest.
-An image is `Batch[List[Spatial[Spatial]]]`, `[B, C, H, W]`.
+Lists check dimensions from the right: a list `ndim` deep checks dimension `-ndim`.
+An image is `List[Spatial[Spatial]]`, `[C, H, W]`.
+Batch is implicit: any leading dimensions in front of the ones a domain describes.
 """
 
 import abc
@@ -28,11 +29,9 @@ __all__ = [
     "ScoreTensorDomain",
     "SizedMixin",
     "ListDomain",
-    "BatchDomain",
     "TemporalDomain",
     "SpatialDomain",
     "SizedListDomain",
-    "SizedBatchDomain",
     "SizedTemporalDomain",
     "SizedSpatialDomain",
     "grid_of",
@@ -156,15 +155,22 @@ class ListDomain(TensorDomain):
     def __extends__(self) -> list[Domain]:
         return [TensorDomain()]
 
+    @property
+    def ndim(self) -> int:
+        "How many trailing dimensions this list and the lists inside take."
+
+        return 1 + (self.inner.ndim if isinstance(self.inner, ListDomain) else 0)
+
     def check_type(self, obj: torch.Tensor, /) -> None:
         super().check_type(obj)
 
         shape = parse_attr(obj).shape
-        if not len(shape):
-            raise InvalidValueForDomain(f"a list is [L, ...], got {shape=}")
+        if len(shape) < self.ndim:
+            raise InvalidValueForDomain(f"needs {self.ndim} dims, got {shape=}")
 
-        if shape[0]:
-            self.inner.check_type(obj.select(0, 0))
+        # Removing this list's dimension keeps the batch in front for `inner`.
+        if shape[-self.ndim]:
+            self.inner.check_type(obj.select(-self.ndim, 0))
 
     def check_data(self, obj: torch.Tensor, /) -> None:
         super().check_data(obj)
@@ -178,9 +184,9 @@ class ListDomain(TensorDomain):
 
 class SizedMixin(ListDomain, abc.ABC):
     """
-    A list of this length, providing `shape`, built from the sized `inner`s.
+    A list of this length, providing `shape`, built from the `inner`s.
 
-    Batch is part of `shape`, `length=-1` means any length.
+    Batch is not part of `shape`, `-1` means any length.
     """
 
     length: int = dcls.field(kw_only=True)
@@ -189,32 +195,33 @@ class SizedMixin(ListDomain, abc.ABC):
     def shape(self) -> Shape:
         # `inner` is a field of the list this is mixed into.
         inner = self.inner
-        rest: aioway.t.attrs.shapes.Shape | list[int] = (
-            inner.shape if isinstance(inner, SizedMixin) else []
-        )
+        rest: aioway.t.attrs.shapes.Shape | list[int] = []
+
+        if isinstance(inner, SizedMixin):
+            rest = inner.shape
+        elif isinstance(inner, ListDomain):
+            rest = [-1] * inner.ndim
+
         return Shape.parse([self.length, *rest])
 
-    @property
-    def ndim(self) -> int:
-        return len(self.shape)
+    def batch_size_of(self, obj: torch.Tensor, /) -> Shape:
+        "The leading dimensions of `obj`, in front of the ones `shape` describes."
+
+        shape = parse_attr(obj).shape
+        if len(shape) < self.ndim:
+            raise InvalidValueForDomain(f"needs {self.ndim} dims, got {shape=}")
+
+        return Shape.parse(list(shape)[: len(shape) - self.ndim])
 
     def check_type(self, obj: torch.Tensor, /) -> None:
         super().check_type(obj)
 
-        length = parse_attr(obj).shape[0]
+        length = parse_attr(obj).shape[-self.ndim]
         if self.length != -1 and length != self.length:
             raise InvalidValueForDomain(f"length {length}, expected {self.length}")
 
 
 # Implementations ====
-
-
-class BatchDomain(ListDomain):
-    "A list of examples, `[B, ...]`."
-
-    @property
-    def __extends__(self) -> list[Domain]:
-        return [ListDomain(self.inner)]
 
 
 class TemporalDomain(ListDomain):
@@ -240,15 +247,6 @@ class SizedListDomain(SizedMixin, ListDomain):
     @property
     def __extends__(self) -> list[Domain]:
         return [ListDomain(self.inner)]
-
-
-class SizedBatchDomain(SizedListDomain, BatchDomain):
-    @property
-    def __extends__(self) -> list[Domain]:
-        return [
-            BatchDomain(self.inner),
-            SizedListDomain(self.inner, length=self.length),
-        ]
 
 
 class SizedTemporalDomain(SizedListDomain, TemporalDomain):
@@ -278,29 +276,28 @@ def grid_of(inner: Domain = AnyDomain()) -> SpatialDomain:
     return SpatialDomain(SpatialDomain(inner))
 
 
-def image() -> BatchDomain:
-    "`Batch[List[Spatial[Spatial]]]`, `[B, C, H, W]`."
+def image() -> ListDomain:
+    "`List[Spatial[Spatial]]`, `[C, H, W]`."
 
-    return BatchDomain(ListDomain(grid_of()))
+    return ListDomain(grid_of())
 
 
-def sized_image(channels: int, height: int, width: int) -> SizedBatchDomain:
-    "An image of this many channels, height and width, any batch size."
+def sized_image(channels: int, height: int, width: int) -> SizedListDomain:
+    "An image of this many channels, height and width."
 
     grid = SizedSpatialDomain(SizedSpatialDomain(length=width), length=height)
-    return SizedBatchDomain(SizedListDomain(grid, length=channels), length=-1)
+    return SizedListDomain(grid, length=channels)
 
 
-def video() -> BatchDomain:
-    "`Batch[Temporal[List[Spatial[Spatial]]]]`, `[B, T, C, H, W]`."
+def video() -> TemporalDomain:
+    "`Temporal[List[Spatial[Spatial]]]`, `[T, C, H, W]`."
 
-    return BatchDomain(TemporalDomain(ListDomain(grid_of())))
+    return TemporalDomain(image())
 
 
 def sized_video(
     frames: int, channels: int, height: int, width: int
-) -> SizedBatchDomain:
-    "A video of this many frames, channels, height and width, any batch size."
+) -> SizedTemporalDomain:
+    "A video of this many frames, channels, height and width."
 
-    img = sized_image(channels, height, width)
-    return SizedBatchDomain(SizedTemporalDomain(img.inner, length=frames), length=-1)
+    return SizedTemporalDomain(sized_image(channels, height, width), length=frames)
