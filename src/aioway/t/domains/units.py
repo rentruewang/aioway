@@ -7,7 +7,7 @@ import dataclasses as dcls
 import tensordict as td
 import torch
 
-from aioway.t import Attr, parse_attr
+from aioway.t import parse_attr, tcol_to_tdict
 
 from .domains import AnyDomain, Domain, InvalidValueForDomain
 from .tensors import TensorDomain
@@ -19,7 +19,7 @@ __all__ = [
     "ScoreTensorDomain",
     "Pair",
     "PairDomain",
-    "DictDomain",
+    "TDictDomain",
 ]
 
 
@@ -110,7 +110,7 @@ class PairDomain(Domain[Pair]):
         self.target.check_data(obj.target)
 
 
-class DictDomain(Domain[td.TensorDictBase]):
+class TDictDomain(Domain[td.TensorDictBase]):
     "A `TensorDict` whose entries are in these domains. Other keys are allowed."
 
     domains: dict[str, Domain] = dcls.field(default_factory=dict)
@@ -125,18 +125,23 @@ class DictDomain(Domain[td.TensorDictBase]):
 
     def __lt__(self, domain: Domain) -> bool:
         # Same keys, each entry a sub domain.
-        if type(self) is type(domain) and self != domain:
-            assert isinstance(domain, DictDomain)
-            return self.domains.keys() == domain.domains.keys() and all(
-                val <= domain.domains[key] for key, val in self.domains.items()
+        if isinstance(domain, TDictDomain) and self != domain:
+            return (
+                True
+                and self.domains.keys() == domain.domains.keys()
+                and all(val <= domain.domains[key] for key, val in self.domains.items())
             )
 
         return super().__lt__(domain)
 
     def check_type(self, obj: td.TensorDictBase, /) -> None:
         super().check_type(obj)
-        if not isinstance(obj, td.TensorDictBase):
+
+        if not td.is_tensor_collection(obj):
             raise InvalidValueForDomain(f"expected a TensorDict, got {type(obj)=}")
+
+        # Just so it handles tensorclass as well.
+        obj = tcol_to_tdict(obj)
 
         for key, domain in self.domains.items():
             if key not in obj.keys():

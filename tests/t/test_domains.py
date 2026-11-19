@@ -9,7 +9,7 @@ import torch
 from aioway.t import (
     AnyDomain,
     BatchDomain,
-    DictDomain,
+    TDictDomain,
     FloatTensorDomain,
     IntTensorDomain,
     InvalidValueForDomain,
@@ -181,21 +181,21 @@ def test_pair_domain_fields():
 class TestDictDomain:
     def test_check(self):
         tdict = td.TensorDict(x=torch.rand(2, 3), y=torch.arange(2), batch_size=[2])
-        DictDomain({"x": FloatTensorDomain()}).check(tdict)
+        TDictDomain({"x": FloatTensorDomain()}).check(tdict)
 
         with pytest.raises(InvalidValueForDomain):
-            DictDomain({"x": IntTensorDomain()}).check(tdict)
+            TDictDomain({"x": IntTensorDomain()}).check(tdict)
 
         with pytest.raises(InvalidValueForDomain):
-            DictDomain({"z": TensorDomain()}).check(tdict)
+            TDictDomain({"z": TensorDomain()}).check(tdict)
 
     def test_hierarchy(self):
-        floats = DictDomain({"x": FloatTensorDomain()})
-        tensors = DictDomain({"x": TensorDomain()})
+        floats = TDictDomain({"x": FloatTensorDomain()})
+        tensors = TDictDomain({"x": TensorDomain()})
 
         assert floats <= tensors
         assert not (tensors <= floats)
-        assert not (floats <= DictDomain({"y": TensorDomain()}))
+        assert not (floats <= TDictDomain({"y": TensorDomain()}))
 
 
 # Hashing ====
@@ -210,7 +210,7 @@ class TestDictDomain:
         lambda: sized_image(3, 4, 5),
         lambda: video(),
         lambda: PairDomain(FloatTensorDomain(), IntTensorDomain()),
-        lambda: DictDomain({"x": FloatTensorDomain(), "y": sized_image(3, 4, 5)}),
+        lambda: TDictDomain({"x": FloatTensorDomain(), "y": sized_image(3, 4, 5)}),
     ]
 )
 def make_domain(request) -> typing.Callable[[], typing.Any]:
