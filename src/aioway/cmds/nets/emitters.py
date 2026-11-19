@@ -82,7 +82,7 @@ class Emitter[O: Domain, A: Domain](EmitterLike, abc.ABC):
         if not isinstance(action, self.action_type):
             return NotImplemented
 
-        return self.emit(typing.cast(O, observ), typing.cast(A, action))
+        return self.emit(observ, action)
 
     @property
     def observ_type(self) -> type[O]:
