@@ -3,15 +3,20 @@
 import typing
 
 import pytest
+import tensordict as td
 import torch
 
 from aioway.t import (
     AnyDomain,
     BatchDomain,
+    DictDomain,
+    FloatTensorDomain,
+    IntTensorDomain,
     InvalidValueForDomain,
     ListDomain,
     Pair,
     PairDomain,
+    ScoreTensorDomain,
     SizedBatchDomain,
     SizedListDomain,
     SizedSpatialDomain,
@@ -157,3 +162,67 @@ def test_pair_domain():
     with pytest.raises(InvalidValueForDomain):
         tensor: typing.Any = torch.randn(2, 3)
         PairDomain().check(tensor)
+
+
+def test_pair_domain_fields():
+    pair = Pair(input=torch.rand(2, 3), target=torch.arange(2), batch_size=[2])
+    PairDomain(FloatTensorDomain(), IntTensorDomain()).check(pair)
+
+    with pytest.raises(InvalidValueForDomain):
+        PairDomain(IntTensorDomain(), IntTensorDomain()).check(pair)
+
+    assert PairDomain(FloatTensorDomain(), IntTensorDomain()) <= PairDomain()
+    assert not (PairDomain() <= PairDomain(FloatTensorDomain(), IntTensorDomain()))
+
+
+# Dicts ====
+
+
+class TestDictDomain:
+    def test_check(self):
+        tdict = td.TensorDict(x=torch.rand(2, 3), y=torch.arange(2), batch_size=[2])
+        DictDomain({"x": FloatTensorDomain()}).check(tdict)
+
+        with pytest.raises(InvalidValueForDomain):
+            DictDomain({"x": IntTensorDomain()}).check(tdict)
+
+        with pytest.raises(InvalidValueForDomain):
+            DictDomain({"z": TensorDomain()}).check(tdict)
+
+    def test_hierarchy(self):
+        floats = DictDomain({"x": FloatTensorDomain()})
+        tensors = DictDomain({"x": TensorDomain()})
+
+        assert floats <= tensors
+        assert not (tensors <= floats)
+        assert not (floats <= DictDomain({"y": TensorDomain()}))
+
+
+# Hashing ====
+
+
+@pytest.fixture(
+    params=[
+        lambda: AnyDomain(),
+        lambda: TensorDomain(),
+        lambda: FloatTensorDomain(),
+        lambda: ScoreTensorDomain(),
+        lambda: sized_image(3, 4, 5),
+        lambda: video(),
+        lambda: PairDomain(FloatTensorDomain(), IntTensorDomain()),
+        lambda: DictDomain({"x": FloatTensorDomain(), "y": sized_image(3, 4, 5)}),
+    ]
+)
+def make_domain(request) -> typing.Callable[[], typing.Any]:
+    "Builds a new, equal domain on every call."
+
+    return request.param
+
+
+def test_equal_domains_hash_equal(make_domain):
+    left, right = make_domain(), make_domain()
+
+    assert left is not right
+    assert left == right
+    assert hash(left) == hash(right)
+    assert len({left, right}) == 1

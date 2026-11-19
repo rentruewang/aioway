@@ -2,6 +2,8 @@
 
 "Domains of tensorclasses: pairs."
 
+import dataclasses as dcls
+
 import tensordict as td
 import torch
 
@@ -17,6 +19,7 @@ __all__ = [
     "ScoreTensorDomain",
     "Pair",
     "PairDomain",
+    "DictDomain",
 ]
 
 
@@ -81,7 +84,13 @@ class Pair(td.TensorClass):
 
 
 class PairDomain(Domain[Pair]):
-    "Any `Pair`."
+    "A `Pair` whose `input` and `target` are in these domains."
+
+    input: Domain = AnyDomain()
+    "The domain of `input`."
+
+    target: Domain = AnyDomain()
+    "The domain of `target`."
 
     @property
     def __extends__(self) -> list[Domain]:
@@ -91,3 +100,51 @@ class PairDomain(Domain[Pair]):
         super().check_type(obj)
         if not isinstance(obj, Pair):
             raise InvalidValueForDomain(f"expected a Pair, got {type(obj).__name__}")
+
+        self.input.check_type(obj.input)
+        self.target.check_type(obj.target)
+
+    def check_data(self, obj: Pair, /) -> None:
+        super().check_data(obj)
+        self.input.check_data(obj.input)
+        self.target.check_data(obj.target)
+
+
+class DictDomain(Domain[td.TensorDictBase]):
+    "A `TensorDict` whose entries are in these domains. Other keys are allowed."
+
+    domains: dict[str, Domain] = dcls.field(default_factory=dict)
+    "The domain of each key."
+
+    def __hash__(self) -> int:
+        return hash(frozenset(self.domains.items()))
+
+    @property
+    def __extends__(self) -> list[Domain]:
+        return [AnyDomain()]
+
+    def __lt__(self, domain: Domain) -> bool:
+        # Same keys, each entry a sub domain.
+        if type(self) is type(domain) and self != domain:
+            assert isinstance(domain, DictDomain)
+            return self.domains.keys() == domain.domains.keys() and all(
+                val <= domain.domains[key] for key, val in self.domains.items()
+            )
+
+        return super().__lt__(domain)
+
+    def check_type(self, obj: td.TensorDictBase, /) -> None:
+        super().check_type(obj)
+        if not isinstance(obj, td.TensorDictBase):
+            raise InvalidValueForDomain(f"expected a TensorDict, got {type(obj)=}")
+
+        for key, domain in self.domains.items():
+            if key not in obj.keys():
+                raise InvalidValueForDomain(f"missing key {key!r}")
+
+            domain.check_type(obj[key])
+
+    def check_data(self, obj: td.TensorDictBase, /) -> None:
+        super().check_data(obj)
+        for key, domain in self.domains.items():
+            domain.check_data(obj[key])
