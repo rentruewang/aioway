@@ -13,6 +13,7 @@ import typing
 
 import torch
 
+import aioway.t.attrs.shapes
 from aioway.t.attrs import Shape, parse_attr
 
 from .domains import AnyDomain, Domain, InvalidValueForDomain
@@ -51,39 +52,6 @@ class TensorDomain(Domain[torch.Tensor]):
             raise InvalidValueForDomain(f"Expected a tensor, got {type(obj)=}.")
 
 
-# Mixins ====
-
-
-@dcls.dataclass(frozen=True)
-class SizedMixin(abc.ABC):
-    """
-    A list of this length, providing `shape`, built from the sized `inner`s.
-
-    Batch is part of `shape`, `length=-1` means any length.
-    """
-
-    if typing.TYPE_CHECKING:
-        inner: Domain
-
-    length: int = dcls.field(kw_only=True)
-
-    @property
-    def shape(self) -> Shape:
-        rest = self.inner.shape if isinstance(self.inner, SizedMixin) else []
-        return Shape.parse([self.length, *rest])
-
-    @property
-    def ndim(self) -> int:
-        return len(self.shape)
-
-    def check_type(self, obj: torch.Tensor, /) -> None:
-        super().check_type(obj)  # type: ignore[misc]
-
-        length = parse_attr(obj).shape[0]
-        if self.length != -1 and length != self.length:
-            raise InvalidValueForDomain(f"length {length}, expected {self.length}")
-
-
 # Lists ====
 
 
@@ -111,6 +79,39 @@ class ListDomain(TensorDomain):
 
         # Data checks are on values, which do not change when a dimension is peeled.
         self.inner.check_data(obj)
+
+
+# Mixins ====
+
+
+class SizedMixin(ListDomain, abc.ABC):
+    """
+    A list of this length, providing `shape`, built from the sized `inner`s.
+
+    Batch is part of `shape`, `length=-1` means any length.
+    """
+
+    length: int = dcls.field(kw_only=True)
+
+    @property
+    def shape(self) -> Shape:
+        # `inner` is a field of the list this is mixed into.
+        inner = self.inner
+        rest: aioway.t.attrs.shapes.Shape | list[int] = (
+            inner.shape if isinstance(inner, SizedMixin) else []
+        )
+        return Shape.parse([self.length, *rest])
+
+    @property
+    def ndim(self) -> int:
+        return len(self.shape)
+
+    def check_type(self, obj: torch.Tensor, /) -> None:
+        super().check_type(obj)
+
+        length = parse_attr(obj).shape[0]
+        if self.length != -1 and length != self.length:
+            raise InvalidValueForDomain(f"length {length}, expected {self.length}")
 
 
 class BatchDomain(ListDomain):
