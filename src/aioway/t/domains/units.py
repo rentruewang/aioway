@@ -8,10 +8,10 @@ import torch
 from aioway.t import Attr, parse_attr
 
 from .domains import AnyDomain, Domain, InvalidValueForDomain
+from .tensors import TensorDomain
 
 __all__ = [
     "ScalarDomain",
-    "TensorDomain",
     "IntTensorDomain",
     "FloatTensorDomain",
     "ScoreTensorDomain",
@@ -33,18 +33,6 @@ class ScalarDomain[T](Domain[T]):
     def check_type(self, obj) -> None:
         if not isinstance(obj, self.base):
             raise InvalidValueForDomain(f"Expected {self.base}, got {type(obj)=}.")
-
-
-class TensorDomain(Domain[torch.Tensor]):
-    "Any tensor."
-
-    @property
-    def __extends__(self) -> list[Domain]:
-        return [AnyDomain()]
-
-    def check_type(self, obj: torch.Tensor, /) -> None:
-        if not isinstance(obj, torch.Tensor):
-            raise InvalidValueForDomain(f"Expected a tensor, got {type(obj)=}.")
 
 
 class IntTensorDomain(TensorDomain):

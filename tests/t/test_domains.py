@@ -7,20 +7,23 @@ import torch
 
 from aioway.t import (
     AnyDomain,
-    GridDomain,
-    ImageDomain,
+    BatchDomain,
     InvalidValueForDomain,
     ListDomain,
     Pair,
     PairDomain,
-    SizedGridDomain,
-    SizedImageDomain,
-    SizedVideoDomain,
+    SizedBatchDomain,
+    SizedListDomain,
+    SizedSpatialDomain,
     SpatialDomain,
     TemporalDomain,
     TensorDomain,
-    VideoDomain,
     fake_mode,
+    grid_of,
+    image,
+    sized_image,
+    sized_video,
+    video,
 )
 
 
@@ -31,30 +34,28 @@ def _fake(*shape: int) -> torch.Tensor:
 
 class TestHierarchy:
     def test_equal_domains_same_type(self):
-        assert SizedGridDomain(4, 5) == SizedGridDomain(4, 5)
-        assert len({SizedGridDomain(4, 5), SizedGridDomain(4, 5)}) == 1
-        assert SizedGridDomain(4, 5) != SizedGridDomain(5, 4)
+        assert SizedListDomain(length=4) == SizedListDomain(length=4)
+        assert len({SizedListDomain(length=4), SizedListDomain(length=4)}) == 1
+        assert SizedListDomain(length=4) != SizedListDomain(length=5)
 
     @pytest.mark.parametrize(
         "domain, ancestor",
         [
-            (SizedImageDomain(4, 5), SizedImageDomain(4, 5)),
-            (SizedImageDomain(4, 5), ImageDomain()),
-            (SizedImageDomain(4, 5), SizedGridDomain(4, 5)),
-            (SizedImageDomain(4, 5), GridDomain()),
-            (SizedImageDomain(4, 5), TensorDomain()),
-            (SizedVideoDomain(2), VideoDomain()),
+            (sized_image(3, 4, 5), sized_image(3, 4, 5)),
+            (sized_image(3, 4, 5), image()),
+            (sized_image(3, 4, 5), BatchDomain()),
+            (sized_image(3, 4, 5), TensorDomain()),
+            (sized_video(2, 3, 4, 5), video()),
+            (BatchDomain(), ListDomain()),
             (TemporalDomain(), ListDomain()),
             (SpatialDomain(), ListDomain()),
-            (ListDomain(ImageDomain()), ListDomain(GridDomain())),
-            (GridDomain(), SpatialDomain(SpatialDomain())),
-            (VideoDomain(), TemporalDomain(ImageDomain())),
-            (VideoDomain(), ListDomain(GridDomain())),
-            (VideoDomain(), AnyDomain()),
-            (GridDomain(inner=ImageDomain()), GridDomain()),
-            (TemporalDomain(ImageDomain()), TemporalDomain(GridDomain())),
-            (GridDomain(inner=ImageDomain()), ListDomain(ListDomain(GridDomain()))),
-            (SizedGridDomain(4, 5, inner=ImageDomain()), SizedGridDomain(4, 5)),
+            (SizedSpatialDomain(length=4), SpatialDomain()),
+            (SizedBatchDomain(length=2), BatchDomain()),
+            (SizedSpatialDomain(length=4), SizedListDomain(length=4)),
+            (ListDomain(SpatialDomain()), ListDomain(ListDomain())),
+            (grid_of(), ListDomain(ListDomain())),
+            (video(), BatchDomain(TemporalDomain())),
+            (video(), AnyDomain()),
             (ListDomain(PairDomain()), ListDomain()),
         ],
     )
@@ -64,22 +65,35 @@ class TestHierarchy:
     @pytest.mark.parametrize(
         "domain, other",
         [
-            (ImageDomain(), SizedImageDomain(4, 5)),
-            (GridDomain(), ImageDomain()),
-            (SizedImageDomain(4, 5), SizedGridDomain(5, 4)),
-            (SizedImageDomain(4, 5), VideoDomain()),
+            (image(), sized_image(3, 4, 5)),
+            (sized_image(3, 4, 5), sized_image(3, 5, 4)),
+            (sized_image(3, 4, 5), video()),
             (TemporalDomain(), SpatialDomain()),
-            (ListDomain(), TemporalDomain()),
-            (ListDomain(GridDomain()), ListDomain(ImageDomain())),
-            (GridDomain(), GridDomain(inner=ImageDomain())),
-            (ListDomain(ListDomain()), GridDomain()),
-            (SizedGridDomain(4, 5, inner=ImageDomain()), SizedGridDomain(5, 4)),
-            (ListDomain(ImageDomain()), ListDomain(VideoDomain())),
+            (ListDomain(), BatchDomain()),
+            (SizedSpatialDomain(length=4), SizedSpatialDomain(length=5)),
+            (ListDomain(ListDomain()), grid_of()),
             (TensorDomain(), ListDomain()),
         ],
     )
     def test_not_sub_domain(self, domain, other):
         assert not (domain <= other)
+
+
+class TestShape:
+    def test_sized_image(self):
+        assert sized_image(3, 4, 5).shape == (-1, 3, 4, 5)
+        assert sized_image(3, 4, 5).ndim == 4
+
+    def test_sized_video(self):
+        assert sized_video(2, 3, 4, 5).shape == (-1, 2, 3, 4, 5)
+
+    def test_sized_batch(self):
+        assert SizedBatchDomain(sized_image(3, 4, 5).inner, length=2).shape == (
+            2,
+            3,
+            4,
+            5,
+        )
 
 
 class TestRealValues:
@@ -88,12 +102,12 @@ class TestRealValues:
         [
             (AnyDomain(), "anything"),
             (TensorDomain(), torch.rand(2)),
-            (ListDomain(), torch.rand(2, 3)),
-            (ListDomain(ListDomain()), torch.rand(2, 3, 4)),
-            (GridDomain(), torch.rand(2, 4, 5)),
-            (SizedImageDomain(4, 5), torch.rand(2, 4, 5, 3)),
-            (ImageDomain(), torch.full((2, 4, 5, 3), 255, dtype=torch.uint8)),
-            (SizedVideoDomain(2), torch.rand(1, 2, 4, 5, 3)),
+            (ListDomain(), torch.rand(2)),
+            (ListDomain(ListDomain()), torch.rand(2, 3)),
+            (grid_of(), torch.rand(4, 5)),
+            (image(), torch.rand(2, 3, 4, 5)),
+            (sized_image(3, 4, 5), torch.rand(2, 3, 4, 5)),
+            (sized_video(2, 3, 4, 5), torch.rand(1, 2, 3, 4, 5)),
         ],
     )
     def test_accepts(self, domain, value):
@@ -104,13 +118,12 @@ class TestRealValues:
         "domain, value",
         [
             (TensorDomain(), [1, 2]),
-            (ListDomain(), torch.rand(2)),
-            (GridDomain(), torch.rand(4, 5)),
-            (SizedGridDomain(4, 5), torch.rand(2, 5, 4, 3)),
-            (ImageDomain(), torch.full((2, 4, 5, 3), 2.0)),
-            (VideoDomain(), torch.rand(2, 3, 4)),
-            (VideoDomain(), torch.full((1, 2, 4, 5, 3), 2.0)),
-            (SizedVideoDomain(3), torch.rand(1, 2, 4, 5, 3)),
+            (ListDomain(), torch.tensor(1.0)),
+            (grid_of(), torch.rand(4)),
+            (image(), torch.rand(2, 4, 5)),
+            (sized_image(3, 4, 5), torch.rand(2, 3, 5, 4)),
+            (video(), torch.rand(2, 3, 4, 5)),
+            (sized_video(3, 3, 4, 5), torch.rand(1, 2, 3, 4, 5)),
         ],
     )
     def test_rejects(self, domain, value):
@@ -120,17 +133,17 @@ class TestRealValues:
 
 
 class TestFakeValues:
-    def test_skip_data_checks(self):
-        ImageDomain().check(_fake(2, 4, 5, 3))
-        SizedImageDomain(4, 5).check(_fake(2, 4, 5, 3))
-        VideoDomain().check(_fake(1, 2, 4, 5, 3))
+    def test_accepts(self):
+        image().check(_fake(2, 3, 4, 5))
+        sized_image(3, 4, 5).check(_fake(2, 3, 4, 5))
+        video().check(_fake(1, 2, 3, 4, 5))
 
     def test_still_check_shapes(self):
         with pytest.raises(InvalidValueForDomain):
-            GridDomain().check(_fake(4, 5))
+            grid_of().check(_fake(4))
 
         with pytest.raises(InvalidValueForDomain):
-            SizedImageDomain(4, 5).check(_fake(2, 5, 4, 3))
+            sized_image(3, 4, 5).check(_fake(2, 3, 5, 4))
 
 
 # Pairs ====
