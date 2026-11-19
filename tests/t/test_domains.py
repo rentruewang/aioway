@@ -8,7 +8,6 @@ import torch
 
 from aioway.t import (
     AnyDomain,
-    BatchDomain,
     DTypeFamilyMixin,
     FloatTensorDomain,
     IntTensorDomain,
@@ -19,13 +18,13 @@ from aioway.t import (
     RangeMixin,
     RequiresGradMixin,
     ScoreTensorDomain,
-    SizedBatchDomain,
     SizedListDomain,
     SizedSpatialDomain,
     SpatialDomain,
     TDictDomain,
     TemporalDomain,
     TensorDomain,
+    TensorItemDomain,
     fake_mode,
     grid_of,
     image,
@@ -51,19 +50,18 @@ class TestHierarchy:
         [
             (sized_image(3, 4, 5), sized_image(3, 4, 5)),
             (sized_image(3, 4, 5), image()),
-            (sized_image(3, 4, 5), BatchDomain()),
+            (sized_image(3, 4, 5), ListDomain()),
             (sized_image(3, 4, 5), TensorDomain()),
             (sized_video(2, 3, 4, 5), video()),
-            (BatchDomain(), ListDomain()),
             (TemporalDomain(), ListDomain()),
             (SpatialDomain(), ListDomain()),
             (SizedSpatialDomain(length=4), SpatialDomain()),
-            (SizedBatchDomain(length=2), BatchDomain()),
             (SizedSpatialDomain(length=4), SizedListDomain(length=4)),
             (ListDomain(SpatialDomain()), ListDomain(ListDomain())),
             (grid_of(), ListDomain(ListDomain())),
-            (video(), BatchDomain(TemporalDomain())),
+            (video(), TemporalDomain()),
             (video(), AnyDomain()),
+            (TensorItemDomain(), TensorDomain()),
             (ListDomain(PairDomain()), ListDomain()),
         ],
     )
@@ -77,7 +75,7 @@ class TestHierarchy:
             (sized_image(3, 4, 5), sized_image(3, 5, 4)),
             (sized_image(3, 4, 5), video()),
             (TemporalDomain(), SpatialDomain()),
-            (ListDomain(), BatchDomain()),
+            (ListDomain(), TemporalDomain()),
             (SizedSpatialDomain(length=4), SizedSpatialDomain(length=5)),
             (ListDomain(ListDomain()), grid_of()),
             (TensorDomain(), ListDomain()),
@@ -89,19 +87,20 @@ class TestHierarchy:
 
 class TestShape:
     def test_sized_image(self):
-        assert sized_image(3, 4, 5).shape == (-1, 3, 4, 5)
-        assert sized_image(3, 4, 5).ndim == 4
+        assert sized_image(3, 4, 5).shape == (3, 4, 5)
+        assert sized_image(3, 4, 5).ndim == 3
 
     def test_sized_video(self):
-        assert sized_video(2, 3, 4, 5).shape == (-1, 2, 3, 4, 5)
+        assert sized_video(2, 3, 4, 5).shape == (2, 3, 4, 5)
 
-    def test_sized_batch(self):
-        assert SizedBatchDomain(sized_image(3, 4, 5).inner, length=2).shape == (
-            2,
-            3,
-            4,
-            5,
-        )
+    def test_item(self):
+        assert TensorItemDomain().shape == ()
+        assert SizedListDomain(length=2).shape == (2,)
+
+    @pytest.mark.parametrize("batch", [(), (2,), (6, 2)])
+    def test_batch_size_of(self, batch):
+        value = torch.rand(*batch, 3, 4, 5)
+        assert sized_image(3, 4, 5).batch_size_of(value) == batch
 
 
 class TestRealValues:
@@ -115,6 +114,8 @@ class TestRealValues:
             (grid_of(), torch.rand(4, 5)),
             (image(), torch.rand(2, 3, 4, 5)),
             (sized_image(3, 4, 5), torch.rand(2, 3, 4, 5)),
+            (sized_image(3, 4, 5), torch.rand(3, 4, 5)),
+            (sized_image(3, 4, 5), torch.rand(6, 2, 3, 4, 5)),
             (sized_video(2, 3, 4, 5), torch.rand(1, 2, 3, 4, 5)),
         ],
     )
@@ -128,9 +129,9 @@ class TestRealValues:
             (TensorDomain(), [1, 2]),
             (ListDomain(), torch.tensor(1.0)),
             (grid_of(), torch.rand(4)),
-            (image(), torch.rand(2, 4, 5)),
+            (image(), torch.rand(4, 5)),
             (sized_image(3, 4, 5), torch.rand(2, 3, 5, 4)),
-            (video(), torch.rand(2, 3, 4, 5)),
+            (video(), torch.rand(3, 4, 5)),
             (sized_video(3, 3, 4, 5), torch.rand(1, 2, 3, 4, 5)),
         ],
     )
@@ -157,8 +158,8 @@ class TestFakeValues:
 # Tensor mixins ====
 
 
-class _FloatBatch(DTypeFamilyMixin, BatchDomain):
-    "A float batch, to check the mixin composes with lists."
+class _FloatList(DTypeFamilyMixin, ListDomain):
+    "A float list, to check the mixin composes with lists."
 
 
 class TestTensorMixins:
@@ -173,7 +174,7 @@ class TestTensorMixins:
         DTypeFamilyMixin(family="float").check(_fake(2))
 
     def test_dtype_with_list(self):
-        domain = _FloatBatch(SizedListDomain(length=3), family="float")
+        domain = _FloatList(SizedListDomain(length=3), family="float")
         domain.check(torch.rand(2, 3))
 
         with pytest.raises(InvalidValueForDomain):
@@ -212,9 +213,8 @@ class TestDtypes:
 
     def test_score(self):
         ScoreTensorDomain().check(torch.tensor(1.0))
-
-        with pytest.raises(InvalidValueForDomain):
-            ScoreTensorDomain().check(torch.rand(1))
+        ScoreTensorDomain().check(torch.rand(3))
+        assert ScoreTensorDomain() <= TensorItemDomain()
 
         with pytest.raises(InvalidValueForDomain):
             ScoreTensorDomain().check(torch.tensor(1))
