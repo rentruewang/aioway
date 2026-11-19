@@ -62,10 +62,10 @@ class SizedMixin(abc.ABC):
     Batch is part of `shape`, `length=-1` means any length.
     """
 
-    length: int = dcls.field(kw_only=True)
-
     if typing.TYPE_CHECKING:
         inner: Domain
+
+    length: int = dcls.field(kw_only=True)
 
     @property
     def shape(self) -> Shape:
@@ -149,19 +149,28 @@ class SizedListDomain(SizedMixin, ListDomain):
 class SizedBatchDomain(SizedListDomain, BatchDomain):
     @property
     def __extends__(self) -> list[Domain]:
-        return [BatchDomain(self.inner), SizedListDomain(self.inner, length=self.length)]
+        return [
+            BatchDomain(self.inner),
+            SizedListDomain(self.inner, length=self.length),
+        ]
 
 
 class SizedTemporalDomain(SizedListDomain, TemporalDomain):
     @property
     def __extends__(self) -> list[Domain]:
-        return [TemporalDomain(self.inner), SizedListDomain(self.inner, length=self.length)]
+        return [
+            TemporalDomain(self.inner),
+            SizedListDomain(self.inner, length=self.length),
+        ]
 
 
 class SizedSpatialDomain(SizedListDomain, SpatialDomain):
     @property
     def __extends__(self) -> list[Domain]:
-        return [SpatialDomain(self.inner), SizedListDomain(self.inner, length=self.length)]
+        return [
+            SpatialDomain(self.inner),
+            SizedListDomain(self.inner, length=self.length),
+        ]
 
 
 # Aliases ====
@@ -192,7 +201,9 @@ def video() -> BatchDomain:
     return BatchDomain(TemporalDomain(ListDomain(grid_of())))
 
 
-def sized_video(frames: int, channels: int, height: int, width: int) -> SizedBatchDomain:
+def sized_video(
+    frames: int, channels: int, height: int, width: int
+) -> SizedBatchDomain:
     "A video of this many frames, channels, height and width, any batch size."
 
     img = sized_image(channels, height, width)

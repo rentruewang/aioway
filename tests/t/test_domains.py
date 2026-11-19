@@ -8,22 +8,22 @@ import torch
 from aioway.t import (
     AnyDomain,
     BatchDomain,
-    grid_of,
-    image,
     InvalidValueForDomain,
     ListDomain,
     Pair,
     PairDomain,
     SizedBatchDomain,
-    sized_image,
     SizedListDomain,
     SizedSpatialDomain,
-    sized_video,
     SpatialDomain,
     TemporalDomain,
     TensorDomain,
-    video,
     fake_mode,
+    grid_of,
+    image,
+    sized_image,
+    sized_video,
+    video,
 )
 
 
@@ -88,7 +88,12 @@ class TestShape:
         assert sized_video(2, 3, 4, 5).shape == (-1, 2, 3, 4, 5)
 
     def test_sized_batch(self):
-        assert SizedBatchDomain(sized_image(3, 4, 5).inner, length=2).shape == (2, 3, 4, 5)
+        assert SizedBatchDomain(sized_image(3, 4, 5).inner, length=2).shape == (
+            2,
+            3,
+            4,
+            5,
+        )
 
 
 class TestRealValues:
