@@ -9,8 +9,8 @@ from aioway.t import (
     DTypeFamilyMixin,
     RangeMixin,
     SizedListDomain,
-    SizedMixin,
     TensorItemDomain,
+    sized_of,
 )
 
 __all__ = [
@@ -44,7 +44,7 @@ class IntRangeItemDomain(RangeMixin, DTypeFamilyMixin, TensorItemDomain):
 def float_list(length: int, *shape: int) -> FloatListDomain:
     "Float examples of shape `[length, *shape]`."
 
-    return FloatListDomain(_sized(shape), length=length)
+    return FloatListDomain(sized_of(*shape), length=length)
 
 
 def float_range_list(
@@ -52,21 +52,10 @@ def float_range_list(
 ) -> FloatRangeListDomain:
     "Float examples of shape `[length, *shape]`, values in `[low, high]`."
 
-    return FloatRangeListDomain(_sized(shape), length=length, low=low, high=high)
+    return FloatRangeListDomain(sized_of(*shape), length=length, low=low, high=high)
 
 
 def int_range_item(low: int, high: int) -> IntRangeItemDomain:
     "One int per example, values in `[low, high]`."
 
     return IntRangeItemDomain(low=low, high=high)
-
-
-def _sized(shape: tuple[int, ...]) -> SizedMixin:
-    "Nested sized lists of `shape`, ending with an item."
-
-    domain: SizedMixin = TensorItemDomain()
-
-    for length in reversed(shape):
-        domain = SizedListDomain(domain, length=length)
-
-    return domain
