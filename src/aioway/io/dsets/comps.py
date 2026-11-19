@@ -31,6 +31,7 @@ class CompositeDset(Dset, abc.ABC):
     if typing.TYPE_CHECKING:
 
         @typing.override
+        @property
         @abc.abstractmethod
         def __domain__(self) -> TDictDomain:
             raise NotImplementedError
@@ -41,10 +42,11 @@ class ComposedDset(CompositeDset):
         self._dsets = dsets
 
     @typing.override
+    @property
     def __domain__(self) -> TDictDomain:
         "The composed domain, one entry per `Dset`."
 
-        return TDictDomain({key: val.__domain__() for key, val in self.dsets.items()})
+        return TDictDomain({key: val.__domain__ for key, val in self.dsets.items()})
 
     @property
     def dsets(self) -> cabc.Mapping[str, Dset]:
@@ -95,6 +97,7 @@ class InputTargetLikeDset(IdxDset, abc.ABC):
     def target_domain(self) -> Domain:
         raise NotImplementedError
 
+    @property
     def __domain__(self) -> TDictDomain:
         return TDictDomain({"input": self.input_domain, "target": self.target_domain})
 
@@ -122,8 +125,8 @@ class InputTargetDset(InputTargetLikeDset):
 
     @property
     def input_domain(self) -> Domain:
-        return self.input.__domain__()
+        return self.input.__domain__
 
     @property
     def target_domain(self) -> Domain:
-        return self.target.__domain__()
+        return self.target.__domain__

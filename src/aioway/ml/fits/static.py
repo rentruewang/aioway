@@ -114,6 +114,7 @@ class BatchIter[T: NnInput = typing.Any](typing.Protocol):
 
         ...
 
+    @property
     def __domain__(self) -> Domain:
         """
         The domain of the output of `__iter__`.
@@ -143,6 +144,7 @@ class IterableBatchIter(BatchIter):
     def __iter__(self):
         yield from self.iterable
 
+    @property
     def __domain__(self) -> Domain:
         return self.domain
 
@@ -244,7 +246,7 @@ class StaticTrainer:
         if self.cfg.progress_bar:
             loader = progress.track(loader)
 
-        return IterableBatchIter(loader, dataset.__domain__())
+        return IterableBatchIter(loader, dataset.__domain__)
 
 
 class LossFunc[I, T](typing.Protocol):

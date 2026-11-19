@@ -20,6 +20,7 @@ class Dset[T](abc.ABC):
     It does not provide any additional functionality, but improves the API usage.
     """
 
+    @property
     @abc.abstractmethod
     def __domain__(self) -> Domain:
         "The domain of the data."
@@ -97,6 +98,7 @@ class DatasetIdxDset[T](IdxDset[T]):
         # This is not the type, but duck typing, should be OK.
         return self
 
+    @property
     def __domain__(self) -> Domain:
         return self._domain
 
@@ -130,8 +132,9 @@ class _IdxDataset(du.Dataset):
     def __getitems__(self, index):
         return self.dset.__getitems__(np.asarray(index))
 
+    @property
     def __domain__(self) -> Domain:
-        return self.dset.__domain__()
+        return self.dset.__domain__
 
     @property
     def dset(self) -> IdxDset:
@@ -171,8 +174,9 @@ class _IterDataset(du.IterableDataset):
     def __iter__(self):
         yield from self.dset
 
+    @property
     def __domain__(self) -> Domain:
-        return self.dset.__domain__()
+        return self.dset.__domain__
 
     @property
     def dset(self) -> IterDset:
