@@ -7,7 +7,7 @@ import dataclasses as dcls
 import tensordict as td
 import torch
 
-from aioway.t import Attr, parse_attr, tcol_to_tdict
+from aioway.t import tcol_to_tdict
 
 from .domains import AnyDomain, Domain, InvalidValueForDomain
 
