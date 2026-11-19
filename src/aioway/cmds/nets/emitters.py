@@ -7,8 +7,8 @@ import typing
 from collections import abc as cabc
 
 from aioway._utils import AnySet, any_set
-from aioway.io.tspecs import TSpec
 from aioway.ops import OpFunc
+from aioway.t import Domain
 
 __all__ = [
     "emitter_dcls",
@@ -25,7 +25,7 @@ _EMITTERS: AnySet[Emitter] = any_set()
 "The emitters that are considered."
 
 
-def emit_one(observ: TSpec, action: TSpec) -> OpFunc:
+def emit_one(observ: Domain, action: Domain) -> OpFunc:
     """
     A convenient wrapper to only emit the first target found.
     """
@@ -34,7 +34,7 @@ def emit_one(observ: TSpec, action: TSpec) -> OpFunc:
     return route_emitter(observ, action)
 
 
-def emit(observ: TSpec, action: TSpec, /) -> cabc.Generator[OpFunc]:
+def emit(observ: Domain, action: Domain, /) -> cabc.Generator[OpFunc]:
     """
     Emit some candidates based on the given spaces.
     """
@@ -46,11 +46,11 @@ def emit(observ: TSpec, action: TSpec, /) -> cabc.Generator[OpFunc]:
 class EmitterLike(typing.Protocol):
     """
     The baseline function that `emit` uses to generate `OpFunc`s.
-    If the `TSpec` is not supported, `NotImplemented` should be returned.
+    If the `Domain`s are not supported, `NotImplemented` should be returned.
     """
 
     @abc.abstractmethod
-    def __call__(self, observ: TSpec, action: TSpec, /) -> OpFunc:
+    def __call__(self, observ: Domain, action: Domain, /) -> OpFunc:
         raise NotImplementedError
 
 
@@ -99,14 +99,14 @@ class RouteEmitter(Emitter):
     The emitters to choose to emit from.
     """
 
-    def __call__(self, observ: TSpec, action: TSpec) -> OpFunc:
+    def __call__(self, observ: Domain, action: Domain) -> OpFunc:
         for func in self.candidates(observ, action):
             return func
 
         else:
             raise ValueError(f"No candidate found for {observ=} and {action=}.")
 
-    def candidates(self, observ: TSpec, action: TSpec) -> cabc.Generator[OpFunc]:
+    def candidates(self, observ: Domain, action: Domain) -> cabc.Generator[OpFunc]:
         """
         Emit all possible candidates.
         """
@@ -133,7 +133,7 @@ class _FuncEmitter(Emitter):
     The function to wrap.
     """
 
-    def __call__(self, observ: TSpec, action: TSpec, /) -> OpFunc:
+    def __call__(self, observ: Domain, action: Domain, /) -> OpFunc:
         return self.function(observ, action)
 
 

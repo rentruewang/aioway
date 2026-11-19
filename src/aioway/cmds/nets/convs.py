@@ -6,14 +6,13 @@ import functools
 
 import torch
 from torch import nn
-from torchrl.data import tensor_specs as tspecs
 
 from aioway._utils import is_list_of
-from aioway.io.tspecs import TSpec
 from aioway.ops import GridOp, OpFunc, SameShapeOp
-from aioway.t import fake_mode
+from aioway.t import Domain, fake_mode
 
 from ._utils import Activation, linear_tree, observ_op
+from .domains import FloatListDomain, FloatRangeListDomain
 from .emitters import Emitter, emitter_dcls
 
 __all__ = ["ImageRegressorEmitter"]
@@ -43,19 +42,20 @@ class ImageRegressorEmitter(Emitter):
     def __len__(self) -> int:
         return self._size
 
-    def __call__(self, observ: TSpec, action: TSpec) -> OpFunc:
-        if not isinstance(observ, tspecs.BoundedContinuous):
+    def __call__(self, observ: Domain, action: Domain) -> OpFunc:
+        if not isinstance(observ, FloatRangeListDomain):
             return NotImplemented
 
-        if not isinstance(action, tspecs.Unbounded):
+        if not isinstance(action, FloatListDomain):
             return NotImplemented
 
-        assert observ.ndim == 3, f"Observation should be 3D. Got {observ.shape=}."
+        shape = observ.shape.torch()
+        assert len(shape) == 3, f"Observation should be [C, H, W]. Got {shape=}."
 
         activation = Activation(self.activation).nn_type
 
         out_channels = self._as_list(self.channels)
-        in_channels = [observ.shape[0], *out_channels[:-1]]
+        in_channels = [shape[0], *out_channels[:-1]]
         kernels = self._as_list(self.kernels)
         strides = self._as_list(self.strides)
 
@@ -72,10 +72,10 @@ class ImageRegressorEmitter(Emitter):
 
         # Run a fake sample through the convs, for their output shape.
         with fake_mode():
-            sim_out = OpFunc(op)(torch.zeros(1, *observ.shape))
+            sim_out = OpFunc(op)(torch.zeros(1, *shape))
 
         # Flattens, then a linear final layer.
-        return OpFunc(linear_tree(op, sim_out.shape[1:], action.shape))
+        return OpFunc(linear_tree(op, sim_out.shape[1:], torch.Size(action.shape)))
 
     @functools.cached_property
     def _size(self) -> int:
