@@ -8,9 +8,8 @@ from collections import abc as cabc
 
 import tensordict as td
 import torch
-from torchrl.data import tensor_specs as tspecs
 
-from aioway.io.tspecs import TSpecLike
+from aioway.t import Domain, TDictDomain
 
 from .dsets import Dset, IdxDset
 
@@ -31,9 +30,10 @@ class CompositeDset(Dset, abc.ABC):
 
     if typing.TYPE_CHECKING:
 
+        @property
         @typing.override
         @abc.abstractmethod
-        def __tspec__(self) -> TSpecLike:
+        def __domain__(self) -> TDictDomain:
             raise NotImplementedError
 
 
@@ -41,13 +41,12 @@ class ComposedDset(CompositeDset):
     def __init__(self, **dsets: Dset) -> None:
         self._dsets = dsets
 
+    @property
     @typing.override
-    def __tspec__(self) -> tspecs.Composite:
-        "The composed spec would be a composite."
+    def __domain__(self) -> TDictDomain:
+        "The composed domain, one entry per `Dset`."
 
-        return tspecs.Composite(
-            {key: val.__tspec__() for key, val in self.dsets.items()}
-        )
+        return TDictDomain({key: val.__domain__ for key, val in self.dsets.items()})
 
     @property
     def dsets(self) -> cabc.Mapping[str, Dset]:
@@ -90,22 +89,26 @@ class InputTarget(td.TensorClass):
 class InputTargetLikeDset(IdxDset, abc.ABC):
     @property
     @abc.abstractmethod
-    def input_tspec(self) -> TSpecLike:
+    def input_domain(self) -> Domain:
         raise NotImplementedError
 
     @property
     @abc.abstractmethod
-    def target_tspec(self) -> TSpecLike:
+    def target_domain(self) -> Domain:
         raise NotImplementedError
 
-    def __tspec__(self) -> tspecs.Composite:
-        return tspecs.Composite(input=self.input_tspec, target=self.target_tspec)
+    @property
+    def __domain__(self) -> TDictDomain:
+        return TDictDomain({"input": self.input_domain, "target": self.target_domain})
 
 
 class InputTargetDset(InputTargetLikeDset):
     def __init__(self, input: IdxDset, target: IdxDset):
         self._input = input
         self._target = target
+
+    def __len__(self) -> int:
+        return len(self.input)
 
     def __getitem__(self, idx):
         return InputTarget(input=self.input[idx], target=self.target[idx])
@@ -124,9 +127,9 @@ class InputTargetDset(InputTargetLikeDset):
         return self._target
 
     @property
-    def input_tspec(self) -> TSpecLike:
-        return self.input.__tspec__()
+    def input_domain(self) -> Domain:
+        return self.input.__domain__
 
     @property
-    def target_tspec(self) -> TSpecLike:
-        return self.target.__tspec__()
+    def target_domain(self) -> Domain:
+        return self.target.__domain__

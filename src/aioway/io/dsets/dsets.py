@@ -8,7 +8,7 @@ import numpy as np
 from torch.utils import data as du
 
 from aioway._utils import IntArray
-from aioway.io.tspecs import TSpecLike
+from aioway.t import Domain
 
 __all__ = ["Dset", "IdxDset", "IterDset", "DatasetIdxDset"]
 
@@ -20,9 +20,10 @@ class Dset[T](abc.ABC):
     It does not provide any additional functionality, but improves the API usage.
     """
 
+    @property
     @abc.abstractmethod
-    def __tspec__(self) -> TSpecLike:
-        "The spec constraint for the data."
+    def __domain__(self) -> Domain:
+        "The domain of the data."
 
         raise NotImplementedError
 
@@ -74,11 +75,9 @@ class DatasetIdxDset[T](IdxDset[T]):
     Adaptor from `du.Dataset` to `IdxDset`.
     """
 
-    def __init__(
-        self, dataset: du.Dataset[T], spec: TSpecLike, collate_fn=None
-    ) -> None:
+    def __init__(self, dataset: du.Dataset[T], domain: Domain, collate_fn=None) -> None:
         self._dataset = dataset
-        self._spec = spec
+        self._domain = domain
         self._colalte_fn = collate_fn
 
     @typing.no_type_check
@@ -97,8 +96,9 @@ class DatasetIdxDset[T](IdxDset[T]):
         # This is not the type, but duck typing, should be OK.
         return self
 
-    def __tspec__(self) -> TSpecLike:
-        return self._spec
+    @property
+    def __domain__(self) -> Domain:
+        return self._domain
 
     @property
     def collate_fn(self):
@@ -130,8 +130,9 @@ class _IdxDataset(du.Dataset):
     def __getitems__(self, index):
         return self.dset.__getitems__(np.asarray(index))
 
-    def __tspec__(self) -> TSpecLike:
-        return self.dset.__tspec__()
+    @property
+    def __domain__(self) -> Domain:
+        return self.dset.__domain__
 
     @property
     def dset(self) -> IdxDset:
@@ -171,8 +172,9 @@ class _IterDataset(du.IterableDataset):
     def __iter__(self):
         yield from self.dset
 
-    def __tspec__(self) -> TSpecLike:
-        return self.dset.__tspec__()
+    @property
+    def __domain__(self) -> Domain:
+        return self.dset.__domain__
 
     @property
     def dset(self) -> IterDset:
