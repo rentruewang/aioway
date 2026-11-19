@@ -4,7 +4,6 @@
 
 from ._utils import *
 from .aten import *
-from .discovery import *
 from .attrs import *
 from .domains import *
 from .guards import *
