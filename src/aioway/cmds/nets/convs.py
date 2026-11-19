@@ -9,7 +9,7 @@ from torch import nn
 
 from aioway._utils import is_list_of
 from aioway.ops import GridOp, OpFunc, SameShapeOp
-from aioway.t import Domain, fake_mode
+from aioway.t import fake_mode
 
 from ._utils import Activation, linear_tree, observ_op
 from .domains import FloatListDomain, FloatRangeListDomain
@@ -19,7 +19,7 @@ __all__ = ["ImageRegressorEmitter"]
 
 
 @emitter_dcls
-class ImageRegressorEmitter(Emitter):
+class ImageRegressorEmitter(Emitter[FloatRangeListDomain, FloatListDomain]):
     """
     The emitter for images -> regression.
     """
@@ -42,13 +42,9 @@ class ImageRegressorEmitter(Emitter):
     def __len__(self) -> int:
         return self._size
 
-    def __call__(self, observ: Domain, action: Domain) -> OpFunc:
-        if not isinstance(observ, FloatRangeListDomain):
-            return NotImplemented
-
-        if not isinstance(action, FloatListDomain):
-            return NotImplemented
-
+    def emit(
+        self, observ: FloatRangeListDomain, action: FloatListDomain, /
+    ) -> OpFunc:
         shape = observ.shape.torch()
         assert len(shape) == 3, f"Observation should be [C, H, W]. Got {shape=}."
 
@@ -75,7 +71,7 @@ class ImageRegressorEmitter(Emitter):
             sim_out = OpFunc(op)(torch.zeros(1, *shape))
 
         # Flattens, then a linear final layer.
-        return OpFunc(linear_tree(op, sim_out.shape[1:], torch.Size(action.shape)))
+        return OpFunc(linear_tree(op, sim_out.shape[1:], action.shape.torch()))
 
     @functools.cached_property
     def _size(self) -> int:

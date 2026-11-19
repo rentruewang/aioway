@@ -6,6 +6,7 @@ import dataclasses as dcls
 import typing
 from collections import abc as cabc
 
+from aioway._signs import Sign
 from aioway._utils import AnySet, any_set
 from aioway.ops import OpFunc
 from aioway.t import Domain
@@ -61,14 +62,40 @@ def emitter_dcls[T](cls: type[T]) -> type[T]:
 
 
 @emitter_dcls
-class Emitter(EmitterLike, abc.ABC):
+class Emitter[O: Domain, A: Domain](EmitterLike, abc.ABC):
     """
     The base class for `Emitter`s.
+
+    `emit`'s annotations are the domains it takes,
+    other domains get `NotImplemented` without calling `emit`.
     """
 
     @typing.final
     def __post_init__(self) -> None:
         self._validate()
+
+    @typing.final
+    def __call__(self, observ: Domain, action: Domain, /) -> OpFunc:
+        observ_type, action_type = self._sign().args_annot().values()
+
+        if not isinstance(observ, observ_type) or not isinstance(action, action_type):
+            return NotImplemented
+
+        return self.emit(typing.cast(O, observ), typing.cast(A, action))
+
+    @abc.abstractmethod
+    def emit(self, observ: O, action: A, /) -> OpFunc:
+        """
+        Emit for the domains in the annotations.
+        Return `NotImplemented` if they are still not supported.
+        """
+
+        raise NotImplementedError
+
+    def _sign(self) -> Sign:
+        "The signature whose annotations are the domains taken."
+
+        return Sign.from_callable(self.emit)
 
     def _validate(self) -> None:
         """
@@ -89,17 +116,17 @@ class Emitter(EmitterLike, abc.ABC):
 
 
 @emitter_dcls
-class RouteEmitter(Emitter):
+class RouteEmitter(Emitter[Domain, Domain]):
     """
     The emitter that explicitly emits from a list of emitters.
     """
 
-    emitters: cabc.Iterable[Emitter]
+    emitters: cabc.Iterable[EmitterLike]
     """
     The emitters to choose to emit from.
     """
 
-    def __call__(self, observ: Domain, action: Domain) -> OpFunc:
+    def emit(self, observ: Domain, action: Domain, /) -> OpFunc:
         for func in self.candidates(observ, action):
             return func
 
@@ -125,21 +152,26 @@ class RouteEmitter(Emitter):
 
 
 @emitter_dcls
-class _FuncEmitter(Emitter):
+class _FuncEmitter[O: Domain, A: Domain](Emitter[O, A]):
     "The emitter function."
 
-    function: EmitterLike
+    function: cabc.Callable[[O, A], OpFunc]
     """
-    The function to wrap.
+    The function to wrap, its annotations are the domains taken.
     """
 
-    def __call__(self, observ: Domain, action: Domain, /) -> OpFunc:
+    def emit(self, observ: O, action: A, /) -> OpFunc:
         return self.function(observ, action)
 
+    def _sign(self) -> Sign:
+        return Sign.from_callable(self.function)
 
-def emitter_function(emitter: EmitterLike) -> _FuncEmitter:
+
+def emitter_function[O: Domain, A: Domain](
+    function: cabc.Callable[[O, A], OpFunc],
+) -> Emitter[O, A]:
     "The decorator function to wrap a function as an `Emitter`."
-    return _FuncEmitter(emitter)
+    return _FuncEmitter(function)
 
 
 def emitters_in_scope() -> AnySet[Emitter]:
