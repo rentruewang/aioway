@@ -4,11 +4,15 @@ import pathlib
 import typing
 
 import tensordict as td
-import torch
-from torchrl.data import tensor_specs as tspecs
 from torchvision import datasets as tvdsets
 from torchvision.transforms import v2 as tvt
 
+from aioway.cmds.nets import (
+    FloatRangeListDomain,
+    IntRangeItemDomain,
+    float_range_list,
+    int_range_item,
+)
 from aioway.io import InputTarget, InputTargetLikeDset
 
 __all__ = ["MnistDataset"]
@@ -31,12 +35,14 @@ class MnistDataset(InputTargetLikeDset):
         return td.stack([self[i] for i in idx])
 
     @property
-    def input_tspec(self) -> tspecs.Unbounded:
-        return tspecs.Unbounded(shape=torch.Size([28, 28]))
+    def input_domain(self) -> FloatRangeListDomain:
+        "`ToTensor` gives `[1, 28, 28]` in `[0, 1]`."
+
+        return float_range_list(0, 1, 1, 28, 28)
 
     @property
-    def target_tspec(self) -> tspecs.Bounded:
-        return tspecs.Bounded(low=0, high=9, shape=torch.Size([]), dtype=torch.long)
+    def target_domain(self) -> IntRangeItemDomain:
+        return int_range_item(0, 9)
 
     @property
     def collate_fn(self):

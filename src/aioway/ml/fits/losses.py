@@ -1,13 +1,9 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import dataclasses as dcls
 import enum
-import typing
 
-import torch
-from torchrl.data import tensor_specs as tspecs
-
-from aioway.io import TSpec
+from aioway.cmds.nets import float_list
+from aioway.t import SizedMixin
 
 
 class FitType(enum.StrEnum):
@@ -22,7 +18,7 @@ class FitType(enum.StrEnum):
     MULTI_CLASS = "multi-class"
     "Where an output can match multiple classes."
 
-    def target_to_input_tspec(self, target: TSpec, /) -> TSpec:
+    def target_to_input_domain(self, target: SizedMixin, /) -> SizedMixin:
         match self:
             case self.REGRESSION:
                 func = self._reg_input
@@ -35,17 +31,15 @@ class FitType(enum.StrEnum):
 
         return func(target)
 
-    def _reg_input(self, target: TSpec) -> TSpec:
+    def _reg_input(self, target: SizedMixin) -> SizedMixin:
         return target
 
-    @typing.no_type_check
-    def _clf_input(self, target: TSpec) -> TSpec:
-        shape = target.shape
-        assert dcls.is_dataclass(target)
-        return dcls.replace(target, shape=torch.Size(*shape, -1))
+    def _clf_input(self, target: SizedMixin) -> SizedMixin:
+        "Float logits, one per class, any number of classes."
 
-    @typing.no_type_check
-    def _multi_clf_input(self, target: TSpec) -> TSpec:
-        shape = target.shape
-        assert dcls.is_dataclass(target)
-        return tspecs.Unbounded(shape=torch.Size(*shape, -1))
+        return float_list(*target.shape, -1)
+
+    def _multi_clf_input(self, target: SizedMixin) -> SizedMixin:
+        "Float logits, one per class, any number of classes."
+
+        return float_list(*target.shape, -1)

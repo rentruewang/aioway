@@ -11,10 +11,10 @@ import torch
 from rich import progress
 from torch import nn, optim
 from torch.utils import data as du
-from torchrl.data import tensor_specs as tspecs
 
 from aioway._utils import FloatArray
-from aioway.io import Dset, InputTarget, InputTargetLikeDset, TSpecLike
+from aioway.io import Dset, InputTarget, InputTargetLikeDset
+from aioway.t import Domain
 
 if typing.TYPE_CHECKING:
     import lightning as L
@@ -33,12 +33,12 @@ __all__ = [
 class ObservActionSpace(abc.ABC):
     @property
     @abc.abstractmethod
-    def observ_tspec(self) -> tspecs.TensorSpec:
+    def observ_domain(self) -> Domain:
         raise NotImplementedError
 
     @property
     @abc.abstractmethod
-    def action_tspec(self) -> tspecs.TensorSpec:
+    def action_domain(self) -> Domain:
         raise NotImplementedError
 
 
@@ -114,9 +114,9 @@ class BatchIter[T: NnInput = typing.Any](typing.Protocol):
 
         ...
 
-    def __tspec__(self) -> TSpecLike:
+    def __domain__(self) -> Domain:
         """
-        The space constraining the output of `__iter__`.
+        The domain of the output of `__iter__`.
         """
 
 
@@ -135,16 +135,16 @@ class Task[T: NnInput](abc.ABC):
 
 @dcls.dataclass(frozen=True)
 class IterableBatchIter(BatchIter):
-    "Wraps an iterable and space."
+    "Wraps an iterable and its domain."
 
     iterable: cabc.Iterable
-    space: TSpecLike
+    domain: Domain
 
     def __iter__(self):
         yield from self.iterable
 
-    def __tspec__(self) -> TSpecLike:
-        return self.space
+    def __domain__(self) -> Domain:
+        return self.domain
 
 
 class StaticTrainer:
@@ -244,7 +244,7 @@ class StaticTrainer:
         if self.cfg.progress_bar:
             loader = progress.track(loader)
 
-        return IterableBatchIter(loader, dataset.__tspec__())
+        return IterableBatchIter(loader, dataset.__domain__())
 
 
 class LossFunc[I, T](typing.Protocol):
