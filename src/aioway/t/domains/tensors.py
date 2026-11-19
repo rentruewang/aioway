@@ -114,6 +114,9 @@ class SizedMixin(ListDomain, abc.ABC):
             raise InvalidValueForDomain(f"length {length}, expected {self.length}")
 
 
+# Implementations ====
+
+
 class BatchDomain(ListDomain):
     "A list of examples, `[B, ...]`."
 
