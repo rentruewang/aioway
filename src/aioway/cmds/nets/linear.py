@@ -2,13 +2,12 @@
 
 from torch import nn
 from torchrl import modules as rlmods
-from torchrl.data import tensor_specs as tspecs
 
-from aioway.io.tspecs import TSpec
 from aioway.ops import LayerOp, OpFunc, SameShapeOp, ViewOp
 
 from ._utils import Activation, linear_tree, observ_op
-from .emitters import Emitter, emitter_dcls, emitter_function
+from .domains import FloatListDomain, IntRangeItemDomain
+from .emitters import Emitter, EmitterLike, emitter_dcls, emitter_function
 
 __all__ = [
     "linear_regression",
@@ -19,35 +18,23 @@ __all__ = [
 
 
 @emitter_function
-def linear_regression(observ: TSpec, action: TSpec) -> OpFunc:
+def linear_regression(observ: FloatListDomain, action: FloatListDomain) -> OpFunc:
     """
-    `Linear` from `Unbounded` to `Unbounded`.
+    `Linear` from float to float.
     """
 
-    if not isinstance(observ, tspecs.Unbounded):
-        return NotImplemented
-
-    if not isinstance(action, tspecs.Unbounded):
-        return NotImplemented
-
-    return OpFunc(linear_tree(observ_op(), observ.shape, action.shape))
+    in_shape, out_shape = observ.shape.torch(), action.shape.torch()
+    return OpFunc(linear_tree(observ_op(), in_shape, out_shape))
 
 
 @emitter_dcls
-class ClfLogitHead(Emitter):
+class ClfLogitHead(Emitter[FloatListDomain, IntRangeItemDomain]):
     "Emits a classification head."
 
-    emitter: Emitter
+    emitter: EmitterLike
     "Emits a regression model."
 
-    def __call__(self, observ: TSpec, action: TSpec) -> OpFunc:
-
-        if not isinstance(observ, tspecs.Unbounded):
-            return NotImplemented
-
-        if not isinstance(action, tspecs.BoundedDiscrete):
-            return NotImplemented
-
+    def emit(self, observ: FloatListDomain, action: IntRangeItemDomain, /) -> OpFunc:
         first = self.emitter(observ, observ)
 
         if first is NotImplemented:
@@ -56,11 +43,12 @@ class ClfLogitHead(Emitter):
         action_count = int(action.high - action.low + 1)
 
         flat = ViewOp(nn.Flatten(), first.output)
-        return OpFunc(LayerOp(nn.Linear(observ.shape.numel(), action_count), flat))
+        in_features = observ.shape.numel()
+        return OpFunc(LayerOp(nn.Linear(in_features, action_count), flat))
 
 
 @emitter_dcls
-class _MlpEmitter(Emitter):
+class _MlpEmitter(Emitter[FloatListDomain, FloatListDomain]):
     """
     Emits an MLP.
     """
@@ -80,7 +68,7 @@ class _MlpEmitter(Emitter):
 class TorchRlMlpEmitter(_MlpEmitter):
     "Emits a `torchrl.modules.MLP`."
 
-    def __call__(self, observ: TSpec, action: TSpec) -> OpFunc:
+    def emit(self, observ: FloatListDomain, action: FloatListDomain, /) -> OpFunc:
         module = rlmods.MLP(
             in_features=observ.shape[-1],
             out_features=action.shape[-1],
@@ -96,13 +84,7 @@ class MlpEmitter(_MlpEmitter):
     Emits `Linear`s with activations in between.
     """
 
-    def __call__(self, observ: TSpec, action: TSpec) -> OpFunc:
-        if not isinstance(observ, tspecs.Unbounded):
-            return NotImplemented
-
-        if not isinstance(action, tspecs.Unbounded):
-            return NotImplemented
-
+    def emit(self, observ: FloatListDomain, action: FloatListDomain, /) -> OpFunc:
         sizes = [observ.shape[-1], *self.hidden_sizes, action.shape[-1]]
         activation = Activation(self.activation).nn_type
 

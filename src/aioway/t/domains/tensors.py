@@ -34,11 +34,6 @@ __all__ = [
     "SizedListDomain",
     "SizedTemporalDomain",
     "SizedSpatialDomain",
-    "grid_of",
-    "image",
-    "sized_image",
-    "video",
-    "sized_video",
 ]
 
 
@@ -278,39 +273,3 @@ class SizedSpatialDomain(SizedListDomain, SpatialDomain):
             SpatialDomain(self.inner),
             SizedListDomain(self.inner, length=self.length),
         ]
-
-
-# Aliases ====
-
-
-def grid_of(inner: Domain = AnyDomain()) -> SpatialDomain:
-    "`Spatial[Spatial[inner]]`, `[H, W, ...]`."
-
-    return SpatialDomain(SpatialDomain(inner))
-
-
-def image() -> ListDomain:
-    "`List[Spatial[Spatial]]`, `[C, H, W]`."
-
-    return ListDomain(grid_of())
-
-
-def sized_image(channels: int, height: int, width: int) -> SizedListDomain:
-    "An image of this many channels, height and width."
-
-    grid = SizedSpatialDomain(SizedSpatialDomain(length=width), length=height)
-    return SizedListDomain(grid, length=channels)
-
-
-def video() -> TemporalDomain:
-    "`Temporal[List[Spatial[Spatial]]]`, `[T, C, H, W]`."
-
-    return TemporalDomain(image())
-
-
-def sized_video(
-    frames: int, channels: int, height: int, width: int
-) -> SizedTemporalDomain:
-    "A video of this many frames, channels, height and width."
-
-    return SizedTemporalDomain(sized_image(channels, height, width), length=frames)

@@ -5,12 +5,11 @@
 import typing
 
 from torch import nn
-from torchrl.data import tensor_specs as tspecs
 
-from aioway.io.tspecs import TSpec
 from aioway.ops import OpFunc, SameShapeOp
 
 from ._utils import observ_op
+from .domains import FloatListDomain
 from .emitters import Emitter, emitter_dcls, emitter_function
 
 __all__ = ["NormEmitter", "NormType", "layer_norm_emitter"]
@@ -19,22 +18,16 @@ type NormType = typing.Literal["instance", "batch"]
 
 
 @emitter_dcls
-class NormEmitter(Emitter):
+class NormEmitter(Emitter[FloatListDomain, FloatListDomain]):
     norm_type: NormType
     "The type of normalization layer."
 
-    def __call__(self, observ: TSpec, action: TSpec) -> OpFunc:
-
-        if not isinstance(observ, tspecs.Unbounded):
-            return NotImplemented
-
-        if not isinstance(action, tspecs.Unbounded):
-            return NotImplemented
-
+    def emit(self, observ: FloatListDomain, action: FloatListDomain, /) -> OpFunc:
         if observ != action:
             return NotImplemented
 
-        module = self._get_norm(observ.ndim - 1, observ.shape[0])
+        shape = observ.shape.torch()
+        module = self._get_norm(len(shape) - 1, shape[0])
         return OpFunc(SameShapeOp(module, observ_op()))
 
     def _get_norm(self, non_channel_ndim: int, num_features: int) -> nn.Module:
@@ -43,15 +36,8 @@ class NormEmitter(Emitter):
 
 
 @emitter_function
-def layer_norm_emitter(observ: TSpec, action: TSpec) -> OpFunc:
-
-    if not isinstance(observ, tspecs.Unbounded):
-        return NotImplemented
-
-    if not isinstance(action, tspecs.Unbounded):
-        return NotImplemented
-
+def layer_norm_emitter(observ: FloatListDomain, action: FloatListDomain) -> OpFunc:
     if observ != action:
         return NotImplemented
 
-    return OpFunc(SameShapeOp(nn.LayerNorm(observ.shape), observ_op()))
+    return OpFunc(SameShapeOp(nn.LayerNorm(observ.shape.torch()), observ_op()))
