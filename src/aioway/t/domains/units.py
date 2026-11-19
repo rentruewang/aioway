@@ -101,12 +101,7 @@ class TDictDomain(Domain[td.TensorDictBase]):
 
     def check_type(self, obj: td.TensorDictBase, /) -> None:
         super().check_type(obj)
-
-        if not td.is_tensor_collection(obj):
-            raise InvalidValueForDomain(f"expected a TensorDict, got {type(obj)=}")
-
-        # Just so it handles tensorclass as well.
-        obj = tcol_to_tdict(obj)
+        obj = _tcol_to_tdict(obj)
 
         for key, domain in self.domains.items():
             if key not in obj.keys():
@@ -116,5 +111,14 @@ class TDictDomain(Domain[td.TensorDictBase]):
 
     def check_data(self, obj: td.TensorDictBase, /) -> None:
         super().check_data(obj)
+        obj = _tcol_to_tdict(obj)
+
         for key, domain in self.domains.items():
             domain.check_data(obj[key])
+
+
+def _tcol_to_tdict(obj):
+    try:
+        return tcol_to_tdict(obj)
+    except ValueError:
+        raise InvalidValueForDomain("Not a tensor collection.")
