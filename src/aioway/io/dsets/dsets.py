@@ -75,9 +75,7 @@ class DatasetIdxDset[T](IdxDset[T]):
     Adaptor from `du.Dataset` to `IdxDset`.
     """
 
-    def __init__(
-        self, dataset: du.Dataset[T], domain: Domain, collate_fn=None
-    ) -> None:
+    def __init__(self, dataset: du.Dataset[T], domain: Domain, collate_fn=None) -> None:
         self._dataset = dataset
         self._domain = domain
         self._colalte_fn = collate_fn
