@@ -242,6 +242,9 @@ class SizedListDomain(SizedMixin, ListDomain):
     length: int = dcls.field(kw_only=True)
     "The length of the list."
 
+    def __str__(self) -> str:
+        return str(self.inner) + f"[{self.length}]"
+
     @property
     def __extends__(self) -> list[Domain]:
         return [ListDomain(self.inner)]
