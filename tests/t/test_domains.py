@@ -6,7 +6,7 @@ import pytest
 import torch
 
 from aioway.t import (
-    DTypeMixin,
+    DTypeFamilyMixin,
     RangeMixin,
     RequiresGradMixin,
     AnyDomain,
@@ -152,20 +152,20 @@ class TestFakeValues:
 # Tensor mixins ====
 
 
-class _FloatBatch(DTypeMixin, BatchDomain):
+class _FloatBatch(DTypeFamilyMixin, BatchDomain):
     "A float batch, to check the mixin composes with lists."
 
 
 class TestTensorMixins:
     def test_dtype(self):
-        DTypeMixin(family="float").check(torch.rand(2))
-        DTypeMixin(family="int").check(torch.arange(2))
+        DTypeFamilyMixin(family="float").check(torch.rand(2))
+        DTypeFamilyMixin(family="int").check(torch.arange(2))
 
         with pytest.raises(InvalidValueForDomain):
-            DTypeMixin(family="float").check(torch.arange(2))
+            DTypeFamilyMixin(family="float").check(torch.arange(2))
 
     def test_dtype_fake(self):
-        DTypeMixin(family="float").check(_fake(2))
+        DTypeFamilyMixin(family="float").check(_fake(2))
 
     def test_dtype_with_list(self):
         domain = _FloatBatch(SizedListDomain(length=3), family="float")

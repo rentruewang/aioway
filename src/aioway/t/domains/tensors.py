@@ -20,7 +20,7 @@ from .domains import AnyDomain, Domain, InvalidValueForDomain
 
 __all__ = [
     "TensorDomain",
-    "DTypeMixin",
+    "DTypeFamilyMixin",
     "RequiresGradMixin",
     "RangeMixin",
     "SizedMixin",
@@ -58,37 +58,42 @@ class TensorDomain(Domain[torch.Tensor]):
 # Tensor mixins ====
 
 
-class DTypeMixin(TensorDomain):
+class DTypeFamilyMixin(TensorDomain):
     "A tensor of this dtype family."
 
     family: DTypeFamily = dcls.field(kw_only=True)
+    "The dtype family the tensor must be in."
 
     def check_type(self, obj: torch.Tensor, /) -> None:
         super().check_type(obj)
 
         if (family := parse_attr(obj).dtype.family) != self.family:
-            raise InvalidValueForDomain(f"dtype family {family}, expected {self.family}")
+            raise InvalidValueForDomain(
+                f"dtype family {family}, expected {self.family}"
+            )
 
 
 class RequiresGradMixin(TensorDomain):
     "A tensor that requires grad or not."
 
     requires_grad: bool = dcls.field(kw_only=True)
+    "Whether the tensor must require grad."
 
     def check_type(self, obj: torch.Tensor, /) -> None:
         super().check_type(obj)
 
-        if (requires_grad := parse_attr(obj).requires_grad) != self.requires_grad:
-            raise InvalidValueForDomain(
-                f"{requires_grad=}, expected {self.requires_grad}"
-            )
+        if (req_grad := parse_attr(obj).requires_grad) != self.requires_grad:
+            raise InvalidValueForDomain(f"{req_grad=}, expected {self.requires_grad}")
 
 
 class RangeMixin(TensorDomain):
     "A tensor whose values are in `[low, high]`."
 
     low: float = dcls.field(kw_only=True)
+    "The smallest value allowed, inclusive."
+
     high: float = dcls.field(kw_only=True)
+    "The largest value allowed, inclusive."
 
     def check_data(self, obj: torch.Tensor, /) -> None:
         super().check_data(obj)
