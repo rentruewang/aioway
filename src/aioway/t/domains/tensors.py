@@ -14,13 +14,13 @@ import typing
 
 import torch
 
-import aioway.t.attrs.shapes
 from aioway.t.attrs import DTypeFamily, Shape, parse_attr
 
 from .domains import AnyDomain, Domain, InvalidValueForDomain
 
 __all__ = [
     "TensorDomain",
+    "TensorItemDomain",
     "DTypeFamilyMixin",
     "RequiresGradMixin",
     "RangeMixin",
@@ -55,6 +55,44 @@ class TensorDomain(Domain[torch.Tensor]):
     def check_type(self, obj: torch.Tensor, /) -> None:
         if not isinstance(obj, torch.Tensor):
             raise InvalidValueForDomain(f"Expected a tensor, got {type(obj)=}.")
+
+
+class SizedMixin(TensorDomain, abc.ABC):
+    """
+    A tensor domain with a known `shape` per example.
+
+    Batch is not part of `shape`: any leading dimensions in front of it.
+    """
+
+    @property
+    @abc.abstractmethod
+    def shape(self) -> Shape:
+        raise NotImplementedError
+
+    @property
+    def ndim(self) -> int:
+        return len(self.shape)
+
+    def batch_size_of(self, obj: torch.Tensor, /) -> Shape:
+        "The leading dimensions of `obj`, in front of the ones `shape` describes."
+
+        shape = parse_attr(obj).shape
+        if len(shape) < self.ndim:
+            raise InvalidValueForDomain(f"needs {self.ndim} dims, got {shape=}")
+
+        return Shape.parse(list(shape)[: len(shape) - self.ndim])
+
+
+class TensorItemDomain(SizedMixin):
+    "A 0D tensor per example, where sized lists end."
+
+    @property
+    def __extends__(self) -> list[Domain]:
+        return [TensorDomain()]
+
+    @property
+    def shape(self) -> Shape:
+        return Shape.parse([])
 
 
 # Tensor mixins ====
@@ -129,18 +167,12 @@ class FloatTensorDomain(DTypeFamilyMixin):
         return [TensorDomain()]
 
 
-class ScoreTensorDomain(FloatTensorDomain):
-    "A float tensor of shape `()`, e.g. a reduced loss."
+class ScoreTensorDomain(FloatTensorDomain, TensorItemDomain):
+    "A float item per example, e.g. a loss."
 
     @property
     def __extends__(self) -> list[Domain]:
-        return [FloatTensorDomain()]
-
-    def check_type(self, obj: torch.Tensor, /) -> None:
-        super().check_type(obj)
-
-        if shape := parse_attr(obj).shape:
-            raise InvalidValueForDomain(f"a score has shape (), got {shape=}")
+        return [FloatTensorDomain(), TensorItemDomain()]
 
 
 # Lists ====
@@ -179,48 +211,6 @@ class ListDomain(TensorDomain):
         self.inner.check_data(obj)
 
 
-# Mixins ====
-
-
-class SizedMixin(ListDomain, abc.ABC):
-    """
-    A list of this length, providing `shape`, built from the `inner`s.
-
-    Batch is not part of `shape`, `-1` means any length.
-    """
-
-    length: int = dcls.field(kw_only=True)
-
-    @property
-    def shape(self) -> Shape:
-        # `inner` is a field of the list this is mixed into.
-        inner = self.inner
-        rest: aioway.t.attrs.shapes.Shape | list[int] = []
-
-        if isinstance(inner, SizedMixin):
-            rest = inner.shape
-        elif isinstance(inner, ListDomain):
-            rest = [-1] * inner.ndim
-
-        return Shape.parse([self.length, *rest])
-
-    def batch_size_of(self, obj: torch.Tensor, /) -> Shape:
-        "The leading dimensions of `obj`, in front of the ones `shape` describes."
-
-        shape = parse_attr(obj).shape
-        if len(shape) < self.ndim:
-            raise InvalidValueForDomain(f"needs {self.ndim} dims, got {shape=}")
-
-        return Shape.parse(list(shape)[: len(shape) - self.ndim])
-
-    def check_type(self, obj: torch.Tensor, /) -> None:
-        super().check_type(obj)
-
-        length = parse_attr(obj).shape[-self.ndim]
-        if self.length != -1 and length != self.length:
-            raise InvalidValueForDomain(f"length {length}, expected {self.length}")
-
-
 # Implementations ====
 
 
@@ -244,9 +234,28 @@ class SpatialDomain(ListDomain):
 
 
 class SizedListDomain(SizedMixin, ListDomain):
+    "A list of this length, `-1` for any length."
+
+    inner: SizedMixin = TensorItemDomain()
+    "Sized lists nest sized domains, ending with an item."
+
+    length: int = dcls.field(kw_only=True)
+    "The length of the list."
+
     @property
     def __extends__(self) -> list[Domain]:
         return [ListDomain(self.inner)]
+
+    @property
+    def shape(self) -> Shape:
+        return Shape.parse([self.length, *self.inner.shape])
+
+    def check_type(self, obj: torch.Tensor, /) -> None:
+        super().check_type(obj)
+
+        length = parse_attr(obj).shape[-self.ndim]
+        if self.length != -1 and length != self.length:
+            raise InvalidValueForDomain(f"length {length}, expected {self.length}")
 
 
 class SizedTemporalDomain(SizedListDomain, TemporalDomain):

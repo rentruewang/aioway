@@ -24,6 +24,7 @@ from aioway.t import (
     TDictDomain,
     TemporalDomain,
     TensorDomain,
+    TensorItemDomain,
     fake_mode,
     grid_of,
     image,
@@ -60,6 +61,7 @@ class TestHierarchy:
             (grid_of(), ListDomain(ListDomain())),
             (video(), TemporalDomain()),
             (video(), AnyDomain()),
+            (TensorItemDomain(), TensorDomain()),
             (ListDomain(PairDomain()), ListDomain()),
         ],
     )
@@ -91,8 +93,9 @@ class TestShape:
     def test_sized_video(self):
         assert sized_video(2, 3, 4, 5).shape == (2, 3, 4, 5)
 
-    def test_unsized_inner(self):
-        assert SizedListDomain(ListDomain(), length=2).shape == (2, -1)
+    def test_item(self):
+        assert TensorItemDomain().shape == ()
+        assert SizedListDomain(length=2).shape == (2,)
 
     @pytest.mark.parametrize("batch", [(), (2,), (6, 2)])
     def test_batch_size_of(self, batch):
@@ -210,9 +213,8 @@ class TestDtypes:
 
     def test_score(self):
         ScoreTensorDomain().check(torch.tensor(1.0))
-
-        with pytest.raises(InvalidValueForDomain):
-            ScoreTensorDomain().check(torch.rand(1))
+        ScoreTensorDomain().check(torch.rand(3))
+        assert ScoreTensorDomain() <= TensorItemDomain()
 
         with pytest.raises(InvalidValueForDomain):
             ScoreTensorDomain().check(torch.tensor(1))
