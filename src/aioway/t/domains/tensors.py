@@ -182,6 +182,7 @@ class ListDomain(TensorDomain):
     "`inner` values in order, `[L, ...]`."
 
     inner: Domain = AnyDomain()
+    "The type for the elements."
 
     @property
     def __extends__(self) -> list[Domain]:
