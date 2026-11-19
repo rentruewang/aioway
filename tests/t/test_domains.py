@@ -9,7 +9,6 @@ import torch
 from aioway.t import (
     AnyDomain,
     BatchDomain,
-    TDictDomain,
     FloatTensorDomain,
     IntTensorDomain,
     InvalidValueForDomain,
@@ -21,6 +20,7 @@ from aioway.t import (
     SizedListDomain,
     SizedSpatialDomain,
     SpatialDomain,
+    TDictDomain,
     TemporalDomain,
     TensorDomain,
     fake_mode,
