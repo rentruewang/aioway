@@ -17,7 +17,8 @@ __all__ = ["Train", "Eval"]
 @dcls.dataclass(frozen=True)
 class Train:
     """Supervised training: descend objective(model, *batch) over the data's batches for `steps` steps, cycling
-    the data. Every `every` steps, the objective's mean on valid (if given). Callbacks watch, and may stop it."""
+    the data. Every `every` steps, the objective's mean on valid (if given). Callbacks watch, and may stop it.
+    """
 
     steps: int
     lr: float = 3e-4
@@ -28,11 +29,7 @@ class Train:
         state = State(model, optim.AdamW(model.parameters(), lr=self.lr))
         batches = _cycle(data)
 
-        with contextlib.ExitStack() as stack:
-            stack.enter_context(_mode(model, training=True))
-            for cb in self.callbacks:
-                stack.enter_context(cb.fit(state))
-
+        with _mode(model, training=True):
             while state.step < self.steps and not state.stop:
                 loss = objective(model, *next(batches))
                 state.optimizer.zero_grad()

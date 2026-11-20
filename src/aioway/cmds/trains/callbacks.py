@@ -1,6 +1,5 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-import contextlib
 import dataclasses as dcls
 import math
 
@@ -30,11 +29,6 @@ class State:
 class Callback:
     "Every hook does nothing by default: override the ones needed."
 
-    @contextlib.contextmanager
-    def fit(self, state: State):
-        "Setup before training, teardown after it (even when it raises)."
-        yield
-
     def on_step_end(self, state: State) -> None:
         pass
 
@@ -44,16 +38,11 @@ class Callback:
 
 @dcls.dataclass
 class EarlyStopping(Callback):
-    "Stop once the valid loss has not improved for `patience` checks."
+    "Stop once the valid loss has not improved for `patience` checks. Not reset between runs: one per `Train` call."
 
     patience: int
     best: float = dcls.field(default=math.inf, init=False)
     bad: int = dcls.field(default=0, init=False)
-
-    @contextlib.contextmanager
-    def fit(self, state):
-        self.best, self.bad = math.inf, 0
-        yield
 
     def on_valid_end(self, state):
         if state.valid_loss < self.best:
