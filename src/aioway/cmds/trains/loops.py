@@ -6,6 +6,8 @@ import dataclasses as dcls
 import torch
 from torch import nn, optim
 
+from aioway.io import Dset
+
 from .callbacks import Callback, State
 
 __all__ = ["Train", "Eval"]
@@ -16,36 +18,25 @@ __all__ = ["Train", "Eval"]
 
 @dcls.dataclass(frozen=True)
 class Train:
-    """Supervised training: descend objective(model, *batch) over the data's batches for `steps` steps, cycling
-    the data. Every `every` steps, the objective's mean on valid (if given). Callbacks watch, and may stop it.
-    """
+    """One pass of supervised training over a `Dset`: per batch, loss(model(input), target), backward, step.
+    More epochs, validation and early stopping are for whoever calls it again."""
 
-    steps: int
-    every: int = 100
+    batch_size: int
     callbacks: tuple[Callback, ...] = ()
 
-    def __call__(
-        self, model: nn.Module, optimizer: optim.Optimizer, objective, data, valid=None
-    ) -> None:
-        state = State(model, optimizer)
-        batches = _cycle(data)
+    def __call__(self, model: nn.Module, optimizer: optim.Optimizer, loss, dset: Dset) -> None:
+        loader = dset.to_dataloader(batch_size=self.batch_size, shuffle=True, collate_fn=dset.collate_fn)
 
         with _set_training_mode(model, to=True):
-            while state.step < self.steps and not state.stop:
-                loss = objective(model, *next(batches))
+            for step, batch in enumerate(loader, 1):
+                value = loss(model(batch.input), batch.target)
                 optimizer.zero_grad()
-                loss.backward()
+                value.backward()
                 optimizer.step()
 
-                state.step += 1
-                state.loss = loss.item()
+                state = State(model, optimizer, step, value.item())
                 for cb in self.callbacks:
                     cb.on_step_end(state)
-
-                if valid is not None and state.step % self.every == 0:
-                    state.valid_loss = Eval()(model, objective, valid)
-                    for cb in self.callbacks:
-                        cb.on_valid_end(state)
 
 
 # eval ====
@@ -53,21 +44,19 @@ class Train:
 
 @dcls.dataclass(frozen=True)
 class Eval:
-    "The objective's mean over the data's batches, in eval mode, without gradients: validation and test alike."
+    "The loss's mean over a `Dset`'s batches, in eval mode, without gradients: validation and test alike."
 
-    def __call__(self, model: nn.Module, objective, data) -> float:
+    batch_size: int
+
+    def __call__(self, model: nn.Module, loss, dset: Dset) -> float:
+        loader = dset.to_dataloader(batch_size=self.batch_size, shuffle=False, collate_fn=dset.collate_fn)
+
         with _set_training_mode(model, to=False), torch.no_grad():
-            losses = [objective(model, *batch).item() for batch in data]
+            losses = [loss(model(batch.input), batch.target).item() for batch in loader]
         return sum(losses) / len(losses)
 
 
 # helpers ====
-
-
-def _cycle(data):
-    "The data's batches, over and over (iterated again each pass, so a shuffling loader reshuffles)."
-    while True:
-        yield from data
 
 
 @contextlib.contextmanager
