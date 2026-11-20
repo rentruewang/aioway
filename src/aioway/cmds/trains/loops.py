@@ -33,9 +33,9 @@ class Train:
         with _set_training_mode(model, to=True):
             while state.step < self.steps and not state.stop:
                 loss = objective(model, *next(batches))
-                state.optimizer.zero_grad()
+                optimizer.zero_grad()
                 loss.backward()
-                state.optimizer.step()
+                optimizer.step()
 
                 state.step += 1
                 state.loss = loss.item()
