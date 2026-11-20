@@ -24,8 +24,12 @@ class Train:
     batch_size: int
     callbacks: tuple[Callback, ...] = ()
 
-    def __call__(self, model: nn.Module, optimizer: optim.Optimizer, loss, dset: Dset) -> None:
-        loader = dset.to_dataloader(batch_size=self.batch_size, shuffle=True, collate_fn=dset.collate_fn)
+    def __call__(
+        self, model: nn.Module, optimizer: optim.Optimizer, loss, dset: Dset
+    ) -> None:
+        loader = dset.to_dataloader(
+            batch_size=self.batch_size, shuffle=True, collate_fn=dset.collate_fn
+        )
 
         with _set_training_mode(model, to=True):
             for step, batch in enumerate(loader, 1):
@@ -49,7 +53,9 @@ class Eval:
     batch_size: int
 
     def __call__(self, model: nn.Module, loss, dset: Dset) -> float:
-        loader = dset.to_dataloader(batch_size=self.batch_size, shuffle=False, collate_fn=dset.collate_fn)
+        loader = dset.to_dataloader(
+            batch_size=self.batch_size, shuffle=False, collate_fn=dset.collate_fn
+        )
 
         with _set_training_mode(model, to=False), torch.no_grad():
             losses = [loss(model(batch.input), batch.target).item() for batch in loader]
