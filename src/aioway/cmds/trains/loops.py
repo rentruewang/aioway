@@ -21,15 +21,16 @@ class Train:
     """
 
     steps: int
-    lr: float = 3e-4
     every: int = 100
     callbacks: tuple[Callback, ...] = ()
 
-    def __call__(self, model: nn.Module, objective, data, valid=None) -> None:
-        state = State(model, optim.AdamW(model.parameters(), lr=self.lr))
+    def __call__(
+        self, model: nn.Module, optimizer: optim.Optimizer, objective, data, valid=None
+    ) -> None:
+        state = State(model, optimizer)
         batches = _cycle(data)
 
-        with _mode(model, training=True):
+        with _set_training_mode(model, to=True):
             while state.step < self.steps and not state.stop:
                 loss = objective(model, *next(batches))
                 state.optimizer.zero_grad()
@@ -55,7 +56,7 @@ class Eval:
     "The objective's mean over the data's batches, in eval mode, without gradients: validation and test alike."
 
     def __call__(self, model: nn.Module, objective, data) -> float:
-        with _mode(model, training=False), torch.no_grad():
+        with _set_training_mode(model, to=False), torch.no_grad():
             losses = [objective(model, *batch).item() for batch in data]
         return sum(losses) / len(losses)
 
@@ -70,10 +71,10 @@ def _cycle(data):
 
 
 @contextlib.contextmanager
-def _mode(model: nn.Module, training: bool):
+def _set_training_mode(model: nn.Module, to: bool):
     "The model in training or eval mode inside, its old mode back after."
     was = model.training
-    model.train(training)
+    model.train(to)
     try:
         yield
     finally:
