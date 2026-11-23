@@ -13,7 +13,7 @@ from .callbacks import Callback, State
 __all__ = ["Train", "Eval"]
 
 
-# train ====
+# Train ====
 
 
 @dcls.dataclass(frozen=True)
@@ -43,7 +43,7 @@ class Train:
                     cb.on_step_end(state)
 
 
-# eval ====
+# Eval ====
 
 
 @dcls.dataclass(frozen=True)
@@ -62,7 +62,7 @@ class Eval:
         return sum(losses) / len(losses)
 
 
-# helpers ====
+# Helpers ====
 
 
 @contextlib.contextmanager

@@ -2,3 +2,4 @@
 
 from .comps import *
 from .dsets import *
+from .mgrs import *
