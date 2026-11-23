@@ -7,7 +7,7 @@ from torch import nn, optim
 __all__ = ["State", "Callback", "PrintLoss"]
 
 
-# state ====
+# State ====
 
 
 @dcls.dataclass(frozen=True)
@@ -20,7 +20,7 @@ class State:
     loss: float
 
 
-# callbacks ====
+# Callbacks ====
 
 
 class Callback:
