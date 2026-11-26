@@ -15,7 +15,6 @@ from torch.utils import _cxx_pytree, _pytree
 Context = _cxx_pytree.Context
 PyTree = _cxx_pytree.PyTree
 TreeSpec = _cxx_pytree.TreeSpec
-LeafSpec = _cxx_pytree.LeafSpec
 
 # Registration. Should work everywhere. ====
 
