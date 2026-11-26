@@ -18,6 +18,10 @@ class Metric[I, O](abc.ABC):
     2. Lots of metrics are ~10 lines, where wiring takes more code.
     """
 
+    def __call__(self, batch: I, /) -> O:
+        self.update(batch)
+        return self.compute()
+
     @property
     def __domain__(self) -> Domain[O]:
         return self._output_domain()
