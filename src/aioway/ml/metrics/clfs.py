@@ -3,6 +3,7 @@
 "Classification metrics, from a confusion matrix."
 
 import abc
+import dataclasses as dcls
 import typing
 
 import torch
@@ -21,7 +22,6 @@ from aioway.t import (
 from .metrics import Metric
 
 __all__ = [
-    "Average",
     "ConfusionMatrix",
     "Accuracy",
     "Precision",
@@ -30,8 +30,40 @@ __all__ = [
     "F1Score",
 ]
 
-type Average = typing.Literal["micro", "macro", "weighted", "none"]
+type _Average = typing.Literal["micro", "macro", "weighted", "none"]
 "How per class scores are reduced, same as `torchmetrics`."
+
+
+@dcls.dataclass(frozen=True)
+class _AverageVisitor[T]:
+    "What to do per `Average`. Unset ones, or ones returning `NotImplemented`, use `default`."
+
+    default: T
+    micro: T | None = None
+    macro: T | None = None
+    weighted: T | None = None
+    none: T | None = None
+
+    def __call__(self, avg: _Average) -> T:
+
+        if (result := self._get(avg)) is None:
+            return self.default
+
+        else:
+            return result
+
+    def _get(self, avg: _Average) -> T:
+        match avg:
+            case "micro":
+                result = self.micro
+            case "macro":
+                result = self.macro
+            case "weighted":
+                result = self.weighted
+            case "none":
+                result = self.none
+            case _:
+                raise ValueError(f"Unknown average: {avg}")
 
 
 class ConfusionMatrix(Metric[Pair, torch.Tensor]):
@@ -78,7 +110,7 @@ class ConfusionMatrix(Metric[Pair, torch.Tensor]):
 class _StatScores(Metric[Pair, torch.Tensor], abc.ABC):
     "A score per class from the confusion matrix, then reduced by `average`."
 
-    def __init__(self, num_classes: int, average: Average = "macro") -> None:
+    def __init__(self, num_classes: int, average: _Average = "macro") -> None:
         super().__init__()
         self.average = average
         self.mat = ConfusionMatrix(num_classes)
@@ -165,7 +197,7 @@ class FBetaScore(_StatScores):
     "The weighted harmonic mean of precision and recall, recall `beta` times as important."
 
     def __init__(
-        self, num_classes: int, beta: float = 1.0, average: Average = "macro"
+        self, num_classes: int, beta: float = 1.0, average: _Average = "macro"
     ) -> None:
         super().__init__(num_classes, average)
         self.beta = beta
@@ -179,7 +211,7 @@ class FBetaScore(_StatScores):
 class F1Score(FBetaScore):
     "`FBetaScore` with `beta=1`."
 
-    def __init__(self, num_classes: int, average: Average = "macro") -> None:
+    def __init__(self, num_classes: int, average: _Average = "macro") -> None:
         super().__init__(num_classes, beta=1.0, average=average)
 
 
