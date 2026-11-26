@@ -7,7 +7,7 @@ from aioway.ops import LayerOp, OpFunc, SameShapeOp, ViewOp
 
 from ._utils import Activation, linear_tree, observ_op
 from .domains import FloatListDomain, IntRangeItemDomain
-from .emitters import Emitter, EmitterLike, emitter_dcls, emitter_function
+from .emitters import Emitter, EmitterLike, emitter_function
 
 __all__ = [
     "linear_regression",
@@ -27,7 +27,6 @@ def linear_regression(observ: FloatListDomain, action: FloatListDomain) -> OpFun
     return OpFunc(linear_tree(observ_op(), in_shape, out_shape))
 
 
-@emitter_dcls
 class ClfLogitHead(Emitter[FloatListDomain, IntRangeItemDomain]):
     "Emits a classification head."
 
@@ -47,7 +46,6 @@ class ClfLogitHead(Emitter[FloatListDomain, IntRangeItemDomain]):
         return OpFunc(LayerOp(nn.Linear(in_features, action_count), flat))
 
 
-@emitter_dcls
 class _MlpEmitter(Emitter[FloatListDomain, FloatListDomain]):
     """
     Emits an MLP.
@@ -64,7 +62,6 @@ class _MlpEmitter(Emitter[FloatListDomain, FloatListDomain]):
     """
 
 
-@emitter_dcls
 class TorchRlMlpEmitter(_MlpEmitter):
     "Emits a `torchrl.modules.MLP`."
 
@@ -78,7 +75,6 @@ class TorchRlMlpEmitter(_MlpEmitter):
         return OpFunc(LayerOp(module, observ_op()))
 
 
-@emitter_dcls
 class MlpEmitter(_MlpEmitter):
     """
     Emits `Linear`s with activations in between.
