@@ -45,7 +45,7 @@ class ConfusionMatrix(Metric[Pair, torch.Tensor]):
     def __init__(self, num_classes: int) -> None:
         super().__init__()
         self.num_classes = num_classes
-        self.confmat = nn.Buffer(
+        self.confmat: torch.Tensor = nn.Buffer(
             torch.zeros(num_classes, num_classes, dtype=torch.long)
         )
 
@@ -68,7 +68,7 @@ class ConfusionMatrix(Metric[Pair, torch.Tensor]):
         c = self.num_classes
         index = target.flatten() * c + preds.flatten()
         counts: typing.Any = torch.bincount(index, minlength=c * c).reshape(c, c)
-        self.confmat = self.confmat + counts
+        self.confmat += counts
 
     @typing.override
     def _compute(self) -> torch.Tensor:

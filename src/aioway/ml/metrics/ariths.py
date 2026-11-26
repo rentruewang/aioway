@@ -36,7 +36,7 @@ class SumMetric(_ArithMetric):
 
     @typing.override
     def _update(self, batch: torch.Tensor, /) -> None:
-        self.total = self.total + batch.detach().float().sum()
+        self.total += batch.detach().float().sum()
 
     @typing.override
     def _compute(self) -> torch.Tensor:
@@ -48,13 +48,13 @@ class MeanMetric(_ArithMetric):
 
     def __init__(self) -> None:
         super().__init__()
-        self.total = nn.Buffer(torch.tensor(0.0))
-        self.count = nn.Buffer(torch.tensor(0))
+        self.total: torch.Tensor = nn.Buffer(torch.tensor(0.0))
+        self.count: torch.Tensor = nn.Buffer(torch.tensor(0))
 
     @typing.override
     def _update(self, batch: torch.Tensor, /) -> None:
-        self.total = self.total + batch.detach().float().sum()
-        self.count = self.count + batch.numel()
+        self.total += batch.detach().float().sum()
+        self.count += batch.numel()
 
     @typing.override
     def _compute(self) -> torch.Tensor:
@@ -66,7 +66,7 @@ class MaxMetric(_ArithMetric):
 
     def __init__(self) -> None:
         super().__init__()
-        self.value = nn.Buffer(torch.tensor(-torch.inf))
+        self.value: torch.Tensor = nn.Buffer(torch.tensor(-torch.inf))
 
     @typing.override
     def _update(self, batch: torch.Tensor, /) -> None:
@@ -82,7 +82,7 @@ class MinMetric(_ArithMetric):
 
     def __init__(self) -> None:
         super().__init__()
-        self.value = nn.Buffer(torch.tensor(torch.inf))
+        self.value: torch.Tensor = nn.Buffer(torch.tensor(torch.inf))
 
     @typing.override
     def _update(self, batch: torch.Tensor, /) -> None:
