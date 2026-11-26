@@ -12,14 +12,12 @@ import tensordict as td
 import torch
 
 from aioway._utils import is_tuple_of
+lazy from aioway.t import TList
 
 from .devices import Device, DeviceLike
 from .dtypes import DType, DTypeLike
 from .layouts import Layout, LayoutLike
 from .shapes import Shape, ShapeLike
-
-if typing.TYPE_CHECKING:
-    from aioway.t import TList
 
 __all__ = ["Attr", "AttrDict", "parse_attr"]
 

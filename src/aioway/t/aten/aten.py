@@ -14,9 +14,7 @@ from aioway._pytrees import find_nested_tensors
 from aioway._utils import render_fcall
 from aioway.t._utils import camel_to_snake
 from aioway.t.sessions import Cost
-
-if typing.TYPE_CHECKING:
-    from aioway.t import TorchDispThunk
+lazy from aioway.t import TorchDispThunk
 
 __all__ = ["Aten", "find_aten", "all_aten_overrides"]
 

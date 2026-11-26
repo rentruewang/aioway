@@ -2,8 +2,7 @@
 import functools
 import typing
 
-if typing.TYPE_CHECKING:
-    import fastapi
+lazy import fastapi
 
 __all__ = ["fastapi_app", "route_fastapi"]
 
