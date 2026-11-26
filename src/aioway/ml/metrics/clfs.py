@@ -44,7 +44,7 @@ class ConfusionMatrix(Metric[Pair, torch.Tensor]):
     def __init__(self, num_classes: int) -> None:
         super().__init__()
         self.num_classes = num_classes
-        self.confmat: torch.Tensor = nn.Buffer(
+        self.mat: torch.Tensor = nn.Buffer(
             torch.zeros(num_classes, num_classes, dtype=torch.long)
         )
 
@@ -67,11 +67,11 @@ class ConfusionMatrix(Metric[Pair, torch.Tensor]):
         c = self.num_classes
         index = target.flatten() * c + preds.flatten()
         counts: typing.Any = torch.bincount(index, minlength=c * c).reshape(c, c)
-        self.confmat += counts
+        self.mat += counts
 
     @typing.override
     def _compute(self) -> torch.Tensor:
-        return self.confmat
+        return self.mat
 
 
 class _StatScores(Metric[Pair, torch.Tensor], abc.ABC):
@@ -80,17 +80,17 @@ class _StatScores(Metric[Pair, torch.Tensor], abc.ABC):
     def __init__(self, num_classes: int, average: Average = "macro") -> None:
         super().__init__()
         self.average = average
-        self.confmat = ConfusionMatrix(num_classes)
+        self.mat = ConfusionMatrix(num_classes)
 
     @property
     def num_classes(self) -> int:
         "The number of classes."
 
-        return self.confmat.num_classes
+        return self.mat.num_classes
 
     @typing.override
     def _input_domain(self) -> Domain[Pair]:
-        return self.confmat._input_domain()
+        return self.mat._input_domain()
 
     @typing.override
     def _output_domain(self) -> Domain[torch.Tensor]:
@@ -101,11 +101,11 @@ class _StatScores(Metric[Pair, torch.Tensor], abc.ABC):
 
     @typing.override
     def _update(self, batch: Pair, /) -> None:
-        self.confmat._update(batch)
+        self.mat._update(batch)
 
     @typing.override
     def _compute(self) -> torch.Tensor:
-        cm = self.confmat.compute().float()
+        cm = self.mat.compute().float()
         tp = cm.diag()
         fp = cm.sum(0) - tp
         fn = cm.sum(1) - tp
