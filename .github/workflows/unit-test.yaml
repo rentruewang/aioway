@@ -18,7 +18,6 @@ jobs:
         uses: pdm-project/setup-pdm@v4
         with:
           python-version: ${{ matrix.python-version }}
-          cache: true
 
       - name: 🧪 Test with pytest
         run: make setup install pytest
@@ -38,7 +37,6 @@ jobs:
         uses: pdm-project/setup-pdm@v4
         with:
           python-version: ${{ matrix.python-version }}
-          cache: true
 
       - name: 👷‍♂️ Build
         run: make setup install build

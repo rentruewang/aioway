@@ -24,7 +24,6 @@ jobs:
         uses: pdm-project/setup-pdm@v4
         with:
           python-version: ${{ matrix.python-version }}
-          cache: true
 
       - name: 📦 Release
         run: make setup install publish
