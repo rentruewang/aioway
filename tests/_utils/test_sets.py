@@ -88,7 +88,6 @@ class TestAnySet:
         assert not s.isdisjoint([a, c])
 
     def test_isdisjoint_torch(self):
-        import torch
 
         a = torch.tensor([1, 2])
         b = torch.tensor([1, 2])

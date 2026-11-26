@@ -1,7 +1,6 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 from torch import nn
-from torchrl import modules as rlmods
 
 from aioway.ops import LayerOp, OpFunc, SameShapeOp, ViewOp
 
@@ -13,7 +12,6 @@ __all__ = [
     "linear_regression",
     "ClfLogitHead",
     "MlpEmitter",
-    "TorchRlMlpEmitter",
 ]
 
 
@@ -60,19 +58,6 @@ class _MlpEmitter(Emitter[FloatListDomain, FloatListDomain]):
     """
     The activation to use.
     """
-
-
-class TorchRlMlpEmitter(_MlpEmitter):
-    "Emits a `torchrl.modules.MLP`."
-
-    def emit(self, observ: FloatListDomain, action: FloatListDomain, /) -> OpFunc:
-        module = rlmods.MLP(
-            in_features=observ.shape[-1],
-            out_features=action.shape[-1],
-            num_cells=self.hidden_sizes,
-            activation_class=Activation(self.activation).nn_type,
-        )
-        return OpFunc(LayerOp(module, observ_op()))
 
 
 class MlpEmitter(_MlpEmitter):
