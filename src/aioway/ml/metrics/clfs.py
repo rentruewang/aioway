@@ -52,16 +52,16 @@ class _AverageVisitor[T]:
         else:
             return result
 
-    def _get(self, avg: _Average) -> T:
+    def _get(self, avg: _Average) -> T | None:
         match avg:
             case "micro":
-                result = self.micro
+                return self.micro
             case "macro":
-                result = self.macro
+                return self.macro
             case "weighted":
-                result = self.weighted
+                return self.weighted
             case "none":
-                result = self.none
+                return self.none
             case _:
                 raise ValueError(f"Unknown average: {avg}")
 
@@ -127,10 +127,11 @@ class _StatScores(Metric[Pair, torch.Tensor], abc.ABC):
 
     @typing.override
     def _output_domain(self) -> Domain[torch.Tensor]:
-        if self.average == "none":
-            return SizedListDomain(length=self.num_classes)
-
-        return ScoreTensorDomain()
+        visitor = _AverageVisitor[Domain[torch.Tensor]](
+            default=ScoreTensorDomain(),
+            none=SizedListDomain(length=self.num_classes),
+        )
+        return visitor(self.average)
 
     @typing.override
     def _update(self, batch: Pair, /) -> None:
@@ -143,22 +144,15 @@ class _StatScores(Metric[Pair, torch.Tensor], abc.ABC):
         fp = cm.sum(0) - tp
         fn = cm.sum(1) - tp
 
-        if self.average == "micro":
-            return self._score(tp.sum(), fp.sum(), fn.sum())
-
         scores = self._score(tp, fp, fn)
-
-        if self.average == "none":
-            return scores
-
-        if self.average == "macro":
-            return scores.mean()
-
-        if self.average == "weighted":
-            support = tp + fn
-            return (scores * support).sum() / support.sum()
-
-        raise ValueError(f"Unknown average: {self.average}")
+        support = tp + fn
+        visitor = _AverageVisitor[torch.Tensor](
+            default=scores,
+            micro=self._score(tp.sum(), fp.sum(), fn.sum()),
+            macro=scores.mean(),
+            weighted=(scores * support).sum() / support.sum(),
+        )
+        return visitor(self.average)
 
     @abc.abstractmethod
     def _score(
