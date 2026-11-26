@@ -59,7 +59,8 @@ class ConfusionMatrix(Metric[Pair, torch.Tensor]):
 
     @typing.override
     def _update(self, batch: Pair, /) -> None:
-        preds, target = batch.input.detach(), batch.target.detach()
+        preds = batch.input.detach()
+        target = batch.target.detach()
 
         if preds.is_floating_point():
             preds = preds.argmax(dim=1)
