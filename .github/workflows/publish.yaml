@@ -14,7 +14,7 @@ jobs:
       id-token: write # IMPORTANT: this permission is mandatory for trusted publishing
     strategy:
       matrix:
-        python-version: ["3.14"]
+        python-version: ["3.15"]
 
     steps:
       - name: 🔔 Check out
