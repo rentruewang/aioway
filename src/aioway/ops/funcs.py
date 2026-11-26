@@ -145,7 +145,7 @@ class OpFuncModule(nn.Module):
 
         self.func = func
         self.module_list = nn.ModuleList(
-            op.nn for op in func._all_ops() if isinstance(op, ModuleOp)
+            op.net for op in func._all_ops() if isinstance(op, ModuleOp)
         )
 
     def forward(self, *args, **kwargs) -> typing.Any:

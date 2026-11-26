@@ -50,7 +50,7 @@ class _LossOpMixin[M: nn.Module](ScoreOp, ModuleOp, abc.ABC):
 
     @property
     @typing.override
-    def nn(self) -> M:
+    def net(self) -> M:
         return self.module
 
 

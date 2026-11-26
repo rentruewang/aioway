@@ -47,7 +47,7 @@ class NetMorphLinearOpDeeper(OpRewriteRule):
         "The deeper replacement of the chain's last `Op`."
 
         first, *middle, last = chain
-        inserted = identity_init_linear(first.nn)
+        inserted = identity_init_linear(first.net)
 
         # Stack the identity and the middles again on the kept part.
         [x] = last.__deps__
@@ -77,7 +77,7 @@ class _TypeChain:
         op = end
 
         for typ in reversed(self.pattern):
-            if not isinstance(op, ModuleOp) or not isinstance(op.nn, typ):
+            if not isinstance(op, ModuleOp) or not isinstance(op.net, typ):
                 return None
 
             deps = op.__deps__
@@ -98,7 +98,7 @@ def _rebase(op: Op, dep: Op) -> Op:
 
 def _with_module(op: ModuleOp, module: nn.Module) -> ModuleOp:
     "`op` with its module replaced by `module`."
-    (name,) = [f.name for f in dcls.fields(op) if getattr(op, f.name) is op.nn]
+    (name,) = [f.name for f in dcls.fields(op) if getattr(op, f.name) is op.net]
     return dcls.replace(op, **{name: module})
 
 

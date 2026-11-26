@@ -11,7 +11,7 @@ from aioway.ops import ModuleOp, Op, OpFunc
 
 
 def types(op: Op) -> list[type[nn.Module]]:
-    return [type(o.nn) for o in op.post_order() if isinstance(o, ModuleOp)]
+    return [type(o.net) for o in op.post_order() if isinstance(o, ModuleOp)]
 
 
 def test_unroll_keeps_value():

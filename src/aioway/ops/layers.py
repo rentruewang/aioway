@@ -55,7 +55,7 @@ class _UnaryModuleOpMixin[M: nn.Module](ModuleOp, Op[torch.Tensor], abc.ABC):
 
     @property
     @typing.override
-    def nn(self) -> M:
+    def net(self) -> M:
         return self.module
 
     @abc.abstractmethod

@@ -38,7 +38,7 @@ def add(left: Op, right: Op) -> CallOp:
 
 
 def types(op: Op) -> list[type[nn.Module]]:
-    return [type(o.nn) for o in op.post_order() if isinstance(o, ModuleOp)]
+    return [type(o.net) for o in op.post_order() if isinstance(o, ModuleOp)]
 
 
 def deeper(root: Op, *middle: type[nn.Module]) -> Op:
@@ -93,7 +93,7 @@ def test_rewrite_inside_chain():
         nn.Tanh,
     ]
 
-    inserted = [o.nn for o in result.post_order() if isinstance(o, ModuleOp)][3]
+    inserted = [o.net for o in result.post_order() if isinstance(o, ModuleOp)][3]
     assert (inserted.in_features, inserted.out_features) == (8, 8)
 
 
