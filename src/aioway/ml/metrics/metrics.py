@@ -25,17 +25,17 @@ class Metric[I, O](nn.Module, abc.ABC):
     def __init__(self) -> None:
         super().__init__()
 
-    def forward(self, batch: I, /) -> O:
-        "Update with `batch`, then compute over everything seen so far."
-
-        self.update(batch)
-        return self.compute()
-
     @property
     def __domain__(self) -> Domain[O]:
         "The domain of the computed result."
 
         return self._output_domain()
+
+    def forward(self, batch: I, /) -> O:
+        "Update with `batch`, then compute over everything seen so far."
+
+        self.update(batch)
+        return self.compute()
 
     def compute(self) -> O:
         "The result over all batches seen, checked against `__domain__`."
