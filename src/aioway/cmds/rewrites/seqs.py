@@ -2,7 +2,6 @@
 
 "Unroll `nn.Sequential` into `Op`s, so rules can see the layers inside."
 
-import torch
 from torch import nn
 
 from aioway._signs import Param

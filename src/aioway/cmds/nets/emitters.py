@@ -12,7 +12,6 @@ from aioway.ops import OpFunc
 from aioway.t import Domain
 
 __all__ = [
-    "emitter_dcls",
     "EmitterLike",
     "Emitter",
     "RouteEmitter",
@@ -56,13 +55,13 @@ class EmitterLike(typing.Protocol):
 
 
 @typing.dataclass_transform(frozen_default=True)
-@typing.no_type_check
-def emitter_dcls[T](cls: type[T]) -> type[T]:
-    return dcls.dataclass(frozen=True)(cls)
+class _EmitterDclsMixin:
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        _ = dcls.dataclass(frozen=True)(cls)
 
 
-@emitter_dcls
-class Emitter[O: Domain, A: Domain](EmitterLike, abc.ABC):
+class Emitter[O: Domain, A: Domain](_EmitterDclsMixin, EmitterLike, abc.ABC):
     """
     The base class for `Emitter`s.
 
@@ -130,7 +129,6 @@ class Emitter[O: Domain, A: Domain](EmitterLike, abc.ABC):
             _EMITTERS.discard(self)
 
 
-@emitter_dcls
 class RouteEmitter(Emitter[Domain, Domain]):
     """
     The emitter that explicitly emits from a list of emitters.
@@ -166,7 +164,6 @@ class RouteEmitter(Emitter[Domain, Domain]):
         return cls(emitters_in_scope())
 
 
-@emitter_dcls
 class _FuncEmitter[O: Domain, A: Domain](Emitter[O, A]):
     "The emitter function."
 

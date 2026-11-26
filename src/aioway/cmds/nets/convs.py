@@ -13,12 +13,11 @@ from aioway.t import fake_mode
 
 from ._utils import Activation, linear_tree, observ_op
 from .domains import FloatListDomain, FloatRangeListDomain
-from .emitters import Emitter, emitter_dcls
+from .emitters import Emitter
 
 __all__ = ["ImageRegressorEmitter"]
 
 
-@emitter_dcls
 class ImageRegressorEmitter(Emitter[FloatRangeListDomain, FloatListDomain]):
     """
     The emitter for images -> regression.

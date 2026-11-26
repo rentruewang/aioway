@@ -10,7 +10,6 @@ Batch is implicit: any leading dimensions in front of the ones a domain describe
 
 import abc
 import dataclasses as dcls
-import typing
 
 import torch
 

@@ -10,14 +10,13 @@ from aioway.ops import OpFunc, SameShapeOp
 
 from ._utils import observ_op
 from .domains import FloatListDomain
-from .emitters import Emitter, emitter_dcls, emitter_function
+from .emitters import Emitter, emitter_function
 
 __all__ = ["NormEmitter", "NormType", "layer_norm_emitter"]
 
 type NormType = typing.Literal["instance", "batch"]
 
 
-@emitter_dcls
 class NormEmitter(Emitter[FloatListDomain, FloatListDomain]):
     norm_type: NormType
     "The type of normalization layer."
