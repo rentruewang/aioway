@@ -116,14 +116,13 @@ class _StatScores(Metric[Pair, torch.Tensor], abc.ABC):
 
         scores = self._score(tp, fp, fn)
 
-        match self.average:
-            case "none":
-                return scores
-            case "macro":
-                return scores.mean()
-            case "weighted":
-                support = tp + fn
-                return (scores * support).sum() / support.sum()
+        if self.average == "none":
+            return scores
+        if self.average == "macro":
+            return scores.mean()
+        if self.average == "weighted":
+            support = tp + fn
+            return (scores * support).sum() / support.sum()
 
         raise ValueError(f"Unknown average: {self.average}")
 
