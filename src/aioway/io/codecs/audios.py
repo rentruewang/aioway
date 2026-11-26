@@ -7,6 +7,7 @@ import typing
 
 import torch
 from torch.utils import data as du
+lazy from torchcodec import decoders as dec
 
 from aioway.t import is_fake_mode_on, parse_attr, torch_set_fake_mode_func
 
@@ -172,8 +173,6 @@ class TorchCodecAudioLoader(AudioLoader):
                 The sample rate in Hz.
                 If given, this should be equal to the sample rate in return value.
         """
-
-        from torchcodec import decoders as dec
 
         decoder = dec.AudioDecoder(str(fname), sample_rate=self.sample_rate)
         samples = decoder.get_all_samples()

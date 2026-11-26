@@ -12,7 +12,7 @@ import tensordict as td
 import torch
 
 from aioway._utils import is_tuple_of
-lazy from aioway.t import TList
+lazy from aioway.t import TList, fake_mode
 
 from .devices import Device, DeviceLike
 from .dtypes import DType, DTypeLike
@@ -146,8 +146,6 @@ class Attr:
         """
         Generate a random tensor. This should be used under fake mode.
         """
-
-        from aioway.t import fake_mode
 
         with fake_mode():
             return torch.zeros(
@@ -372,7 +370,6 @@ def parse_attr(obj: typing.Any, /) -> typing.Never: ...
 
 def parse_attr(obj, /):
     # Doing this isinstance check first because it's the fastest.
-    from aioway.t import TList
 
     if isinstance(obj, TList):
         return [parse_attr(elem) for elem in obj]

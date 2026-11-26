@@ -9,6 +9,8 @@ from aioway._pytrees import tree_leaves, tree_map_only
 from aioway._utils import AnyDict, any_dict
 from aioway.t import Domain
 
+lazy from .execs import executor
+
 __all__ = ["Op", "OpDomainMismatch", "OpReplacer"]
 
 
@@ -42,7 +44,6 @@ class Op[T = typing.Any](_OpDclsMixin, abc.ABC):
         _ = self.__domain__
 
     def __call__(self) -> T:
-        from .execs import executor
 
         return executor()(self)
 

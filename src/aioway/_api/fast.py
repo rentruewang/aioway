@@ -13,8 +13,6 @@ def fastapi_app() -> fastapi.FastAPI:
     A lazily evaluated `fastapi` app.
     """
 
-    import fastapi
-
     return fastapi.FastAPI()
 
 

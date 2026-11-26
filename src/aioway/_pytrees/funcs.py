@@ -8,6 +8,7 @@ from collections import abc as cabc
 import torch
 
 from aioway._utils import AnyDict, any_dict
+lazy from aioway.t import mode_off
 
 from .compat import tree_all, tree_leaves, tree_map
 
@@ -80,8 +81,6 @@ def replace_tensors(
     this function fails also during debugging if `__torch_function__` is not disabled.
     Caused by `.device` / `.shape` / `.dtype` calls, which is used in `replace_tensors`.
     """
-
-    from aioway.t import mode_off
 
     def maybe_replace(item):
         if not isinstance(item, torch.Tensor):
