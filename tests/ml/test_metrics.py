@@ -8,7 +8,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from aioway.ml.metrics import (
+from aioway.ml import (
     Accuracy,
     ConfusionMatrix,
     F1Score,
@@ -21,6 +21,7 @@ from aioway.ml.metrics import (
     Recall,
     SumMetric,
 )
+from aioway.ml.metrics._utils import as_buffer
 from aioway.t import (
     Domain,
     InvalidValueForDomain,
@@ -59,7 +60,7 @@ class _CountMetric(Metric[torch.Tensor, torch.Tensor]):
 
     def __init__(self) -> None:
         super().__init__()
-        self.count: torch.Tensor = nn.Buffer(torch.tensor(0))
+        self.count = as_buffer(torch.tensor(0))
 
     @typing.override
     def _input_domain(self) -> Domain[torch.Tensor]:

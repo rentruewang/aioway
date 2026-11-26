@@ -10,6 +10,7 @@ from torch import nn
 
 from aioway.t import Domain, ScoreTensorDomain, TensorDomain
 
+from ._utils import as_buffer
 from .metrics import Metric
 
 __all__ = ["SumMetric", "MeanMetric", "MaxMetric", "MinMetric"]
@@ -32,7 +33,7 @@ class SumMetric(_ArithMetric):
 
     def __init__(self) -> None:
         super().__init__()
-        self.total: torch.Tensor = nn.Buffer(torch.tensor(0.0))
+        self.total = as_buffer(torch.tensor(0.0))
 
     @typing.override
     def _update(self, batch: torch.Tensor, /) -> None:
@@ -48,8 +49,8 @@ class MeanMetric(_ArithMetric):
 
     def __init__(self) -> None:
         super().__init__()
-        self.total: torch.Tensor = nn.Buffer(torch.tensor(0.0))
-        self.count: torch.Tensor = nn.Buffer(torch.tensor(0))
+        self.total = as_buffer(torch.tensor(0.0))
+        self.count = as_buffer(torch.tensor(0))
 
     @typing.override
     def _update(self, batch: torch.Tensor, /) -> None:
@@ -66,7 +67,7 @@ class MaxMetric(_ArithMetric):
 
     def __init__(self) -> None:
         super().__init__()
-        self.value: torch.Tensor = nn.Buffer(torch.tensor(-torch.inf))
+        self.value = as_buffer(torch.tensor(-torch.inf))
 
     @typing.override
     def _update(self, batch: torch.Tensor, /) -> None:
@@ -82,7 +83,7 @@ class MinMetric(_ArithMetric):
 
     def __init__(self) -> None:
         super().__init__()
-        self.value: torch.Tensor = nn.Buffer(torch.tensor(torch.inf))
+        self.value = as_buffer(torch.tensor(torch.inf))
 
     @typing.override
     def _update(self, batch: torch.Tensor, /) -> None:
