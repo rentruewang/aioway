@@ -63,7 +63,7 @@ class ModuleOp(Op[typing.Any], abc.ABC):
 
     @property
     @abc.abstractmethod
-    def nn(self) -> nn.Module:
+    def net(self) -> nn.Module:
         """
         The underlying `nn.Module`.
         """
@@ -83,5 +83,5 @@ class ModuleThunkOp(CallOp[nn.Module], ModuleOp):
         return Sign.from_nn_forward(self.func)
 
     @property
-    def nn(self) -> nn.Module:
+    def net(self) -> nn.Module:
         return self.func
