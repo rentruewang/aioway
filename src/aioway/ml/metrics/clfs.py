@@ -18,7 +18,6 @@ from aioway.t import (
     TensorDomain,
 )
 
-from ._utils import safe_div
 from .metrics import Metric
 
 __all__ = [
@@ -118,8 +117,10 @@ class _StatScores(Metric[Pair, torch.Tensor], abc.ABC):
 
         if self.average == "none":
             return scores
+
         if self.average == "macro":
             return scores.mean()
+
         if self.average == "weighted":
             support = tp + fn
             return (scores * support).sum() / support.sum()
@@ -179,3 +180,12 @@ class F1Score(FBetaScore):
 
     def __init__(self, num_classes: int, average: Average = "macro") -> None:
         super().__init__(num_classes, beta=1.0, average=average)
+
+
+# Utils ====
+
+
+def safe_div(num: torch.Tensor, den: torch.Tensor) -> torch.Tensor:
+    "`num / den`, `0` where `den` is `0`, same as `torchmetrics`' `zero_division=0`."
+
+    return torch.where(den > 0, num / den, 0.0)
