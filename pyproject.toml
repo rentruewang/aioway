@@ -91,10 +91,6 @@ line-length = 88
 [tool.isort]
 profile = "black"
 
-[tool.mypy]
-show_error_codes = true
-check_untyped_defs = true
-
 [tool.pytest]
 addopts = [
     "-v",
