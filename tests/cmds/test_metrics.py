@@ -5,12 +5,14 @@ from collections import abc as cabc
 
 import pytest
 import torch
-from torch import nn
+from torch import testing as tt
 from torch.nn import functional as F
 
 from aioway.cmds import (
     Accuracy,
+    ColStatMetric,
     ConfusionMatrix,
+    CountMetric,
     F1Score,
     FBetaScore,
     MaxMetric,
@@ -19,8 +21,11 @@ from aioway.cmds import (
     MinMetric,
     Precision,
     Recall,
+    StdMetric,
     SumMetric,
+    VarMetric,
 )
+from aioway.cmds.metrics._utils import as_buffer
 from aioway.t import (
     Domain,
     InvalidValueForDomain,
@@ -48,7 +53,7 @@ def _run(case: _Case) -> None:
         metric.update(batch)
 
     expected = torch.tensor(case.expected, dtype=torch.float)
-    assert torch.allclose(metric.compute().float(), expected, atol=1e-4)
+    tt.assert_close(metric.compute().float(), expected, atol=1e-4, rtol=1e-5)
 
 
 # Base ====
@@ -59,7 +64,7 @@ class _CountMetric(Metric[torch.Tensor, torch.Tensor]):
 
     def __init__(self) -> None:
         super().__init__()
-        self.count: torch.Tensor = nn.Buffer(torch.tensor(0))
+        self.count = as_buffer(torch.tensor(0))
 
     @typing.override
     def _input_domain(self) -> Domain[torch.Tensor]:
@@ -124,14 +129,19 @@ class TestMetric:
 
 def _arith_cases():
     batches = [torch.tensor([1.0, 2.0]), torch.tensor([[3.0], [6.0]])]
+    yield _Case(CountMetric, batches, 4.0)
     yield _Case(SumMetric, batches, 12.0)
     yield _Case(MeanMetric, batches, 3.0)
     yield _Case(MaxMetric, batches, 6.0)
     yield _Case(MinMetric, batches, 1.0)
+    yield _Case(VarMetric, batches, 14 / 3)
+    yield _Case(StdMetric, batches, (14 / 3) ** 0.5)
 
     ints = [torch.tensor([1, 2, 3])]
     yield _Case(SumMetric, ints, 6.0)
     yield _Case(MeanMetric, ints, 2.0)
+    yield _Case(VarMetric, ints, 1.0)
+    yield _Case(StdMetric, ints, 1.0)
 
 
 class TestAriths:
@@ -181,3 +191,46 @@ class TestClfs:
 
     def test_metric(self, case: _Case):
         _run(case)
+
+
+# Stats ====
+
+
+def _col_stat_cases():
+    yield [torch.tensor([1.0, 2.0]), torch.tensor([[3.0], [6.0]])]
+    yield [torch.tensor([1, 2, 3])]
+    yield list(torch.randn(1000).split(100))
+
+
+class TestColStat:
+    @pytest.fixture(params=_col_stat_cases())
+    def batches(self, request) -> list[torch.Tensor]:
+        return request.param
+
+    def test_metric(self, batches: list[torch.Tensor]):
+        metric = ColStatMetric()
+
+        for batch in batches:
+            metric.update(batch)
+
+        result = metric.compute()
+        values = torch.cat([batch.flatten() for batch in batches]).double()
+
+        assert result["count"] == values.numel()
+        tt.assert_close(result["avg"].double(), values.mean(), atol=1e-4, rtol=1e-5)
+        tt.assert_close(result["std_dev"].double(), values.std(), atol=1e-4, rtol=1e-5)
+        tt.assert_close(result["low"].double(), values.min(), atol=1e-4, rtol=1e-5)
+        tt.assert_close(result["high"].double(), values.max(), atol=1e-4, rtol=1e-5)
+
+    def test_custom_metrics(self, batches: list[torch.Tensor]):
+        metric = ColStatMetric({"total": SumMetric(), "top": MaxMetric()})
+
+        for batch in batches:
+            metric.update(batch)
+
+        result = metric.compute()
+        values = torch.cat([batch.flatten() for batch in batches]).double()
+
+        assert set(result.keys()) == {"total", "top"}
+        tt.assert_close(result["total"].double(), values.sum(), atol=1e-3, rtol=1e-5)
+        tt.assert_close(result["top"].double(), values.max(), atol=1e-4, rtol=1e-5)

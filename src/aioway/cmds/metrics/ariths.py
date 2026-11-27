@@ -6,13 +6,21 @@ import abc
 import typing
 
 import torch
-from torch import nn
 
-from aioway.t import Domain, ScoreTensorDomain, TensorDomain
+from aioway.t import Domain, IntTensorDomain, ScoreTensorDomain, TensorDomain
 
+from ._utils import as_buffer
 from .metrics import Metric
 
-__all__ = ["SumMetric", "MeanMetric", "MaxMetric", "MinMetric"]
+__all__ = [
+    "CountMetric",
+    "SumMetric",
+    "MeanMetric",
+    "VarMetric",
+    "StdMetric",
+    "MaxMetric",
+    "MinMetric",
+]
 
 
 class _ArithMetric(Metric[torch.Tensor, torch.Tensor], abc.ABC):
@@ -27,12 +35,32 @@ class _ArithMetric(Metric[torch.Tensor, torch.Tensor], abc.ABC):
         return ScoreTensorDomain()
 
 
+class CountMetric(_ArithMetric):
+    "The number of values."
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.count = as_buffer(torch.tensor(0))
+
+    @typing.override
+    def _output_domain(self) -> Domain[torch.Tensor]:
+        return IntTensorDomain()
+
+    @typing.override
+    def _update(self, batch: torch.Tensor, /) -> None:
+        self.count += batch.numel()
+
+    @typing.override
+    def _compute(self) -> torch.Tensor:
+        return self.count
+
+
 class SumMetric(_ArithMetric):
     "The sum of all values."
 
     def __init__(self) -> None:
         super().__init__()
-        self.total: torch.Tensor = nn.Buffer(torch.tensor(0.0))
+        self.total = as_buffer(torch.tensor(0.0))
 
     @typing.override
     def _update(self, batch: torch.Tensor, /) -> None:
@@ -48,8 +76,8 @@ class MeanMetric(_ArithMetric):
 
     def __init__(self) -> None:
         super().__init__()
-        self.total: torch.Tensor = nn.Buffer(torch.tensor(0.0))
-        self.count: torch.Tensor = nn.Buffer(torch.tensor(0))
+        self.total = as_buffer(torch.tensor(0.0))
+        self.count = as_buffer(torch.tensor(0))
 
     @typing.override
     def _update(self, batch: torch.Tensor, /) -> None:
@@ -61,12 +89,43 @@ class MeanMetric(_ArithMetric):
         return self.total / self.count
 
 
+class VarMetric(_ArithMetric):
+    "The sample variance of all values, same as `pandas`."
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.count = as_buffer(torch.tensor(0))
+        self.total = as_buffer(torch.tensor(0.0, dtype=torch.double))
+        self.sq_total = as_buffer(torch.tensor(0.0, dtype=torch.double))
+
+    @typing.override
+    def _update(self, batch: torch.Tensor, /) -> None:
+        values = batch.detach().double()
+        self.count += values.numel()
+        self.total += values.sum()
+        self.sq_total += values.square().sum()
+
+    @typing.override
+    def _compute(self) -> torch.Tensor:
+        mean = self.total / self.count
+        var = (self.sq_total - self.count * mean**2) / (self.count - 1)
+        return var.clamp(min=0)
+
+
+class StdMetric(VarMetric):
+    "The sample standard deviation of all values, same as `pandas`."
+
+    @typing.override
+    def _compute(self) -> torch.Tensor:
+        return super()._compute().sqrt()
+
+
 class MaxMetric(_ArithMetric):
     "The largest value."
 
     def __init__(self) -> None:
         super().__init__()
-        self.value: torch.Tensor = nn.Buffer(torch.tensor(-torch.inf))
+        self.value = as_buffer(torch.tensor(-torch.inf))
 
     @typing.override
     def _update(self, batch: torch.Tensor, /) -> None:
@@ -82,7 +141,7 @@ class MinMetric(_ArithMetric):
 
     def __init__(self) -> None:
         super().__init__()
-        self.value: torch.Tensor = nn.Buffer(torch.tensor(torch.inf))
+        self.value = as_buffer(torch.tensor(torch.inf))
 
     @typing.override
     def _update(self, batch: torch.Tensor, /) -> None:

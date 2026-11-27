@@ -7,7 +7,6 @@ import dataclasses as dcls
 import typing
 
 import torch
-from torch import nn
 
 from aioway.t import (
     Domain,
@@ -19,6 +18,7 @@ from aioway.t import (
     TensorDomain,
 )
 
+from ._utils import as_buffer
 from .metrics import Metric
 
 __all__ = [
@@ -76,9 +76,7 @@ class ConfusionMatrix(Metric[Pair, torch.Tensor]):
     def __init__(self, num_classes: int) -> None:
         super().__init__()
         self.num_classes = num_classes
-        self.mat: torch.Tensor = nn.Buffer(
-            torch.zeros(num_classes, num_classes, dtype=torch.long)
-        )
+        self.mat = as_buffer(torch.zeros(num_classes, num_classes, dtype=torch.long))
 
     @typing.override
     def _input_domain(self) -> Domain[Pair]:

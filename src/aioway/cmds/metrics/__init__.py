@@ -3,3 +3,4 @@
 from .ariths import *
 from .clfs import *
 from .metrics import *
+from .stats import *
