@@ -5,6 +5,7 @@ from collections import abc as cabc
 
 import pytest
 import torch
+from torch import testing as tt
 from torch.nn import functional as F
 
 from aioway.cmds import (
@@ -53,7 +54,7 @@ def _run(case: _Case) -> None:
         metric.update(batch)
 
     expected = torch.tensor(case.expected, dtype=torch.float)
-    assert torch.allclose(metric.compute().float(), expected, atol=1e-4)
+    tt.assert_close(metric.compute().float(), expected, atol=1e-4, rtol=1e-5)
 
 
 # Base ====
@@ -216,10 +217,10 @@ class TestColStat:
         values = torch.cat([batch.flatten() for batch in batches]).double()
 
         assert result.count == values.numel()
-        assert torch.allclose(result.avg.double(), values.mean(), atol=1e-4)
-        assert torch.allclose(result.std_dev.double(), values.std(), atol=1e-4)
-        assert torch.allclose(result.low.double(), values.min(), atol=1e-4)
-        assert torch.allclose(result.high.double(), values.max(), atol=1e-4)
+        tt.assert_close(result.avg.double(), values.mean(), atol=1e-4, rtol=1e-5)
+        tt.assert_close(result.std_dev.double(), values.std(), atol=1e-4, rtol=1e-5)
+        tt.assert_close(result.low.double(), values.min(), atol=1e-4, rtol=1e-5)
+        tt.assert_close(result.high.double(), values.max(), atol=1e-4, rtol=1e-5)
 
     def test_domain_accepts_col_stat(self):
         stat = _col_stat(count=torch.tensor(3))
