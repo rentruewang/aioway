@@ -2,5 +2,5 @@
 
 from .ariths import *
 from .clfs import *
-from .descs import *
 from .metrics import *
+from .stats import *
