@@ -6,7 +6,7 @@ import pytest
 import torch
 from torch import nn, optim
 
-from aioway.ml.distils import distil
+from aioway.cmds import distil
 
 
 @pytest.fixture

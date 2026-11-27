@@ -8,7 +8,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from aioway.ml.metrics import (
+from aioway.cmds import (
     Accuracy,
     ConfusionMatrix,
     F1Score,
