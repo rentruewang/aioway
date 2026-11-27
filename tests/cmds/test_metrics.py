@@ -9,6 +9,9 @@ from torch.nn import functional as F
 
 from aioway.cmds import (
     Accuracy,
+    ColStat,
+    ColStatDomain,
+    ColStatMetric,
     ConfusionMatrix,
     F1Score,
     FBetaScore,
@@ -18,7 +21,9 @@ from aioway.cmds import (
     MinMetric,
     Precision,
     Recall,
+    StdMetric,
     SumMetric,
+    VarMetric,
 )
 from aioway.cmds.metrics._utils import as_buffer
 from aioway.t import (
@@ -128,10 +133,14 @@ def _arith_cases():
     yield _Case(MeanMetric, batches, 3.0)
     yield _Case(MaxMetric, batches, 6.0)
     yield _Case(MinMetric, batches, 1.0)
+    yield _Case(VarMetric, batches, 14 / 3)
+    yield _Case(StdMetric, batches, (14 / 3) ** 0.5)
 
     ints = [torch.tensor([1, 2, 3])]
     yield _Case(SumMetric, ints, 6.0)
     yield _Case(MeanMetric, ints, 2.0)
+    yield _Case(VarMetric, ints, 1.0)
+    yield _Case(StdMetric, ints, 1.0)
 
 
 class TestAriths:
@@ -181,3 +190,50 @@ class TestClfs:
 
     def test_metric(self, case: _Case):
         _run(case)
+
+
+# Stats ====
+
+
+def _col_stat_cases():
+    yield [torch.tensor([1.0, 2.0]), torch.tensor([[3.0], [6.0]])]
+    yield [torch.tensor([1, 2, 3])]
+    yield list(torch.randn(1000).split(100))
+
+
+class TestColStat:
+    @pytest.fixture(params=_col_stat_cases())
+    def batches(self, request) -> list[torch.Tensor]:
+        return request.param
+
+    def test_metric(self, batches: list[torch.Tensor]):
+        metric = ColStatMetric()
+
+        for batch in batches:
+            metric.update(batch)
+
+        result = metric.compute()
+        values = torch.cat([batch.flatten() for batch in batches]).double()
+
+        assert result.count == values.numel()
+        assert torch.allclose(result.avg.double(), values.mean(), atol=1e-4)
+        assert torch.allclose(result.std_dev.double(), values.std(), atol=1e-4)
+        assert torch.allclose(result.low.double(), values.min(), atol=1e-4)
+        assert torch.allclose(result.high.double(), values.max(), atol=1e-4)
+
+    def test_domain_accepts_col_stat(self):
+        stat = _col_stat(count=torch.tensor(3))
+        assert stat in ColStatDomain()
+
+    def test_domain_rejects_float_count(self):
+        stat = _col_stat(count=torch.tensor(3.0))
+        assert stat not in ColStatDomain()
+
+    def test_domain_rejects_non_col_stat(self):
+        t: typing.Any = torch.tensor(1.0)
+        assert t not in ColStatDomain()
+
+
+def _col_stat(count: torch.Tensor) -> ColStat:
+    one = torch.tensor(1.0)
+    return ColStat(count=count, avg=one, std_dev=one, low=one, high=one, batch_size=[])
