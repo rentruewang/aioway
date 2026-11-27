@@ -5,7 +5,7 @@ import torch
 from torch import nn
 from torch.utils import data as du
 
-from aioway.ml import BuildTCAV, CaptumConceptTask
+from aioway.cmds import BuildTCAV, CaptumConceptTask
 
 
 class _Dataset(du.Dataset):
