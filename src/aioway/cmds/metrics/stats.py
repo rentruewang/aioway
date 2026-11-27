@@ -3,6 +3,7 @@
 "Describe the data seen, like `pandas.DataFrame.describe`."
 
 import typing
+from collections import abc as cabc
 
 import tensordict as td
 import torch
@@ -35,7 +36,14 @@ class ColStatMetric(Metric[torch.Tensor, td.TensorDict]):
                 "high": MaxMetric(),
             }
 
-        self.metrics = nn.ModuleDict(metrics)
+        for key, val in metrics.items():
+            if not isinstance(val, Metric):
+                raise ValueError(
+                    f"Must be a dict of metrics. But got {val} at {key!r}."
+                )
+
+        module: typing.Any = nn.ModuleDict(metrics)
+        self.metrics: cabc.Mapping[str, Metric] = module
 
     @typing.override
     def _input_domain(self) -> Domain[torch.Tensor]:
@@ -43,23 +51,15 @@ class ColStatMetric(Metric[torch.Tensor, td.TensorDict]):
 
     @typing.override
     def _output_domain(self) -> Domain[td.TensorDict]:
-        return TDictDomain({name: m.__domain__ for name, m in self.metric_dict.items()})
+        return TDictDomain({name: m.__domain__ for name, m in self.metrics.items()})
 
     @typing.override
     def _update(self, batch: torch.Tensor, /) -> None:
-        for metric in self.metric_dict.values():
+        for metric in self.metrics.values():
             metric.update(batch)
 
     @typing.override
     def _compute(self) -> td.TensorDict:
         return td.TensorDict(
-            {name: m.compute() for name, m in self.metric_dict.items()}, batch_size=[]
+            {name: m.compute() for name, m in self.metrics.items()}, batch_size=[]
         )
-
-    @property
-    def metric_dict(self) -> dict[str, Metric]:
-        def cast_metric(m):
-            assert isinstance(m, Metric)
-            return m
-
-        return {key: cast_metric(metric) for key, metric in self.metrics.items()}
