@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from aioway.t.keys import THash, TKey
+from aioway.t import THash, TKey
 
 
 @pytest.fixture(
