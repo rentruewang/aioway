@@ -6,9 +6,9 @@ import pytest
 import torch
 from torch import nn, optim
 
+from aioway.cmds import Eval, Train
 from aioway.cmds.nets import float_list
 from aioway.io import InputTarget, InputTargetLikeDset
-from aioway.ml.trains import Eval, Train
 
 
 class _LinearDset(InputTargetLikeDset):

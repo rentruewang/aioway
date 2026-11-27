@@ -12,8 +12,6 @@ from captum import influence
 from torch import nn
 from torch.utils import data as du
 
-from aioway.ml.tasks import Task
-
 __all__ = [
     "CaptumInfluenceTask",
     "BuildTracInCP",
@@ -33,7 +31,7 @@ class _InfluenceStratFrozenDclsMixin:
 
 
 @dcls.dataclass
-class CaptumInfluenceTask(Task):
+class CaptumInfluenceTask:
     """
     The explainer based on `captum.influence.DataInfluence`.
 

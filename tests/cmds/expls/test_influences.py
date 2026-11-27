@@ -5,7 +5,7 @@ import torch
 from torch import nn
 from torch.utils import data as du
 
-from aioway.ml import (
+from aioway.cmds import (
     BuildNaiveInfluenceFunction,
     BuildTracInCP,
     BuildTracInCPFast,
