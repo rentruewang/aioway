@@ -7,7 +7,6 @@ import dataclasses as dcls
 import typing
 
 import torch
-from torch import nn
 
 from aioway.t import (
     Domain,

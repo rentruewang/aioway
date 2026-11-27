@@ -5,7 +5,6 @@ from collections import abc as cabc
 
 import pytest
 import torch
-from torch import nn
 from torch.nn import functional as F
 
 from aioway.cmds import (
