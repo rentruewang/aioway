@@ -21,7 +21,7 @@ class ColStatMetric(Metric[torch.Tensor, td.TensorDict]):
     """
     Many metrics on the same tensor, the results in a `TensorDict` by name.
 
-    Defaults to a column of `pandas.DataFrame.describe`, without percentiles.
+    Defaults to a column of `pd.DataFrame.describe`, without percentiles.
     """
 
     def __init__(self, metrics: dict[str, Metric] | None = None) -> None:
