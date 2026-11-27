@@ -1,95 +1,65 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
-"Describe the data seen, like `pandas.DataFrame.describe`, but the result is a `Domain`."
+"Describe the data seen, like `pandas.DataFrame.describe`."
 
 import typing
 
 import tensordict as td
 import torch
+from torch import nn
 
-from aioway.t import (
-    AnyDomain,
-    Domain,
-    FloatTensorDomain,
-    IntTensorDomain,
-    InvalidValueForDomain,
-    TensorDomain,
-)
+from aioway.t import Domain, TDictDomain, TensorDomain
 
-from .ariths import MaxMetric, MeanMetric, MinMetric, StdMetric
+from .ariths import CountMetric, MaxMetric, MeanMetric, MinMetric, StdMetric
 from .metrics import Metric
 
-__all__ = ["ColStat", "ColStatDomain", "ColStatMetric"]
+__all__ = ["ColStatMetric"]
 
 
-class ColStat(td.TensorClass):
-    "The stats of all values seen, like a column of `pandas.DataFrame.describe`."
+class ColStatMetric(Metric[torch.Tensor, td.TensorDict]):
+    """
+    Many metrics on the same tensor, the results in a `TensorDict` by name.
 
-    count: torch.Tensor
-    "The number of values seen."
+    Defaults to a column of `pandas.DataFrame.describe`, without percentiles.
+    """
 
-    avg: torch.Tensor
-    "The mean of the values."
-
-    std_dev: torch.Tensor
-    "The sample standard deviation of the values, same as `pandas`."
-
-    low: torch.Tensor
-    "The smallest value."
-
-    high: torch.Tensor
-    "The largest value."
-
-
-class ColStatDomain(Domain[ColStat]):
-    "A `ColStat`: an int `count`, and a float item for each other stat."
-
-    @property
-    def __extends__(self) -> list[Domain]:
-        return [AnyDomain()]
-
-    def check_type(self, obj: ColStat, /) -> None:
-        if not isinstance(obj, ColStat):
-            raise InvalidValueForDomain(f"Expected a ColStat, got {type(obj)=}.")
-
-        IntTensorDomain().check_type(obj.count)
-
-        for stat in [obj.avg, obj.std_dev, obj.low, obj.high]:
-            FloatTensorDomain().check_type(stat)
-
-
-class ColStatMetric(Metric[torch.Tensor, ColStat]):
-    "The `ColStat` of all values of all batches of a tensor."
-
-    def __init__(self) -> None:
+    def __init__(self, metrics: dict[str, Metric] | None = None) -> None:
         super().__init__()
-        self.avg = MeanMetric()
-        self.std_dev = StdMetric()
-        self.low = MinMetric()
-        self.high = MaxMetric()
+
+        if metrics is None:
+            metrics = {
+                "count": CountMetric(),
+                "avg": MeanMetric(),
+                "std_dev": StdMetric(),
+                "low": MinMetric(),
+                "high": MaxMetric(),
+            }
+
+        self.metrics = nn.ModuleDict(metrics)
 
     @typing.override
     def _input_domain(self) -> Domain[torch.Tensor]:
         return TensorDomain()
 
     @typing.override
-    def _output_domain(self) -> Domain[ColStat]:
-        return ColStatDomain()
+    def _output_domain(self) -> Domain[td.TensorDict]:
+        return TDictDomain({name: m.__domain__ for name, m in self.metric_dict.items()})
 
     @typing.override
     def _update(self, batch: torch.Tensor, /) -> None:
-        self.avg.update(batch)
-        self.std_dev.update(batch)
-        self.low.update(batch)
-        self.high.update(batch)
+        for metric in self.metric_dict.values():
+            metric.update(batch)
 
     @typing.override
-    def _compute(self) -> ColStat:
-        return ColStat(
-            count=self.avg.count,
-            avg=self.avg.compute(),
-            std_dev=self.std_dev.compute(),
-            low=self.low.compute(),
-            high=self.high.compute(),
-            batch_size=[],
+    def _compute(self) -> td.TensorDict:
+        return td.TensorDict(
+            {name: m.compute() for name, m in self.metric_dict.items()}, batch_size=[]
         )
+
+    @property
+    def metric_dict(self) -> dict[str, Metric]:
+        def cast_metric(m):
+            assert isinstance(m, Metric)
+            return m
+
+        return {key: cast_metric(metric) for key, metric in self.metrics.items()}

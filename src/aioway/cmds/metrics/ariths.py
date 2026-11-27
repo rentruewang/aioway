@@ -7,12 +7,13 @@ import typing
 
 import torch
 
-from aioway.t import Domain, ScoreTensorDomain, TensorDomain
+from aioway.t import Domain, IntTensorDomain, ScoreTensorDomain, TensorDomain
 
 from ._utils import as_buffer
 from .metrics import Metric
 
 __all__ = [
+    "CountMetric",
     "SumMetric",
     "MeanMetric",
     "VarMetric",
@@ -32,6 +33,26 @@ class _ArithMetric(Metric[torch.Tensor, torch.Tensor], abc.ABC):
     @typing.override
     def _output_domain(self) -> Domain[torch.Tensor]:
         return ScoreTensorDomain()
+
+
+class CountMetric(_ArithMetric):
+    "The number of values."
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.count = as_buffer(torch.tensor(0))
+
+    @typing.override
+    def _output_domain(self) -> Domain[torch.Tensor]:
+        return IntTensorDomain()
+
+    @typing.override
+    def _update(self, batch: torch.Tensor, /) -> None:
+        self.count += batch.numel()
+
+    @typing.override
+    def _compute(self) -> torch.Tensor:
+        return self.count
 
 
 class SumMetric(_ArithMetric):

@@ -10,10 +10,9 @@ from torch.nn import functional as F
 
 from aioway.cmds import (
     Accuracy,
-    ColStat,
-    ColStatDomain,
     ColStatMetric,
     ConfusionMatrix,
+    CountMetric,
     F1Score,
     FBetaScore,
     MaxMetric,
@@ -130,6 +129,7 @@ class TestMetric:
 
 def _arith_cases():
     batches = [torch.tensor([1.0, 2.0]), torch.tensor([[3.0], [6.0]])]
+    yield _Case(CountMetric, batches, 4.0)
     yield _Case(SumMetric, batches, 12.0)
     yield _Case(MeanMetric, batches, 3.0)
     yield _Case(MaxMetric, batches, 6.0)
@@ -216,25 +216,21 @@ class TestColStat:
         result = metric.compute()
         values = torch.cat([batch.flatten() for batch in batches]).double()
 
-        assert result.count == values.numel()
-        tt.assert_close(result.avg.double(), values.mean(), atol=1e-4, rtol=1e-5)
-        tt.assert_close(result.std_dev.double(), values.std(), atol=1e-4, rtol=1e-5)
-        tt.assert_close(result.low.double(), values.min(), atol=1e-4, rtol=1e-5)
-        tt.assert_close(result.high.double(), values.max(), atol=1e-4, rtol=1e-5)
+        assert result["count"] == values.numel()
+        tt.assert_close(result["avg"].double(), values.mean(), atol=1e-4, rtol=1e-5)
+        tt.assert_close(result["std_dev"].double(), values.std(), atol=1e-4, rtol=1e-5)
+        tt.assert_close(result["low"].double(), values.min(), atol=1e-4, rtol=1e-5)
+        tt.assert_close(result["high"].double(), values.max(), atol=1e-4, rtol=1e-5)
 
-    def test_domain_accepts_col_stat(self):
-        stat = _col_stat(count=torch.tensor(3))
-        assert stat in ColStatDomain()
+    def test_custom_metrics(self, batches: list[torch.Tensor]):
+        metric = ColStatMetric({"total": SumMetric(), "top": MaxMetric()})
 
-    def test_domain_rejects_float_count(self):
-        stat = _col_stat(count=torch.tensor(3.0))
-        assert stat not in ColStatDomain()
+        for batch in batches:
+            metric.update(batch)
 
-    def test_domain_rejects_non_col_stat(self):
-        t: typing.Any = torch.tensor(1.0)
-        assert t not in ColStatDomain()
+        result = metric.compute()
+        values = torch.cat([batch.flatten() for batch in batches]).double()
 
-
-def _col_stat(count: torch.Tensor) -> ColStat:
-    one = torch.tensor(1.0)
-    return ColStat(count=count, avg=one, std_dev=one, low=one, high=one, batch_size=[])
+        assert set(result.keys()) == {"total", "top"}
+        tt.assert_close(result["total"].double(), values.sum(), atol=1e-3, rtol=1e-5)
+        tt.assert_close(result["top"].double(), values.max(), atol=1e-4, rtol=1e-5)
