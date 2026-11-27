@@ -16,8 +16,7 @@ from aioway.t import (
     TensorDomain,
 )
 
-from ._utils import as_buffer
-from .ariths import MaxMetric, MinMetric
+from .ariths import MaxMetric, MeanMetric, MinMetric, StdMetric
 from .metrics import Metric
 
 __all__ = ["ColStat", "ColStatDomain", "ColStatMetric"]
@@ -64,9 +63,8 @@ class ColStatMetric(Metric[torch.Tensor, ColStat]):
 
     def __init__(self) -> None:
         super().__init__()
-        self.count = as_buffer(torch.tensor(0))
-        self.total = as_buffer(torch.tensor(0.0, dtype=torch.double))
-        self.sq_total = as_buffer(torch.tensor(0.0, dtype=torch.double))
+        self.avg = MeanMetric()
+        self.std_dev = StdMetric()
         self.low = MinMetric()
         self.high = MaxMetric()
 
@@ -80,21 +78,17 @@ class ColStatMetric(Metric[torch.Tensor, ColStat]):
 
     @typing.override
     def _update(self, batch: torch.Tensor, /) -> None:
-        values = batch.detach().double()
-        self.count += values.numel()
-        self.total += values.sum()
-        self.sq_total += values.square().sum()
+        self.avg.update(batch)
+        self.std_dev.update(batch)
         self.low.update(batch)
         self.high.update(batch)
 
     @typing.override
     def _compute(self) -> ColStat:
-        avg = self.total / self.count
-        var = (self.sq_total - self.count * avg**2) / (self.count - 1)
         return ColStat(
-            count=self.count,
-            avg=avg,
-            std_dev=var.clamp(min=0).sqrt(),
+            count=self.avg.count,
+            avg=self.avg.compute(),
+            std_dev=self.std_dev.compute(),
             low=self.low.compute(),
             high=self.high.compute(),
             batch_size=[],

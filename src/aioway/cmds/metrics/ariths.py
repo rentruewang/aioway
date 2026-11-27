@@ -12,7 +12,14 @@ from aioway.t import Domain, ScoreTensorDomain, TensorDomain
 from ._utils import as_buffer
 from .metrics import Metric
 
-__all__ = ["SumMetric", "MeanMetric", "MaxMetric", "MinMetric"]
+__all__ = [
+    "SumMetric",
+    "MeanMetric",
+    "VarMetric",
+    "StdMetric",
+    "MaxMetric",
+    "MinMetric",
+]
 
 
 class _ArithMetric(Metric[torch.Tensor, torch.Tensor], abc.ABC):
@@ -59,6 +66,37 @@ class MeanMetric(_ArithMetric):
     @typing.override
     def _compute(self) -> torch.Tensor:
         return self.total / self.count
+
+
+class VarMetric(_ArithMetric):
+    "The sample variance of all values, same as `pandas`."
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.count = as_buffer(torch.tensor(0))
+        self.total = as_buffer(torch.tensor(0.0, dtype=torch.double))
+        self.sq_total = as_buffer(torch.tensor(0.0, dtype=torch.double))
+
+    @typing.override
+    def _update(self, batch: torch.Tensor, /) -> None:
+        values = batch.detach().double()
+        self.count += values.numel()
+        self.total += values.sum()
+        self.sq_total += values.square().sum()
+
+    @typing.override
+    def _compute(self) -> torch.Tensor:
+        mean = self.total / self.count
+        var = (self.sq_total - self.count * mean**2) / (self.count - 1)
+        return var.clamp(min=0)
+
+
+class StdMetric(VarMetric):
+    "The sample standard deviation of all values, same as `pandas`."
+
+    @typing.override
+    def _compute(self) -> torch.Tensor:
+        return super()._compute().sqrt()
 
 
 class MaxMetric(_ArithMetric):
