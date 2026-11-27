@@ -1,19 +1,17 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
 from torch import nn
-from torchrl import modules as rlmods
 
 from aioway.ops import LayerOp, OpFunc, SameShapeOp, ViewOp
 
 from ._utils import Activation, linear_tree, observ_op
 from .domains import FloatListDomain, IntRangeItemDomain
-from .emitters import Emitter, EmitterLike, emitter_dcls, emitter_function
+from .emitters import Emitter, EmitterLike, emitter_function
 
 __all__ = [
     "linear_regression",
     "ClfLogitHead",
     "MlpEmitter",
-    "TorchRlMlpEmitter",
 ]
 
 
@@ -27,7 +25,6 @@ def linear_regression(observ: FloatListDomain, action: FloatListDomain) -> OpFun
     return OpFunc(linear_tree(observ_op(), in_shape, out_shape))
 
 
-@emitter_dcls
 class ClfLogitHead(Emitter[FloatListDomain, IntRangeItemDomain]):
     "Emits a classification head."
 
@@ -47,7 +44,6 @@ class ClfLogitHead(Emitter[FloatListDomain, IntRangeItemDomain]):
         return OpFunc(LayerOp(nn.Linear(in_features, action_count), flat))
 
 
-@emitter_dcls
 class _MlpEmitter(Emitter[FloatListDomain, FloatListDomain]):
     """
     Emits an MLP.
@@ -64,21 +60,6 @@ class _MlpEmitter(Emitter[FloatListDomain, FloatListDomain]):
     """
 
 
-@emitter_dcls
-class TorchRlMlpEmitter(_MlpEmitter):
-    "Emits a `torchrl.modules.MLP`."
-
-    def emit(self, observ: FloatListDomain, action: FloatListDomain, /) -> OpFunc:
-        module = rlmods.MLP(
-            in_features=observ.shape[-1],
-            out_features=action.shape[-1],
-            num_cells=self.hidden_sizes,
-            activation_class=Activation(self.activation).nn_type,
-        )
-        return OpFunc(LayerOp(module, observ_op()))
-
-
-@emitter_dcls
 class MlpEmitter(_MlpEmitter):
     """
     Emits `Linear`s with activations in between.

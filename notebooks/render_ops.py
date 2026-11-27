@@ -23,7 +23,7 @@ from aioway._signs import Param
 
 # %%
 from aioway.ops import CallOp, FuncInputOp, OpFunc
-from aioway.t import Domain, TensorDomain
+from aioway.t import TensorDomain
 
 pretty.install()
 

@@ -4,7 +4,7 @@ description = "AI on the way"
 authors = [
     {name = "RenChu Wang", email = "patrick1031wang@gmail.com"},
 ]
-requires-python = ">=3.14,<3.15"
+requires-python = ">=3.15"
 readme = "README.md"
 license = "Apache-2.0"
 dynamic = ["version"]
@@ -14,14 +14,12 @@ dependencies = [
     "torch>=2",
     "tensordict>=0.11",
     "torchvision>=0.25",
-    "torchrl>=0.13",
     "rich>=14",
     "pillow>=12",
     "av>=19",
     "transformers>=5",
     "tokenizers>=0.22",
     "datasets>=5",
-    "lightning>=2",
     "captum>=0.9",
     "loguru>=0.7",
     "optree>=0.20",
@@ -92,10 +90,6 @@ line-length = 88
 [tool.isort]
 profile = "black"
 
-[tool.mypy]
-show_error_codes = true
-check_untyped_defs = true
-
 [tool.pytest]
 addopts = [
     "-v",
@@ -121,3 +115,6 @@ ignore-missing-imports = [
 ]
 check-unannotated-defs = true
 infer-return-types = "checked" 
+
+[tool.pyrefly.errors]
+unused-import = "error" 

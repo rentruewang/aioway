@@ -12,7 +12,6 @@ from torch import nn
 from torch.utils import data as du
 
 from aioway._utils import is_tuple_of
-from aioway.ml.tasks import Task
 
 from ._utils import AttrAdaptor, AttrRemains
 
@@ -37,7 +36,7 @@ class _AttrStratFrozenDclsMixin:
 
 
 @dcls.dataclass
-class CaptumAttrTask(Task):
+class CaptumAttrTask:
     """
     The explainer based on `captum.attr.Attribution`.
 

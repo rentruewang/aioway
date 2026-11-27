@@ -16,6 +16,7 @@ from .execs import OpExec, executor, set_executor
 from .ops import Op
 from .thunks import ModuleOp
 from .vars import ValueOp
+lazy from .codes import render_op_module
 
 __all__ = ["OpFunc", "OpFuncModule", "OpFuncEnv", "FuncInputOp"]
 
@@ -84,8 +85,6 @@ class OpFunc:
 
     @property
     def _codes(self):
-        from .codes import render_op_module
-
         return render_op_module(self)
 
     def _input_ops(self) -> list[FuncInputOp]:
@@ -145,7 +144,7 @@ class OpFuncModule(nn.Module):
 
         self.func = func
         self.module_list = nn.ModuleList(
-            op.nn for op in func._all_ops() if isinstance(op, ModuleOp)
+            op.net for op in func._all_ops() if isinstance(op, ModuleOp)
         )
 
     def forward(self, *args, **kwargs) -> typing.Any:

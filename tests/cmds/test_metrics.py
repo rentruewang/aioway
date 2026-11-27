@@ -8,7 +8,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from aioway.ml import (
+from aioway.cmds import (
     Accuracy,
     ConfusionMatrix,
     F1Score,
@@ -21,7 +21,7 @@ from aioway.ml import (
     Recall,
     SumMetric,
 )
-from aioway.ml.metrics._utils import as_buffer
+from aioway.cmds.metrics._utils import as_buffer
 from aioway.t import (
     Domain,
     InvalidValueForDomain,

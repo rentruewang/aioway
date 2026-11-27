@@ -1,5 +1,7 @@
 # Copyright (c) AIoWay Authors - All Rights Reserved
 
+import typing
+
 import pytest
 import tensordict as td
 import torch
@@ -110,7 +112,7 @@ def test_dtype_coerce(schema, attr):
 
 
 def test_parse_nested():
-    data = td.TensorDict(
+    data: typing.Any = td.TensorDict(
         {"id": torch.zeros(3), "user": td.TensorDict({"name": torch.zeros(3)})},
         batch_size=[3],
     )

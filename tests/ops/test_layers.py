@@ -44,7 +44,7 @@ def test_call(op):
 
 
 def test_nn(op):
-    assert op.nn is op.module
+    assert op.net is op.module
 
 
 def test_deps(op):

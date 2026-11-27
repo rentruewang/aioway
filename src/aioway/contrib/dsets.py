@@ -6,6 +6,8 @@ import pathlib
 
 from aioway.io import Dset
 
+lazy from .mnist import MnistDataset
+
 __all__ = ["route_dset"]
 
 
@@ -13,8 +15,6 @@ def route_dset(name: str) -> Dset:
     # For MNIST we already have an adaptor.
     # Get rid of this at some point.
     if name.lower() == "mnist":
-        from .mnist import MnistDataset
-
         return MnistDataset()
 
     # Not yet handled.

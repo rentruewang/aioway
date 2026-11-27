@@ -13,8 +13,6 @@ from captum import concept
 from torch import nn
 from torch.utils import data as du
 
-from aioway.ml.tasks import Task
-
 from ._utils import AttrAdaptor, AttrRemains
 
 __all__ = ["CaptumConceptTask", "BuildTCAV"]
@@ -31,7 +29,7 @@ class _StrategyDclsMixin:
 
 
 @dcls.dataclass
-class CaptumConceptTask(Task):
+class CaptumConceptTask:
     """
     The explainer based on `captum.concept.ConceptInterpreter`.
 

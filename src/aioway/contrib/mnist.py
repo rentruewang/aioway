@@ -3,7 +3,6 @@
 import pathlib
 import typing
 
-import tensordict as td
 from torchvision import datasets as tvdsets
 from torchvision.transforms import v2 as tvt
 

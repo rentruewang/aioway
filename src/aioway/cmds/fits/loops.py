@@ -4,6 +4,7 @@ import contextlib
 import dataclasses as dcls
 
 import torch
+from rich import progress
 from torch import nn, optim
 
 from aioway.io import Dset
@@ -23,6 +24,9 @@ class Train:
 
     batch_size: int
     callbacks: tuple[Callback, ...] = ()
+    max_grad_norm: float | None = None
+    "Clip the gradient norm to this, `None` for no clipping."
+    progress_bar: bool = False
 
     def __call__(
         self, model: nn.Module, optimizer: optim.Optimizer, loss, dset: Dset
@@ -31,11 +35,16 @@ class Train:
             batch_size=self.batch_size, shuffle=True, collate_fn=dset.collate_fn
         )
 
+        if self.progress_bar:
+            loader = progress.track(loader)
+
         with _set_training_mode(model, to=True):
             for step, batch in enumerate(loader, 1):
                 value = loss(model(batch.input), batch.target)
                 optimizer.zero_grad()
                 value.backward()
+                if self.max_grad_norm is not None:
+                    nn.utils.clip_grad_norm_(model.parameters(), self.max_grad_norm)
                 optimizer.step()
 
                 state = State(model, optimizer, step, value.item())
