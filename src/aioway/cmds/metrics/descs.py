@@ -5,7 +5,15 @@
 import tensordict as td
 import torch
 
-__all__ = ["ColStat"]
+from aioway.t import (
+    AnyDomain,
+    Domain,
+    FloatTensorDomain,
+    IntTensorDomain,
+    InvalidValueForDomain,
+)
+
+__all__ = ["ColStat", "ColStatDomain"]
 
 
 class ColStat(td.TensorClass):
@@ -25,3 +33,20 @@ class ColStat(td.TensorClass):
 
     high: torch.Tensor
     "The largest value."
+
+
+class ColStatDomain(Domain[ColStat]):
+    "A `ColStat`: an int `count`, and a float item for each other stat."
+
+    @property
+    def __extends__(self) -> list[Domain]:
+        return [AnyDomain()]
+
+    def check_type(self, obj: ColStat, /) -> None:
+        if not isinstance(obj, ColStat):
+            raise InvalidValueForDomain(f"Expected a ColStat, got {type(obj)=}.")
+
+        IntTensorDomain().check_type(obj.count)
+
+        for stat in [obj.avg, obj.std_dev, obj.low, obj.high]:
+            FloatTensorDomain().check_type(stat)
